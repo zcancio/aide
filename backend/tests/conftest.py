@@ -7,7 +7,7 @@ from __future__ import annotations
 import os
 from uuid import uuid4
 
-import pytest
+
 import pytest_asyncio
 
 from backend import db
