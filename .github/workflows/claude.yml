@@ -60,16 +60,16 @@ jobs:
 
       - name: Run Claude Code
         run: |
-          # Strip @claude from the beginning of the task
           TASK=$(echo "$RAW_TASK" | sed 's/^@claude\s*//')
+          cat <<EOF | claude --print --model claude-sonnet-4-5-20250929 --allowedTools "Bash,Read,Write,Edit"
+          ${TASK}
 
-          echo "${TASK}
-
-After completing the task:
-1. Run: ruff check backend/ && ruff format --check backend/
-2. Run: alembic upgrade head (if migrations exist)
-3. Run: pytest backend/tests/ -v
-4. Fix any failures before finishing" | claude --print --model claude-sonnet-4-5-20250929 --allowedTools "Bash,Read,Write,Edit"
+          After completing the task:
+          1. Run: ruff check backend/ && ruff format --check backend/
+          2. Run: alembic upgrade head (if migrations exist)
+          3. Run: pytest backend/tests/ -v
+          4. Fix any failures before finishing
+          EOF
         env:
           RAW_TASK: ${{ github.event.comment.body }}
 
