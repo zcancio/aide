@@ -112,4 +112,8 @@ async def system_conn():
         raise RuntimeError("Database pool not initialized. Call init_pool() first.")
 
     async with pool.acquire() as conn:
-        yield conn
+        async with conn.transaction():
+            # Disable RLS for system operations (requires superuser or BYPASSRLS role)
+            # This is necessary because FORCE ROW LEVEL SECURITY applies even to table owners
+            await conn.execute("SET LOCAL row_security = off")
+            yield conn

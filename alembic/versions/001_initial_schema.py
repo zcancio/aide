@@ -34,6 +34,7 @@ def upgrade():
     # RLS policy for users table
     op.execute("""
         ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE users FORCE ROW LEVEL SECURITY;
     """)
 
     op.execute("""
@@ -97,6 +98,7 @@ def upgrade():
     # RLS policy for aides table
     op.execute("""
         ALTER TABLE aides ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE aides FORCE ROW LEVEL SECURITY;
     """)
 
     op.execute("""
@@ -125,6 +127,7 @@ def upgrade():
     # Conversations belong to users via aides, so we need to check the aide's user_id
     op.execute("""
         ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE conversations FORCE ROW LEVEL SECURITY;
     """)
 
     op.execute("""
@@ -159,6 +162,7 @@ def upgrade():
     # RLS policy for published_versions table
     op.execute("""
         ALTER TABLE published_versions ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE published_versions FORCE ROW LEVEL SECURITY;
     """)
 
     op.execute("""
@@ -197,6 +201,7 @@ def upgrade():
     # RLS policy for audit_log (select only, insert via system_conn)
     op.execute("""
         ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE audit_log FORCE ROW LEVEL SECURITY;
     """)
 
     op.execute("""

@@ -8,8 +8,9 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
+import httpx
 import pytest
-from fastapi.testclient import TestClient
+import pytest_asyncio
 
 from backend import config
 from backend.auth import create_jwt, decode_jwt
@@ -22,7 +23,16 @@ pytestmark = pytest.mark.asyncio(loop_scope="session")
 
 magic_link_repo = MagicLinkRepo()
 user_repo = UserRepo()
-client = TestClient(app)
+
+
+@pytest_asyncio.fixture(loop_scope="session")
+async def async_client():
+    """Create an async HTTP client for testing."""
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        yield client
 
 
 class TestJWT:
@@ -205,7 +215,7 @@ class TestUserRepo:
 class TestAuthRoutes:
     """Test authentication route handlers."""
 
-    async def test_send_magic_link(self):
+    async def test_send_magic_link(self, async_client):
         """Test sending a magic link (without actually sending email)."""
         # Mock the email service to avoid sending real emails in tests
         import backend.routes.auth_routes as auth_routes_module
@@ -220,7 +230,7 @@ class TestAuthRoutes:
 
         try:
             email = f"test-{uuid4()}@example.com"
-            response = client.post("/auth/send", json={"email": email})
+            response = await async_client.post("/auth/send", json={"email": email})
 
             assert response.status_code == 200
             assert "Magic link sent" in response.json()["message"]
@@ -229,7 +239,7 @@ class TestAuthRoutes:
         finally:
             auth_routes_module.send_magic_link = original_send
 
-    async def test_send_magic_link_rate_limit(self):
+    async def test_send_magic_link_rate_limit(self, async_client):
         """Test magic link rate limiting by email."""
         import backend.routes.auth_routes as auth_routes_module
 
@@ -248,18 +258,18 @@ class TestAuthRoutes:
                 await magic_link_repo.create(email)
 
             # 6th should be rate limited
-            response = client.post("/auth/send", json={"email": email})
+            response = await async_client.post("/auth/send", json={"email": email})
             assert response.status_code == 429
             assert "Too many requests" in response.json()["detail"]
         finally:
             auth_routes_module.send_magic_link = original_send
 
-    async def test_verify_magic_link_new_user(self):
+    async def test_verify_magic_link_new_user(self, async_client):
         """Test verifying a magic link for a new user."""
         email = f"test-{uuid4()}@example.com"
         magic_link = await magic_link_repo.create(email)
 
-        response = client.get(f"/auth/verify?token={magic_link.token}")
+        response = await async_client.get(f"/auth/verify?token={magic_link.token}")
 
         assert response.status_code == 200
         data = response.json()
@@ -275,14 +285,14 @@ class TestAuthRoutes:
             async with system_conn() as conn:
                 await conn.execute("DELETE FROM users WHERE id = $1", user.id)
 
-    async def test_verify_magic_link_existing_user(self):
+    async def test_verify_magic_link_existing_user(self, async_client):
         """Test verifying a magic link for an existing user."""
         email = f"test-{uuid4()}@example.com"
         existing_user = await user_repo.create(email, name="Existing User")
 
         magic_link = await magic_link_repo.create(email)
 
-        response = client.get(f"/auth/verify?token={magic_link.token}")
+        response = await async_client.get(f"/auth/verify?token={magic_link.token}")
 
         assert response.status_code == 200
         data = response.json()
@@ -294,14 +304,14 @@ class TestAuthRoutes:
         async with system_conn() as conn:
             await conn.execute("DELETE FROM users WHERE id = $1", existing_user.id)
 
-    async def test_verify_invalid_token(self):
+    async def test_verify_invalid_token(self, async_client):
         """Test verifying an invalid token."""
-        response = client.get("/auth/verify?token=invalid-token-here")
+        response = await async_client.get("/auth/verify?token=invalid-token-here")
 
         assert response.status_code == 401
         assert "Invalid magic link" in response.json()["detail"]
 
-    async def test_verify_used_token(self):
+    async def test_verify_used_token(self, async_client):
         """Test verifying a token that was already used."""
         email = f"test-{uuid4()}@example.com"
         magic_link = await magic_link_repo.create(email)
@@ -309,12 +319,12 @@ class TestAuthRoutes:
         # Mark as used
         await magic_link_repo.mark_used(magic_link.token)
 
-        response = client.get(f"/auth/verify?token={magic_link.token}")
+        response = await async_client.get(f"/auth/verify?token={magic_link.token}")
 
         assert response.status_code == 401
         assert "already been used" in response.json()["detail"]
 
-    async def test_verify_expired_token(self):
+    async def test_verify_expired_token(self, async_client):
         """Test verifying an expired token."""
         email = f"test-{uuid4()}@example.com"
 
@@ -333,31 +343,34 @@ class TestAuthRoutes:
                 expires_at,
             )
 
-        response = client.get(f"/auth/verify?token={token}")
+        response = await async_client.get(f"/auth/verify?token={token}")
 
         assert response.status_code == 401
         assert "expired" in response.json()["detail"]
 
-    async def test_get_me_authenticated(self, test_user_id):
+    async def test_get_me_authenticated(self, async_client, test_user_id):
         """Test /auth/me endpoint with valid session."""
         token = create_jwt(test_user_id)
 
-        response = client.get("/auth/me", cookies={"session": token})
+        response = await async_client.get(
+            "/auth/me",
+            cookies={"session": token},
+        )
 
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == str(test_user_id)
 
-    async def test_get_me_unauthenticated(self):
+    async def test_get_me_unauthenticated(self, async_client):
         """Test /auth/me endpoint without session."""
-        response = client.get("/auth/me")
+        response = await async_client.get("/auth/me")
 
         assert response.status_code == 401
         assert "Not authenticated" in response.json()["detail"]
 
-    async def test_logout(self):
+    async def test_logout(self, async_client):
         """Test logout endpoint."""
-        response = client.post("/auth/logout")
+        response = await async_client.post("/auth/logout")
 
         assert response.status_code == 200
         assert "Logged out" in response.json()["message"]
