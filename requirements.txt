@@ -1,0 +1,27 @@
+# Web framework
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+
+# Database
+asyncpg==0.30.0
+
+# Validation
+pydantic[email]==2.10.5
+
+# Migrations
+alembic==1.14.1
+
+# R2 / S3
+boto3==1.36.7
+
+# Auth
+PyJWT==2.10.1
+
+# Email
+resend==2.7.0
+
+# Payments
+stripe==11.4.1
+
+# HTTP client (for webhooks, health checks)
+httpx==0.28.1

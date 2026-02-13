@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: ['*']
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: aide
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: aide_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Lint
+        run: |
+          ruff check backend/
+          ruff format --check backend/
+
+      - name: Security scan
+        run: bandit -r backend/ -ll
+
+      - name: Run migrations
+        env:
+          DATABASE_URL: postgres://aide:test@localhost:5432/aide_test
+        run: alembic upgrade head
+
+      - name: Test
+        env:
+          DATABASE_URL: postgres://aide:test@localhost:5432/aide_test
+          TESTING: "true"
+        run: pytest backend/tests/ -v --tb=short
