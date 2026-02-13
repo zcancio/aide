@@ -376,5 +376,7 @@ class TestAuthRoutes:
         assert "Logged out" in response.json()["message"]
 
         # Session cookie should be cleared (max_age=0)
-        assert "session" in response.cookies
-        # The cookie should be set to empty or have max_age=0
+        # Check Set-Cookie header directly since httpx doesn't expose expired cookies
+        set_cookie = response.headers.get("set-cookie", "")
+        assert "session=" in set_cookie
+        assert "Max-Age=0" in set_cookie
