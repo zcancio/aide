@@ -4,10 +4,10 @@ Pytest configuration and fixtures for AIde tests.
 
 from __future__ import annotations
 
-import asyncio
 import os
 from uuid import uuid4
 
+import pytest
 import pytest_asyncio
 
 from backend import db
@@ -20,7 +20,7 @@ os.environ.setdefault("STRIPE_SECRET_KEY", "test-stripe-key")
 os.environ.setdefault("STRIPE_WEBHOOK_SECRET", "test-webhook-secret")
 
 
-@pytest_asyncio.fixture(scope="session", autouse=True)
+@pytest_asyncio.fixture(scope="session", loop_scope="session", autouse=True)
 async def initialize_pool():
     """Initialize pool once for all tests."""
     await db.init_pool()
@@ -28,15 +28,7 @@ async def initialize_pool():
     await db.close_pool()
 
 
-@pytest_asyncio.fixture(scope="session")
-def event_loop():
-    """Create event loop for the session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
-
-
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(loop_scope="session")
 async def test_user_id():
     """Create a test user and return their ID."""
     user_id = uuid4()
@@ -56,7 +48,7 @@ async def test_user_id():
         await conn.execute("DELETE FROM users WHERE id = $1", user_id)
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(loop_scope="session")
 async def second_user_id():
     """Create a second test user for cross-user RLS tests."""
     user_id = uuid4()

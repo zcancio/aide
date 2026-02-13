@@ -18,6 +18,8 @@ from backend.main import app
 from backend.repos.magic_link_repo import MagicLinkRepo
 from backend.repos.user_repo import UserRepo
 
+pytestmark = pytest.mark.asyncio(loop_scope="session")
+
 magic_link_repo = MagicLinkRepo()
 user_repo = UserRepo()
 client = TestClient(app)
@@ -81,7 +83,6 @@ class TestJWT:
 class TestMagicLinkRepo:
     """Test magic link repository operations."""
 
-    @pytest.mark.asyncio
     async def test_create_magic_link(self):
         """Test creating a magic link."""
         email = f"test-{uuid4()}@example.com"
@@ -93,7 +94,6 @@ class TestMagicLinkRepo:
         assert magic_link.used is False
         assert magic_link.expires_at > datetime.now(UTC)
 
-    @pytest.mark.asyncio
     async def test_get_by_token(self):
         """Test getting a magic link by token."""
         email = f"test-{uuid4()}@example.com"
@@ -106,14 +106,12 @@ class TestMagicLinkRepo:
         assert retrieved.email == email
         assert retrieved.token == created.token
 
-    @pytest.mark.asyncio
     async def test_get_by_invalid_token(self):
         """Test getting a magic link with invalid token returns None."""
         retrieved = await magic_link_repo.get_by_token("nonexistent-token")
 
         assert retrieved is None
 
-    @pytest.mark.asyncio
     async def test_mark_used(self):
         """Test marking a magic link as used."""
         email = f"test-{uuid4()}@example.com"
@@ -126,7 +124,6 @@ class TestMagicLinkRepo:
         retrieved = await magic_link_repo.get_by_token(magic_link.token)
         assert retrieved.used is True
 
-    @pytest.mark.asyncio
     async def test_count_recent_by_email(self):
         """Test counting recent magic links by email."""
         email = f"test-{uuid4()}@example.com"
@@ -139,7 +136,6 @@ class TestMagicLinkRepo:
         count = await magic_link_repo.count_recent_by_email(email, hours=1)
         assert count == 3
 
-    @pytest.mark.asyncio
     async def test_cleanup_expired(self):
         """Test cleaning up expired magic links."""
         email = f"test-{uuid4()}@example.com"
@@ -169,7 +165,6 @@ class TestMagicLinkRepo:
 class TestUserRepo:
     """Test user repository operations."""
 
-    @pytest.mark.asyncio
     async def test_create_user(self):
         """Test creating a new user."""
         email = f"test-{uuid4()}@example.com"
@@ -185,7 +180,6 @@ class TestUserRepo:
         async with system_conn() as conn:
             await conn.execute("DELETE FROM users WHERE id = $1", user.id)
 
-    @pytest.mark.asyncio
     async def test_get_by_email(self):
         """Test getting a user by email."""
         email = f"test-{uuid4()}@example.com"
@@ -201,7 +195,6 @@ class TestUserRepo:
         async with system_conn() as conn:
             await conn.execute("DELETE FROM users WHERE id = $1", created.id)
 
-    @pytest.mark.asyncio
     async def test_get_by_email_not_found(self):
         """Test getting a user by email that doesn't exist."""
         retrieved = await user_repo.get_by_email("nonexistent@example.com")
@@ -212,7 +205,6 @@ class TestUserRepo:
 class TestAuthRoutes:
     """Test authentication route handlers."""
 
-    @pytest.mark.asyncio
     async def test_send_magic_link(self):
         """Test sending a magic link (without actually sending email)."""
         # Mock the email service to avoid sending real emails in tests
@@ -237,7 +229,6 @@ class TestAuthRoutes:
         finally:
             auth_routes_module.send_magic_link = original_send
 
-    @pytest.mark.asyncio
     async def test_send_magic_link_rate_limit(self):
         """Test magic link rate limiting by email."""
         import backend.routes.auth_routes as auth_routes_module
@@ -263,7 +254,6 @@ class TestAuthRoutes:
         finally:
             auth_routes_module.send_magic_link = original_send
 
-    @pytest.mark.asyncio
     async def test_verify_magic_link_new_user(self):
         """Test verifying a magic link for a new user."""
         email = f"test-{uuid4()}@example.com"
@@ -285,7 +275,6 @@ class TestAuthRoutes:
             async with system_conn() as conn:
                 await conn.execute("DELETE FROM users WHERE id = $1", user.id)
 
-    @pytest.mark.asyncio
     async def test_verify_magic_link_existing_user(self):
         """Test verifying a magic link for an existing user."""
         email = f"test-{uuid4()}@example.com"
@@ -305,7 +294,6 @@ class TestAuthRoutes:
         async with system_conn() as conn:
             await conn.execute("DELETE FROM users WHERE id = $1", existing_user.id)
 
-    @pytest.mark.asyncio
     async def test_verify_invalid_token(self):
         """Test verifying an invalid token."""
         response = client.get("/auth/verify?token=invalid-token-here")
@@ -313,7 +301,6 @@ class TestAuthRoutes:
         assert response.status_code == 401
         assert "Invalid magic link" in response.json()["detail"]
 
-    @pytest.mark.asyncio
     async def test_verify_used_token(self):
         """Test verifying a token that was already used."""
         email = f"test-{uuid4()}@example.com"
@@ -327,7 +314,6 @@ class TestAuthRoutes:
         assert response.status_code == 401
         assert "already been used" in response.json()["detail"]
 
-    @pytest.mark.asyncio
     async def test_verify_expired_token(self):
         """Test verifying an expired token."""
         email = f"test-{uuid4()}@example.com"
@@ -352,7 +338,6 @@ class TestAuthRoutes:
         assert response.status_code == 401
         assert "expired" in response.json()["detail"]
 
-    @pytest.mark.asyncio
     async def test_get_me_authenticated(self, test_user_id):
         """Test /auth/me endpoint with valid session."""
         token = create_jwt(test_user_id)
@@ -363,7 +348,6 @@ class TestAuthRoutes:
         data = response.json()
         assert data["id"] == str(test_user_id)
 
-    @pytest.mark.asyncio
     async def test_get_me_unauthenticated(self):
         """Test /auth/me endpoint without session."""
         response = client.get("/auth/me")
@@ -371,7 +355,6 @@ class TestAuthRoutes:
         assert response.status_code == 401
         assert "Not authenticated" in response.json()["detail"]
 
-    @pytest.mark.asyncio
     async def test_logout(self):
         """Test logout endpoint."""
         response = client.post("/auth/logout")

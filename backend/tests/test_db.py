@@ -13,15 +13,15 @@ import pytest
 
 from backend import db
 
+pytestmark = pytest.mark.asyncio(loop_scope="session")
 
-@pytest.mark.asyncio
+
 async def test_pool_initialization():
     """Test that the database pool is initialized correctly."""
     assert db.pool is not None
     assert db.pool.get_size() > 0
 
 
-@pytest.mark.asyncio
 async def test_system_conn_works():
     """Test that system_conn can execute queries."""
     async with db.system_conn() as conn:
@@ -29,7 +29,6 @@ async def test_system_conn_works():
         assert result == 1
 
 
-@pytest.mark.asyncio
 async def test_user_conn_sets_rls_context(test_user_id):
     """Test that user_conn sets the RLS context correctly."""
     async with db.user_conn(test_user_id) as conn:
@@ -38,7 +37,6 @@ async def test_user_conn_sets_rls_context(test_user_id):
         assert user_id_from_setting == str(test_user_id)
 
 
-@pytest.mark.asyncio
 async def test_user_can_read_own_data(test_user_id):
     """Test that a user can read their own user record via RLS."""
     async with db.user_conn(test_user_id) as conn:
@@ -51,7 +49,6 @@ async def test_user_can_read_own_data(test_user_id):
         assert row["email"] == f"test-{test_user_id}@example.com"
 
 
-@pytest.mark.asyncio
 async def test_user_cannot_read_other_user_data(test_user_id, second_user_id):
     """Test that RLS prevents reading another user's data."""
     # User A tries to read User B's data
@@ -64,7 +61,6 @@ async def test_user_cannot_read_other_user_data(test_user_id, second_user_id):
         assert row is None
 
 
-@pytest.mark.asyncio
 async def test_user_can_create_aide(test_user_id):
     """Test that a user can create an aide through user_conn."""
     aide_id = uuid4()
@@ -91,7 +87,6 @@ async def test_user_can_create_aide(test_user_id):
         await conn.execute("DELETE FROM aides WHERE id = $1", aide_id)
 
 
-@pytest.mark.asyncio
 async def test_user_can_list_own_aides_only(test_user_id, second_user_id):
     """Test that user_conn only returns the user's own aides."""
     # Create aide for user A
@@ -145,7 +140,6 @@ async def test_user_can_list_own_aides_only(test_user_id, second_user_id):
         await conn.execute("DELETE FROM aides WHERE id = $1", aide_b_id)
 
 
-@pytest.mark.asyncio
 async def test_user_cannot_update_other_user_aide(test_user_id, second_user_id):
     """Test that RLS prevents updating another user's aide."""
     # User A creates an aide
@@ -185,7 +179,6 @@ async def test_user_cannot_update_other_user_aide(test_user_id, second_user_id):
         await conn.execute("DELETE FROM aides WHERE id = $1", aide_id)
 
 
-@pytest.mark.asyncio
 async def test_user_cannot_delete_other_user_aide(test_user_id, second_user_id):
     """Test that RLS prevents deleting another user's aide."""
     # User A creates an aide
@@ -217,7 +210,6 @@ async def test_user_cannot_delete_other_user_aide(test_user_id, second_user_id):
         await conn.execute("DELETE FROM aides WHERE id = $1", aide_id)
 
 
-@pytest.mark.asyncio
 async def test_conversations_rls_via_aide(test_user_id, second_user_id):
     """Test that conversations are scoped via their parent aide's user_id."""
     # User A creates an aide and conversation
@@ -268,7 +260,6 @@ async def test_conversations_rls_via_aide(test_user_id, second_user_id):
         await conn.execute("DELETE FROM aides WHERE id = $1", aide_id)
 
 
-@pytest.mark.asyncio
 async def test_audit_log_append_only(test_user_id):
     """Test that audit_log is append-only (no updates or deletes)."""
     # Insert an audit log entry via system_conn
