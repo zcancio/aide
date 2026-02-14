@@ -29,7 +29,6 @@ jobs:
           --health-retries 5
 
     env:
-      DATABASE_URL: postgres://aide:test@localhost:5432/aide_test
       TESTING: "true"
       JWT_SECRET: test-secret-not-for-production-use-1234567890abcdef
 
@@ -47,6 +46,29 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Create non-superuser app role
+        env:
+          PGPASSWORD: test
+        run: |
+          psql -h localhost -U aide -d aide_test -c "
+            CREATE ROLE aide_app WITH LOGIN PASSWORD 'test' NOSUPERUSER;
+            GRANT ALL PRIVILEGES ON DATABASE aide_test TO aide_app;
+          "
+
+      - name: Run migrations
+        env:
+          DATABASE_URL: postgres://aide:test@localhost:5432/aide_test
+        run: alembic upgrade head
+
+      - name: Grant table permissions to app role
+        env:
+          PGPASSWORD: test
+        run: |
+          psql -h localhost -U aide -d aide_test -c "
+            GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO aide_app;
+            GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO aide_app;
+          "
 
       - name: Configure git
         run: |
@@ -67,12 +89,13 @@ jobs:
 
           After completing the task:
           1. Run: ruff check backend/ && ruff format --check backend/
-          2. Run: alembic upgrade head (if migrations exist)
-          3. Run: pytest backend/tests/ -v
+          2. If you created new migrations, run them: DATABASE_URL=postgres://aide:test@localhost:5432/aide_test alembic upgrade head
+          3. Run tests with non-superuser to verify RLS: DATABASE_URL=postgres://aide_app:test@localhost:5432/aide_test pytest backend/tests/ -v
           4. Fix any failures before finishing
           EOF
         env:
           RAW_TASK: ${{ github.event.comment.body }}
+          DATABASE_URL: postgres://aide_app:test@localhost:5432/aide_test
 
       - name: Commit and push
         run: |
