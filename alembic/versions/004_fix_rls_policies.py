@@ -25,19 +25,19 @@ def upgrade():
     op.execute("DROP POLICY IF EXISTS users_update_own ON users")
     op.execute("DROP POLICY IF EXISTS users_insert_new ON users")
 
-    # Create new policies with proper NULL/empty handling using COALESCE
-    # COALESCE returns first non-null, NULLIF converts empty string to NULL
-    # This prevents the UUID cast error when app.user_id is not set
+    # Create new policies using CASE to prevent UUID cast when value is empty
+    # This ensures the ::uuid cast only happens when there's a valid value
 
     # SELECT: Users can only see their own row (when user_id is set)
-    # System operations (no user_id) return no rows, which is fine for RLS tests
     op.execute("""
         CREATE POLICY users_select_own
         ON users
         FOR SELECT
         USING (
-            NULLIF(current_setting('app.user_id', true), '') IS NOT NULL
-            AND id = current_setting('app.user_id', true)::uuid
+            CASE
+                WHEN NULLIF(current_setting('app.user_id', true), '') IS NULL THEN false
+                ELSE id = current_setting('app.user_id', true)::uuid
+            END
         );
     """)
 
@@ -47,13 +47,14 @@ def upgrade():
         ON users
         FOR UPDATE
         USING (
-            NULLIF(current_setting('app.user_id', true), '') IS NOT NULL
-            AND id = current_setting('app.user_id', true)::uuid
+            CASE
+                WHEN NULLIF(current_setting('app.user_id', true), '') IS NULL THEN false
+                ELSE id = current_setting('app.user_id', true)::uuid
+            END
         );
     """)
 
     # INSERT: Allow all inserts (needed for user signup)
-    # The WITH CHECK validates the new row - true allows all
     op.execute("""
         CREATE POLICY users_insert_allow
         ON users
@@ -61,15 +62,16 @@ def upgrade():
         WITH CHECK (true);
     """)
 
-    # DELETE: Allow delete when user_id matches OR when no user context (for cleanup)
-    # This allows test fixtures and system operations to clean up
+    # DELETE: Allow delete when no user context (for cleanup) OR when user_id matches
     op.execute("""
         CREATE POLICY users_delete_own
         ON users
         FOR DELETE
         USING (
-            NULLIF(current_setting('app.user_id', true), '') IS NULL
-            OR id = current_setting('app.user_id', true)::uuid
+            CASE
+                WHEN NULLIF(current_setting('app.user_id', true), '') IS NULL THEN true
+                ELSE id = current_setting('app.user_id', true)::uuid
+            END
         );
     """)
 
@@ -80,8 +82,10 @@ def upgrade():
         ON aides
         FOR ALL
         USING (
-            NULLIF(current_setting('app.user_id', true), '') IS NOT NULL
-            AND user_id = current_setting('app.user_id', true)::uuid
+            CASE
+                WHEN NULLIF(current_setting('app.user_id', true), '') IS NULL THEN false
+                ELSE user_id = current_setting('app.user_id', true)::uuid
+            END
         );
     """)
 
@@ -92,10 +96,12 @@ def upgrade():
         ON conversations
         FOR ALL
         USING (
-            NULLIF(current_setting('app.user_id', true), '') IS NOT NULL
-            AND aide_id IN (
-                SELECT id FROM aides WHERE user_id = current_setting('app.user_id', true)::uuid
-            )
+            CASE
+                WHEN NULLIF(current_setting('app.user_id', true), '') IS NULL THEN false
+                ELSE aide_id IN (
+                    SELECT id FROM aides WHERE user_id = current_setting('app.user_id', true)::uuid
+                )
+            END
         );
     """)
 
@@ -106,10 +112,12 @@ def upgrade():
         ON published_versions
         FOR ALL
         USING (
-            NULLIF(current_setting('app.user_id', true), '') IS NOT NULL
-            AND aide_id IN (
-                SELECT id FROM aides WHERE user_id = current_setting('app.user_id', true)::uuid
-            )
+            CASE
+                WHEN NULLIF(current_setting('app.user_id', true), '') IS NULL THEN false
+                ELSE aide_id IN (
+                    SELECT id FROM aides WHERE user_id = current_setting('app.user_id', true)::uuid
+                )
+            END
         );
     """)
 
@@ -124,8 +132,10 @@ def upgrade():
         ON audit_log
         FOR SELECT
         USING (
-            NULLIF(current_setting('app.user_id', true), '') IS NOT NULL
-            AND user_id = current_setting('app.user_id', true)::uuid
+            CASE
+                WHEN NULLIF(current_setting('app.user_id', true), '') IS NULL THEN false
+                ELSE user_id = current_setting('app.user_id', true)::uuid
+            END
         );
     """)
 
