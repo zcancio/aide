@@ -28,27 +28,28 @@ def upgrade():
     # Create new policies using CASE to prevent UUID cast when value is empty
     # This ensures the ::uuid cast only happens when there's a valid value
 
-    # SELECT: Users can only see their own row (when user_id is set)
+    # SELECT: Allow system operations (no user context) OR user can see own row
+    # System operations need SELECT for INSERT...RETURNING
     op.execute("""
         CREATE POLICY users_select_own
         ON users
         FOR SELECT
         USING (
             CASE
-                WHEN NULLIF(current_setting('app.user_id', true), '') IS NULL THEN false
+                WHEN NULLIF(current_setting('app.user_id', true), '') IS NULL THEN true
                 ELSE id = current_setting('app.user_id', true)::uuid
             END
         );
     """)
 
-    # UPDATE: Users can only update their own row
+    # UPDATE: Allow system operations OR user can update own row
     op.execute("""
         CREATE POLICY users_update_own
         ON users
         FOR UPDATE
         USING (
             CASE
-                WHEN NULLIF(current_setting('app.user_id', true), '') IS NULL THEN false
+                WHEN NULLIF(current_setting('app.user_id', true), '') IS NULL THEN true
                 ELSE id = current_setting('app.user_id', true)::uuid
             END
         );
@@ -75,7 +76,7 @@ def upgrade():
         );
     """)
 
-    # Fix aides table policy
+    # Fix aides table policy - allow system operations OR user owns the aide
     op.execute("DROP POLICY IF EXISTS aides_all_own ON aides")
     op.execute("""
         CREATE POLICY aides_all_own
@@ -83,13 +84,13 @@ def upgrade():
         FOR ALL
         USING (
             CASE
-                WHEN NULLIF(current_setting('app.user_id', true), '') IS NULL THEN false
+                WHEN NULLIF(current_setting('app.user_id', true), '') IS NULL THEN true
                 ELSE user_id = current_setting('app.user_id', true)::uuid
             END
         );
     """)
 
-    # Fix conversations table policy
+    # Fix conversations table policy - allow system operations OR user owns the aide
     op.execute("DROP POLICY IF EXISTS conversations_all_own ON conversations")
     op.execute("""
         CREATE POLICY conversations_all_own
@@ -97,7 +98,7 @@ def upgrade():
         FOR ALL
         USING (
             CASE
-                WHEN NULLIF(current_setting('app.user_id', true), '') IS NULL THEN false
+                WHEN NULLIF(current_setting('app.user_id', true), '') IS NULL THEN true
                 ELSE aide_id IN (
                     SELECT id FROM aides WHERE user_id = current_setting('app.user_id', true)::uuid
                 )
@@ -105,7 +106,7 @@ def upgrade():
         );
     """)
 
-    # Fix published_versions table policy
+    # Fix published_versions table policy - allow system operations OR user owns the aide
     op.execute("DROP POLICY IF EXISTS published_versions_all_own ON published_versions")
     op.execute("""
         CREATE POLICY published_versions_all_own
@@ -113,7 +114,7 @@ def upgrade():
         FOR ALL
         USING (
             CASE
-                WHEN NULLIF(current_setting('app.user_id', true), '') IS NULL THEN false
+                WHEN NULLIF(current_setting('app.user_id', true), '') IS NULL THEN true
                 ELSE aide_id IN (
                     SELECT id FROM aides WHERE user_id = current_setting('app.user_id', true)::uuid
                 )
@@ -127,13 +128,14 @@ def upgrade():
     op.execute("DROP POLICY IF EXISTS audit_log_no_delete ON audit_log")
     op.execute("DROP POLICY IF EXISTS audit_log_insert_system ON audit_log")
 
+    # SELECT: Allow system operations OR user can see own logs
     op.execute("""
         CREATE POLICY audit_log_select_own
         ON audit_log
         FOR SELECT
         USING (
             CASE
-                WHEN NULLIF(current_setting('app.user_id', true), '') IS NULL THEN false
+                WHEN NULLIF(current_setting('app.user_id', true), '') IS NULL THEN true
                 ELSE user_id = current_setting('app.user_id', true)::uuid
             END
         );
