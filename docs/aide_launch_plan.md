@@ -14,7 +14,7 @@ _Get the house in order before anything user-facing._
 - [ ] Register toaide.com (Cloudflare Registrar)
 - [ ] Create Railway project, connect GitHub repo
 - [ ] Add `railway.toml` with start command (migrations + uvicorn)
-- [ ] Set Railway custom domains: `toaide.com`, `editor.toaide.com`
+- [ ] Set Railway custom domains: `toaide.com`, `get.toaide.com`
 - [ ] Configure Cloudflare DNS: CNAME records pointing to Railway
 - [ ] Set all environment variables in Railway dashboard
 - [ ] Verify SSL, deploy from main, health check passes

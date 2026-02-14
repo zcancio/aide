@@ -18,7 +18,7 @@ Everything that needs to be true before real users touch this.
 - [ ] Rate limit magic link sends: 5 per email per hour, 20 per IP per hour
 - [ ] Rate limit verify endpoint: 10 attempts per IP per minute (prevents token brute force)
 - [ ] Email validation: Pydantic `EmailStr` before sending (reject garbage input)
-- [ ] Magic link URL uses HTTPS only (`https://editor.toaide.com/auth/verify?token=...`)
+- [ ] Magic link URL uses HTTPS only (`https://get.toaide.com/auth/verify?token=...`)
 - [ ] Email sending via Resend (no Google dependency)
 
 ---
@@ -184,7 +184,7 @@ _Railway is a managed platform — no servers to harden. This section is handled
 
 ## Monitoring & Alerting
 
-- [ ] BetterStack uptime monitor on `editor.toaide.com/health` (every 3 min)
+- [ ] BetterStack uptime monitor on `get.toaide.com/health` (every 3 min)
 - [ ] Sentry error tracking with Slack alerts on new issues
 - [ ] Abuse detection loop running every 60 seconds
 - [ ] Traffic spike detection with configurable thresholds

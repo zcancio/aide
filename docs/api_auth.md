@@ -116,7 +116,7 @@ Logout the current user.
 
 2. **User receives email** with link:
    ```
-   https://editor.toaide.com/auth/verify?token=abc123...
+   https://get.toaide.com/auth/verify?token=abc123...
    ```
 
 3. **User clicks link** (or frontend calls verify endpoint):

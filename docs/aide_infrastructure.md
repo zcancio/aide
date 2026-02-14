@@ -12,7 +12,7 @@
                     ┌──────────────────┐
                     │  DNS + CDN + WAF │
                     │  toaide.com      │
-                    │  editor.toaide.com│
+                    │  get.toaide.com│
                     └────────┬─────────┘
                              │
                              │  HTTPS
@@ -332,7 +332,7 @@ No backup scripts. No cron jobs. No snapshots to manage.
 - [ ] Set deploy branch to `main`
 - [ ] Add `railway.toml` to repo
 - [ ] Set all environment variables
-- [ ] Add custom domains (toaide.com, editor.toaide.com)
+- [ ] Add custom domains (toaide.com, get.toaide.com)
 - [ ] Verify: push to main → builds → deploys → health check passes
 
 ### Database
@@ -348,7 +348,7 @@ No backup scripts. No cron jobs. No snapshots to manage.
 
 ### DNS
 - [ ] Cloudflare DNS: toaide.com → Railway
-- [ ] Cloudflare DNS: editor.toaide.com → Railway
+- [ ] Cloudflare DNS: get.toaide.com → Railway
 - [ ] R2 custom domain for published pages
 - [ ] Verify SSL on all endpoints
 

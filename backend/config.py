@@ -45,7 +45,7 @@ SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
 
 # Application
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
-EDITOR_URL = os.environ.get("EDITOR_URL", "https://editor.toaide.com")
+EDITOR_URL = os.environ.get("EDITOR_URL", "https://get.toaide.com")
 PUBLIC_URL = os.environ.get("PUBLIC_URL", "https://toaide.com")
 
 # Rate Limits

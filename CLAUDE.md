@@ -12,7 +12,7 @@ AIde is an AI-powered website builder where users describe what they're running 
 - **Compute:** Railway (auto-deploy from git, zero ops)
 - **Networking:** Cloudflare DNS + CDN
 - **AI Providers:** Anthropic, OpenAI, Gemini (user configurable)
-- **Domains:** toaide.com (landing + published pages), editor.toaide.com (authenticated editor)
+- **Domains:** toaide.com (landing + published pages), get.toaide.com (authenticated editor)
 
 ## Documentation
 

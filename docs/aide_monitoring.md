@@ -8,11 +8,11 @@ Three things to watch. Three solutions. $0/mo.
 
 **Tool:** BetterStack free tier
 **Cost:** $0
-**What it does:** Pings `https://editor.toaide.com/health` every 3 minutes. If it fails, texts/calls you.
+**What it does:** Pings `https://get.toaide.com/health` every 3 minutes. If it fails, texts/calls you.
 
 Setup takes 2 minutes:
 1. Sign up at betterstack.com
-2. Add monitor → HTTPS → `https://editor.toaide.com/health`
+2. Add monitor → HTTPS → `https://get.toaide.com/health`
 3. Add your phone number as alert contact
 4. Done
 
@@ -276,7 +276,7 @@ DELETE FROM usage_events WHERE created_at < now() - interval '30 days';
   📈 Turn spike: 620 in last hour ($$$ alert)
 
 ⚠️ Server down (from BetterStack):
-  ⚠️ editor.toaide.com is DOWN — checked at 2:34 PM EST
+  ⚠️ get.toaide.com is DOWN — checked at 2:34 PM EST
   + SMS/phone call to your number
 ```
 
