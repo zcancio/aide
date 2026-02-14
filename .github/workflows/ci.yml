@@ -44,15 +44,35 @@ jobs:
       - name: Security scan
         run: bandit -r backend/ -ll
 
+      - name: Create non-superuser app role
+        env:
+          PGPASSWORD: test
+        run: |
+          # Create a non-superuser role for the app (superusers bypass RLS)
+          psql -h localhost -U aide -d aide_test -c "
+            CREATE ROLE aide_app WITH LOGIN PASSWORD 'test' NOSUPERUSER;
+            GRANT ALL PRIVILEGES ON DATABASE aide_test TO aide_app;
+          "
+
       - name: Run migrations
         env:
           DATABASE_URL: postgres://aide:test@localhost:5432/aide_test
           JWT_SECRET: test-secret-not-for-production-use-1234567890abcdef
         run: alembic upgrade head
 
+      - name: Grant table permissions to app role
+        env:
+          PGPASSWORD: test
+        run: |
+          # Grant permissions on all tables to the app role after migrations
+          psql -h localhost -U aide -d aide_test -c "
+            GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO aide_app;
+            GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO aide_app;
+          "
+
       - name: Test
         env:
-          DATABASE_URL: postgres://aide:test@localhost:5432/aide_test
+          DATABASE_URL: postgres://aide_app:test@localhost:5432/aide_test
           TESTING: "true"
           JWT_SECRET: test-secret-not-for-production-use-1234567890abcdef
         run: pytest backend/tests/ -v --tb=short
