@@ -1,0 +1,94 @@
+{
+  "evals": [
+    {
+      "id": "poker-league",
+      "prompt": "I run a poker league. 8 guys, we play every other Thursday at someone's house. We rotate who hosts and who brings snacks. The players are Mike, Dave, Chris, James, Zach, Tom, Ryan, and Jake. Next game is Feb 27 at Dave's. Mike's on snacks. Current standings: Zach 340, Chris 310, Dave 280, Mike 260, Tom 240, James 195, Ryan 180, Jake 150.",
+      "expectations": [
+        "Output is a single valid HTML file",
+        "Contains <script type=\"application/aide-blueprint+json\"> with valid JSON",
+        "Contains <script type=\"application/aide+json\"> with valid JSON",
+        "Contains <script type=\"application/aide-events+json\"> with valid JSON array",
+        "Snapshot contains a 'roster' collection with 8 players",
+        "Snapshot contains a 'standings' or similar collection with point values",
+        "Page renders all 8 player names",
+        "Page shows next game date (Feb 27) and host (Dave)",
+        "Page shows Mike on snacks",
+        "No first person language anywhere in rendered HTML",
+        "No emojis anywhere",
+        "No encouragement ('Great!', 'Nice!', etc.)",
+        "Uses Cormorant Garamond for headings and IBM Plex Sans for body",
+        "Has 'Made with AIde' footer",
+        "Has OG meta tags for title",
+        "No JavaScript in the output",
+        "Events are ordered: meta → collections → entities → views → blocks",
+        "Blueprint contains voice rules"
+      ]
+    },
+    {
+      "id": "grocery-list",
+      "prompt": "We need milk, eggs, that sourdough from Whole Foods, chicken for taco Tuesday, tortillas, cheese, salsa, lettuce, and olive oil.",
+      "expectations": [
+        "Output is a single valid HTML file",
+        "Contains all three embedded JSON script blocks",
+        "Infers this is a grocery list without being told",
+        "Creates a grocery_list or similar collection",
+        "All 9 items are present as entities",
+        "Sourdough has Whole Foods as store",
+        "Chicken is associated with taco Tuesday somehow",
+        "No first person language",
+        "No emojis",
+        "Uses AIde design system typography",
+        "Has 'Made with AIde' footer"
+      ]
+    },
+    {
+      "id": "group-trip",
+      "prompt": "Planning a ski trip to Tahoe. Me, Sarah, and Jess. March 14-17. We booked an Airbnb for $1,200 total ($400 each). Sarah's driving. I need to figure out lift tickets — probably around $150/day per person. Jess is vegetarian.",
+      "expectations": [
+        "Output is a single valid HTML file",
+        "Contains all three embedded JSON script blocks",
+        "Has a travelers/people collection with 3 people",
+        "Has budget or expenses tracking with the Airbnb cost",
+        "Shows per-person cost ($400 each)",
+        "Shows dates (March 14-17)",
+        "Notes Sarah is driving",
+        "Notes Jess is vegetarian",
+        "Mentions lift ticket estimate ($150/day)",
+        "Does NOT fabricate additional expenses or details not stated",
+        "No first person language",
+        "No emojis or encouragement"
+      ]
+    },
+    {
+      "id": "minimal-input",
+      "prompt": "Weekly standup page for my team.",
+      "expectations": [
+        "Output is a single valid HTML file",
+        "Contains all three embedded JSON script blocks",
+        "Creates minimal structure — does not over-schema",
+        "Does NOT invent team member names",
+        "Does NOT create fake standup entries",
+        "Blueprint identity reflects 'weekly standup'",
+        "Page is sparse but functional — empty states are OK",
+        "No first person language"
+      ]
+    },
+    {
+      "id": "renovation",
+      "prompt": "Kitchen renovation. Contractor is Bob Martinez, 555-0142. Started Jan 15, supposed to be done by March 30. Budget is $45,000. So far we've spent $12,000 on demo ($3,500), cabinets ($6,200), and plumbing rough-in ($2,300). Waiting on the countertop guy to give us a quote. Tile is picked — going with the white subway from Home Depot.",
+      "expectations": [
+        "Output is a single valid HTML file",
+        "Contains all three embedded JSON script blocks",
+        "Has contractor info (Bob Martinez, phone number)",
+        "Has timeline (Jan 15 start, March 30 target)",
+        "Has budget tracking showing $45,000 total and $12,000 spent",
+        "Has 3 line items (demo, cabinets, plumbing) with correct amounts",
+        "Mentions countertop quote as pending",
+        "Mentions tile decision (white subway, Home Depot)",
+        "Remaining budget is shown or derivable ($33,000)",
+        "No first person language",
+        "No emojis"
+      ]
+    }
+  ]
+}

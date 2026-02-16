@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Poker League — Spring 2026</title>
+
+  <meta property="og:title" content="Poker League — Spring 2026">
+  <meta property="og:type" content="website">
+  <meta property="og:description" content="8 players. Biweekly Thursday. Rotating hosts and snack duty.">
+  <meta name="description" content="8 players. Biweekly Thursday. Rotating hosts and snack duty.">
+
+  <script type="application/aide-blueprint+json" id="aide-blueprint">
+  {
+    "identity": "Poker league. 8 players, biweekly Thursday, rotating hosts and snack duty.",
+    "prompt": "You are maintaining a living page for a poker league. 8 players play every other Thursday, rotating who hosts and who brings snacks. The page tracks the roster, schedule, and standings.\n\nVoice rules:\n- No first person. Never say \"I updated\" or \"I've changed.\"\n- State reflections only. Show how things stand, not what was done.\n- Mutation tone: declarative, minimal, final. Example: \"Next game: Feb 27 at Dave's.\"\n- No encouragement. No \"Great!\", \"Nice!\", \"Let's do this!\"\n- No emojis. Never.\n- Silence is valid. Not every action needs a response.\n\nCurrent schema:\n- roster: name (string), status (enum: active/out/reserve), snack_duty (bool)\n- schedule: date (date), host (string), notes (string?)\n- standings: name (string), points (int), wins (int), losses (int)\n\nWhen the user says someone is out, update their roster status and note the substitute. When scores are reported, update standings. When the next game details change, update the schedule.",
+    "voice": "No first person. No emojis. No encouragement. State reflections only. Declarative, minimal, final."
+  }
+  </script>
+
+  <script type="application/aide+json" id="aide-state">
+  {
+    "annotations": [],
+    "blocks": {
+      "block_divider_1": {
+        "children": [],
+        "props": {},
+        "type": "divider"
+      },
+      "block_next_game": {
+        "children": [],
+        "props": {
+          "content": "**Feb 27** at Dave's. Mike's on snacks."
+        },
+        "type": "text"
+      },
+      "block_root": {
+        "children": [
+          "block_title",
+          "block_subtitle",
+          "block_next_game",
+          "block_divider_1",
+          "block_standings_heading",
+          "block_standings",
+          "block_divider_2",
+          "block_roster_heading",
+          "block_roster"
+        ],
+        "type": "root"
+      },
+      "block_roster": {
+        "children": [],
+        "props": {
+          "view_id": "roster_table"
+        },
+        "type": "collection_view"
+      },
+      "block_roster_heading": {
+        "children": [],
+        "props": {
+          "content": "Roster",
+          "level": 2
+        },
+        "type": "heading"
+      },
+      "block_standings": {
+        "children": [],
+        "props": {
+          "view_id": "standings_table"
+        },
+        "type": "collection_view"
+      },
+      "block_standings_heading": {
+        "children": [],
+        "props": {
+          "content": "Standings",
+          "level": 2
+        },
+        "type": "heading"
+      },
+      "block_subtitle": {
+        "children": [],
+        "props": {
+          "content": "8 players. Biweekly Thursday. Rotating hosts and snack duty."
+        },
+        "type": "text"
+      },
+      "block_title": {
+        "children": [],
+        "props": {
+          "content": "Poker League — Spring 2026",
+          "level": 1
+        },
+        "type": "heading"
+      },
+      "block_divider_2": {
+        "children": [],
+        "props": {},
+        "type": "divider"
+      }
+    },
+    "collections": {
+      "roster": {
+        "entities": {
+          "player_chris": { "name": "Chris", "snack_duty": false, "status": "active" },
+          "player_dave": { "name": "Dave", "snack_duty": false, "status": "active" },
+          "player_jake": { "name": "Jake", "snack_duty": false, "status": "active" },
+          "player_james": { "name": "James", "snack_duty": false, "status": "active" },
+          "player_mike": { "name": "Mike", "snack_duty": true, "status": "active" },
+          "player_ryan": { "name": "Ryan", "snack_duty": false, "status": "active" },
+          "player_tom": { "name": "Tom", "snack_duty": false, "status": "active" },
+          "player_zach": { "name": "Zach", "snack_duty": false, "status": "active" }
+        },
+        "id": "roster",
+        "name": "Roster",
+        "schema": {
+          "name": "string",
+          "snack_duty": "bool",
+          "status": { "enum": ["active", "out", "reserve"] }
+        }
+      },
+      "standings": {
+        "entities": {
+          "standing_chris": { "losses": 0, "name": "Chris", "points": 310, "wins": 0 },
+          "standing_dave": { "losses": 0, "name": "Dave", "points": 280, "wins": 0 },
+          "standing_jake": { "losses": 0, "name": "Jake", "points": 150, "wins": 0 },
+          "standing_james": { "losses": 0, "name": "James", "points": 195, "wins": 0 },
+          "standing_mike": { "losses": 0, "name": "Mike", "points": 260, "wins": 0 },
+          "standing_ryan": { "losses": 0, "name": "Ryan", "points": 180, "wins": 0 },
+          "standing_tom": { "losses": 0, "name": "Tom", "points": 240, "wins": 0 },
+          "standing_zach": { "losses": 0, "name": "Zach", "points": 340, "wins": 0 }
+        },
+        "id": "standings",
+        "name": "Standings",
+        "schema": {
+          "losses": "int",
+          "name": "string",
+          "points": "int",
+          "wins": "int"
+        }
+      }
+    },
+    "constraints": [],
+    "meta": {
+      "identity": "Poker league. 8 players, biweekly Thursday, rotating hosts and snack duty.",
+      "title": "Poker League — Spring 2026",
+      "visibility": "public"
+    },
+    "relationship_types": {},
+    "relationships": [],
+    "styles": {},
+    "version": 1,
+    "views": {
+      "roster_table": {
+        "config": {
+          "show_fields": ["name", "status", "snack_duty"],
+          "sort_by": "name",
+          "sort_order": "asc"
+        },
+        "id": "roster_table",
+        "source": "roster",
+        "type": "table"
+      },
+      "standings_table": {
+        "config": {
+          "show_fields": ["name", "points", "wins", "losses"],
+          "sort_by": "points",
+          "sort_order": "desc"
+        },
+        "id": "standings_table",
+        "source": "standings",
+        "type": "table"
+      }
+    }
+  }
+  </script>
+
+  <script type="application/aide-events+json" id="aide-events">
+  [
+    {
+      "actor": "system",
+      "id": "evt_20260215_001",
+      "payload": { "identity": "Poker league. 8 players, biweekly Thursday, rotating hosts and snack duty.", "title": "Poker League — Spring 2026", "visibility": "public" },
+      "sequence": 1,
+      "source": "web",
+      "timestamp": "2026-02-15T12:00:00Z",
+      "type": "meta.update"
+    },
+    {
+      "actor": "system",
+      "id": "evt_20260215_002",
+      "payload": { "id": "roster", "name": "Roster", "schema": { "name": "string", "snack_duty": "bool", "status": { "enum": ["active", "out", "reserve"] } } },
+      "sequence": 2,
+      "source": "web",
+      "timestamp": "2026-02-15T12:00:01Z",
+      "type": "collection.create"
+    },
+    {
+      "actor": "system",
+      "id": "evt_20260215_003",
+      "payload": { "id": "standings", "name": "Standings", "schema": { "losses": "int", "name": "string", "points": "int", "wins": "int" } },
+      "sequence": 3,
+      "source": "web",
+      "timestamp": "2026-02-15T12:00:02Z",
+      "type": "collection.create"
+    }
+  ]
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --font-serif: 'Cormorant Garamond', Georgia, serif;
+      --font-sans: 'IBM Plex Sans', -apple-system, sans-serif;
+      --text-primary: #2d3748;
+      --text-secondary: #4a5568;
+      --text-tertiary: #a0aec0;
+      --bg-primary: #fafaf9;
+      --border: #e2e8f0;
+      --border-light: #edf2f7;
+      --accent-steel: #4a6fa5;
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 20px;
+      --space-6: 24px;
+      --space-8: 32px;
+      --space-10: 40px;
+      --space-12: 48px;
+      --space-16: 64px;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      font-size: 16px;
+      font-weight: 300;
+      line-height: 1.65;
+      color: var(--text-primary);
+      background: var(--bg-primary);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .aide-page {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: var(--space-12) var(--space-8);
+    }
+
+    @media (max-width: 640px) {
+      .aide-page { padding: var(--space-8) var(--space-5); }
+    }
+
+    /* Headings */
+    .aide-heading { margin-bottom: var(--space-4); }
+    .aide-heading--1 {
+      font-family: var(--font-serif);
+      font-size: clamp(32px, 4.5vw, 42px);
+      font-weight: 400;
+      line-height: 1.2;
+      color: var(--text-primary);
+    }
+    .aide-heading--2 {
+      font-family: var(--font-serif);
+      font-size: clamp(24px, 3.5vw, 32px);
+      font-weight: 400;
+      line-height: 1.25;
+      color: var(--text-primary);
+      margin-top: var(--space-8);
+    }
+
+    /* Text */
+    .aide-text {
+      font-family: var(--font-sans);
+      font-size: 16px;
+      font-weight: 300;
+      line-height: 1.65;
+      color: var(--text-secondary);
+      margin-bottom: var(--space-4);
+    }
+    .aide-text strong { font-weight: 500; color: var(--text-primary); }
+
+    /* Divider */
+    .aide-divider {
+      border: none;
+      border-top: 1px solid var(--border-light);
+      margin: var(--space-8) 0;
+    }
+
+    /* Table */
+    .aide-table-wrap { overflow-x: auto; margin-bottom: var(--space-6); }
+    .aide-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 15px;
+    }
+    .aide-table th {
+      font-family: var(--font-sans);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      text-align: left;
+      padding: var(--space-2) var(--space-3);
+      border-bottom: 1px solid var(--border);
+    }
+    .aide-table td {
+      padding: var(--space-2) var(--space-3);
+      border-bottom: 1px solid var(--border-light);
+      color: var(--text-secondary);
+      font-weight: 300;
+    }
+    .aide-table tr:last-child td { border-bottom: none; }
+    .aide-table .cell-bool-true { color: var(--text-primary); font-weight: 400; }
+    .aide-table .cell-bool-false { color: var(--text-tertiary); }
+
+    /* Footer */
+    .aide-footer {
+      margin-top: var(--space-16);
+      padding-top: var(--space-6);
+      border-top: 1px solid var(--border-light);
+      font-size: 12px;
+      color: var(--text-tertiary);
+      text-align: center;
+    }
+    .aide-footer__link {
+      color: var(--text-tertiary);
+      text-decoration: none;
+    }
+    .aide-footer__link:hover { color: var(--text-secondary); }
+    .aide-footer__sep { margin: 0 var(--space-2); }
+  </style>
+</head>
+<body>
+  <main class="aide-page">
+    <h1 class="aide-heading aide-heading--1">Poker League — Spring 2026</h1>
+
+    <p class="aide-text">8 players. Biweekly Thursday. Rotating hosts and snack duty.</p>
+
+    <p class="aide-text"><strong>Feb 27</strong> at Dave's. Mike's on snacks.</p>
+
+    <hr class="aide-divider">
+
+    <h2 class="aide-heading aide-heading--2">Standings</h2>
+
+    <div class="aide-table-wrap">
+      <table class="aide-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Points</th>
+            <th>Wins</th>
+            <th>Losses</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Zach</td><td>340</td><td>0</td><td>0</td></tr>
+          <tr><td>Chris</td><td>310</td><td>0</td><td>0</td></tr>
+          <tr><td>Dave</td><td>280</td><td>0</td><td>0</td></tr>
+          <tr><td>Mike</td><td>260</td><td>0</td><td>0</td></tr>
+          <tr><td>Tom</td><td>240</td><td>0</td><td>0</td></tr>
+          <tr><td>James</td><td>195</td><td>0</td><td>0</td></tr>
+          <tr><td>Ryan</td><td>180</td><td>0</td><td>0</td></tr>
+          <tr><td>Jake</td><td>150</td><td>0</td><td>0</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <hr class="aide-divider">
+
+    <h2 class="aide-heading aide-heading--2">Roster</h2>
+
+    <div class="aide-table-wrap">
+      <table class="aide-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Status</th>
+            <th>Snack Duty</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Chris</td><td>active</td><td class="cell-bool-false">—</td></tr>
+          <tr><td>Dave</td><td>active</td><td class="cell-bool-false">—</td></tr>
+          <tr><td>Jake</td><td>active</td><td class="cell-bool-false">—</td></tr>
+          <tr><td>James</td><td>active</td><td class="cell-bool-false">—</td></tr>
+          <tr><td>Mike</td><td>active</td><td class="cell-bool-true">✓</td></tr>
+          <tr><td>Ryan</td><td>active</td><td class="cell-bool-false">—</td></tr>
+          <tr><td>Tom</td><td>active</td><td class="cell-bool-false">—</td></tr>
+          <tr><td>Zach</td><td>active</td><td class="cell-bool-false">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <footer class="aide-footer">
+      <a href="https://toaide.com" class="aide-footer__link">Made with AIde</a>
+      <span class="aide-footer__sep">·</span>
+      <span class="aide-footer__updated">Updated Feb 15, 2026</span>
+    </footer>
+  </main>
+</body>
+</html>

@@ -105,6 +105,16 @@ backend/
 
 **Dependency flow is one direction:** routes → repos → db, routes → services. No cycles. Models are imported by everything but import nothing from the app.
 
+## Skills
+
+Skills live in `skills/`. They're structured prompts that teach Claude how to produce specific outputs.
+
+| Skill | What it does |
+|-------|-------------|
+| `aide-builder` | Build or update aide living pages from natural language. Produces self-contained HTML with embedded state, event log, and LLM blueprint. |
+
+To use a skill, read its `SKILL.md` before starting work. Skills can also be invoked via `/project:build-aide`.
+
 ## Patterns to Follow
 
 ### Creating a new endpoint
