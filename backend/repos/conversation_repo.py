@@ -118,7 +118,8 @@ class ConversationRepo:
                 WHERE id = $1
                 """,
                 conversation_id,
-                json.dumps([message.model_dump(mode="json")]),
+                # Pass list directly - JSONB codec handles serialization
+                [message.model_dump(mode="json")],
             )
 
     async def list_for_aide(self, user_id: UUID, aide_id: UUID) -> list[Conversation]:

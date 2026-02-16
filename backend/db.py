@@ -7,6 +7,7 @@ Never use pool.acquire() directly outside this module.
 
 from __future__ import annotations
 
+import json
 from contextlib import asynccontextmanager
 from uuid import UUID
 
@@ -46,12 +47,25 @@ async def close_pool() -> None:
 async def _init_connection(conn: asyncpg.Connection) -> None:
     """
     Initialize each new connection.
-    Sets up type codecs for UUID handling.
+    Sets up type codecs for UUID and JSON handling.
     """
     await conn.set_type_codec(
         "uuid",
         encoder=str,
         decoder=lambda x: UUID(x),
+        schema="pg_catalog",
+    )
+    # JSONB codec - decode to Python dict/list
+    await conn.set_type_codec(
+        "jsonb",
+        encoder=json.dumps,
+        decoder=json.loads,
+        schema="pg_catalog",
+    )
+    await conn.set_type_codec(
+        "json",
+        encoder=json.dumps,
+        decoder=json.loads,
         schema="pg_catalog",
     )
 
@@ -112,4 +126,9 @@ async def system_conn():
         raise RuntimeError("Database pool not initialized. Call init_pool() first.")
 
     async with pool.acquire() as conn:
-        yield conn
+        async with conn.transaction():
+            # Explicitly reset RLS context to empty string.
+            # RLS policies use CASE WHEN NULLIF(current_setting('app.user_id', true), '') IS NULL
+            # to bypass for system operations. Using LOCAL (true) ensures it's cleaned up.
+            await conn.execute("SELECT set_config('app.user_id', '', true)")
+            yield conn
