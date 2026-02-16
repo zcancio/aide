@@ -47,8 +47,7 @@ async def test_user_id(initialize_pool):
         # Clean up test data (order matters due to foreign keys)
         await conn.execute("DELETE FROM signal_mappings WHERE user_id = $1", user_id)
         await conn.execute(
-            "DELETE FROM conversations WHERE aide_id IN "
-            "(SELECT id FROM aides WHERE user_id = $1)",
+            "DELETE FROM conversations WHERE aide_id IN (SELECT id FROM aides WHERE user_id = $1)",
             user_id,
         )
         await conn.execute("DELETE FROM aides WHERE user_id = $1", user_id)
@@ -75,8 +74,7 @@ async def second_user_id(initialize_pool):
         # Clean up test data (order matters due to foreign keys)
         await conn.execute("DELETE FROM signal_mappings WHERE user_id = $1", user_id)
         await conn.execute(
-            "DELETE FROM conversations WHERE aide_id IN "
-            "(SELECT id FROM aides WHERE user_id = $1)",
+            "DELETE FROM conversations WHERE aide_id IN (SELECT id FROM aides WHERE user_id = $1)",
             user_id,
         )
         await conn.execute("DELETE FROM aides WHERE user_id = $1", user_id)
