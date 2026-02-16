@@ -117,14 +117,14 @@ class AideRepo:
             set_clause = ", ".join(f"{k} = ${i + 2}" for i, k in enumerate(updates))
             values = list(updates.values())
 
-            # S608: False positive - set_clause only contains validated column names
+            # S608/B608: False positive - set_clause only contains validated column names
             row = await conn.fetchrow(
-                f"""  # noqa: S608
+                f"""
                 UPDATE aides
                 SET {set_clause}, updated_at = now()
                 WHERE id = $1
                 RETURNING *
-                """,
+                """,  # nosec B608
                 aide_id,
                 *values,
             )
