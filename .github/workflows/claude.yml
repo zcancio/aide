@@ -80,17 +80,33 @@ jobs:
           git checkout -b "$BRANCH" 2>/dev/null || git checkout "$BRANCH"
           echo "BRANCH=$BRANCH" >> $GITHUB_ENV
 
+      - name: Fetch issue body
+        if: github.event.issue
+        run: |
+          gh issue view ${{ github.event.issue.number }} --json title,body --jq '"# " + .title + "\n\n" + .body' > /tmp/issue_body.txt
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Run Claude Code
         run: |
           TASK=$(echo "$RAW_TASK" | sed 's/^@claude\s*//')
+          ISSUE_BODY=""
+          if [ -f /tmp/issue_body.txt ]; then
+            ISSUE_BODY=$(cat /tmp/issue_body.txt)
+          fi
           cat <<EOF | claude --print --model claude-sonnet-4-5-20250929 --allowedTools "Bash,Read,Write,Edit"
           ${TASK}
 
-          After completing the task:
-          1. Run: ruff check backend/ && ruff format --check backend/
-          2. If you created new migrations, run them: DATABASE_URL=postgres://aide:test@localhost:5432/aide_test alembic upgrade head
-          3. Run tests with non-superuser to verify RLS: DATABASE_URL=postgres://aide_app:test@localhost:5432/aide_test pytest backend/tests/ -v
-          4. Fix any failures before finishing
+          ## Issue Details
+          ${ISSUE_BODY}
+
+          ## Instructions
+          1. Complete all tasks in the issue checklist
+          2. Run: ruff check backend/ && ruff format --check backend/
+          3. If you created new migrations, run them: DATABASE_URL=postgres://aide:test@localhost:5432/aide_test alembic upgrade head
+          4. Run tests with non-superuser to verify RLS: DATABASE_URL=postgres://aide_app:test@localhost:5432/aide_test pytest backend/tests/ -v
+          5. Fix any failures before finishing
+          6. Write a build log per /implement-phase command in .claude/commands/
           EOF
         env:
           RAW_TASK: ${{ github.event.comment.body }}
