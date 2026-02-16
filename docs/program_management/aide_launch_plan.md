@@ -1,4 +1,4 @@
-# AIde — Launch Plan (v2)
+# AIde — Launch Plan
 
 **Goal:** Ship a public product where someone can sign up, build a living page through conversation, update it via Signal, and share it.
 **Starting point:** Phase 0 complete (Railway, Neon Postgres, magic link auth, domain). Kernel implemented (primitives, reducer, renderer, assembly — all passing smoke tests).
@@ -8,16 +8,25 @@
 
 ## Phase 0: Foundation ✅ COMPLETE
 
+### 0.1 Infrastructure
 - [x] Domain & hosting (Railway, Cloudflare DNS, SSL)
 - [x] Rebrand (Vibez → AIde)
-- [x] Auth: magic links via Resend, JWT cookies, RLS
 - [x] Database: Neon Postgres with three-role security (aide_app, aide_readonly, aide_breakglass)
 - [x] CI/CD: GitHub Actions, Railway auto-deploy from main, Alembic migrations
 
+### 0.2 Auth
+- [x] Magic links via Resend (100/day free tier)
+- [x] JWT in HTTP-only, Secure, SameSite=Lax cookie (24-hour expiry)
+- [x] RLS policies on all user tables
+- [x] Rate limiting: 5 magic links per email/hour, 20 per IP/hour
+
 ---
 
-## Phase 0.5: Kernel ✅ COMPLETE
+## Phase 1: Core Product (3 weeks)
 
+_Wire the kernel to users. Web chat for creation, Signal for ongoing updates._
+
+### 1.1 Kernel ✅ COMPLETE
 - [x] `types.py` — Event, Blueprint, AideFile, Warning, constants
 - [x] `events.py` — make_event factory, assign_metadata
 - [x] `primitives.py` — structural validation for all 22 primitives
@@ -26,13 +35,7 @@
 - [x] `assembly.py` — IO coordinator (load, apply, save, create, publish, fork) + MemoryStorage
 - [x] End-to-end smoke test: events → reducer → renderer → HTML
 
----
-
-## Phase 1: Core Product (3 weeks)
-
-_Wire the kernel to users. Web chat for creation, Signal for ongoing updates._
-
-### 1.1 Data Model
+### 1.2 Data Model
 - [ ] Neon Postgres tables (Alembic migration):
   - `aides` (id UUID, user_id, title, slug, status [draft/published/archived], state JSONB, event_log JSONB, created_at, updated_at)
   - `conversations` (id UUID, aide_id, channel [web/signal], messages JSONB, created_at, updated_at)
@@ -42,7 +45,7 @@ _Wire the kernel to users. Web chat for creation, Signal for ongoing updates._
 - [ ] Repos in `backend/repos/` with parameterized SQL
 - [ ] Cross-user isolation tests
 
-### 1.2 L2/L3 Orchestrator
+### 1.3 L2/L3 Orchestrator
 - [ ] L3 system prompt (Sonnet): first message with no schema → `collection.create` + initial `entity.create` events
   - Handles: "we need milk, eggs, and sourdough from Whole Foods" → grocery_list collection, 3 entities, inferred fields
   - Handles: "I run a poker league, 8 guys, every other Thursday" → roster + schedule collections
@@ -70,7 +73,7 @@ _Wire the kernel to users. Web chat for creation, Signal for ongoing updates._
 - [ ] Managed API routing: server-side keys, 70% Haiku / 30% Sonnet based on message complexity
 - [ ] Voice rules: no first person, state reflections only, no encouragement/emojis
 
-### 1.3 Web Chat UI
+### 1.4 Web Chat UI
 - [ ] Dashboard (post-login landing): grid/list of user's aides
   - Each card: title, status badge, last edited timestamp
   - "New AIde" button → enters chat with blank aide
@@ -85,7 +88,7 @@ _Wire the kernel to users. Web chat for creation, Signal for ongoing updates._
 - [ ] Publish flow: creates/updates aide's slug in DB, uploads to R2
   - Published URL: `toaide.com/s/{slug}` (namespaced under `/s/` for route safety)
 
-### 1.4 Signal Ear
+### 1.5 Signal Ear
 - [ ] signal-cli-rest-api: Docker container on Railway alongside FastAPI
   - Dedicated phone number (Twilio or similar, ~$1/month)
   - Register number with Signal via signal-cli
@@ -102,14 +105,14 @@ _Wire the kernel to users. Web chat for creation, Signal for ongoing updates._
   - Text the aide's Signal number with a link code from the dashboard
   - Or: dashboard shows "Text [number] to update this aide via Signal"
 
-### 1.5 Published Page Serving
+### 1.6 Published Page Serving
 - [ ] Route `toaide.com/s/{slug}` → serve HTML from R2 via Cloudflare CDN
 - [ ] "Made with AIde" footer injected on free tier pages (links to toaide.com)
 - [ ] Proper cache headers
 - [ ] Blueprint embedded in HTML (identity, voice rules, event log, snapshot)
 - [ ] Open Graph tags for link previews
 
-### 1.6 Reliability
+### 1.7 Reliability
 - [ ] Error handling: invalid primitives from AI caught by validation, not applied
 - [ ] Retry logic: if L2/L3 call fails, retry once
 - [ ] Signal connection: signal-cli reconnects on disconnect
@@ -262,8 +265,7 @@ _Bring the engine to every Claude surface._
 | Phase | Duration | What ships |
 |-------|----------|------------|
 | **Phase 0** — Foundation | ✅ complete | Domain, rebrand, magic link auth, Railway + Neon |
-| **Phase 0.5** — Kernel | ✅ complete | Primitives, reducer, renderer, assembly |
-| **Phase 1** — Core Product | 3 weeks | L2/L3 orchestrator, dashboard, web chat, Signal ear, publishing |
+| **Phase 1** — Core Product | 3 weeks | Kernel ✅, L2/L3 orchestrator, dashboard, web chat, Signal ear, publishing |
 | **Phase 2** — Rate Limiting + Engine | 1 week | 50 turns/week, turn counter UI, engine on R2 |
 | **Phase 3** — Payments | 1 week | Stripe, $10/mo Pro, upgrade flow |
 | **Phase 4** — Landing & Launch | 1 week | Landing page, templates, launch checklist |
