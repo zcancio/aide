@@ -182,7 +182,6 @@ aide/
     │   └── aide_living_objects.md
     └── tpm/                        # Launch tracking
         ├── aide_launch_plan.md
-        ├── aide_mvp_checklist.md
         ├── IMPLEMENTATION_SUMMARY.md
         └── PHASE0_COMPLETE.md
 ```
@@ -417,8 +416,7 @@ Read these before implementing features:
 | `docs/prds/aide_editor_prd.md` | Editor layout, chat overlay, preview, voice/image input |
 | `docs/strategy/aide_living_objects.md` | Living object thesis, ears/brain/body model, channel architecture |
 | `docs/strategy/aide_engine_distribution.md` | Engine distribution across Claude surfaces |
-| `docs/tpm/aide_launch_plan.md` | 5-phase launch plan with task checklists |
-| `docs/tpm/aide_mvp_checklist.md` | MVP feature checklist for launch |
+| `docs/tpm/aide_launch_plan.md` | 6-phase launch plan with Signal ear, task checklists |
 | `docs/eng_design/aide_architecture.md` | Event-sourced kernel, data tiers, state flow |
 | `docs/eng_design/specs/aide_reducer_spec.md` | Reducer pure function, primitive handlers, error codes |
 | `docs/eng_design/specs/aide_renderer_spec.md` | HTML/CSS generation, block rendering, embedded JSON |
