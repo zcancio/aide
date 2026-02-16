@@ -47,16 +47,12 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt -r requirements-dev.txt
 
-      - name: Install PostgreSQL client
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client
+      - name: Get postgres container ID
+        run: echo "POSTGRES_CONTAINER=$(docker ps --filter 'ancestor=postgres:16' -q)" >> $GITHUB_ENV
 
       - name: Create non-superuser app role
-        env:
-          PGPASSWORD: test
         run: |
-          psql -h localhost -U aide -d aide_test -c "
+          docker exec $POSTGRES_CONTAINER psql -U aide -d aide_test -c "
             CREATE ROLE aide_app WITH LOGIN PASSWORD 'test' NOSUPERUSER;
             GRANT ALL PRIVILEGES ON DATABASE aide_test TO aide_app;
           "
@@ -67,10 +63,8 @@ jobs:
         run: alembic upgrade head
 
       - name: Grant table permissions to app role
-        env:
-          PGPASSWORD: test
         run: |
-          psql -h localhost -U aide -d aide_test -c "
+          docker exec $POSTGRES_CONTAINER psql -U aide -d aide_test -c "
             GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO aide_app;
             GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO aide_app;
           "
