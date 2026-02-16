@@ -13,7 +13,7 @@ Developer pushes to any branch
          │
          ▼
 ┌─────────────────┐
-│  CI: Lint + Test │  (GitHub Actions, ~2 min)
+│ CI: Lint + Test │  (GitHub Actions, ~2 min)
 └────────┬────────┘
          │ pass
          │
@@ -21,15 +21,15 @@ Developer pushes to any branch
          │
          │── main branch? ──┐
                             ▼
-                   ┌─────────────────┐
-                   │  Railway CD     │
-                   │                 │
-                   │  1. Build app   │  (~1-2 min)
-                   │  2. Run alembic │
-                   │  3. Start app   │
-                   │  4. Health check│
-                   │  5. Swap traffic│
-                   └────────┬────────┘
+                   ┌──────────────────┐
+                   │  Railway CD      │
+                   │                  │
+                   │  1. Build app    │  (~1-2 min)
+                   │  2. Run alembic  │ 
+                   │  3. Start app    │
+                   │  4. Health check │
+                   │  5. Swap traffic │
+                   └────────┬─────────┘
                             │
                      Slack notification
 ```

@@ -14,7 +14,7 @@ _Get the house in order before anything user-facing._
 - [ ] Register toaide.com (Cloudflare Registrar)
 - [ ] Create Railway project, connect GitHub repo
 - [ ] Add `railway.toml` with start command (migrations + uvicorn)
-- [ ] Set Railway custom domains: `toaide.com`, `get.toaide.com`
+- [ ] Set Railway custom domains: `toaide.com`, `editor.toaide.com`
 - [ ] Configure Cloudflare DNS: CNAME records pointing to Railway
 - [ ] Set all environment variables in Railway dashboard
 - [ ] Verify SSL, deploy from main, health check passes
@@ -23,7 +23,7 @@ _Get the house in order before anything user-facing._
 - [ ] Find/replace `vibez` → `aide`, `Vibez` → `AIde` across backend, frontend, configs
 - [ ] Update system prompt: "You are AIde" + new personality/instructions
 - [ ] Update all URL references (`vibez.pub` → `toaide.com`)
-- [ ] Update slug format: `toaide.com/s/{slug}` or `toaide.com/{slug}` (decide)
+- [ ] Update slug format: `toaide.com/s/{slug}` (namespaced under `/s/` for route safety)
 - [ ] Rename repo if desired
 
 ### 0.3 Auth: Magic Links (No Google, No OAuth)
@@ -63,13 +63,25 @@ _Transform from "one workspace per user" to "multiple aides per user."_
 - [ ] Delete aide (with confirmation)
 
 ### 1.3 Editor Updates
+- [ ] Editor layout: full-viewport preview with floating chat overlay pinned to bottom
+- [ ] Chat overlay: input bar at bottom, expandable conversation history (max 60% viewport), auto-collapse after inactivity
+- [ ] Chat overlay styling: backdrop blur, subtle top shadow, centered max-width 640px on desktop, full-width on mobile
+- [ ] Preview is a sandboxed iframe filling the viewport below the header, refreshes per AI turn via `srcdoc`
+- [ ] Subtle highlight pulse (150–250ms fade) on changed elements in preview after each update
+- [ ] Same layout on all screen sizes — no split-pane, no stacking, no breakpoint-driven layout changes
+- [ ] Image input: file picker + drag-and-drop, JPEG/PNG/WebP/HEIC, 10MB max, triggers L3 routing
+- [ ] Voice input: microphone button in input bar, two-tier speech-to-text
+  - Browser `SpeechRecognition` API as default (free, Chrome/Safari, real-time streaming into input field)
+  - Server-side Whisper fallback via OpenAI API (~$0.006/min) when browser API unavailable (Firefox, older browsers)
+  - Transcribed text populates input field for review before sending — never auto-sends
+  - `POST /api/transcribe` endpoint: accepts WebM/Opus audio, returns `{ text: "..." }`, rate-limited same as AI turns
 - [ ] Editor header shows aide title (editable inline)
 - [ ] "Back to Dashboard" button
 - [ ] Publish flow now creates/updates the aide's slug in DB
-- [ ] Published URL: `toaide.com/{slug}` (clean, no `/s/` prefix)
+- [ ] Published URL: `toaide.com/s/{slug}` (namespaced for route safety)
 
 ### 1.4 Published Page Serving
-- [ ] Route `toaide.com/{slug}` → serve from `/data/aides/{aide_id}/published/`
+- [ ] Route `toaide.com/s/{slug}` → serve from `/data/aides/{aide_id}/published/`
 - [ ] "Made with AIde" footer injected on free tier pages
 - [ ] Footer links to `toaide.com` (the billboard)
 - [ ] Published pages served with proper cache headers
@@ -246,3 +258,6 @@ Explicitly descoped to avoid scope creep:
 | Random slugs for free, custom for Pro | Upgrade trigger. Free pages still shareable. |
 | "Made with AIde" footer on free | The billboard. Every published page is marketing. |
 | Python/FastAPI (not Go/Rust) | 94 commits of working code. Bottleneck is LLM API, not server. |
+| `/s/{slug}` prefix (not bare `/{slug}`) | Namespace safety. Avoids slug collisions with future routes. Nobody types URLs — they copy-paste. |
+| Full-viewport preview with chat overlay (not split-pane) | The page is primary. Chat floats at the bottom, expands on demand, auto-collapses. Same layout on all screen sizes. Visual aides need a feedback loop; the overlay provides it without splitting attention. |
+| Voice input in v1 (browser API + Whisper fallback) | "Tell the aide what changed" should mean literally telling it. Browser SpeechRecognition is free for Chrome/Safari; Whisper fallback covers Firefox at ~$0.003/message. Text lands in input field for review, never auto-sends. |
