@@ -46,15 +46,15 @@ _Wire the kernel to users. Web chat for creation, Signal for ongoing updates._
   - [x] TS type checking passing (`tsc --noEmit`)
   - [x] Minified JS functional test (browser smoke test)
 
-### 1.2 Data Model
-- [ ] Neon Postgres tables (Alembic migration):
+### 1.2 Data Model ✅ COMPLETE
+- [x] Neon Postgres tables (Alembic migration):
   - `aides` (id UUID, user_id, title, slug, status [draft/published/archived], state JSONB, event_log JSONB, created_at, updated_at)
   - `conversations` (id UUID, aide_id, channel [web/signal], messages JSONB, created_at, updated_at)
   - `signal_mappings` (id UUID, phone_number, user_id, aide_id, conversation_id) — maps Signal conversations to aides
-- [ ] RLS policies: `USING (user_id = current_setting('app.current_user_id')::uuid)`
-- [ ] Grant permissions to aide_app role
-- [ ] Repos in `backend/repos/` with parameterized SQL
-- [ ] Cross-user isolation tests
+- [x] RLS policies: `USING (user_id = current_setting('app.user_id')::uuid)`
+- [x] Grant permissions to aide_app role
+- [x] Repos in `backend/repos/` with parameterized SQL (aide_repo, conversation_repo, signal_mapping_repo)
+- [x] Cross-user isolation tests for all repos
 
 ### 1.3 L2/L3 Orchestrator
 - [ ] L3 system prompt (Sonnet): first message with no schema → `collection.create` + initial `entity.create` events
@@ -276,7 +276,7 @@ _Bring the engine to every Claude surface._
 | Phase | Duration | What ships |
 |-------|----------|------------|
 | **Phase 0** — Foundation | ✅ complete | Domain, rebrand, magic link auth, Railway + Neon |
-| **Phase 1** — Core Product | 3 weeks | Kernel ✅ (905 Python + 38 JS tests), L2/L3 orchestrator, dashboard, web chat, Signal ear, publishing |
+| **Phase 1** — Core Product | 3 weeks | Kernel ✅, Data Model ✅, L2/L3 orchestrator, dashboard, web chat, Signal ear, publishing |
 | **Phase 2** — Rate Limiting + Engine | 1 week | 50 turns/week, turn counter UI, engine on R2 |
 | **Phase 3** — Payments | 1 week | Stripe, $10/mo Pro, upgrade flow |
 | **Phase 4** — Landing & Launch | 1 week | Landing page, templates, launch checklist |
