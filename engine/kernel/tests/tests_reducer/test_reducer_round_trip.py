@@ -32,13 +32,12 @@ Reference: aide_reducer_spec.md (Contract, Empty State, Determinism),
            aide_assembly_spec.md (Parsing)
 """
 
-import copy
 import json
+
 import pytest
 
-from engine.kernel.reducer import reduce, empty_state, replay
 from engine.kernel.events import make_event
-
+from engine.kernel.reducer import empty_state, reduce, replay
 
 # ============================================================================
 # Helpers
@@ -524,7 +523,6 @@ class TestEventLogRoundTrip:
 
     def test_events_preserve_all_fields(self):
         """Every event field survives round-trip (type, payload, seq, etc.)."""
-        from engine.kernel.types import Event
 
         events = poker_league_events()
 

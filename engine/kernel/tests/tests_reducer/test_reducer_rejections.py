@@ -16,9 +16,8 @@ Reference: aide_reducer_spec.md, aide_primitive_schemas.md
 
 import pytest
 
-from engine.kernel.reducer import reduce, empty_state
 from engine.kernel.events import make_event
-
+from engine.kernel.reducer import empty_state, reduce
 
 # ============================================================================
 # Fixtures (reused from happy path -- keep in sync or extract to conftest.py)
@@ -119,8 +118,8 @@ def state_with_block(empty):
 
 # Helper to assert rejection
 def assert_rejected(result, expected_error):
-    assert not result.applied, f"Expected rejection but event was applied"
-    assert result.error is not None, f"Expected error code but got None"
+    assert not result.applied, "Expected rejection but event was applied"
+    assert result.error is not None, "Expected error code but got None"
     assert expected_error in result.error, (
         f"Expected error containing '{expected_error}', got '{result.error}'"
     )

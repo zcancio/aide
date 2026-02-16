@@ -33,11 +33,9 @@ Reference: aide_renderer_spec.md (Value Formatting, View Rendering)
            aide_primitive_schemas.md (Field types)
 """
 
-import pytest
 
-from engine.kernel.renderer import render_block
 from engine.kernel.reducer import empty_state
-
+from engine.kernel.renderer import render_block
 
 # ============================================================================
 # Helpers

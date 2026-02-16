@@ -14,15 +14,14 @@ from __future__ import annotations
 from typing import Any
 
 from engine.kernel.types import (
-    PRIMITIVE_TYPES,
     BLOCK_TYPES,
-    VIEW_TYPES,
     CONSTRAINT_RULES,
+    PRIMITIVE_TYPES,
+    VIEW_TYPES,
+    is_valid_field_type,
     is_valid_id,
     is_valid_ref,
-    is_valid_field_type,
 )
-
 
 # ---------------------------------------------------------------------------
 # Public API

@@ -27,12 +27,10 @@ Additional from render_collection_view():
 Reference: aide_renderer_spec.md (Empty States, View Rendering)
 """
 
-import pytest
 
-from engine.kernel.renderer import render, render_block
 from engine.kernel.reducer import empty_state
+from engine.kernel.renderer import render, render_block
 from engine.kernel.types import Blueprint
-
 
 # ============================================================================
 # Helpers

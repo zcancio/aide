@@ -27,12 +27,10 @@ Reference: aide_renderer_spec.md (Contract, CSS Generation, Testing Strategy)
            aide_architecture.md (Renderer description)
 """
 
-import pytest
 
-from engine.kernel.renderer import render
 from engine.kernel.reducer import empty_state
+from engine.kernel.renderer import render
 from engine.kernel.types import Blueprint, Event
-
 
 # ============================================================================
 # Snapshot fixtures (realistic, exercising many renderer paths)
@@ -620,7 +618,7 @@ class TestDeterminismWithOptions:
 
 def _find_diff(a, b, context=200):
     """Find the first point where two strings differ and return context."""
-    for i, (ca, cb) in enumerate(zip(a, b)):
+    for i, (ca, cb) in enumerate(zip(a, b, strict=False)):
         if ca != cb:
             start = max(0, i - 50)
             return (

@@ -18,13 +18,13 @@ Reference: aide_assembly_spec.md (Parsing, Testing Strategy)
 """
 
 import json
+
 import pytest
 
-from engine.kernel.assembly import parse_aide_html, AideAssembly, MemoryStorage
-from engine.kernel.renderer import render
+from engine.kernel.assembly import AideAssembly, MemoryStorage, parse_aide_html
 from engine.kernel.reducer import empty_state
+from engine.kernel.renderer import render
 from engine.kernel.types import Blueprint, Event, now_iso
-
 
 # ============================================================================
 # Fixtures

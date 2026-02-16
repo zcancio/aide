@@ -29,12 +29,12 @@ Reference: aide_renderer_spec.md (full spec)
 
 import json
 import re
+
 import pytest
 
-from engine.kernel.renderer import render
 from engine.kernel.reducer import empty_state
+from engine.kernel.renderer import render
 from engine.kernel.types import Blueprint
-
 
 # ============================================================================
 # Helpers

@@ -18,13 +18,11 @@ from engine.kernel.types import (
     Event,
     ReduceResult,
     Warning,
-    is_nullable_type,
     base_type,
+    is_nullable_type,
     is_valid_field_type,
     parse_ref,
-    CONSTRAINT_RULES,
 )
-
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -133,7 +131,7 @@ def _validate_field_value(value: Any, field_type: str | dict) -> tuple[bool, str
     if bt == "int":
         return isinstance(value, int) and not isinstance(value, bool), "expected int"
     if bt == "float":
-        return isinstance(value, (int, float)) and not isinstance(value, bool), "expected float"
+        return isinstance(value, int | float) and not isinstance(value, bool), "expected float"
     if bt == "bool":
         return isinstance(value, bool), "expected bool"
     if bt == "date":
@@ -265,8 +263,6 @@ def _check_constraints(snap: dict, event: Event, warnings: list[Warning]) -> boo
             rel_type = constraint.get("relationship_type")
             min_val = constraint.get("value")
             if rel_type and min_val is not None:
-                # Get the "from" entity of this relationship.set event
-                from_ref = event.payload.get("from")
                 # Count current sources for each target that this entity might have left
                 target_counts: dict[str, int] = {}
                 for rel in snap["relationships"]:
@@ -276,7 +272,7 @@ def _check_constraints(snap: dict, event: Event, warnings: list[Warning]) -> boo
                         to_ref = rel.get("to")
                         target_counts[to_ref] = target_counts.get(to_ref, 0) + 1
                 # Check targets that had relationships before - if any dropped below min
-                for to_ref, count in target_counts.items():
+                for _to_ref, count in target_counts.items():
                     if count < min_val:
                         violated = True
                         break
@@ -657,7 +653,7 @@ def _handle_field_update(snap: dict, event: Event) -> ReduceResult:
                 if isinstance(val, float) and val != int(val):
                     warnings.append(Warning(
                         code="LOSSY_TYPE_CONVERSION",
-                        message=f"Converting float to int will truncate decimal values",
+                        message="Converting float to int will truncate decimal values",
                     ))
                     break
 
@@ -1121,8 +1117,8 @@ def _handle_meta_constrain(snap: dict, event: Event) -> ReduceResult:
             if coll:
                 count = sum(1 for e in coll["entities"].values() if not e.get("_removed"))
                 if count > max_val:
-                    warnings.append(Warning(code="CONSTRAINT_VIOLATED",
-                                            message=p.get("message", f"Collection already has {count} entities (max {max_val})")))
+                    msg = p.get("message", f"Collection already has {count} entities (max {max_val})")
+                    warnings.append(Warning(code="CONSTRAINT_VIOLATED", message=msg))
 
     if p["rule"] == "unique_field":
         coll_id = p.get("collection")

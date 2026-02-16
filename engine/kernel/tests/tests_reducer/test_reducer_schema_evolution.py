@@ -20,12 +20,10 @@ Covers:
 Reference: aide_reducer_spec.md, aide_primitive_schemas.md
 """
 
-import copy
 import pytest
 
-from engine.kernel.reducer import reduce, empty_state, replay
 from engine.kernel.events import make_event
-
+from engine.kernel.reducer import empty_state, reduce, replay
 
 # ============================================================================
 # Helpers

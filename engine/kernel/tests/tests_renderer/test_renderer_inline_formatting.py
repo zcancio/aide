@@ -22,11 +22,9 @@ Strict allowlist — no other HTML passes through:
 Reference: aide_renderer_spec.md (Block Rendering → text, HTML Sanitization)
 """
 
-import pytest
 
-from engine.kernel.renderer import render_block
 from engine.kernel.reducer import empty_state
-
+from engine.kernel.renderer import render_block
 
 # ============================================================================
 # Helpers

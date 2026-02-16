@@ -18,11 +18,11 @@ Reference: aide_assembly_spec.md (Event Log Compaction, Testing Strategy)
 """
 
 import json
+
 import pytest
 
 from engine.kernel.assembly import AideAssembly, MemoryStorage
 from engine.kernel.types import Blueprint, Event, now_iso
-
 
 # ============================================================================
 # Fixtures

@@ -25,11 +25,9 @@ Reference: aide_renderer_spec.md (Entity Style Overrides)
            aide_primitive_schemas.md (style.set_entity)
 """
 
-import pytest
 
-from engine.kernel.renderer import render_block
 from engine.kernel.reducer import empty_state
-
+from engine.kernel.renderer import render_block
 
 # ============================================================================
 # Helpers

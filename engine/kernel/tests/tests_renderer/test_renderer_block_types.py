@@ -22,12 +22,9 @@ This matters because:
 Reference: aide_renderer_spec.md (Block Rendering, Block Type → HTML)
 """
 
-import json
-import pytest
 
-from engine.kernel.renderer import render, render_block
 from engine.kernel.reducer import empty_state
-
+from engine.kernel.renderer import render, render_block
 
 # ============================================================================
 # Helpers

@@ -34,11 +34,9 @@ Reference: aide_reducer_spec.md (Contract, Determinism Guarantee, Replay)
 
 import copy
 import json
-import pytest
 
-from engine.kernel.reducer import reduce, empty_state, replay
 from engine.kernel.events import make_event
-
+from engine.kernel.reducer import empty_state, reduce, replay
 
 # ============================================================================
 # Helpers
