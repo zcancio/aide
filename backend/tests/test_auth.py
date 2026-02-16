@@ -70,7 +70,7 @@ class TestJWT:
             "exp": expires_at,
             "iat": datetime.now(UTC),
         }
-        token = jwt.encode(payload, config.JWT_SECRET, algorithm=config.JWT_ALGORITHM)
+        token = jwt.encode(payload, config.settings.JWT_SECRET, algorithm=config.settings.JWT_ALGORITHM)
 
         from fastapi import HTTPException
 
@@ -254,7 +254,7 @@ class TestAuthRoutes:
             email = f"test-{uuid4()}@example.com"
 
             # Send 5 magic links (the limit)
-            for _ in range(config.MAGIC_LINK_RATE_LIMIT_PER_EMAIL):
+            for _ in range(config.settings.MAGIC_LINK_RATE_LIMIT_PER_EMAIL):
                 await magic_link_repo.create(email)
 
             # 6th should be rate limited

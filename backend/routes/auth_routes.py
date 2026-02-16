@@ -43,22 +43,23 @@ async def send_magic_link_endpoint(
 
     # Rate limit: 5 per email per hour
     email_rate_limit_ok = await magic_link_repo.count_recent_by_email(email, hours=1)
-    if email_rate_limit_ok >= config.MAGIC_LINK_RATE_LIMIT_PER_EMAIL:
+    if email_rate_limit_ok >= config.settings.MAGIC_LINK_RATE_LIMIT_PER_EMAIL:
+        max_links = config.settings.MAGIC_LINK_RATE_LIMIT_PER_EMAIL
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"Too many requests. Maximum {config.MAGIC_LINK_RATE_LIMIT_PER_EMAIL} magic links per hour.",
+            detail=f"Too many requests. Maximum {max_links} magic links per hour.",
             headers={"Retry-After": "3600"},
         )
 
     # Rate limit: 20 per IP per hour (in-memory)
     if not rate_limiter.check_rate_limit(
         f"ip:{client_ip}",
-        max_requests=config.MAGIC_LINK_RATE_LIMIT_PER_IP,
+        max_requests=config.settings.MAGIC_LINK_RATE_LIMIT_PER_IP,
         window_minutes=60,
     ):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"Too many requests from this IP. Maximum {config.MAGIC_LINK_RATE_LIMIT_PER_IP} per hour.",
+            detail=f"Too many requests from this IP. Maximum {config.settings.MAGIC_LINK_RATE_LIMIT_PER_IP} per hour.",
             headers={"Retry-After": "3600"},
         )
 
@@ -147,7 +148,7 @@ async def verify_magic_link_endpoint(
         httponly=True,
         secure=True,  # HTTPS only
         samesite="lax",
-        max_age=config.JWT_EXPIRY_HOURS * 3600,
+        max_age=config.settings.JWT_EXPIRY_HOURS * 3600,
         path="/",
     )
 
