@@ -27,7 +27,7 @@ async def initialize_pool():
     await db.close_pool()
 
 
-@pytest_asyncio.fixture(loop_scope="session")
+@pytest_asyncio.fixture
 async def test_user_id():
     """Create a test user and return their ID."""
     user_id = uuid4()
@@ -47,7 +47,7 @@ async def test_user_id():
         await conn.execute("DELETE FROM users WHERE id = $1", user_id)
 
 
-@pytest_asyncio.fixture(loop_scope="session")
+@pytest_asyncio.fixture
 async def second_user_id():
     """Create a second test user for cross-user RLS tests."""
     user_id = uuid4()

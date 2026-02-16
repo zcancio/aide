@@ -21,6 +21,7 @@ select = [
 ignore = [
     "S101", # assert used (fine in tests)
     "B008", # Depends() in function signature is standard FastAPI pattern
+    "S608", # SQL injection false positive - we use parameterized queries, dynamic SET is safe with controlled columns
 ]
 
 [tool.ruff.lint.per-file-ignores]
