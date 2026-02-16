@@ -26,14 +26,25 @@
 
 _Wire the kernel to users. Web chat for creation, Signal for ongoing updates._
 
-### 1.1 Kernel ✅ COMPLETE
-- [x] `types.py` — Event, Blueprint, AideFile, Warning, constants
-- [x] `events.py` — make_event factory, assign_metadata
-- [x] `primitives.py` — structural validation for all 22 primitives
-- [x] `reducer.py` — pure `reduce(snapshot, event) → ReduceResult`, all primitive handlers
-- [x] `renderer.py` — pure `render(snapshot, blueprint) → HTML`, list/table/grid views, CSS generation
-- [x] `assembly.py` — IO coordinator (load, apply, save, create, publish, fork) + MemoryStorage
-- [x] End-to-end smoke test: events → reducer → renderer → HTML
+### 1.1 Kernel
+- [ ] `types.py` — Event, Blueprint, AideFile, Warning, constants
+- [ ] `events.py` — make_event factory, assign_metadata
+- [ ] `primitives.py` — structural validation for all 22 primitives
+- [ ] `reducer.py` — pure `reduce(snapshot, event) → ReduceResult`, all primitive handlers
+- [ ] `renderer.py` — pure `render(snapshot, blueprint) → HTML`, list/table/grid views, CSS generation
+- [ ] `assembly.py` — IO coordinator (load, apply, save, create, publish, fork) + MemoryStorage
+- [ ] PostgresStorage adapter for assembly layer (Neon integration)
+- [ ] End-to-end smoke test: events → reducer → renderer → HTML
+- [ ] Engine builds:
+  - [ ] `engine.py` — single-file Python build (concatenated, no dependencies)
+  - [ ] `engine.js` — JavaScript build (transpiled from Python or hand-ported)
+  - [ ] `engine.ts` — TypeScript build with full type definitions
+  - [ ] `engine.min.js` — minified JS for browser distribution
+- [ ] Test runs for all builds:
+  - [ ] Python tests passing (`pytest engine/kernel/tests/`)
+  - [ ] JS tests passing (same test cases, Node.js runner)
+  - [ ] TS type checking passing (`tsc --noEmit`)
+  - [ ] Minified JS functional test (browser smoke test)
 
 ### 1.2 Data Model
 - [ ] Neon Postgres tables (Alembic migration):

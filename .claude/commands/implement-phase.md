@@ -36,7 +36,7 @@ Implement the next phase from docs/program_management/aide_launch_plan.md.
 - **Phase 0 (Foundation):** ✅ Complete. 0.1 Infrastructure (Railway, Neon, CI/CD). 0.2 Auth (magic links via Resend, JWT cookies, RLS).
 
 - **Phase 1 (Core Product):**
-  - 1.1 Kernel: ✅ Complete. Primitives, reducer, renderer, assembly.
+  - 1.1 Kernel: Primitives, reducer, renderer, assembly. Existing code in `engine/kernel/`.
   - 1.2 Data Model: Neon Postgres with RLS. Follow `docs/infrastructure/aide_data_access.md` patterns exactly.
   - 1.3 L2/L3 Orchestrator: L2 (Haiku) compiles intent → primitives. L3 (Sonnet) synthesizes schemas, handles images.
   - 1.4 Web Chat UI: Full-viewport preview + floating chat overlay. See `docs/prds/aide_editor_prd.md`.
