@@ -869,3 +869,55 @@ async def test_rls_prevents_cross_user_access(test_user):
 ```
 
 Tests verify the repository behavior AND the RLS policies. If someone accidentally removes an RLS policy, the cross-user test fails.
+
+---
+
+## RLS Exception: aide_files
+
+The `aide_files` table **intentionally has NO RLS policies**. This is not an oversight.
+
+### Rationale
+
+The AIde kernel operates at the **system level**, not the user level:
+
+- The kernel is a pure function that transforms events into state and renders HTML
+- It has no concept of "users" — it works with event logs and snapshots
+- Kernel operations are invoked by the orchestrator layer, which handles authentication and authorization
+- The kernel itself is user-agnostic by design
+
+### Access Control
+
+Access control for aide files is enforced at the **orchestrator layer**:
+
+1. **Authentication**: User identity is verified before any orchestrator operations
+2. **Authorization**: The orchestrator checks that the user owns the aide before invoking kernel operations
+3. **Kernel Execution**: Once authorized, kernel operations run without user scoping
+
+This separation is intentional:
+- The kernel remains a pure, testable function with no side effects
+- Authentication and authorization logic stays in the orchestrator where it belongs
+- The kernel can be distributed as a standalone module (Python, JS, TS) with zero dependencies
+
+### Why No RLS?
+
+RLS is designed for multi-tenant databases where different users share the same tables. The kernel's design doesn't fit this pattern:
+
+- Kernel operations are **invoked by the system**, not directly by users
+- The orchestrator (which has user context) decides **which** aide files to operate on
+- The kernel (which has no user context) executes **how** to process those files
+
+Adding RLS to `aide_files` would:
+- Complicate kernel execution (now needs to know about user_id)
+- Break the clean separation between orchestration and execution
+- Violate the pure function design of the kernel
+
+### Security Model
+
+```
+User Request → Orchestrator (auth + authz) → Kernel (pure execution)
+              ↑                                ↑
+              Has user context                  No user context
+              Chooses which aide                Processes the aide
+```
+
+This is **intentional architecture**, not a security gap. The orchestrator is the security boundary, not the database.

@@ -1,0 +1,19 @@
+{
+  "name": "@aide/engine",
+  "version": "1.0.0",
+  "description": "AIde Kernel - Pure function event-sourced state engine",
+  "main": "engine.js",
+  "types": "engine.ts",
+  "scripts": {
+    "test": "node test.js",
+    "typecheck": "tsc --noEmit engine.ts",
+    "minify": "terser engine.js -c -m -o engine.min.js --comments false"
+  },
+  "keywords": ["aide", "kernel", "event-sourcing", "reducer", "renderer"],
+  "author": "AIde",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "terser": "^5.27.0"
+  }
+}

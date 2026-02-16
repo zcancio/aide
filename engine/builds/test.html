@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AIde Kernel - Browser Smoke Test</title>
+  <style>
+    body { font-family: -apple-system, system-ui, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; }
+    h1 { color: #1a1a1a; }
+    .test { padding: 12px; margin: 8px 0; border-radius: 4px; font-family: monospace; font-size: 14px; }
+    .pass { background: #d4f4dd; color: #155724; }
+    .fail { background: #f8d7da; color: #721c24; }
+    .summary { margin-top: 24px; padding: 16px; background: #f0f0f0; border-radius: 4px; font-weight: 500; }
+  </style>
+</head>
+<body>
+  <h1>AIde Kernel - Browser Smoke Test</h1>
+  <p>Testing engine.min.js in browser environment...</p>
+  <div id="results"></div>
+
+  <script src="engine.min.js"></script>
+  <script>
+    // Browser smoke test for minified AIde kernel
+    const results = document.getElementById('results');
+    let passed = 0;
+    let failed = 0;
+
+    function test(name, fn) {
+      try {
+        fn();
+        results.innerHTML += `<div class="test pass">✅ ${name}</div>`;
+        passed++;
+      } catch (e) {
+        results.innerHTML += `<div class="test fail">❌ ${name}: ${e.message}</div>`;
+        failed++;
+      }
+    }
+
+    function assertEqual(actual, expected, msg) {
+      if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+        throw new Error(msg + ` (expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)})`);
+      }
+    }
+
+    // Run tests
+    test('emptyState() creates initial state', () => {
+      const state = emptyState();
+      if (!state || state.version !== 1) throw new Error('Invalid state');
+      if (!state.blocks || !state.blocks.block_root) throw new Error('Missing block_root');
+    });
+
+    test('Collection creation', () => {
+      const state = emptyState();
+      const event = {
+        id: 'evt_1', sequence: 1, timestamp: '2024-01-01T00:00:00Z',
+        actor: 'test', source: 'browser',
+        type: 'collection.create',
+        payload: { id: 'items', schema: { name: 'string' } }
+      };
+      const result = reduce(state, event);
+      if (!result.applied) throw new Error('Event not applied');
+      if (!result.snapshot.collections.items) throw new Error('Collection not created');
+    });
+
+    test('Entity creation and update', () => {
+      let state = emptyState();
+
+      state = reduce(state, {
+        id: 'evt_1', sequence: 1, timestamp: '2024-01-01T00:00:00Z',
+        actor: 'test', source: 'browser',
+        type: 'collection.create',
+        payload: { id: 'tasks', schema: { title: 'string', done: 'bool' } }
+      }).snapshot;
+
+      state = reduce(state, {
+        id: 'evt_2', sequence: 2, timestamp: '2024-01-01T00:00:01Z',
+        actor: 'test', source: 'browser',
+        type: 'entity.create',
+        payload: { collection: 'tasks', id: 'task_1', fields: { title: 'Test', done: false } }
+      }).snapshot;
+
+      state = reduce(state, {
+        id: 'evt_3', sequence: 3, timestamp: '2024-01-01T00:00:02Z',
+        actor: 'test', source: 'browser',
+        type: 'entity.update',
+        payload: { ref: 'tasks/task_1', fields: { done: true } }
+      }).snapshot;
+
+      const task = state.collections.tasks.entities.task_1;
+      assertEqual(task.done, true, 'Task should be marked done');
+    });
+
+    test('Replay produces deterministic state', () => {
+      const events = [
+        {
+          id: 'evt_1', sequence: 1, timestamp: '2024-01-01T00:00:00Z',
+          actor: 'test', source: 'browser',
+          type: 'collection.create',
+          payload: { id: 'notes', schema: { text: 'string' } }
+        },
+        {
+          id: 'evt_2', sequence: 2, timestamp: '2024-01-01T00:00:01Z',
+          actor: 'test', source: 'browser',
+          type: 'entity.create',
+          payload: { collection: 'notes', id: 'note_1', fields: { text: 'Hello' } }
+        }
+      ];
+
+      const state1 = replay(events);
+      const state2 = replay(events);
+
+      assertEqual(state1, state2, 'Replay should be deterministic');
+    });
+
+    test('Render generates valid HTML', () => {
+      const state = emptyState();
+      state.meta.title = 'Test Page';
+      const blueprint = { identity: 'test', voice: 'test', prompt: '' };
+      const html = render(state, blueprint, []);
+
+      if (!html.includes('<!DOCTYPE html>')) throw new Error('Missing DOCTYPE');
+      if (!html.includes('Test Page')) throw new Error('Missing title');
+      if (!html.includes('application/aide+json')) throw new Error('Missing embedded state');
+    });
+
+    test('Parse Aide HTML extracts embedded data', () => {
+      const state = emptyState();
+      state.meta.title = 'Test';
+      const blueprint = { identity: 'test', voice: 'test', prompt: '' };
+      const html = render(state, blueprint, []);
+      const parsed = parseAideHtml(html);
+
+      if (!parsed.snapshot) throw new Error('Failed to parse snapshot');
+      if (!parsed.blueprint) throw new Error('Failed to parse blueprint');
+      assertEqual(parsed.snapshot.meta.title, 'Test', 'Title mismatch');
+    });
+
+    test('Type validation rejects invalid types', () => {
+      const state = emptyState();
+      const createColl = reduce(state, {
+        id: 'evt_1', sequence: 1, timestamp: '2024-01-01T00:00:00Z',
+        actor: 'test', source: 'browser',
+        type: 'collection.create',
+        payload: { id: 'nums', schema: { count: 'int' } }
+      });
+
+      const result = reduce(createColl.snapshot, {
+        id: 'evt_2', sequence: 2, timestamp: '2024-01-01T00:00:01Z',
+        actor: 'test', source: 'browser',
+        type: 'entity.create',
+        payload: { collection: 'nums', id: 'num_1', fields: { count: 'not a number' } }
+      });
+
+      if (result.applied) throw new Error('Should reject invalid type');
+      if (!result.error || !result.error.includes('TYPE_MISMATCH')) {
+        throw new Error('Should have TYPE_MISMATCH error');
+      }
+    });
+
+    // Summary
+    const summary = document.createElement('div');
+    summary.className = 'summary';
+    summary.innerHTML = `
+      <strong>Test Summary:</strong><br>
+      ✅ Passed: ${passed}<br>
+      ❌ Failed: ${failed}<br>
+      ${failed === 0 ? '<strong style="color: #155724;">All tests passed!</strong>' : '<strong style="color: #721c24;">Some tests failed.</strong>'}
+    `;
+    results.appendChild(summary);
+
+    console.log(`Browser tests complete: ${passed} passed, ${failed} failed`);
+  </script>
+</body>
+</html>
