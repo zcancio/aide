@@ -28,7 +28,7 @@ async def initialize_pool():
 
 
 @pytest_asyncio.fixture
-async def test_user_id():
+async def test_user_id(initialize_pool):
     """Create a test user and return their ID."""
     user_id = uuid4()
     user_email = f"test-{user_id}@example.com"
@@ -44,11 +44,15 @@ async def test_user_id():
     yield user_id
 
     async with db.system_conn() as conn:
+        # Clean up test data
+        await conn.execute("DELETE FROM signal_mappings WHERE user_id = $1", user_id)
+        await conn.execute("DELETE FROM conversations WHERE aide_id IN (SELECT id FROM aides WHERE user_id = $1)", user_id)
+        await conn.execute("DELETE FROM aides WHERE user_id = $1", user_id)
         await conn.execute("DELETE FROM users WHERE id = $1", user_id)
 
 
 @pytest_asyncio.fixture
-async def second_user_id():
+async def second_user_id(initialize_pool):
     """Create a second test user for cross-user RLS tests."""
     user_id = uuid4()
     user_email = f"test-{user_id}@example.com"
@@ -64,4 +68,8 @@ async def second_user_id():
     yield user_id
 
     async with db.system_conn() as conn:
+        # Clean up test data
+        await conn.execute("DELETE FROM signal_mappings WHERE user_id = $1", user_id)
+        await conn.execute("DELETE FROM conversations WHERE aide_id IN (SELECT id FROM aides WHERE user_id = $1)", user_id)
+        await conn.execute("DELETE FROM aides WHERE user_id = $1", user_id)
         await conn.execute("DELETE FROM users WHERE id = $1", user_id)
