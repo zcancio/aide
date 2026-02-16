@@ -7,8 +7,9 @@ import pytest
 from backend.models.aide import CreateAideRequest, UpdateAideRequest
 from backend.repos.aide_repo import AideRepo
 
+pytestmark = pytest.mark.asyncio(loop_scope="session")
 
-@pytest.mark.asyncio
+
 async def test_create_aide(test_user_id):
     """Test creating an aide."""
     repo = AideRepo()
@@ -24,7 +25,6 @@ async def test_create_aide(test_user_id):
     assert aide.r2_prefix == f"aides/{aide.id}"
 
 
-@pytest.mark.asyncio
 async def test_get_aide(test_user_id):
     """Test getting an aide by ID."""
     repo = AideRepo()
@@ -38,7 +38,6 @@ async def test_get_aide(test_user_id):
     assert fetched.title == "Test Aide"
 
 
-@pytest.mark.asyncio
 async def test_rls_prevents_cross_user_access(test_user_id, second_user_id):
     """Verify that user A cannot see user B's aides via RLS."""
     repo = AideRepo()
@@ -52,7 +51,6 @@ async def test_rls_prevents_cross_user_access(test_user_id, second_user_id):
     assert result is None  # RLS blocks access
 
 
-@pytest.mark.asyncio
 async def test_list_for_user(test_user_id, second_user_id):
     """Test listing aides only shows own aides."""
     repo = AideRepo()
@@ -75,7 +73,6 @@ async def test_list_for_user(test_user_id, second_user_id):
     assert user_b_aides[0].user_id == second_user_id
 
 
-@pytest.mark.asyncio
 async def test_update_aide(test_user_id):
     """Test updating an aide."""
     repo = AideRepo()
@@ -88,7 +85,6 @@ async def test_update_aide(test_user_id):
     assert updated.id == aide.id
 
 
-@pytest.mark.asyncio
 async def test_rls_prevents_cross_user_update(test_user_id, second_user_id):
     """Verify that user B cannot update user A's aide."""
     repo = AideRepo()
@@ -106,7 +102,6 @@ async def test_rls_prevents_cross_user_update(test_user_id, second_user_id):
     assert original.title == "User A's Aide"
 
 
-@pytest.mark.asyncio
 async def test_delete_aide(test_user_id):
     """Test deleting an aide."""
     repo = AideRepo()
@@ -121,7 +116,6 @@ async def test_delete_aide(test_user_id):
     assert result is None
 
 
-@pytest.mark.asyncio
 async def test_rls_prevents_cross_user_delete(test_user_id, second_user_id):
     """Verify that user B cannot delete user A's aide."""
     repo = AideRepo()
@@ -139,7 +133,6 @@ async def test_rls_prevents_cross_user_delete(test_user_id, second_user_id):
     assert original is not None
 
 
-@pytest.mark.asyncio
 async def test_archive_aide(test_user_id):
     """Test archiving an aide."""
     repo = AideRepo()
@@ -155,7 +148,6 @@ async def test_archive_aide(test_user_id):
     assert len(aides) == 0
 
 
-@pytest.mark.asyncio
 async def test_publish_and_unpublish(test_user_id):
     """Test publishing and unpublishing an aide."""
     repo = AideRepo()
@@ -184,7 +176,6 @@ async def test_publish_and_unpublish(test_user_id):
     assert by_slug_after is None
 
 
-@pytest.mark.asyncio
 async def test_update_state(test_user_id):
     """Test updating aide state and event log."""
     repo = AideRepo()
@@ -201,7 +192,6 @@ async def test_update_state(test_user_id):
     assert updated.event_log == event_log
 
 
-@pytest.mark.asyncio
 async def test_count_for_user(test_user_id, second_user_id):
     """Test counting aides respects RLS."""
     repo = AideRepo()

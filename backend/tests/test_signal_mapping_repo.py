@@ -11,8 +11,9 @@ from backend.repos.aide_repo import AideRepo
 from backend.repos.conversation_repo import ConversationRepo
 from backend.repos.signal_mapping_repo import SignalMappingRepo
 
+pytestmark = pytest.mark.asyncio(loop_scope="session")
 
-@pytest.mark.asyncio
+
 async def test_create_signal_mapping(test_user_id):
     """Test creating a Signal mapping."""
     aide_repo = AideRepo()
@@ -31,7 +32,6 @@ async def test_create_signal_mapping(test_user_id):
     assert mapping.conversation_id == conversation.id
 
 
-@pytest.mark.asyncio
 async def test_get_by_phone(test_user_id):
     """Test getting a Signal mapping by phone number."""
     aide_repo = AideRepo()
@@ -52,7 +52,6 @@ async def test_get_by_phone(test_user_id):
     assert fetched.phone_number == "+15559876543"
 
 
-@pytest.mark.asyncio
 async def test_get_signal_mapping(test_user_id):
     """Test getting a Signal mapping by ID."""
     aide_repo = AideRepo()
@@ -71,7 +70,6 @@ async def test_get_signal_mapping(test_user_id):
     assert fetched.id == created.id
 
 
-@pytest.mark.asyncio
 async def test_rls_prevents_cross_user_signal_mapping_access(test_user_id, second_user_id):
     """Verify that user B cannot see user A's Signal mappings."""
     aide_repo = AideRepo()
@@ -91,7 +89,6 @@ async def test_rls_prevents_cross_user_signal_mapping_access(test_user_id, secon
     assert result is None  # RLS blocks access
 
 
-@pytest.mark.asyncio
 async def test_get_by_aide(test_user_id):
     """Test getting a Signal mapping by aide ID."""
     aide_repo = AideRepo()
@@ -111,7 +108,6 @@ async def test_get_by_aide(test_user_id):
     assert fetched.aide_id == aide.id
 
 
-@pytest.mark.asyncio
 async def test_list_for_user(test_user_id, second_user_id):
     """Test listing Signal mappings only shows own mappings."""
     aide_repo = AideRepo()
@@ -146,7 +142,6 @@ async def test_list_for_user(test_user_id, second_user_id):
     assert mappings_b[0].user_id == second_user_id
 
 
-@pytest.mark.asyncio
 async def test_delete_signal_mapping(test_user_id):
     """Test deleting a Signal mapping."""
     aide_repo = AideRepo()
@@ -167,7 +162,6 @@ async def test_delete_signal_mapping(test_user_id):
     assert result is None
 
 
-@pytest.mark.asyncio
 async def test_rls_prevents_cross_user_signal_mapping_delete(test_user_id, second_user_id):
     """Verify that user B cannot delete user A's Signal mapping."""
     aide_repo = AideRepo()
@@ -190,7 +184,6 @@ async def test_rls_prevents_cross_user_signal_mapping_delete(test_user_id, secon
     assert original is not None
 
 
-@pytest.mark.asyncio
 async def test_delete_by_phone(test_user_id):
     """Test deleting a Signal mapping by phone number (system operation)."""
     aide_repo = AideRepo()
@@ -212,7 +205,6 @@ async def test_delete_by_phone(test_user_id):
     assert result is None
 
 
-@pytest.mark.asyncio
 async def test_update_conversation(test_user_id):
     """Test updating the conversation_id for a Signal mapping."""
     aide_repo = AideRepo()
@@ -233,7 +225,6 @@ async def test_update_conversation(test_user_id):
     assert updated.conversation_id == conversation2.id
 
 
-@pytest.mark.asyncio
 async def test_unique_phone_number_constraint(test_user_id):
     """Test that phone numbers must be unique across all users."""
     aide_repo = AideRepo()
