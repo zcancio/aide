@@ -26,25 +26,25 @@
 
 _Wire the kernel to users. Web chat for creation, Signal for ongoing updates._
 
-### 1.1 Kernel
-- [ ] `types.py` — Event, Blueprint, AideFile, Warning, constants
-- [ ] `events.py` — make_event factory, assign_metadata
-- [ ] `primitives.py` — structural validation for all 22 primitives
-- [ ] `reducer.py` — pure `reduce(snapshot, event) → ReduceResult`, all primitive handlers
-- [ ] `renderer.py` — pure `render(snapshot, blueprint) → HTML`, list/table/grid views, CSS generation
-- [ ] `assembly.py` — IO coordinator (load, apply, save, create, publish, fork) + MemoryStorage
-- [ ] PostgresStorage adapter for assembly layer (Neon integration)
-- [ ] End-to-end smoke test: events → reducer → renderer → HTML
-- [ ] Engine builds:
-  - [ ] `engine.py` — single-file Python build (concatenated, no dependencies)
-  - [ ] `engine.js` — JavaScript build (transpiled from Python or hand-ported)
-  - [ ] `engine.ts` — TypeScript build with full type definitions
-  - [ ] `engine.min.js` — minified JS for browser distribution
-- [ ] Test runs for all builds:
-  - [ ] Python tests passing (`pytest engine/kernel/tests/`)
-  - [ ] JS tests passing (same test cases, Node.js runner)
-  - [ ] TS type checking passing (`tsc --noEmit`)
-  - [ ] Minified JS functional test (browser smoke test)
+### 1.1 Kernel ✅ COMPLETE
+- [x] `types.py` — Event, Blueprint, AideFile, Warning, constants
+- [x] `events.py` — make_event factory, assign_metadata
+- [x] `primitives.py` — structural validation for all 22 primitives
+- [x] `reducer.py` — pure `reduce(snapshot, event) → ReduceResult`, all primitive handlers
+- [x] `renderer.py` — pure `render(snapshot, blueprint) → HTML`, list/table/grid views, CSS generation
+- [x] `assembly.py` — IO coordinator (load, apply, save, create, publish, fork) + MemoryStorage
+- [x] PostgresStorage adapter for assembly layer (Neon integration)
+- [x] End-to-end smoke test: events → reducer → renderer → HTML
+- [x] Engine builds:
+  - [x] `engine.py` — single-file Python build (concatenated, no dependencies)
+  - [x] `engine.js` — JavaScript build (transpiled from Python or hand-ported)
+  - [x] `engine.ts` — TypeScript build with full type definitions
+  - [x] `engine.compact.js` — minified JS for browser distribution
+- [x] Test runs for all builds:
+  - [x] Python tests passing (`pytest engine/kernel/tests/`) — 905 tests
+  - [x] JS tests passing (same test cases, Node.js runner) — 38 tests
+  - [x] TS type checking passing (`tsc --noEmit`)
+  - [x] Minified JS functional test (browser smoke test)
 
 ### 1.2 Data Model
 - [ ] Neon Postgres tables (Alembic migration):
@@ -276,7 +276,7 @@ _Bring the engine to every Claude surface._
 | Phase | Duration | What ships |
 |-------|----------|------------|
 | **Phase 0** — Foundation | ✅ complete | Domain, rebrand, magic link auth, Railway + Neon |
-| **Phase 1** — Core Product | 3 weeks | Kernel ✅, L2/L3 orchestrator, dashboard, web chat, Signal ear, publishing |
+| **Phase 1** — Core Product | 3 weeks | Kernel ✅ (905 Python + 38 JS tests), L2/L3 orchestrator, dashboard, web chat, Signal ear, publishing |
 | **Phase 2** — Rate Limiting + Engine | 1 week | 50 turns/week, turn counter UI, engine on R2 |
 | **Phase 3** — Payments | 1 week | Stripe, $10/mo Pro, upgrade flow |
 | **Phase 4** — Landing & Launch | 1 week | Landing page, templates, launch checklist |
