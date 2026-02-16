@@ -59,16 +59,13 @@ from engine.kernel.types import Blueprint, Event
 def assert_contains(html, *fragments):
     for fragment in fragments:
         assert fragment in html, (
-            f"Expected to find {fragment!r} in rendered HTML.\n"
-            f"Got (first 2000 chars):\n{html[:2000]}"
+            f"Expected to find {fragment!r} in rendered HTML.\nGot (first 2000 chars):\n{html[:2000]}"
         )
 
 
 def assert_not_contains(html, *fragments):
     for fragment in fragments:
-        assert fragment not in html, (
-            f"Did NOT expect to find {fragment!r} in rendered HTML."
-        )
+        assert fragment not in html, f"Did NOT expect to find {fragment!r} in rendered HTML."
 
 
 def assert_before(html, first, second):
@@ -158,9 +155,14 @@ def content_snapshot():
     }
 
     snapshot["blocks"] = {
-        "block_root": {"type": "root", "children": [
-            "block_h1", "block_text", "block_tasks",
-        ]},
+        "block_root": {
+            "type": "root",
+            "children": [
+                "block_h1",
+                "block_text",
+                "block_tasks",
+            ],
+        },
         "block_h1": {
             "type": "heading",
             "parent": "block_root",
@@ -290,8 +292,8 @@ class TestProperNesting:
         assert main_start != -1
         main_content = html[main_start:main_end]
         assert "Structure Test" in main_content  # heading
-        assert "aide-text" in main_content       # text block
-        assert "aide-table" in main_content      # table
+        assert "aide-text" in main_content  # text block
+        assert "aide-table" in main_content  # table
 
     def test_no_content_blocks_in_head(self, html):
         """No rendered block elements leak into <head> (CSS class definitions are OK)."""
@@ -501,7 +503,8 @@ class TestRenderOptionsInclusion:
     def test_include_blueprint_false(self):
         """Blueprint absent when include_blueprint=False."""
         html = render(
-            content_snapshot(), make_blueprint(),
+            content_snapshot(),
+            make_blueprint(),
             options=RenderOptions(include_blueprint=False),
         )
         assert_not_contains(html, 'id="aide-blueprint"')
@@ -516,7 +519,8 @@ class TestRenderOptionsInclusion:
     def test_include_events_false(self):
         """Events absent when include_events=False."""
         html = render(
-            content_snapshot(), make_blueprint(),
+            content_snapshot(),
+            make_blueprint(),
             events=make_events(),
             options=RenderOptions(include_events=False),
         )
@@ -528,7 +532,8 @@ class TestRenderOptionsInclusion:
     def test_state_always_present(self):
         """Snapshot (aide-state) is always present regardless of options."""
         html = render(
-            content_snapshot(), make_blueprint(),
+            content_snapshot(),
+            make_blueprint(),
             options=RenderOptions(
                 include_blueprint=False,
                 include_events=False,
@@ -539,7 +544,8 @@ class TestRenderOptionsInclusion:
     def test_both_excluded(self):
         """Both blueprint and events excluded — only state remains."""
         html = render(
-            content_snapshot(), make_blueprint(),
+            content_snapshot(),
+            make_blueprint(),
             events=make_events(),
             options=RenderOptions(
                 include_blueprint=False,
@@ -595,7 +601,8 @@ class TestGoogleFonts:
     def test_include_fonts_false(self):
         """Fonts excluded when include_fonts=False."""
         html = render(
-            content_snapshot(), make_blueprint(),
+            content_snapshot(),
+            make_blueprint(),
             options=RenderOptions(include_fonts=False),
         )
         assert_not_contains(html, "fonts.googleapis.com")
@@ -658,11 +665,9 @@ class TestNoExecutableJavaScript:
 
     def test_all_scripts_are_data_types(self, html):
         """Every <script> tag has a non-executable type."""
-        scripts = re.findall(r'<script([^>]*)>', html)
+        scripts = re.findall(r"<script([^>]*)>", html)
         for attrs in scripts:
-            assert "application/" in attrs, (
-                f"Found script without data MIME type: <script{attrs}>"
-            )
+            assert "application/" in attrs, f"Found script without data MIME type: <script{attrs}>"
 
     def test_no_text_javascript_type(self, html):
         """No script with type='text/javascript'."""
@@ -671,11 +676,9 @@ class TestNoExecutableJavaScript:
     def test_no_bare_script_tags(self, html):
         """No <script> without a type attribute (browser default = JS)."""
         # All script tags must have an explicit type
-        scripts = re.findall(r'<script([^>]*)>', html)
+        scripts = re.findall(r"<script([^>]*)>", html)
         for attrs in scripts:
-            assert "type=" in attrs, (
-                f"Script tag without type= attribute: <script{attrs}>"
-            )
+            assert "type=" in attrs, f"Script tag without type= attribute: <script{attrs}>"
 
     def test_no_onclick_handlers(self, html):
         """No onclick or other event handler attributes."""
@@ -719,7 +722,7 @@ class TestOGMetaTags:
         """OG tags are inside <head>."""
         head_start = html.find("<head>")
         head_end = html.find("</head>")
-        og_pos = html.find('og:title')
+        og_pos = html.find("og:title")
         assert head_start < og_pos < head_end
 
     def test_og_title_escaped(self):
@@ -746,7 +749,8 @@ class TestFooterStructure:
     def test_footer_present_with_option(self):
         """Footer appears when footer option is set."""
         html = render(
-            content_snapshot(), make_blueprint(),
+            content_snapshot(),
+            make_blueprint(),
             options=RenderOptions(footer="Made with AIde"),
         )
         assert_contains(html, "aide-footer")
@@ -756,7 +760,8 @@ class TestFooterStructure:
     def test_footer_absent_without_option(self):
         """No footer element when footer option is None."""
         html = render(
-            content_snapshot(), make_blueprint(),
+            content_snapshot(),
+            make_blueprint(),
             options=RenderOptions(footer=None),
         )
         # Check that no footer element exists in body (CSS still has .aide-footer styles)
@@ -765,7 +770,8 @@ class TestFooterStructure:
     def test_footer_after_main(self):
         """Footer is after </main> but inside <body>."""
         html = render(
-            content_snapshot(), make_blueprint(),
+            content_snapshot(),
+            make_blueprint(),
             options=RenderOptions(footer="Made with AIde"),
         )
         main_end = html.find("</main>")
@@ -852,8 +858,6 @@ class TestOutputEncoding:
         """Major structural tags are all closed."""
         html = render(content_snapshot(), make_blueprint())
         for tag in ["html", "head", "body", "main", "style"]:
-            open_count = len(re.findall(rf'<{tag}[\s>]', html))
+            open_count = len(re.findall(rf"<{tag}[\s>]", html))
             close_count = html.count(f"</{tag}>")
-            assert open_count == close_count, (
-                f"<{tag}> opened {open_count} times but closed {close_count} times"
-            )
+            assert open_count == close_count, f"<{tag}> opened {open_count} times but closed {close_count} times"

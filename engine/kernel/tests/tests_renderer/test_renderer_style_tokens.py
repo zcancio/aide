@@ -83,27 +83,21 @@ def assert_css_contains(html, *fragments):
     """Assert that the <style> block contains all given CSS fragments."""
     css = extract_style_block(html)
     for fragment in fragments:
-        assert fragment in css, (
-            f"Expected to find {fragment!r} in CSS.\n"
-            f"CSS (first 2000 chars):\n{css[:2000]}"
-        )
+        assert fragment in css, f"Expected to find {fragment!r} in CSS.\nCSS (first 2000 chars):\n{css[:2000]}"
 
 
 def assert_css_not_contains(html, *fragments):
     """Assert that the <style> block does NOT contain given CSS fragments."""
     css = extract_style_block(html)
     for fragment in fragments:
-        assert fragment not in css, (
-            f"Did NOT expect to find {fragment!r} in CSS."
-        )
+        assert fragment not in css, f"Did NOT expect to find {fragment!r} in CSS."
 
 
 def assert_html_contains(html, *fragments):
     """Assert rendered HTML contains all fragments."""
     for fragment in fragments:
         assert fragment in html, (
-            f"Expected to find {fragment!r} in rendered HTML.\n"
-            f"Got (first 2000 chars):\n{html[:2000]}"
+            f"Expected to find {fragment!r} in rendered HTML.\nGot (first 2000 chars):\n{html[:2000]}"
         )
 
 
@@ -312,11 +306,13 @@ class TestMultipleTokensCombined:
 
     def test_all_color_tokens_together(self):
         """Setting primary_color, bg_color, and text_color at once."""
-        snapshot = make_snapshot_with_styles({
-            "primary_color": "#1a365d",
-            "bg_color": "#fffff0",
-            "text_color": "#2a2a2a",
-        })
+        snapshot = make_snapshot_with_styles(
+            {
+                "primary_color": "#1a365d",
+                "bg_color": "#fffff0",
+                "text_color": "#2a2a2a",
+            }
+        )
         html = render(snapshot, make_blueprint())
 
         assert_css_contains(
@@ -328,11 +324,13 @@ class TestMultipleTokensCombined:
 
     def test_fonts_and_colors_together(self):
         """Font and color tokens don't interfere with each other."""
-        snapshot = make_snapshot_with_styles({
-            "primary_color": "#2d3748",
-            "font_family": "Inter",
-            "heading_font": "Playfair Display",
-        })
+        snapshot = make_snapshot_with_styles(
+            {
+                "primary_color": "#2d3748",
+                "font_family": "Inter",
+                "heading_font": "Playfair Display",
+            }
+        )
         html = render(snapshot, make_blueprint())
 
         assert_css_contains(html, "--text-primary: #2d3748")
@@ -341,14 +339,16 @@ class TestMultipleTokensCombined:
 
     def test_full_style_set(self):
         """All known v1 tokens set at once — realistic poker league scenario."""
-        snapshot = make_snapshot_with_styles({
-            "primary_color": "#2d3748",
-            "bg_color": "#fafaf9",
-            "text_color": "#1a1a1a",
-            "font_family": "Inter",
-            "heading_font": "Cormorant Garamond",
-            "density": "comfortable",
-        })
+        snapshot = make_snapshot_with_styles(
+            {
+                "primary_color": "#2d3748",
+                "bg_color": "#fafaf9",
+                "text_color": "#1a1a1a",
+                "font_family": "Inter",
+                "heading_font": "Cormorant Garamond",
+                "density": "comfortable",
+            }
+        )
         html = render(snapshot, make_blueprint())
 
         assert_css_contains(
@@ -490,20 +490,24 @@ class TestUnknownStyleTokens:
 
     def test_unknown_token_does_not_break_render(self):
         """An unknown style token doesn't cause rendering errors."""
-        snapshot = make_snapshot_with_styles({
-            "primary_color": "#2d3748",
-            "sparkle_effect": "extreme",
-            "border_style": "dashed",
-        })
+        snapshot = make_snapshot_with_styles(
+            {
+                "primary_color": "#2d3748",
+                "sparkle_effect": "extreme",
+                "border_style": "dashed",
+            }
+        )
         # Should not raise
         html = render(snapshot, make_blueprint())
         assert "<!DOCTYPE html>" in html
 
     def test_unknown_token_not_in_css(self):
         """Unknown tokens should not produce CSS output."""
-        snapshot = make_snapshot_with_styles({
-            "sparkle_effect": "extreme",
-        })
+        snapshot = make_snapshot_with_styles(
+            {
+                "sparkle_effect": "extreme",
+            }
+        )
         html = render(snapshot, make_blueprint())
         css = extract_style_block(html)
 
@@ -512,10 +516,12 @@ class TestUnknownStyleTokens:
 
     def test_known_tokens_still_work_alongside_unknown(self):
         """Known tokens work correctly even when unknown tokens are present."""
-        snapshot = make_snapshot_with_styles({
-            "primary_color": "#1a365d",
-            "mystery_token": "42",
-        })
+        snapshot = make_snapshot_with_styles(
+            {
+                "primary_color": "#1a365d",
+                "mystery_token": "42",
+            }
+        )
         html = render(snapshot, make_blueprint())
 
         assert_css_contains(html, "--text-primary: #1a365d")

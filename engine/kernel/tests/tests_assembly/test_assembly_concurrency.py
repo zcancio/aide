@@ -198,10 +198,24 @@ class TestConcurrentAppliesAsync:
 
         # Use auto-assigned sequences throughout to avoid conflicts
         setup_events = [
-            Event(id="", sequence=0, timestamp=now_iso(), actor="test", source="test",
-                  type="collection.create", payload={"id": "counters", "schema": {"name": "string", "value": "int"}}),
-            Event(id="", sequence=0, timestamp=now_iso(), actor="test", source="test",
-                  type="entity.create", payload={"collection": "counters", "id": "counter_1", "fields": {"name": "Main", "value": 0}}),
+            Event(
+                id="",
+                sequence=0,
+                timestamp=now_iso(),
+                actor="test",
+                source="test",
+                type="collection.create",
+                payload={"id": "counters", "schema": {"name": "string", "value": "int"}},
+            ),
+            Event(
+                id="",
+                sequence=0,
+                timestamp=now_iso(),
+                actor="test",
+                source="test",
+                type="entity.create",
+                payload={"collection": "counters", "id": "counter_1", "fields": {"name": "Main", "value": 0}},
+            ),
         ]
         await assembly.apply(aide_file, setup_events)
 
@@ -250,8 +264,8 @@ class TestLockingSemantics:
                 type="collection.create" if i == 0 else "entity.create",
                 payload=(
                     {"id": f"coll_{i}", "schema": {"name": "string"}}
-                    if i == 0 else
-                    {"collection": "coll_0", "id": f"item_{i}", "fields": {"name": f"Item {i}"}}
+                    if i == 0
+                    else {"collection": "coll_0", "id": f"item_{i}", "fields": {"name": f"Item {i}"}}
                 ),
             )
             result = await assembly.apply(aide_file, [event])
@@ -265,12 +279,33 @@ class TestLockingSemantics:
 
         # Apply batch of events with sequence=0
         events = [
-            Event(id="", sequence=0, timestamp=now_iso(), actor="test", source="test",
-                  type="collection.create", payload={"id": "items", "schema": {"name": "string"}}),
-            Event(id="", sequence=0, timestamp=now_iso(), actor="test", source="test",
-                  type="entity.create", payload={"collection": "items", "id": "item_1", "fields": {"name": "A"}}),
-            Event(id="", sequence=0, timestamp=now_iso(), actor="test", source="test",
-                  type="entity.create", payload={"collection": "items", "id": "item_2", "fields": {"name": "B"}}),
+            Event(
+                id="",
+                sequence=0,
+                timestamp=now_iso(),
+                actor="test",
+                source="test",
+                type="collection.create",
+                payload={"id": "items", "schema": {"name": "string"}},
+            ),
+            Event(
+                id="",
+                sequence=0,
+                timestamp=now_iso(),
+                actor="test",
+                source="test",
+                type="entity.create",
+                payload={"collection": "items", "id": "item_1", "fields": {"name": "A"}},
+            ),
+            Event(
+                id="",
+                sequence=0,
+                timestamp=now_iso(),
+                actor="test",
+                source="test",
+                type="entity.create",
+                payload={"collection": "items", "id": "item_2", "fields": {"name": "B"}},
+            ),
         ]
         result = await assembly.apply(aide_file, events)
 
@@ -339,10 +374,24 @@ class TestSequenceValidation:
         client_b = await assembly.load(aide_file.aide_id)
 
         # Both try sequence 3
-        event_a = Event(id="evt_a", sequence=3, timestamp=now_iso(), actor="a", source="test",
-                        type="entity.update", payload={"ref": "counters/counter_1", "fields": {"value": 100}})
-        event_b = Event(id="evt_b", sequence=3, timestamp=now_iso(), actor="b", source="test",
-                        type="entity.update", payload={"ref": "counters/counter_1", "fields": {"value": 200}})
+        event_a = Event(
+            id="evt_a",
+            sequence=3,
+            timestamp=now_iso(),
+            actor="a",
+            source="test",
+            type="entity.update",
+            payload={"ref": "counters/counter_1", "fields": {"value": 100}},
+        )
+        event_b = Event(
+            id="evt_b",
+            sequence=3,
+            timestamp=now_iso(),
+            actor="b",
+            source="test",
+            type="entity.update",
+            payload={"ref": "counters/counter_1", "fields": {"value": 200}},
+        )
 
         result_a = await assembly.apply(client_a, [event_a])
         await assembly.save(client_a)

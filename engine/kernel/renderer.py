@@ -31,6 +31,7 @@ from engine.kernel.types import (
 # Public API
 # ---------------------------------------------------------------------------
 
+
 def render_block(block_id: str, snapshot: dict[str, Any]) -> str:
     """
     Render a single block and its children recursively.
@@ -96,7 +97,7 @@ def render(
         parts.append('  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>')
         parts.append(
             '  <link href="https://fonts.googleapis.com/css2?'
-            'family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400'
+            "family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400"
             '&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">'
         )
 
@@ -137,6 +138,7 @@ def render(
 # HTML escaping
 # ---------------------------------------------------------------------------
 
+
 def escape(text: str) -> str:
     """HTML-escape user content."""
     return _html_escape(text, quote=True)
@@ -145,6 +147,7 @@ def escape(text: str) -> str:
 # ---------------------------------------------------------------------------
 # OG tags
 # ---------------------------------------------------------------------------
+
 
 def _render_og_tags(snapshot: dict) -> str:
     title = escape(snapshot.get("meta", {}).get("title", "AIde"))
@@ -185,6 +188,7 @@ def _derive_description(snapshot: dict) -> str:
 # ---------------------------------------------------------------------------
 # CSS generation
 # ---------------------------------------------------------------------------
+
 
 def _render_css(snapshot: dict) -> str:
     """Generate the full CSS block: base + style token overrides."""
@@ -243,6 +247,7 @@ def _render_css(snapshot: dict) -> str:
 # Block tree rendering
 # ---------------------------------------------------------------------------
 
+
 def _render_block_tree(snapshot: dict) -> str:
     """Walk the block tree depth-first from block_root, emit HTML."""
     blocks = snapshot.get("blocks", {})
@@ -295,6 +300,7 @@ def _render_block(block_id: str, snapshot: dict) -> str:
 # Block type renderers
 # ---------------------------------------------------------------------------
 
+
 def _render_heading(block: dict, snapshot: dict) -> str:
     props = block.get("props", {})
     level = props.get("level", 1)
@@ -318,7 +324,7 @@ def _render_metric(block: dict, snapshot: dict) -> str:
         f'    <div class="aide-metric">\n'
         f'      <span class="aide-metric__label">{label}</span>\n'
         f'      <span class="aide-metric__value">{value}</span>\n'
-        f'    </div>'
+        f"    </div>"
     )
 
 
@@ -337,11 +343,7 @@ def _render_collection_view_block(block: dict, snapshot: dict) -> str:
         return ""
 
     # Get non-removed entities
-    entities = [
-        {**e, "_id": eid}
-        for eid, e in collection.get("entities", {}).items()
-        if not e.get("_removed")
-    ]
+    entities = [{**e, "_id": eid} for eid, e in collection.get("entities", {}).items() if not e.get("_removed")]
 
     if not entities:
         return '    <p class="aide-collection-empty">No items yet.</p>'
@@ -402,7 +404,7 @@ def _render_column(block: dict, snapshot: dict) -> str:
     props = block.get("props", {})
     width = props.get("width")
     if width and "%" in str(width):
-        style = f'flex: 0 0 {width}'
+        style = f"flex: 0 0 {width}"
     else:
         style = "flex: 1"
     return f'    <div class="aide-column" style="{style}">\n<!--children-->\n    </div>'
@@ -410,7 +412,7 @@ def _render_column(block: dict, snapshot: dict) -> str:
 
 def _render_root(block: dict, snapshot: dict) -> str:
     """Root block - container for all children."""
-    return '<!--children-->'
+    return "<!--children-->"
 
 
 _BLOCK_RENDERERS = {
@@ -430,6 +432,7 @@ _BLOCK_RENDERERS = {
 # ---------------------------------------------------------------------------
 # View renderers
 # ---------------------------------------------------------------------------
+
 
 def _render_list_view(entities: list[dict], schema: dict, config: dict, styles: dict) -> str:
     show_fields = _visible_fields(schema, config)
@@ -522,7 +525,8 @@ def _render_grid_view(entities: list[dict], schema: dict, config: dict, styles: 
             if entity:
                 cell_content = ", ".join(
                     _format_value(entity.get(f), schema.get(f, "string"))
-                    for f in show_fields if entity.get(f) is not None
+                    for f in show_fields
+                    if entity.get(f) is not None
                 ) or escape(str(entity.get("_id", "")))
                 parts.append(f'            <td class="aide-grid__cell aide-grid__cell--filled">{cell_content}</td>')
             else:
@@ -545,6 +549,7 @@ _VIEW_RENDERERS = {
 # ---------------------------------------------------------------------------
 # Sort / Filter / Group
 # ---------------------------------------------------------------------------
+
 
 def _apply_sort(entities: list[dict], config: dict) -> list[dict]:
     sort_by = config.get("sort_by")
@@ -582,6 +587,7 @@ def _apply_filter(entities: list[dict], config: dict) -> list[dict]:
 # Value formatting
 # ---------------------------------------------------------------------------
 
+
 def _format_value(value: Any, field_type: str | dict) -> str:
     """Format a field value for display."""
     if value is None:
@@ -590,7 +596,7 @@ def _format_value(value: Any, field_type: str | dict) -> str:
     bt = _base_type_str(field_type)
 
     if bt == "bool":
-        return "\u2713" if value else "\u25CB"
+        return "\u2713" if value else "\u25cb"
     if bt == "date" and isinstance(value, str):
         return _format_date(value)
     if bt == "datetime" and isinstance(value, str):
@@ -635,16 +641,16 @@ def _format_inline(text: str) -> str:
 
     # Links: [text](url) — must be http/https
     text = re.sub(
-        r'\[([^\]]+)\]\((https?://[^)]+)\)',
+        r"\[([^\]]+)\]\((https?://[^)]+)\)",
         r'<a href="\2">\1</a>',
         text,
     )
 
     # Bold: **text**
-    text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
+    text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
 
     # Italic: *text*
-    text = re.sub(r'\*(.+?)\*', r'<em>\1</em>', text)
+    text = re.sub(r"\*(.+?)\*", r"<em>\1</em>", text)
 
     return text
 
@@ -652,6 +658,7 @@ def _format_inline(text: str) -> str:
 # ---------------------------------------------------------------------------
 # Field helpers
 # ---------------------------------------------------------------------------
+
 
 def _visible_fields(schema: dict, config: dict) -> list[str]:
     """Determine which fields to show and in what order."""
@@ -711,6 +718,7 @@ def _entity_inline_style(entity: dict) -> str:
 # Annotations
 # ---------------------------------------------------------------------------
 
+
 def _render_annotations(snapshot: dict) -> str:
     annotations = snapshot.get("annotations", [])
     if not annotations:
@@ -748,11 +756,12 @@ def _render_annotations(snapshot: dict) -> str:
 # Footer
 # ---------------------------------------------------------------------------
 
+
 def _render_footer(text: str) -> str:
     return (
         '  <footer class="aide-footer">\n'
         f'    <a href="https://toaide.com" class="aide-footer__link">{escape(text)}</a>\n'
-        '  </footer>'
+        "  </footer>"
     )
 
 

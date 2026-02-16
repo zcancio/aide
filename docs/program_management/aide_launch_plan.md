@@ -56,14 +56,14 @@ _Wire the kernel to users. Web chat for creation, Signal for ongoing updates._
 - [x] Repos in `backend/repos/` with parameterized SQL (aide_repo, conversation_repo, signal_mapping_repo)
 - [x] Cross-user isolation tests for all repos
 
-### 1.3 L2/L3 Orchestrator
-- [ ] L3 system prompt (Sonnet): first message with no schema → `collection.create` + initial `entity.create` events
+### 1.3 L2/L3 Orchestrator ✅
+- [x] L3 system prompt (Sonnet): first message with no schema → `collection.create` + initial `entity.create` events
   - Handles: "we need milk, eggs, and sourdough from Whole Foods" → grocery_list collection, 3 entities, inferred fields
   - Handles: "I run a poker league, 8 guys, every other Thursday" → roster + schedule collections
   - Handles image input: screenshot of a list, receipt, whiteboard → appropriate schema + entities
   - Returns well-formed primitives that pass validation
   - Test: 10 diverse first messages, all produce valid schemas
-- [ ] L2 system prompt (Haiku): message + current snapshot + primitive schemas → primitives
+- [x] L2 system prompt (Haiku): message + current snapshot + primitive schemas → primitives
   - Entity resolution: "Mike" → `roster/player_mike`
   - Temporal resolution: "this week" → current relevant entity
   - Multi-entity: "Mike's out, Dave's subbing" → two `entity.update` primitives
@@ -71,8 +71,8 @@ _Wire the kernel to users. Web chat for creation, Signal for ongoing updates._
   - Addition: "oh and we need olive oil" → `entity.create`
   - Escalation signal when L2 can't compile (unknown field, new collection needed)
   - Test: 30 routine update messages, all produce correct primitives
-- [ ] L3 schema evolution: when L2 escalates because a field doesn't exist, L3 adds it via `field.add`
-- [ ] Orchestrator coordinator:
+- [x] L3 schema evolution: when L2 escalates because a field doesn't exist, L3 adds it via `field.add`
+- [x] Orchestrator coordinator:
   - Receives normalized message from any ear (web or Signal)
   - Loads current aide state from DB
   - Routes to L2 first; if escalation → routes to L3; if image → routes to L3
@@ -81,8 +81,8 @@ _Wire the kernel to users. Web chat for creation, Signal for ongoing updates._
   - Saves state + event log to DB, uploads HTML to R2
   - Returns response text to ear
   - Test: full loop — message in, primitives emitted, state updated, HTML published
-- [ ] Managed API routing: server-side keys, 70% Haiku / 30% Sonnet based on message complexity
-- [ ] Voice rules: no first person, state reflections only, no encouragement/emojis
+- [x] Managed API routing: server-side keys, 70% Haiku / 30% Sonnet based on message complexity
+- [x] Voice rules: no first person, state reflections only, no encouragement/emojis
 
 ### 1.4 Web Chat UI
 - [ ] Dashboard (post-login landing): grid/list of user's aides

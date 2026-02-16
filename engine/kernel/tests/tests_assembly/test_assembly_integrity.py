@@ -52,7 +52,11 @@ def make_events() -> list[Event]:
             actor="user_test",
             source="test",
             type="entity.create",
-            payload={"collection": "tasks", "id": "task_1", "fields": {"name": "First task", "done": False, "priority": 1}},
+            payload={
+                "collection": "tasks",
+                "id": "task_1",
+                "fields": {"name": "First task", "done": False, "priority": 1},
+            },
         ),
         Event(
             id="evt_003",
@@ -61,7 +65,11 @@ def make_events() -> list[Event]:
             actor="user_test",
             source="test",
             type="entity.create",
-            payload={"collection": "tasks", "id": "task_2", "fields": {"name": "Second task", "done": True, "priority": 2}},
+            payload={
+                "collection": "tasks",
+                "id": "task_2",
+                "fields": {"name": "Second task", "done": True, "priority": 2},
+            },
         ),
         Event(
             id="evt_004",
@@ -441,14 +449,28 @@ class TestIntegrityAfterOperations:
 
         # Add many events
         events = [
-            Event(id="evt_001", sequence=1, timestamp=now_iso(), actor="test", source="test",
-                  type="collection.create", payload={"id": "items", "schema": {"name": "string"}}),
+            Event(
+                id="evt_001",
+                sequence=1,
+                timestamp=now_iso(),
+                actor="test",
+                source="test",
+                type="collection.create",
+                payload={"id": "items", "schema": {"name": "string"}},
+            ),
         ]
         for i in range(2, 102):
-            events.append(Event(
-                id=f"evt_{i:03d}", sequence=i, timestamp=now_iso(), actor="test", source="test",
-                type="entity.create", payload={"collection": "items", "id": f"item_{i}", "fields": {"name": f"Item {i}"}},
-            ))
+            events.append(
+                Event(
+                    id=f"evt_{i:03d}",
+                    sequence=i,
+                    timestamp=now_iso(),
+                    actor="test",
+                    source="test",
+                    type="entity.create",
+                    payload={"collection": "items", "id": f"item_{i}", "fields": {"name": f"Item {i}"}},
+                )
+            )
 
         await assembly.apply(aide_file, events)
         await assembly.compact(aide_file, keep_recent=10)

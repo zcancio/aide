@@ -46,10 +46,7 @@ from engine.kernel.reducer import empty_state, reduce
 
 def has_warning(result, code):
     """Check if a specific warning code is present in result warnings."""
-    return any(
-        w.code == code
-        for w in result.warnings
-    )
+    return any(w.code == code for w in result.warnings)
 
 
 def snapshots_equal(a, b):
@@ -88,46 +85,70 @@ def grocery_state(empty):
         assert result.applied, f"Event {seq} ({event_type}) rejected: {result.error}"
         snapshot = result.snapshot
 
-    apply("collection.create", {
-        "id": "grocery_list",
-        "name": "Grocery List",
-        "schema": {"name": "string", "store": "string?", "checked": "bool"},
-    })
-    apply("entity.create", {
-        "collection": "grocery_list",
-        "id": "item_milk",
-        "fields": {"name": "Milk", "store": "Whole Foods", "checked": False},
-    })
-    apply("entity.create", {
-        "collection": "grocery_list",
-        "id": "item_eggs",
-        "fields": {"name": "Eggs", "store": "Costco", "checked": True},
-    })
-    apply("view.create", {
-        "id": "grocery_view",
-        "type": "list",
-        "source": "grocery_list",
-        "config": {"show_fields": ["name", "store", "checked"], "sort_by": "name"},
-    })
-    apply("block.set", {
-        "id": "block_title",
-        "type": "heading",
-        "parent": "block_root",
-        "props": {"level": 1, "content": "Grocery List"},
-    })
-    apply("block.set", {
-        "id": "block_grocery",
-        "type": "collection_view",
-        "parent": "block_root",
-        "props": {"source": "grocery_list", "view": "grocery_view"},
-    })
-    apply("style.set", {
-        "primary_color": "#2d3748",
-        "font_family": "Inter",
-    })
-    apply("meta.update", {
-        "title": "Weekly Groceries",
-    })
+    apply(
+        "collection.create",
+        {
+            "id": "grocery_list",
+            "name": "Grocery List",
+            "schema": {"name": "string", "store": "string?", "checked": "bool"},
+        },
+    )
+    apply(
+        "entity.create",
+        {
+            "collection": "grocery_list",
+            "id": "item_milk",
+            "fields": {"name": "Milk", "store": "Whole Foods", "checked": False},
+        },
+    )
+    apply(
+        "entity.create",
+        {
+            "collection": "grocery_list",
+            "id": "item_eggs",
+            "fields": {"name": "Eggs", "store": "Costco", "checked": True},
+        },
+    )
+    apply(
+        "view.create",
+        {
+            "id": "grocery_view",
+            "type": "list",
+            "source": "grocery_list",
+            "config": {"show_fields": ["name", "store", "checked"], "sort_by": "name"},
+        },
+    )
+    apply(
+        "block.set",
+        {
+            "id": "block_title",
+            "type": "heading",
+            "parent": "block_root",
+            "props": {"level": 1, "content": "Grocery List"},
+        },
+    )
+    apply(
+        "block.set",
+        {
+            "id": "block_grocery",
+            "type": "collection_view",
+            "parent": "block_root",
+            "props": {"source": "grocery_list", "view": "grocery_view"},
+        },
+    )
+    apply(
+        "style.set",
+        {
+            "primary_color": "#2d3748",
+            "font_family": "Inter",
+        },
+    )
+    apply(
+        "meta.update",
+        {
+            "title": "Weekly Groceries",
+        },
+    )
 
     return snapshot, seq
 
@@ -145,45 +166,69 @@ def state_with_relationship(empty):
         assert result.applied, f"Event {seq} ({event_type}) rejected: {result.error}"
         snapshot = result.snapshot
 
-    apply("collection.create", {
-        "id": "players",
-        "schema": {"name": "string"},
-    })
-    apply("collection.create", {
-        "id": "teams",
-        "schema": {"name": "string"},
-    })
-    apply("entity.create", {
-        "collection": "players",
-        "id": "player_alice",
-        "fields": {"name": "Alice"},
-    })
-    apply("entity.create", {
-        "collection": "players",
-        "id": "player_bob",
-        "fields": {"name": "Bob"},
-    })
-    apply("entity.create", {
-        "collection": "teams",
-        "id": "team_red",
-        "fields": {"name": "Red Team"},
-    })
-    apply("entity.create", {
-        "collection": "teams",
-        "id": "team_blue",
-        "fields": {"name": "Blue Team"},
-    })
-    apply("relationship.set", {
-        "from": "players/player_alice",
-        "to": "teams/team_red",
-        "type": "member_of",
-        "cardinality": "many_to_one",
-    })
-    apply("relationship.set", {
-        "from": "players/player_bob",
-        "to": "teams/team_blue",
-        "type": "member_of",
-    })
+    apply(
+        "collection.create",
+        {
+            "id": "players",
+            "schema": {"name": "string"},
+        },
+    )
+    apply(
+        "collection.create",
+        {
+            "id": "teams",
+            "schema": {"name": "string"},
+        },
+    )
+    apply(
+        "entity.create",
+        {
+            "collection": "players",
+            "id": "player_alice",
+            "fields": {"name": "Alice"},
+        },
+    )
+    apply(
+        "entity.create",
+        {
+            "collection": "players",
+            "id": "player_bob",
+            "fields": {"name": "Bob"},
+        },
+    )
+    apply(
+        "entity.create",
+        {
+            "collection": "teams",
+            "id": "team_red",
+            "fields": {"name": "Red Team"},
+        },
+    )
+    apply(
+        "entity.create",
+        {
+            "collection": "teams",
+            "id": "team_blue",
+            "fields": {"name": "Blue Team"},
+        },
+    )
+    apply(
+        "relationship.set",
+        {
+            "from": "players/player_alice",
+            "to": "teams/team_red",
+            "type": "member_of",
+            "cardinality": "many_to_one",
+        },
+    )
+    apply(
+        "relationship.set",
+        {
+            "from": "players/player_bob",
+            "to": "teams/team_blue",
+            "type": "member_of",
+        },
+    )
 
     return snapshot, seq
 
@@ -341,9 +386,7 @@ class TestEntityUpdateIdempotent:
         """entity.update with current values produces identical entity data."""
         snapshot, seq = grocery_state
 
-        entity_before = copy.deepcopy(
-            snapshot["collections"]["grocery_list"]["entities"]["item_milk"]
-        )
+        entity_before = copy.deepcopy(snapshot["collections"]["grocery_list"]["entities"]["item_milk"])
 
         result = reduce(
             snapshot,
@@ -452,8 +495,7 @@ class TestRelationshipSetIdempotent:
 
         # Count alice's member_of relationships before
         alice_rels_before = [
-            r for r in snapshot["relationships"]
-            if r["from"] == "players/player_alice" and r["type"] == "member_of"
+            r for r in snapshot["relationships"] if r["from"] == "players/player_alice" and r["type"] == "member_of"
         ]
         assert len(alice_rels_before) == 1
 
@@ -473,7 +515,8 @@ class TestRelationshipSetIdempotent:
 
         # Still exactly 1 link
         alice_rels_after = [
-            r for r in result.snapshot["relationships"]
+            r
+            for r in result.snapshot["relationships"]
             if r["from"] == "players/player_alice" and r["type"] == "member_of"
         ]
         assert len(alice_rels_after) == 1
@@ -500,8 +543,7 @@ class TestRelationshipSetIdempotent:
             snapshot = result.snapshot
 
         alice_rels = [
-            r for r in snapshot["relationships"]
-            if r["from"] == "players/player_alice" and r["type"] == "member_of"
+            r for r in snapshot["relationships"] if r["from"] == "players/player_alice" and r["type"] == "member_of"
         ]
         assert len(alice_rels) == 1
 
@@ -523,17 +565,19 @@ class TestRelationshipSetIdempotent:
         apply("entity.create", {"collection": "tags", "id": "tag_red", "fields": {"label": "Red"}})
 
         # First tag
-        apply("relationship.set", {
-            "from": "items/item_a",
-            "to": "tags/tag_red",
-            "type": "tagged_with",
-            "cardinality": "many_to_many",
-        })
+        apply(
+            "relationship.set",
+            {
+                "from": "items/item_a",
+                "to": "tags/tag_red",
+                "type": "tagged_with",
+                "cardinality": "many_to_many",
+            },
+        )
 
-        count_before = len([
-            r for r in snapshot["relationships"]
-            if r["from"] == "items/item_a" and r["to"] == "tags/tag_red"
-        ])
+        count_before = len(
+            [r for r in snapshot["relationships"] if r["from"] == "items/item_a" and r["to"] == "tags/tag_red"]
+        )
 
         # Re-set same tag
         result = reduce(
@@ -550,10 +594,9 @@ class TestRelationshipSetIdempotent:
         )
         assert result.applied
 
-        count_after = len([
-            r for r in result.snapshot["relationships"]
-            if r["from"] == "items/item_a" and r["to"] == "tags/tag_red"
-        ])
+        count_after = len(
+            [r for r in result.snapshot["relationships"] if r["from"] == "items/item_a" and r["to"] == "tags/tag_red"]
+        )
         # Should not have grown
         assert count_after <= count_before + 1  # At most replaced
 
@@ -609,14 +652,14 @@ class TestStyleSetIdempotent:
                 type="style.set",
                 payload={
                     "primary_color": "#2d3748",  # Same
-                    "density": "compact",         # New
+                    "density": "compact",  # New
                 },
             ),
         )
         assert result.applied
         assert result.snapshot["styles"]["primary_color"] == "#2d3748"
         assert result.snapshot["styles"]["font_family"] == "Inter"  # Preserved
-        assert result.snapshot["styles"]["density"] == "compact"    # Added
+        assert result.snapshot["styles"]["density"] == "compact"  # Added
 
 
 # ============================================================================

@@ -77,261 +77,394 @@ def poker_league_events():
         events.append(make_event(seq=seq, type=event_type, payload=payload))
 
     # --- Collections ---
-    e("collection.create", {
-        "id": "roster",
-        "name": "Roster",
-        "schema": {"name": "string", "status": "string", "snack_duty": "bool"},
-    })
-    e("collection.create", {
-        "id": "schedule",
-        "name": "Schedule",
-        "schema": {"date": "date", "host": "string?", "status": "string"},
-    })
-    e("collection.create", {
-        "id": "finances",
-        "name": "Finances",
-        "schema": {"description": "string", "amount": "float", "paid": "bool"},
-    })
+    e(
+        "collection.create",
+        {
+            "id": "roster",
+            "name": "Roster",
+            "schema": {"name": "string", "status": "string", "snack_duty": "bool"},
+        },
+    )
+    e(
+        "collection.create",
+        {
+            "id": "schedule",
+            "name": "Schedule",
+            "schema": {"date": "date", "host": "string?", "status": "string"},
+        },
+    )
+    e(
+        "collection.create",
+        {
+            "id": "finances",
+            "name": "Finances",
+            "schema": {"description": "string", "amount": "float", "paid": "bool"},
+        },
+    )
 
     # --- Roster entities ---
-    for pid, name in [("player_mike", "Mike"), ("player_dave", "Dave"),
-                      ("player_linda", "Linda"), ("player_steve", "Steve"),
-                      ("player_rachel", "Rachel"), ("player_tom", "Tom"),
-                      ("player_amy", "Amy"), ("player_jeff", "Jeff")]:
-        e("entity.create", {
-            "collection": "roster",
-            "id": pid,
-            "fields": {"name": name, "status": "active", "snack_duty": False},
-        })
+    for pid, name in [
+        ("player_mike", "Mike"),
+        ("player_dave", "Dave"),
+        ("player_linda", "Linda"),
+        ("player_steve", "Steve"),
+        ("player_rachel", "Rachel"),
+        ("player_tom", "Tom"),
+        ("player_amy", "Amy"),
+        ("player_jeff", "Jeff"),
+    ]:
+        e(
+            "entity.create",
+            {
+                "collection": "roster",
+                "id": pid,
+                "fields": {"name": name, "status": "active", "snack_duty": False},
+            },
+        )
 
     # --- Schedule entities ---
-    e("entity.create", {
-        "collection": "schedule",
-        "id": "game_feb27",
-        "fields": {"date": "2026-02-27", "host": "Dave", "status": "confirmed"},
-    })
-    e("entity.create", {
-        "collection": "schedule",
-        "id": "game_mar13",
-        "fields": {"date": "2026-03-13", "host": None, "status": "tentative"},
-    })
-    e("entity.create", {
-        "collection": "schedule",
-        "id": "game_mar27",
-        "fields": {"date": "2026-03-27", "host": None, "status": "tentative"},
-    })
+    e(
+        "entity.create",
+        {
+            "collection": "schedule",
+            "id": "game_feb27",
+            "fields": {"date": "2026-02-27", "host": "Dave", "status": "confirmed"},
+        },
+    )
+    e(
+        "entity.create",
+        {
+            "collection": "schedule",
+            "id": "game_mar13",
+            "fields": {"date": "2026-03-13", "host": None, "status": "tentative"},
+        },
+    )
+    e(
+        "entity.create",
+        {
+            "collection": "schedule",
+            "id": "game_mar27",
+            "fields": {"date": "2026-03-27", "host": None, "status": "tentative"},
+        },
+    )
 
     # --- Finance entities ---
-    e("entity.create", {
-        "collection": "finances",
-        "id": "expense_chips",
-        "fields": {"description": "Chips and dip", "amount": 24.50, "paid": True},
-    })
-    e("entity.create", {
-        "collection": "finances",
-        "id": "expense_cards",
-        "fields": {"description": "New card deck", "amount": 12.99, "paid": False},
-    })
+    e(
+        "entity.create",
+        {
+            "collection": "finances",
+            "id": "expense_chips",
+            "fields": {"description": "Chips and dip", "amount": 24.50, "paid": True},
+        },
+    )
+    e(
+        "entity.create",
+        {
+            "collection": "finances",
+            "id": "expense_cards",
+            "fields": {"description": "New card deck", "amount": 12.99, "paid": False},
+        },
+    )
 
     # --- Entity updates ---
-    e("entity.update", {
-        "ref": "roster/player_dave",
-        "fields": {"snack_duty": True},
-    })
-    e("entity.update", {
-        "ref": "schedule/game_mar13",
-        "fields": {"host": "Linda", "status": "confirmed"},
-    })
+    e(
+        "entity.update",
+        {
+            "ref": "roster/player_dave",
+            "fields": {"snack_duty": True},
+        },
+    )
+    e(
+        "entity.update",
+        {
+            "ref": "schedule/game_mar13",
+            "fields": {"host": "Linda", "status": "confirmed"},
+        },
+    )
 
     # --- Relationships ---
-    e("relationship.set", {
-        "from": "roster/player_dave",
-        "to": "schedule/game_feb27",
-        "type": "hosting",
-        "cardinality": "many_to_one",
-    })
-    e("relationship.set", {
-        "from": "roster/player_linda",
-        "to": "schedule/game_mar13",
-        "type": "hosting",
-    })
-    e("relationship.set", {
-        "from": "roster/player_mike",
-        "to": "schedule/game_feb27",
-        "type": "attending",
-        "cardinality": "many_to_many",
-    })
-    e("relationship.set", {
-        "from": "roster/player_dave",
-        "to": "schedule/game_feb27",
-        "type": "attending",
-    })
-    e("relationship.set", {
-        "from": "roster/player_linda",
-        "to": "schedule/game_feb27",
-        "type": "attending",
-    })
-    e("relationship.set", {
-        "from": "roster/player_steve",
-        "to": "schedule/game_feb27",
-        "type": "attending",
-    })
+    e(
+        "relationship.set",
+        {
+            "from": "roster/player_dave",
+            "to": "schedule/game_feb27",
+            "type": "hosting",
+            "cardinality": "many_to_one",
+        },
+    )
+    e(
+        "relationship.set",
+        {
+            "from": "roster/player_linda",
+            "to": "schedule/game_mar13",
+            "type": "hosting",
+        },
+    )
+    e(
+        "relationship.set",
+        {
+            "from": "roster/player_mike",
+            "to": "schedule/game_feb27",
+            "type": "attending",
+            "cardinality": "many_to_many",
+        },
+    )
+    e(
+        "relationship.set",
+        {
+            "from": "roster/player_dave",
+            "to": "schedule/game_feb27",
+            "type": "attending",
+        },
+    )
+    e(
+        "relationship.set",
+        {
+            "from": "roster/player_linda",
+            "to": "schedule/game_feb27",
+            "type": "attending",
+        },
+    )
+    e(
+        "relationship.set",
+        {
+            "from": "roster/player_steve",
+            "to": "schedule/game_feb27",
+            "type": "attending",
+        },
+    )
 
     # --- Schema evolution ---
-    e("field.add", {
-        "collection": "roster",
-        "name": "rating",
-        "type": "int",
-        "default": 1000,
-    })
-    e("field.add", {
-        "collection": "roster",
-        "name": "email",
-        "type": "string?",
-    })
-    e("entity.update", {
-        "ref": "roster/player_mike",
-        "fields": {"rating": 1200},
-    })
-    e("field.update", {
-        "collection": "schedule",
-        "name": "host",
-        "rename": "hosted_by",
-    })
+    e(
+        "field.add",
+        {
+            "collection": "roster",
+            "name": "rating",
+            "type": "int",
+            "default": 1000,
+        },
+    )
+    e(
+        "field.add",
+        {
+            "collection": "roster",
+            "name": "email",
+            "type": "string?",
+        },
+    )
+    e(
+        "entity.update",
+        {
+            "ref": "roster/player_mike",
+            "fields": {"rating": 1200},
+        },
+    )
+    e(
+        "field.update",
+        {
+            "collection": "schedule",
+            "name": "host",
+            "rename": "hosted_by",
+        },
+    )
 
     # --- Views ---
-    e("view.create", {
-        "id": "roster_view",
-        "type": "list",
-        "source": "roster",
-        "config": {"show_fields": ["name", "status", "rating"], "sort_by": "name"},
-    })
-    e("view.create", {
-        "id": "schedule_view",
-        "type": "table",
-        "source": "schedule",
-        "config": {"show_fields": ["date", "hosted_by", "status"]},
-    })
-    e("view.create", {
-        "id": "finances_view",
-        "type": "list",
-        "source": "finances",
-        "config": {"show_fields": ["description", "amount", "paid"]},
-    })
+    e(
+        "view.create",
+        {
+            "id": "roster_view",
+            "type": "list",
+            "source": "roster",
+            "config": {"show_fields": ["name", "status", "rating"], "sort_by": "name"},
+        },
+    )
+    e(
+        "view.create",
+        {
+            "id": "schedule_view",
+            "type": "table",
+            "source": "schedule",
+            "config": {"show_fields": ["date", "hosted_by", "status"]},
+        },
+    )
+    e(
+        "view.create",
+        {
+            "id": "finances_view",
+            "type": "list",
+            "source": "finances",
+            "config": {"show_fields": ["description", "amount", "paid"]},
+        },
+    )
 
     # --- Blocks ---
-    e("block.set", {
-        "id": "block_title",
-        "type": "heading",
-        "parent": "block_root",
-        "props": {"level": 1, "content": "Poker League — Spring 2026"},
-    })
-    e("block.set", {
-        "id": "block_next_game",
-        "type": "metric",
-        "parent": "block_root",
-        "props": {"label": "Next game", "value": "Thu Feb 27 at Dave's"},
-    })
-    e("block.set", {
-        "id": "block_roster",
-        "type": "collection_view",
-        "parent": "block_root",
-        "props": {"source": "roster", "view": "roster_view"},
-    })
-    e("block.set", {
-        "id": "block_schedule",
-        "type": "collection_view",
-        "parent": "block_root",
-        "props": {"source": "schedule", "view": "schedule_view"},
-    })
-    e("block.set", {
-        "id": "block_divider",
-        "type": "divider",
-        "parent": "block_root",
-    })
-    e("block.set", {
-        "id": "block_finances",
-        "type": "collection_view",
-        "parent": "block_root",
-        "props": {"source": "finances", "view": "finances_view"},
-    })
+    e(
+        "block.set",
+        {
+            "id": "block_title",
+            "type": "heading",
+            "parent": "block_root",
+            "props": {"level": 1, "content": "Poker League — Spring 2026"},
+        },
+    )
+    e(
+        "block.set",
+        {
+            "id": "block_next_game",
+            "type": "metric",
+            "parent": "block_root",
+            "props": {"label": "Next game", "value": "Thu Feb 27 at Dave's"},
+        },
+    )
+    e(
+        "block.set",
+        {
+            "id": "block_roster",
+            "type": "collection_view",
+            "parent": "block_root",
+            "props": {"source": "roster", "view": "roster_view"},
+        },
+    )
+    e(
+        "block.set",
+        {
+            "id": "block_schedule",
+            "type": "collection_view",
+            "parent": "block_root",
+            "props": {"source": "schedule", "view": "schedule_view"},
+        },
+    )
+    e(
+        "block.set",
+        {
+            "id": "block_divider",
+            "type": "divider",
+            "parent": "block_root",
+        },
+    )
+    e(
+        "block.set",
+        {
+            "id": "block_finances",
+            "type": "collection_view",
+            "parent": "block_root",
+            "props": {"source": "finances", "view": "finances_view"},
+        },
+    )
 
     # --- Styles ---
-    e("style.set", {
-        "primary_color": "#2d3748",
-        "font_family": "Inter",
-        "density": "comfortable",
-        "bg_color": "#fafaf9",
-    })
+    e(
+        "style.set",
+        {
+            "primary_color": "#2d3748",
+            "font_family": "Inter",
+            "density": "comfortable",
+            "bg_color": "#fafaf9",
+        },
+    )
 
     # --- Entity style override ---
-    e("style.set_entity", {
-        "ref": "roster/player_mike",
-        "styles": {"highlight": True, "bg_color": "#fef3c7"},
-    })
+    e(
+        "style.set_entity",
+        {
+            "ref": "roster/player_mike",
+            "styles": {"highlight": True, "bg_color": "#fef3c7"},
+        },
+    )
 
     # --- Meta ---
-    e("meta.update", {
-        "title": "Poker League — Spring 2026",
-        "identity": "Poker league. 8 players, biweekly Thursday, rotating hosts.",
-    })
+    e(
+        "meta.update",
+        {
+            "title": "Poker League — Spring 2026",
+            "identity": "Poker league. 8 players, biweekly Thursday, rotating hosts.",
+        },
+    )
 
     # --- Annotations ---
-    e("meta.annotate", {
-        "note": "League started Feb 1. 8 players confirmed.",
-        "pinned": False,
-    })
-    e("meta.annotate", {
-        "note": "Dave hosting Feb 27 confirmed.",
-        "pinned": False,
-    })
+    e(
+        "meta.annotate",
+        {
+            "note": "League started Feb 1. 8 players confirmed.",
+            "pinned": False,
+        },
+    )
+    e(
+        "meta.annotate",
+        {
+            "note": "Dave hosting Feb 27 confirmed.",
+            "pinned": False,
+        },
+    )
 
     # --- Constraints ---
-    e("meta.constrain", {
-        "id": "constraint_max_players",
-        "rule": "collection_max_entities",
-        "collection": "roster",
-        "value": 10,
-        "message": "Maximum 10 players",
-    })
-    e("relationship.constrain", {
-        "id": "constraint_no_double_host",
-        "rule": "exclude_pair",
-        "entities": ["roster/player_dave", "roster/player_linda"],
-        "relationship_type": "hosting",
-        "message": "Dave and Linda can't both host the same game",
-    })
+    e(
+        "meta.constrain",
+        {
+            "id": "constraint_max_players",
+            "rule": "collection_max_entities",
+            "collection": "roster",
+            "value": 10,
+            "message": "Maximum 10 players",
+        },
+    )
+    e(
+        "relationship.constrain",
+        {
+            "id": "constraint_no_double_host",
+            "rule": "exclude_pair",
+            "entities": ["roster/player_dave", "roster/player_linda"],
+            "relationship_type": "hosting",
+            "message": "Dave and Linda can't both host the same game",
+        },
+    )
 
     # --- Remove an entity ---
     e("entity.remove", {"ref": "roster/player_jeff"})
 
     # --- Block reorder ---
-    e("block.reorder", {
-        "parent": "block_root",
-        "children": [
-            "block_title", "block_next_game", "block_divider",
-            "block_roster", "block_schedule", "block_finances",
-        ],
-    })
+    e(
+        "block.reorder",
+        {
+            "parent": "block_root",
+            "children": [
+                "block_title",
+                "block_next_game",
+                "block_divider",
+                "block_roster",
+                "block_schedule",
+                "block_finances",
+            ],
+        },
+    )
 
     # --- Update block ---
-    e("block.set", {
-        "id": "block_next_game",
-        "props": {"value": "Thu Feb 27 at Dave's — 7pm"},
-    })
+    e(
+        "block.set",
+        {
+            "id": "block_next_game",
+            "props": {"value": "Thu Feb 27 at Dave's — 7pm"},
+        },
+    )
 
     # --- View update ---
-    e("view.update", {
-        "id": "roster_view",
-        "config": {"show_fields": ["name", "status", "rating", "snack_duty"]},
-    })
+    e(
+        "view.update",
+        {
+            "id": "roster_view",
+            "config": {"show_fields": ["name", "status", "rating", "snack_duty"]},
+        },
+    )
 
     # --- Collection update ---
-    e("collection.update", {
-        "id": "roster",
-        "name": "Player Roster",
-        "settings": {"max_display": 10},
-    })
+    e(
+        "collection.update",
+        {
+            "id": "roster",
+            "name": "Player Roster",
+            "settings": {"max_display": 10},
+        },
+    )
 
     return events
 
@@ -349,51 +482,75 @@ def grocery_events_with_rejections():
         seq += 1
         events.append(make_event(seq=seq, type=event_type, payload=payload))
 
-    e("collection.create", {
-        "id": "grocery_list",
-        "schema": {"name": "string", "checked": "bool"},
-    })
-    e("entity.create", {
-        "collection": "grocery_list",
-        "id": "item_milk",
-        "fields": {"name": "Milk", "checked": False},
-    })
+    e(
+        "collection.create",
+        {
+            "id": "grocery_list",
+            "schema": {"name": "string", "checked": "bool"},
+        },
+    )
+    e(
+        "entity.create",
+        {
+            "collection": "grocery_list",
+            "id": "item_milk",
+            "fields": {"name": "Milk", "checked": False},
+        },
+    )
     # This will REJECT — entity already exists
-    e("entity.create", {
-        "collection": "grocery_list",
-        "id": "item_milk",
-        "fields": {"name": "Duplicate Milk", "checked": False},
-    })
-    e("entity.create", {
-        "collection": "grocery_list",
-        "id": "item_eggs",
-        "fields": {"name": "Eggs", "checked": False},
-    })
+    e(
+        "entity.create",
+        {
+            "collection": "grocery_list",
+            "id": "item_milk",
+            "fields": {"name": "Duplicate Milk", "checked": False},
+        },
+    )
+    e(
+        "entity.create",
+        {
+            "collection": "grocery_list",
+            "id": "item_eggs",
+            "fields": {"name": "Eggs", "checked": False},
+        },
+    )
     # This will REJECT — collection doesn't exist
-    e("entity.create", {
-        "collection": "nonexistent",
-        "id": "orphan",
-        "fields": {"name": "Lost"},
-    })
-    e("entity.update", {
-        "ref": "grocery_list/item_milk",
-        "fields": {"checked": True},
-    })
+    e(
+        "entity.create",
+        {
+            "collection": "nonexistent",
+            "id": "orphan",
+            "fields": {"name": "Lost"},
+        },
+    )
+    e(
+        "entity.update",
+        {
+            "ref": "grocery_list/item_milk",
+            "fields": {"checked": True},
+        },
+    )
     # This will REJECT — type mismatch
-    e("entity.update", {
-        "ref": "grocery_list/item_eggs",
-        "fields": {"checked": "not_a_bool"},
-    })
+    e(
+        "entity.update",
+        {
+            "ref": "grocery_list/item_eggs",
+            "fields": {"checked": "not_a_bool"},
+        },
+    )
     e("entity.remove", {"ref": "grocery_list/item_milk"})
     # This will WARN — already removed
     e("entity.remove", {"ref": "grocery_list/item_milk"})
     # This will REJECT — unknown primitive
     e("magic.spell", {"power": 9000})
-    e("field.add", {
-        "collection": "grocery_list",
-        "name": "store",
-        "type": "string?",
-    })
+    e(
+        "field.add",
+        {
+            "collection": "grocery_list",
+            "name": "store",
+            "type": "string?",
+        },
+    )
 
     return events
 
@@ -411,65 +568,95 @@ def cascade_events():
         seq += 1
         events.append(make_event(seq=seq, type=event_type, payload=payload))
 
-    e("collection.create", {
-        "id": "tasks",
-        "schema": {"title": "string", "done": "bool", "assignee": "string?"},
-    })
-    e("collection.create", {
-        "id": "people",
-        "schema": {"name": "string"},
-    })
+    e(
+        "collection.create",
+        {
+            "id": "tasks",
+            "schema": {"title": "string", "done": "bool", "assignee": "string?"},
+        },
+    )
+    e(
+        "collection.create",
+        {
+            "id": "people",
+            "schema": {"name": "string"},
+        },
+    )
     for i in range(5):
-        e("entity.create", {
-            "collection": "tasks",
-            "id": f"task_{i}",
-            "fields": {"title": f"Task {i}", "done": False, "assignee": None},
-        })
+        e(
+            "entity.create",
+            {
+                "collection": "tasks",
+                "id": f"task_{i}",
+                "fields": {"title": f"Task {i}", "done": False, "assignee": None},
+            },
+        )
     for name in ["alice", "bob", "carol"]:
-        e("entity.create", {
-            "collection": "people",
-            "id": f"person_{name}",
-            "fields": {"name": name.title()},
-        })
+        e(
+            "entity.create",
+            {
+                "collection": "people",
+                "id": f"person_{name}",
+                "fields": {"name": name.title()},
+            },
+        )
     # Cross-collection relationships
-    e("relationship.set", {
-        "from": "people/person_alice",
-        "to": "tasks/task_0",
-        "type": "assigned_to",
-        "cardinality": "many_to_many",
-    })
-    e("relationship.set", {
-        "from": "people/person_bob",
-        "to": "tasks/task_1",
-        "type": "assigned_to",
-    })
+    e(
+        "relationship.set",
+        {
+            "from": "people/person_alice",
+            "to": "tasks/task_0",
+            "type": "assigned_to",
+            "cardinality": "many_to_many",
+        },
+    )
+    e(
+        "relationship.set",
+        {
+            "from": "people/person_bob",
+            "to": "tasks/task_1",
+            "type": "assigned_to",
+        },
+    )
     # Views
-    e("view.create", {
-        "id": "task_view",
-        "type": "list",
-        "source": "tasks",
-        "config": {"show_fields": ["title", "done"]},
-    })
+    e(
+        "view.create",
+        {
+            "id": "task_view",
+            "type": "list",
+            "source": "tasks",
+            "config": {"show_fields": ["title", "done"]},
+        },
+    )
     # Blocks
-    e("block.set", {
-        "id": "block_title",
-        "type": "heading",
-        "parent": "block_root",
-        "props": {"level": 1, "content": "Project Board"},
-    })
-    e("block.set", {
-        "id": "block_tasks",
-        "type": "collection_view",
-        "parent": "block_root",
-        "props": {"source": "tasks", "view": "task_view"},
-    })
+    e(
+        "block.set",
+        {
+            "id": "block_title",
+            "type": "heading",
+            "parent": "block_root",
+            "props": {"level": 1, "content": "Project Board"},
+        },
+    )
+    e(
+        "block.set",
+        {
+            "id": "block_tasks",
+            "type": "collection_view",
+            "parent": "block_root",
+            "props": {"source": "tasks", "view": "task_view"},
+        },
+    )
     # Schema evolution
-    e("field.add", {
-        "collection": "tasks",
-        "name": "priority",
-        "type": "int",
-        "default": 0,
-    })
+    e(
+        "field.add",
+        {
+            "collection": "tasks",
+            "name": "priority",
+            "type": "int",
+            "default": 0,
+        },
+    )
     # Now cascade: remove the tasks collection
     e("collection.remove", {"id": "tasks"})
 
@@ -496,9 +683,7 @@ class TestNTimesReplayIdentity:
 
         for i in range(100):
             result = snapshot_json(replay(events))
-            assert result == reference, (
-                f"Replay #{i + 1} produced different snapshot"
-            )
+            assert result == reference, f"Replay #{i + 1} produced different snapshot"
 
     def test_grocery_with_rejections_100_replays(self):
         """Even event logs with rejections produce deterministic results."""
@@ -507,9 +692,7 @@ class TestNTimesReplayIdentity:
 
         for i in range(100):
             result = snapshot_json(replay(events))
-            assert result == reference, (
-                f"Replay #{i + 1} (with rejections) produced different snapshot"
-            )
+            assert result == reference, f"Replay #{i + 1} (with rejections) produced different snapshot"
 
     def test_cascade_events_100_replays(self):
         """Event logs with cascading removes are deterministic."""
@@ -518,9 +701,7 @@ class TestNTimesReplayIdentity:
 
         for i in range(100):
             result = snapshot_json(replay(events))
-            assert result == reference, (
-                f"Replay #{i + 1} (cascade) produced different snapshot"
-            )
+            assert result == reference, f"Replay #{i + 1} (cascade) produced different snapshot"
 
 
 # ============================================================================
@@ -585,8 +766,7 @@ class TestRejectedEventsArePure:
             if not result.applied:
                 snapshot_after = snapshot_json(result.snapshot)
                 assert snapshot_before == snapshot_after, (
-                    f"Rejected event seq={event.get('seq', '?')} "
-                    f"type={event.get('type', '?')} altered snapshot"
+                    f"Rejected event seq={event.get('seq', '?')} type={event.get('type', '?')} altered snapshot"
                 )
 
             snapshot = result.snapshot
@@ -658,9 +838,7 @@ class TestReplaySubsets:
         # Replay again — every prefix must match
         for n in range(len(events) + 1):
             snapshot = replay(events[:n])
-            assert snapshot_json(snapshot) == snapshots[n], (
-                f"Time travel to event {n} not deterministic"
-            )
+            assert snapshot_json(snapshot) == snapshots[n], f"Time travel to event {n} not deterministic"
 
     def test_undo_last_event(self):
         """replay(events[:-1]) gives the state before the last event."""
@@ -781,9 +959,7 @@ class TestJsonSerializationDeterminism:
             s = json.dumps(snapshot, sort_keys=True, ensure_ascii=True)
             serializations.add(s)
 
-        assert len(serializations) == 1, (
-            f"JSON serialization produced {len(serializations)} distinct strings"
-        )
+        assert len(serializations) == 1, f"JSON serialization produced {len(serializations)} distinct strings"
 
     def test_sorted_keys_after_different_operations(self):
         """
@@ -792,27 +968,54 @@ class TestJsonSerializationDeterminism:
         """
         # Path A: create collection, add field, add entity
         events_a = [
-            make_event(seq=1, type="collection.create", payload={
-                "id": "items", "schema": {"name": "string"},
-            }),
-            make_event(seq=2, type="field.add", payload={
-                "collection": "items", "name": "done", "type": "bool", "default": False,
-            }),
-            make_event(seq=3, type="entity.create", payload={
-                "collection": "items", "id": "item_a",
-                "fields": {"name": "A", "done": False},
-            }),
+            make_event(
+                seq=1,
+                type="collection.create",
+                payload={
+                    "id": "items",
+                    "schema": {"name": "string"},
+                },
+            ),
+            make_event(
+                seq=2,
+                type="field.add",
+                payload={
+                    "collection": "items",
+                    "name": "done",
+                    "type": "bool",
+                    "default": False,
+                },
+            ),
+            make_event(
+                seq=3,
+                type="entity.create",
+                payload={
+                    "collection": "items",
+                    "id": "item_a",
+                    "fields": {"name": "A", "done": False},
+                },
+            ),
         ]
 
         # Path B: create collection with both fields, add entity
         events_b = [
-            make_event(seq=1, type="collection.create", payload={
-                "id": "items", "schema": {"name": "string", "done": "bool"},
-            }),
-            make_event(seq=2, type="entity.create", payload={
-                "collection": "items", "id": "item_a",
-                "fields": {"name": "A", "done": False},
-            }),
+            make_event(
+                seq=1,
+                type="collection.create",
+                payload={
+                    "id": "items",
+                    "schema": {"name": "string", "done": "bool"},
+                },
+            ),
+            make_event(
+                seq=2,
+                type="entity.create",
+                payload={
+                    "collection": "items",
+                    "id": "item_a",
+                    "fields": {"name": "A", "done": False},
+                },
+            ),
         ]
 
         snapshot_a = replay(events_a)

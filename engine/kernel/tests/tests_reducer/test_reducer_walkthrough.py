@@ -36,11 +36,7 @@ from engine.kernel.reducer import empty_state, reduce, replay
 def active_entities(snapshot, collection_id):
     """Return dict of non-removed entities in a collection."""
     coll = snapshot["collections"].get(collection_id, {})
-    return {
-        eid: e
-        for eid, e in coll.get("entities", {}).items()
-        if not e.get("_removed")
-    }
+    return {eid: e for eid, e in coll.get("entities", {}).items() if not e.get("_removed")}
 
 
 def active_relationships(snapshot, rel_type=None):
@@ -58,8 +54,10 @@ def active_relationships(snapshot, rel_type=None):
         from_collection = snapshot["collections"].get(from_coll, {})
         to_collection = snapshot["collections"].get(to_coll, {})
         if (
-            from_entity and not from_entity.get("_removed")
-            and to_entity and not to_entity.get("_removed")
+            from_entity
+            and not from_entity.get("_removed")
+            and to_entity
+            and not to_entity.get("_removed")
             and not from_collection.get("_removed")
             and not to_collection.get("_removed")
         ):
@@ -101,58 +99,73 @@ class TestGroceryListWalkthrough:
             return result
 
         # ── Step 1: Create the grocery list collection ──
-        step("collection.create", {
-            "id": "grocery_list",
-            "name": "Grocery List",
-            "schema": {
-                "name": "string",
-                "store": "string?",
-                "checked": "bool",
+        step(
+            "collection.create",
+            {
+                "id": "grocery_list",
+                "name": "Grocery List",
+                "schema": {
+                    "name": "string",
+                    "store": "string?",
+                    "checked": "bool",
+                },
             },
-        })
+        )
 
         assert "grocery_list" in snapshot["collections"]
         assert snapshot["collections"]["grocery_list"]["entities"] == {}
 
         # ── Step 2: Add 5 items ──
         items = [
-            ("item_milk",   {"name": "Milk",          "store": "Whole Foods", "checked": False}),
-            ("item_eggs",   {"name": "Eggs",          "store": "Costco",      "checked": False}),
-            ("item_bread",  {"name": "Sourdough",     "store": "Whole Foods", "checked": False}),
-            ("item_butter", {"name": "Butter",        "store": None,          "checked": False}),
-            ("item_olive",  {"name": "Olive Oil",     "store": "Trader Joe's","checked": False}),
+            ("item_milk", {"name": "Milk", "store": "Whole Foods", "checked": False}),
+            ("item_eggs", {"name": "Eggs", "store": "Costco", "checked": False}),
+            ("item_bread", {"name": "Sourdough", "store": "Whole Foods", "checked": False}),
+            ("item_butter", {"name": "Butter", "store": None, "checked": False}),
+            ("item_olive", {"name": "Olive Oil", "store": "Trader Joe's", "checked": False}),
         ]
         for item_id, fields in items:
-            step("entity.create", {
-                "collection": "grocery_list",
-                "id": item_id,
-                "fields": fields,
-            })
+            step(
+                "entity.create",
+                {
+                    "collection": "grocery_list",
+                    "id": item_id,
+                    "fields": fields,
+                },
+            )
 
         assert len(active_entities(snapshot, "grocery_list")) == 5
         assert snapshot["collections"]["grocery_list"]["entities"]["item_milk"]["name"] == "Milk"
         assert snapshot["collections"]["grocery_list"]["entities"]["item_butter"]["store"] is None
 
         # ── Step 3: Check off 2 items (Milk and Eggs) ──
-        step("entity.update", {
-            "ref": "grocery_list/item_milk",
-            "fields": {"checked": True},
-        })
-        step("entity.update", {
-            "ref": "grocery_list/item_eggs",
-            "fields": {"checked": True},
-        })
+        step(
+            "entity.update",
+            {
+                "ref": "grocery_list/item_milk",
+                "fields": {"checked": True},
+            },
+        )
+        step(
+            "entity.update",
+            {
+                "ref": "grocery_list/item_eggs",
+                "fields": {"checked": True},
+            },
+        )
 
         assert snapshot["collections"]["grocery_list"]["entities"]["item_milk"]["checked"] is True
         assert snapshot["collections"]["grocery_list"]["entities"]["item_eggs"]["checked"] is True
         assert snapshot["collections"]["grocery_list"]["entities"]["item_bread"]["checked"] is False
 
         # ── Step 4: Add a field (category) — schema evolution ──
-        step("field.add", {
-            "collection": "grocery_list",
-            "name": "category",
-            "type": "string?",
-        })
+        step(
+            "field.add",
+            {
+                "collection": "grocery_list",
+                "name": "category",
+                "type": "string?",
+            },
+        )
 
         schema = snapshot["collections"]["grocery_list"]["schema"]
         assert "category" in schema
@@ -164,18 +177,27 @@ class TestGroceryListWalkthrough:
             assert entity["category"] is None
 
         # Set categories on some items
-        step("entity.update", {
-            "ref": "grocery_list/item_milk",
-            "fields": {"category": "dairy"},
-        })
-        step("entity.update", {
-            "ref": "grocery_list/item_eggs",
-            "fields": {"category": "dairy"},
-        })
-        step("entity.update", {
-            "ref": "grocery_list/item_bread",
-            "fields": {"category": "bakery"},
-        })
+        step(
+            "entity.update",
+            {
+                "ref": "grocery_list/item_milk",
+                "fields": {"category": "dairy"},
+            },
+        )
+        step(
+            "entity.update",
+            {
+                "ref": "grocery_list/item_eggs",
+                "fields": {"category": "dairy"},
+            },
+        )
+        step(
+            "entity.update",
+            {
+                "ref": "grocery_list/item_bread",
+                "fields": {"category": "bakery"},
+            },
+        )
 
         # ── Step 5: Remove an item (Butter — decided we don't need it) ──
         step("entity.remove", {"ref": "grocery_list/item_butter"})
@@ -184,10 +206,13 @@ class TestGroceryListWalkthrough:
         assert len(active_entities(snapshot, "grocery_list")) == 4
 
         # ── Step 6: Change store (Olive Oil was at Trader Joe's, now Whole Foods) ──
-        step("entity.update", {
-            "ref": "grocery_list/item_olive",
-            "fields": {"store": "Whole Foods"},
-        })
+        step(
+            "entity.update",
+            {
+                "ref": "grocery_list/item_olive",
+                "fields": {"store": "Whole Foods"},
+            },
+        )
 
         assert snapshot["collections"]["grocery_list"]["entities"]["item_olive"]["store"] == "Whole Foods"
 
@@ -258,16 +283,20 @@ class TestGroceryListWalkthrough:
             result = reduce(snapshot, event)
             snapshot = result.snapshot
 
-        step("collection.create", {
-            "id": "grocery_list", "name": "Grocery List",
-            "schema": {"name": "string", "store": "string?", "checked": "bool"},
-        })
+        step(
+            "collection.create",
+            {
+                "id": "grocery_list",
+                "name": "Grocery List",
+                "schema": {"name": "string", "store": "string?", "checked": "bool"},
+            },
+        )
         for item_id, fields in [
-            ("item_milk",   {"name": "Milk",      "store": "Whole Foods", "checked": False}),
-            ("item_eggs",   {"name": "Eggs",      "store": "Costco",      "checked": False}),
-            ("item_bread",  {"name": "Sourdough", "store": "Whole Foods", "checked": False}),
-            ("item_butter", {"name": "Butter",    "store": None,          "checked": False}),
-            ("item_olive",  {"name": "Olive Oil", "store": "Trader Joe's","checked": False}),
+            ("item_milk", {"name": "Milk", "store": "Whole Foods", "checked": False}),
+            ("item_eggs", {"name": "Eggs", "store": "Costco", "checked": False}),
+            ("item_bread", {"name": "Sourdough", "store": "Whole Foods", "checked": False}),
+            ("item_butter", {"name": "Butter", "store": None, "checked": False}),
+            ("item_olive", {"name": "Olive Oil", "store": "Trader Joe's", "checked": False}),
         ]:
             step("entity.create", {"collection": "grocery_list", "id": item_id, "fields": fields})
         step("entity.update", {"ref": "grocery_list/item_milk", "fields": {"checked": True}})
@@ -314,80 +343,148 @@ class TestPokerLeagueWalkthrough:
             return result
 
         # ── 1. Create collections ──
-        step("collection.create", {
-            "id": "roster", "name": "Roster",
-            "schema": {"name": "string", "status": "string", "snack_duty": "bool"},
-        })
-        step("collection.create", {
-            "id": "schedule", "name": "Schedule",
-            "schema": {"date": "date", "status": "string"},
-        })
+        step(
+            "collection.create",
+            {
+                "id": "roster",
+                "name": "Roster",
+                "schema": {"name": "string", "status": "string", "snack_duty": "bool"},
+            },
+        )
+        step(
+            "collection.create",
+            {
+                "id": "schedule",
+                "name": "Schedule",
+                "schema": {"date": "date", "status": "string"},
+            },
+        )
 
         # ── 2. Add players and games ──
-        for pid, name in [("mike", "Mike"), ("dave", "Dave"), ("linda", "Linda"),
-                          ("steve", "Steve"), ("rachel", "Rachel"), ("tom", "Tom")]:
-            step("entity.create", {
-                "collection": "roster", "id": f"player_{pid}",
-                "fields": {"name": name, "status": "active", "snack_duty": False},
-            })
+        for pid, name in [
+            ("mike", "Mike"),
+            ("dave", "Dave"),
+            ("linda", "Linda"),
+            ("steve", "Steve"),
+            ("rachel", "Rachel"),
+            ("tom", "Tom"),
+        ]:
+            step(
+                "entity.create",
+                {
+                    "collection": "roster",
+                    "id": f"player_{pid}",
+                    "fields": {"name": name, "status": "active", "snack_duty": False},
+                },
+            )
 
-        step("entity.create", {
-            "collection": "schedule", "id": "game_feb27",
-            "fields": {"date": "2026-02-27", "status": "confirmed"},
-        })
-        step("entity.create", {
-            "collection": "schedule", "id": "game_mar13",
-            "fields": {"date": "2026-03-13", "status": "tentative"},
-        })
+        step(
+            "entity.create",
+            {
+                "collection": "schedule",
+                "id": "game_feb27",
+                "fields": {"date": "2026-02-27", "status": "confirmed"},
+            },
+        )
+        step(
+            "entity.create",
+            {
+                "collection": "schedule",
+                "id": "game_mar13",
+                "fields": {"date": "2026-03-13", "status": "tentative"},
+            },
+        )
 
         assert len(active_entities(snapshot, "roster")) == 6
         assert len(active_entities(snapshot, "schedule")) == 2
 
         # ── 3. Assign hosts ──
         # one_to_one: each player hosts one game, each game has one host
-        step("relationship.set", {
-            "from": "roster/player_dave", "to": "schedule/game_feb27",
-            "type": "hosting", "cardinality": "one_to_one",
-        })
-        step("relationship.set", {
-            "from": "roster/player_linda", "to": "schedule/game_mar13",
-            "type": "hosting",
-        })
+        step(
+            "relationship.set",
+            {
+                "from": "roster/player_dave",
+                "to": "schedule/game_feb27",
+                "type": "hosting",
+                "cardinality": "one_to_one",
+            },
+        )
+        step(
+            "relationship.set",
+            {
+                "from": "roster/player_linda",
+                "to": "schedule/game_mar13",
+                "type": "hosting",
+            },
+        )
 
         # Dave is snack duty for his hosting
-        step("entity.update", {
-            "ref": "roster/player_dave",
-            "fields": {"snack_duty": True},
-        })
+        step(
+            "entity.update",
+            {
+                "ref": "roster/player_dave",
+                "fields": {"snack_duty": True},
+            },
+        )
 
         assert len(active_relationships(snapshot, "hosting")) == 2
 
         # ── 4. Create views and page layout ──
-        step("view.create", {
-            "id": "roster_view", "type": "list", "source": "roster",
-            "config": {"show_fields": ["name", "status"], "sort_by": "name"},
-        })
-        step("view.create", {
-            "id": "schedule_view", "type": "table", "source": "schedule",
-            "config": {"show_fields": ["date", "status"]},
-        })
+        step(
+            "view.create",
+            {
+                "id": "roster_view",
+                "type": "list",
+                "source": "roster",
+                "config": {"show_fields": ["name", "status"], "sort_by": "name"},
+            },
+        )
+        step(
+            "view.create",
+            {
+                "id": "schedule_view",
+                "type": "table",
+                "source": "schedule",
+                "config": {"show_fields": ["date", "status"]},
+            },
+        )
 
-        step("block.set", {
-            "id": "block_title", "type": "heading", "parent": "block_root",
-            "props": {"level": 1, "content": "Poker League"},
-        })
-        step("block.set", {
-            "id": "block_next", "type": "metric", "parent": "block_root",
-            "props": {"label": "Next game", "value": "Thu Feb 27 at Dave's"},
-        })
-        step("block.set", {
-            "id": "block_roster", "type": "collection_view", "parent": "block_root",
-            "props": {"source": "roster", "view": "roster_view"},
-        })
-        step("block.set", {
-            "id": "block_schedule", "type": "collection_view", "parent": "block_root",
-            "props": {"source": "schedule", "view": "schedule_view"},
-        })
+        step(
+            "block.set",
+            {
+                "id": "block_title",
+                "type": "heading",
+                "parent": "block_root",
+                "props": {"level": 1, "content": "Poker League"},
+            },
+        )
+        step(
+            "block.set",
+            {
+                "id": "block_next",
+                "type": "metric",
+                "parent": "block_root",
+                "props": {"label": "Next game", "value": "Thu Feb 27 at Dave's"},
+            },
+        )
+        step(
+            "block.set",
+            {
+                "id": "block_roster",
+                "type": "collection_view",
+                "parent": "block_root",
+                "props": {"source": "roster", "view": "roster_view"},
+            },
+        )
+        step(
+            "block.set",
+            {
+                "id": "block_schedule",
+                "type": "collection_view",
+                "parent": "block_root",
+                "props": {"source": "schedule", "view": "schedule_view"},
+            },
+        )
 
         # ── 5. Tom drops out ──
         step("entity.remove", {"ref": "roster/player_tom"})
@@ -396,56 +493,78 @@ class TestPokerLeagueWalkthrough:
         assert snapshot["collections"]["roster"]["entities"]["player_tom"]["_removed"] is True
 
         # ── 6. Sub joins, host reassigned ──
-        step("entity.create", {
-            "collection": "roster", "id": "player_amy",
-            "fields": {"name": "Amy", "status": "active", "snack_duty": False},
-        })
+        step(
+            "entity.create",
+            {
+                "collection": "roster",
+                "id": "player_amy",
+                "fields": {"name": "Amy", "status": "active", "snack_duty": False},
+            },
+        )
 
         # Linda can't host Mar 13 anymore — Rachel takes over
-        step("relationship.set", {
-            "from": "roster/player_rachel", "to": "schedule/game_mar13",
-            "type": "hosting",
-        })
+        step(
+            "relationship.set",
+            {
+                "from": "roster/player_rachel",
+                "to": "schedule/game_mar13",
+                "type": "hosting",
+            },
+        )
 
         # Verify auto-unlink: Linda no longer hosting
-        hosting_mar13 = [
-            r for r in active_relationships(snapshot, "hosting")
-            if r["to"] == "schedule/game_mar13"
-        ]
+        hosting_mar13 = [r for r in active_relationships(snapshot, "hosting") if r["to"] == "schedule/game_mar13"]
         assert len(hosting_mar13) == 1
         assert hosting_mar13[0]["from"] == "roster/player_rachel"
 
         assert len(active_entities(snapshot, "roster")) == 6  # 5 original - Tom + Amy
 
         # ── 7. Schema evolves: add rating ──
-        step("field.add", {
-            "collection": "roster", "name": "rating",
-            "type": "int", "default": 1000,
-        })
+        step(
+            "field.add",
+            {
+                "collection": "roster",
+                "name": "rating",
+                "type": "int",
+                "default": 1000,
+            },
+        )
 
         # All active entities should have rating=1000
         for eid, entity in active_entities(snapshot, "roster").items():
             assert entity["rating"] == 1000, f"{eid} missing rating"
 
-        step("entity.update", {
-            "ref": "roster/player_mike",
-            "fields": {"rating": 1350},
-        })
+        step(
+            "entity.update",
+            {
+                "ref": "roster/player_mike",
+                "fields": {"rating": 1350},
+            },
+        )
 
         # ── 8. Style the page ──
-        step("style.set", {
-            "primary_color": "#2d3748",
-            "font_family": "Inter",
-            "density": "comfortable",
-        })
-        step("meta.update", {
-            "title": "Poker League — Spring 2026",
-            "identity": "Biweekly Thursday poker. Rotating hosts.",
-        })
-        step("meta.annotate", {
-            "note": "League started with 6 players, Tom replaced by Amy.",
-            "pinned": False,
-        })
+        step(
+            "style.set",
+            {
+                "primary_color": "#2d3748",
+                "font_family": "Inter",
+                "density": "comfortable",
+            },
+        )
+        step(
+            "meta.update",
+            {
+                "title": "Poker League — Spring 2026",
+                "identity": "Biweekly Thursday poker. Rotating hosts.",
+            },
+        )
+        step(
+            "meta.annotate",
+            {
+                "note": "League started with 6 players, Tom replaced by Amy.",
+                "pinned": False,
+            },
+        )
 
         # ══════════════════════════════════════════════════════
         # Final State Verification
@@ -523,78 +642,102 @@ class TestWeddingSeatingWalkthrough:
             return result
 
         # ── 1. Collections ──
-        step("collection.create", {
-            "id": "guests", "name": "Guests",
-            "schema": {"name": "string", "group": "string?", "dietary": "string?"},
-        })
-        step("collection.create", {
-            "id": "tables", "name": "Tables",
-            "schema": {"name": "string", "capacity": "int"},
-        })
+        step(
+            "collection.create",
+            {
+                "id": "guests",
+                "name": "Guests",
+                "schema": {"name": "string", "group": "string?", "dietary": "string?"},
+            },
+        )
+        step(
+            "collection.create",
+            {
+                "id": "tables",
+                "name": "Tables",
+                "schema": {"name": "string", "capacity": "int"},
+            },
+        )
 
         # ── 2. Guests and tables ──
         guests_data = [
             ("guest_linda", "Linda", "bride", None),
             ("guest_steve", "Steve", "bride", "vegetarian"),
-            ("guest_mike",  "Mike",  "groom", None),
-            ("guest_dave",  "Dave",  "groom", "gluten-free"),
-            ("guest_rachel","Rachel","bride", None),
-            ("guest_tom",   "Tom",   "groom", None),
+            ("guest_mike", "Mike", "groom", None),
+            ("guest_dave", "Dave", "groom", "gluten-free"),
+            ("guest_rachel", "Rachel", "bride", None),
+            ("guest_tom", "Tom", "groom", None),
             ("guest_carol", "Carol", "bride", "vegan"),
-            ("guest_jeff",  "Jeff",  "groom", None),
+            ("guest_jeff", "Jeff", "groom", None),
         ]
         for gid, name, group, dietary in guests_data:
-            step("entity.create", {
-                "collection": "guests", "id": gid,
-                "fields": {"name": name, "group": group, "dietary": dietary},
-            })
+            step(
+                "entity.create",
+                {
+                    "collection": "guests",
+                    "id": gid,
+                    "fields": {"name": name, "group": group, "dietary": dietary},
+                },
+            )
 
-        for tid, name, cap in [("table_1", "Table 1", 4), ("table_2", "Table 2", 4),
-                                ("table_3", "Table 3", 4)]:
-            step("entity.create", {
-                "collection": "tables", "id": tid,
-                "fields": {"name": name, "capacity": cap},
-            })
+        for tid, name, cap in [("table_1", "Table 1", 4), ("table_2", "Table 2", 4), ("table_3", "Table 3", 4)]:
+            step(
+                "entity.create",
+                {
+                    "collection": "tables",
+                    "id": tid,
+                    "fields": {"name": name, "capacity": cap},
+                },
+            )
 
         # ── 3. Initial seating ──
         seating = [
-            ("guest_linda",  "table_1"),
-            ("guest_steve",  "table_1"),
-            ("guest_mike",   "table_1"),
-            ("guest_dave",   "table_2"),
+            ("guest_linda", "table_1"),
+            ("guest_steve", "table_1"),
+            ("guest_mike", "table_1"),
+            ("guest_dave", "table_2"),
             ("guest_rachel", "table_2"),
-            ("guest_tom",    "table_2"),
-            ("guest_carol",  "table_3"),
-            ("guest_jeff",   "table_3"),
+            ("guest_tom", "table_2"),
+            ("guest_carol", "table_3"),
+            ("guest_jeff", "table_3"),
         ]
         for gid, tid in seating:
-            step("relationship.set", {
-                "from": f"guests/{gid}", "to": f"tables/{tid}",
-                "type": "seated_at", "cardinality": "many_to_one",
-            })
+            step(
+                "relationship.set",
+                {
+                    "from": f"guests/{gid}",
+                    "to": f"tables/{tid}",
+                    "type": "seated_at",
+                    "cardinality": "many_to_one",
+                },
+            )
 
         assert len(active_relationships(snapshot, "seated_at")) == 8
 
         # ── 4. Constraint: Linda and Steve shouldn't be at the same table ──
-        step("relationship.constrain", {
-            "id": "no_linda_steve",
-            "rule": "exclude_pair",
-            "entities": ["guests/guest_linda", "guests/guest_steve"],
-            "relationship_type": "seated_at",
-            "message": "Keep Linda and Steve at different tables",
-        })
+        step(
+            "relationship.constrain",
+            {
+                "id": "no_linda_steve",
+                "rule": "exclude_pair",
+                "entities": ["guests/guest_linda", "guests/guest_steve"],
+                "relationship_type": "seated_at",
+                "message": "Keep Linda and Steve at different tables",
+            },
+        )
 
         # ── 5. Move Steve to table 2 (auto-unlinks from table 1) ──
-        step("relationship.set", {
-            "from": "guests/guest_steve", "to": "tables/table_2",
-            "type": "seated_at",
-        })
+        step(
+            "relationship.set",
+            {
+                "from": "guests/guest_steve",
+                "to": "tables/table_2",
+                "type": "seated_at",
+            },
+        )
 
         # Verify Steve moved: only 1 seated_at for Steve, and it's table 2
-        steve_rels = [
-            r for r in active_relationships(snapshot, "seated_at")
-            if r["from"] == "guests/guest_steve"
-        ]
+        steve_rels = [r for r in active_relationships(snapshot, "seated_at") if r["from"] == "guests/guest_steve"]
         assert len(steve_rels) == 1
         assert steve_rels[0]["to"] == "tables/table_2"
 
@@ -622,8 +765,10 @@ class TestWeddingSeatingWalkthrough:
         # Table 2: Dave, Rachel, Tom, Steve (Steve moved here)
         table_2_guests = [g for g, t in seat_map.items() if t == "tables/table_2"]
         assert set(table_2_guests) == {
-            "guests/guest_dave", "guests/guest_rachel",
-            "guests/guest_tom", "guests/guest_steve",
+            "guests/guest_dave",
+            "guests/guest_rachel",
+            "guests/guest_tom",
+            "guests/guest_steve",
         }
 
         # Table 3: Carol (Jeff removed)
@@ -671,111 +816,183 @@ class TestBudgetTrackerWalkthrough:
             return result
 
         # ── 1. Basic budget ──
-        step("collection.create", {
-            "id": "expenses", "name": "Expenses",
-            "schema": {"description": "string", "amount": "float", "paid": "bool"},
-        })
+        step(
+            "collection.create",
+            {
+                "id": "expenses",
+                "name": "Expenses",
+                "schema": {"description": "string", "amount": "float", "paid": "bool"},
+            },
+        )
 
-        step("entity.create", {
-            "collection": "expenses", "id": "exp_dinner",
-            "fields": {"description": "Team dinner", "amount": 245.50, "paid": True},
-        })
-        step("entity.create", {
-            "collection": "expenses", "id": "exp_supplies",
-            "fields": {"description": "Office supplies", "amount": 67.99, "paid": False},
-        })
-        step("entity.create", {
-            "collection": "expenses", "id": "exp_software",
-            "fields": {"description": "Software license", "amount": 199.00, "paid": True},
-        })
-        step("entity.create", {
-            "collection": "expenses", "id": "exp_duplicate",
-            "fields": {"description": "Team dinner (duplicate)", "amount": 245.50, "paid": True},
-        })
+        step(
+            "entity.create",
+            {
+                "collection": "expenses",
+                "id": "exp_dinner",
+                "fields": {"description": "Team dinner", "amount": 245.50, "paid": True},
+            },
+        )
+        step(
+            "entity.create",
+            {
+                "collection": "expenses",
+                "id": "exp_supplies",
+                "fields": {"description": "Office supplies", "amount": 67.99, "paid": False},
+            },
+        )
+        step(
+            "entity.create",
+            {
+                "collection": "expenses",
+                "id": "exp_software",
+                "fields": {"description": "Software license", "amount": 199.00, "paid": True},
+            },
+        )
+        step(
+            "entity.create",
+            {
+                "collection": "expenses",
+                "id": "exp_duplicate",
+                "fields": {"description": "Team dinner (duplicate)", "amount": 245.50, "paid": True},
+            },
+        )
 
         # ── 2. User mentions categories → schema evolves ──
-        step("field.add", {
-            "collection": "expenses", "name": "category",
-            "type": "string?",
-        })
+        step(
+            "field.add",
+            {
+                "collection": "expenses",
+                "name": "category",
+                "type": "string?",
+            },
+        )
 
         # Backfill: all entities now have category=null
         for entity in snapshot["collections"]["expenses"]["entities"].values():
             assert "category" in entity
 
-        step("entity.update", {
-            "ref": "expenses/exp_dinner",
-            "fields": {"category": "meals"},
-        })
-        step("entity.update", {
-            "ref": "expenses/exp_supplies",
-            "fields": {"category": "office"},
-        })
-        step("entity.update", {
-            "ref": "expenses/exp_software",
-            "fields": {"category": "software"},
-        })
+        step(
+            "entity.update",
+            {
+                "ref": "expenses/exp_dinner",
+                "fields": {"category": "meals"},
+            },
+        )
+        step(
+            "entity.update",
+            {
+                "ref": "expenses/exp_supplies",
+                "fields": {"category": "office"},
+            },
+        )
+        step(
+            "entity.update",
+            {
+                "ref": "expenses/exp_software",
+                "fields": {"category": "software"},
+            },
+        )
 
         # ── 3. User mentions who paid → another field ──
-        step("field.add", {
-            "collection": "expenses", "name": "paid_by",
-            "type": "string?",
-        })
+        step(
+            "field.add",
+            {
+                "collection": "expenses",
+                "name": "paid_by",
+                "type": "string?",
+            },
+        )
 
-        step("entity.update", {
-            "ref": "expenses/exp_dinner",
-            "fields": {"paid_by": "Alice"},
-        })
-        step("entity.update", {
-            "ref": "expenses/exp_software",
-            "fields": {"paid_by": "Bob"},
-        })
+        step(
+            "entity.update",
+            {
+                "ref": "expenses/exp_dinner",
+                "fields": {"paid_by": "Alice"},
+            },
+        )
+        step(
+            "entity.update",
+            {
+                "ref": "expenses/exp_software",
+                "fields": {"paid_by": "Bob"},
+            },
+        )
 
         # ── 4. Evolve category from freetext to enum ──
-        step("field.update", {
-            "collection": "expenses", "name": "category",
-            "type": {"enum": ["meals", "office", "software", "travel", "other"]},
-        })
+        step(
+            "field.update",
+            {
+                "collection": "expenses",
+                "name": "category",
+                "type": {"enum": ["meals", "office", "software", "travel", "other"]},
+            },
+        )
 
         schema = snapshot["collections"]["expenses"]["schema"]
         assert schema["category"] == {"enum": ["meals", "office", "software", "travel", "other"]}
 
         # ── 5. Add view and page layout ──
-        step("view.create", {
-            "id": "expense_view", "type": "table", "source": "expenses",
-            "config": {
-                "show_fields": ["description", "amount", "category", "paid", "paid_by"],
-                "sort_by": "amount",
-                "sort_order": "desc",
+        step(
+            "view.create",
+            {
+                "id": "expense_view",
+                "type": "table",
+                "source": "expenses",
+                "config": {
+                    "show_fields": ["description", "amount", "category", "paid", "paid_by"],
+                    "sort_by": "amount",
+                    "sort_order": "desc",
+                },
             },
-        })
+        )
 
-        step("block.set", {
-            "id": "block_title", "type": "heading", "parent": "block_root",
-            "props": {"level": 1, "content": "Team Budget"},
-        })
-        step("block.set", {
-            "id": "block_expenses", "type": "collection_view", "parent": "block_root",
-            "props": {"source": "expenses", "view": "expense_view"},
-        })
+        step(
+            "block.set",
+            {
+                "id": "block_title",
+                "type": "heading",
+                "parent": "block_root",
+                "props": {"level": 1, "content": "Team Budget"},
+            },
+        )
+        step(
+            "block.set",
+            {
+                "id": "block_expenses",
+                "type": "collection_view",
+                "parent": "block_root",
+                "props": {"source": "expenses", "view": "expense_view"},
+            },
+        )
 
-        step("style.set", {
-            "primary_color": "#1a365d",
-            "font_family": "IBM Plex Sans",
-        })
+        step(
+            "style.set",
+            {
+                "primary_color": "#1a365d",
+                "font_family": "IBM Plex Sans",
+            },
+        )
 
-        step("meta.update", {
-            "title": "Q1 Team Budget",
-        })
+        step(
+            "meta.update",
+            {
+                "title": "Q1 Team Budget",
+            },
+        )
 
         # ── 6. Remove duplicate entry ──
         step("entity.remove", {"ref": "expenses/exp_duplicate"})
 
         # ── 7. Rename field: paid → settled ──
-        step("field.update", {
-            "collection": "expenses", "name": "paid",
-            "rename": "settled",
-        })
+        step(
+            "field.update",
+            {
+                "collection": "expenses",
+                "name": "paid",
+                "rename": "settled",
+            },
+        )
 
         # ══════════════════════════════════════════════════════
         # Final State Verification
@@ -860,47 +1077,86 @@ class TestMvpGrocerySignalWalkthrough:
 
         # ── Turn 1: L3 creates the aide from first message ──
         # "we need milk, eggs, and sourdough"
-        step("collection.create", {
-            "id": "grocery_list", "name": "Grocery List",
-            "schema": {"name": "string", "checked": "bool"},
-        })
-        step("entity.create", {
-            "collection": "grocery_list", "id": "item_milk",
-            "fields": {"name": "Milk", "checked": False},
-        })
-        step("entity.create", {
-            "collection": "grocery_list", "id": "item_eggs",
-            "fields": {"name": "Eggs", "checked": False},
-        })
-        step("entity.create", {
-            "collection": "grocery_list", "id": "item_sourdough",
-            "fields": {"name": "Sourdough", "checked": False},
-        })
+        step(
+            "collection.create",
+            {
+                "id": "grocery_list",
+                "name": "Grocery List",
+                "schema": {"name": "string", "checked": "bool"},
+            },
+        )
+        step(
+            "entity.create",
+            {
+                "collection": "grocery_list",
+                "id": "item_milk",
+                "fields": {"name": "Milk", "checked": False},
+            },
+        )
+        step(
+            "entity.create",
+            {
+                "collection": "grocery_list",
+                "id": "item_eggs",
+                "fields": {"name": "Eggs", "checked": False},
+            },
+        )
+        step(
+            "entity.create",
+            {
+                "collection": "grocery_list",
+                "id": "item_sourdough",
+                "fields": {"name": "Sourdough", "checked": False},
+            },
+        )
         step("meta.update", {"title": "Grocery List"})
-        step("view.create", {
-            "id": "grocery_view", "type": "list", "source": "grocery_list",
-            "config": {"show_fields": ["name", "checked"]},
-        })
-        step("block.set", {
-            "id": "block_title", "type": "heading", "parent": "block_root",
-            "props": {"level": 1, "content": "Grocery List"},
-        })
-        step("block.set", {
-            "id": "block_list", "type": "collection_view", "parent": "block_root",
-            "props": {"source": "grocery_list", "view": "grocery_view"},
-        })
+        step(
+            "view.create",
+            {
+                "id": "grocery_view",
+                "type": "list",
+                "source": "grocery_list",
+                "config": {"show_fields": ["name", "checked"]},
+            },
+        )
+        step(
+            "block.set",
+            {
+                "id": "block_title",
+                "type": "heading",
+                "parent": "block_root",
+                "props": {"level": 1, "content": "Grocery List"},
+            },
+        )
+        step(
+            "block.set",
+            {
+                "id": "block_list",
+                "type": "collection_view",
+                "parent": "block_root",
+                "props": {"source": "grocery_list", "view": "grocery_view"},
+            },
+        )
 
         # ── Turn 2: Partner B adds olive oil with store ──
         # "also get olive oil from Trader Joe's"
         # L3 sees new field (store) → schema evolution
-        step("field.add", {
-            "collection": "grocery_list", "name": "store",
-            "type": "string?",
-        })
-        step("entity.create", {
-            "collection": "grocery_list", "id": "item_olive_oil",
-            "fields": {"name": "Olive Oil", "checked": False, "store": "Trader Joe's"},
-        })
+        step(
+            "field.add",
+            {
+                "collection": "grocery_list",
+                "name": "store",
+                "type": "string?",
+            },
+        )
+        step(
+            "entity.create",
+            {
+                "collection": "grocery_list",
+                "id": "item_olive_oil",
+                "fields": {"name": "Olive Oil", "checked": False, "store": "Trader Joe's"},
+            },
+        )
 
         # Existing items backfilled with store=null
         assert snapshot["collections"]["grocery_list"]["entities"]["item_milk"]["store"] is None
@@ -912,10 +1168,13 @@ class TestMvpGrocerySignalWalkthrough:
 
         # ── Turn 4: Partner B wants store tracking visible ──
         # "can we track which store for each item?"
-        step("view.update", {
-            "id": "grocery_view",
-            "config": {"show_fields": ["name", "store", "checked"]},
-        })
+        step(
+            "view.update",
+            {
+                "id": "grocery_view",
+                "config": {"show_fields": ["name", "store", "checked"]},
+            },
+        )
 
         # ── Turn 5: Partner A removes sourdough ──
         # "skip the sourdough, got some yesterday"

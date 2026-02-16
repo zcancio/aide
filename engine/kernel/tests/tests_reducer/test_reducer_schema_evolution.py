@@ -1284,50 +1284,83 @@ class TestSchemaEvolutionReplay:
             snapshot = result.snapshot
 
         # Build up a schema evolution scenario
-        apply(1, "collection.create", {
-            "id": "roster",
-            "schema": {"name": "string", "active": "bool"},
-        })
-        apply(2, "entity.create", {
-            "collection": "roster",
-            "id": "p1",
-            "fields": {"name": "Alice", "active": True},
-        })
-        apply(3, "entity.create", {
-            "collection": "roster",
-            "id": "p2",
-            "fields": {"name": "Bob", "active": False},
-        })
-        apply(4, "field.add", {
-            "collection": "roster",
-            "name": "role",
-            "type": "string?",
-        })
-        apply(5, "entity.update", {
-            "ref": "roster/p1",
-            "fields": {"role": "captain"},
-        })
-        apply(6, "field.add", {
-            "collection": "roster",
-            "name": "jersey",
-            "type": "int",
-            "default": 0,
-        })
-        apply(7, "field.update", {
-            "collection": "roster",
-            "name": "active",
-            "type": "string",
-        })
-        apply(8, "field.remove", {
-            "collection": "roster",
-            "name": "jersey",
-        })
+        apply(
+            1,
+            "collection.create",
+            {
+                "id": "roster",
+                "schema": {"name": "string", "active": "bool"},
+            },
+        )
+        apply(
+            2,
+            "entity.create",
+            {
+                "collection": "roster",
+                "id": "p1",
+                "fields": {"name": "Alice", "active": True},
+            },
+        )
+        apply(
+            3,
+            "entity.create",
+            {
+                "collection": "roster",
+                "id": "p2",
+                "fields": {"name": "Bob", "active": False},
+            },
+        )
+        apply(
+            4,
+            "field.add",
+            {
+                "collection": "roster",
+                "name": "role",
+                "type": "string?",
+            },
+        )
+        apply(
+            5,
+            "entity.update",
+            {
+                "ref": "roster/p1",
+                "fields": {"role": "captain"},
+            },
+        )
+        apply(
+            6,
+            "field.add",
+            {
+                "collection": "roster",
+                "name": "jersey",
+                "type": "int",
+                "default": 0,
+            },
+        )
+        apply(
+            7,
+            "field.update",
+            {
+                "collection": "roster",
+                "name": "active",
+                "type": "string",
+            },
+        )
+        apply(
+            8,
+            "field.remove",
+            {
+                "collection": "roster",
+                "name": "jersey",
+            },
+        )
 
         # Now replay from scratch
         replayed = replay(events)
 
         # Compare — JSON serialize with sorted keys for deterministic comparison
         import json
+
         original_json = json.dumps(snapshot, sort_keys=True)
         replayed_json = json.dumps(replayed, sort_keys=True)
         assert original_json == replayed_json

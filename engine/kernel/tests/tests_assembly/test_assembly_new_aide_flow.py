@@ -45,220 +45,244 @@ def make_poker_league_events() -> list[Event]:
 
     # 1. Create players collection
     seq += 1
-    events.append(Event(
-        id=f"evt_{seq:03d}",
-        sequence=seq,
-        timestamp=now_iso(),
-        actor="system",
-        source="ai",
-        type="collection.create",
-        payload={
-            "id": "players",
-            "schema": {
-                "name": "string",
-                "games_played": "int",
-                "total_winnings": "int",
-                "hosting_count": "int",
-                "active": "bool",
-            },
-        },
-    ))
-
-    # 2. Create games collection
-    seq += 1
-    events.append(Event(
-        id=f"evt_{seq:03d}",
-        sequence=seq,
-        timestamp=now_iso(),
-        actor="system",
-        source="ai",
-        type="collection.create",
-        payload={
-            "id": "games",
-            "schema": {
-                "date": "date",
-                "host": "string",
-                "winner": "string",
-                "pot": "int",
-                "notes": "string",
-            },
-        },
-    ))
-
-    # 3-10. Add 8 players
-    player_names = ["Mike", "Dave", "Steve", "John", "Pete", "Rob", "Tom", "Chris"]
-    for name in player_names:
-        seq += 1
-        events.append(Event(
+    events.append(
+        Event(
             id=f"evt_{seq:03d}",
             sequence=seq,
             timestamp=now_iso(),
             actor="system",
             source="ai",
-            type="entity.create",
+            type="collection.create",
             payload={
-                "collection": "players",
-                "id": f"player_{name.lower()}",
-                "fields": {
-                    "name": name,
-                    "games_played": 0,
-                    "total_winnings": 0,
-                    "hosting_count": 0,
-                    "active": True,
+                "id": "players",
+                "schema": {
+                    "name": "string",
+                    "games_played": "int",
+                    "total_winnings": "int",
+                    "hosting_count": "int",
+                    "active": "bool",
                 },
             },
-        ))
+        )
+    )
+
+    # 2. Create games collection
+    seq += 1
+    events.append(
+        Event(
+            id=f"evt_{seq:03d}",
+            sequence=seq,
+            timestamp=now_iso(),
+            actor="system",
+            source="ai",
+            type="collection.create",
+            payload={
+                "id": "games",
+                "schema": {
+                    "date": "date",
+                    "host": "string",
+                    "winner": "string",
+                    "pot": "int",
+                    "notes": "string",
+                },
+            },
+        )
+    )
+
+    # 3-10. Add 8 players
+    player_names = ["Mike", "Dave", "Steve", "John", "Pete", "Rob", "Tom", "Chris"]
+    for name in player_names:
+        seq += 1
+        events.append(
+            Event(
+                id=f"evt_{seq:03d}",
+                sequence=seq,
+                timestamp=now_iso(),
+                actor="system",
+                source="ai",
+                type="entity.create",
+                payload={
+                    "collection": "players",
+                    "id": f"player_{name.lower()}",
+                    "fields": {
+                        "name": name,
+                        "games_played": 0,
+                        "total_winnings": 0,
+                        "hosting_count": 0,
+                        "active": True,
+                    },
+                },
+            )
+        )
 
     # 11. Set meta title
     seq += 1
-    events.append(Event(
-        id=f"evt_{seq:03d}",
-        sequence=seq,
-        timestamp=now_iso(),
-        actor="system",
-        source="ai",
-        type="meta.update",
-        payload={"title": "Thursday Night Poker"},
-    ))
+    events.append(
+        Event(
+            id=f"evt_{seq:03d}",
+            sequence=seq,
+            timestamp=now_iso(),
+            actor="system",
+            source="ai",
+            type="meta.update",
+            payload={"title": "Thursday Night Poker"},
+        )
+    )
 
     # 12. Set meta description
     seq += 1
-    events.append(Event(
-        id=f"evt_{seq:03d}",
-        sequence=seq,
-        timestamp=now_iso(),
-        actor="system",
-        source="ai",
-        type="meta.update",
-        payload={"description": "Every other Thursday at someone's house."},
-    ))
+    events.append(
+        Event(
+            id=f"evt_{seq:03d}",
+            sequence=seq,
+            timestamp=now_iso(),
+            actor="system",
+            source="ai",
+            type="meta.update",
+            payload={"description": "Every other Thursday at someone's house."},
+        )
+    )
 
     # 13. Create players view
     seq += 1
-    events.append(Event(
-        id=f"evt_{seq:03d}",
-        sequence=seq,
-        timestamp=now_iso(),
-        actor="system",
-        source="ai",
-        type="view.create",
-        payload={
-            "id": "standings_view",
-            "type": "table",
-            "source": "players",
-            "config": {
-                "show_fields": ["name", "games_played", "total_winnings"],
-                "sort_by": "total_winnings",
-                "sort_order": "desc",
+    events.append(
+        Event(
+            id=f"evt_{seq:03d}",
+            sequence=seq,
+            timestamp=now_iso(),
+            actor="system",
+            source="ai",
+            type="view.create",
+            payload={
+                "id": "standings_view",
+                "type": "table",
+                "source": "players",
+                "config": {
+                    "show_fields": ["name", "games_played", "total_winnings"],
+                    "sort_by": "total_winnings",
+                    "sort_order": "desc",
+                },
             },
-        },
-    ))
+        )
+    )
 
     # 14. Create games view
     seq += 1
-    events.append(Event(
-        id=f"evt_{seq:03d}",
-        sequence=seq,
-        timestamp=now_iso(),
-        actor="system",
-        source="ai",
-        type="view.create",
-        payload={
-            "id": "recent_games_view",
-            "type": "table",
-            "source": "games",
-            "config": {
-                "show_fields": ["date", "host", "winner", "pot"],
-                "sort_by": "date",
-                "sort_order": "desc",
+    events.append(
+        Event(
+            id=f"evt_{seq:03d}",
+            sequence=seq,
+            timestamp=now_iso(),
+            actor="system",
+            source="ai",
+            type="view.create",
+            payload={
+                "id": "recent_games_view",
+                "type": "table",
+                "source": "games",
+                "config": {
+                    "show_fields": ["date", "host", "winner", "pot"],
+                    "sort_by": "date",
+                    "sort_order": "desc",
+                },
             },
-        },
-    ))
+        )
+    )
 
     # 15. Create header block
     seq += 1
-    events.append(Event(
-        id=f"evt_{seq:03d}",
-        sequence=seq,
-        timestamp=now_iso(),
-        actor="system",
-        source="ai",
-        type="block.set",
-        payload={
-            "id": "block_header",
-            "type": "heading",
-            "parent": "block_root",
-            "props": {"level": 1, "content": "Thursday Night Poker"},
-        },
-    ))
+    events.append(
+        Event(
+            id=f"evt_{seq:03d}",
+            sequence=seq,
+            timestamp=now_iso(),
+            actor="system",
+            source="ai",
+            type="block.set",
+            payload={
+                "id": "block_header",
+                "type": "heading",
+                "parent": "block_root",
+                "props": {"level": 1, "content": "Thursday Night Poker"},
+            },
+        )
+    )
 
     # 16. Create standings section
     seq += 1
-    events.append(Event(
-        id=f"evt_{seq:03d}",
-        sequence=seq,
-        timestamp=now_iso(),
-        actor="system",
-        source="ai",
-        type="block.set",
-        payload={
-            "id": "block_standings_header",
-            "type": "heading",
-            "parent": "block_root",
-            "props": {"level": 2, "content": "Standings"},
-        },
-    ))
+    events.append(
+        Event(
+            id=f"evt_{seq:03d}",
+            sequence=seq,
+            timestamp=now_iso(),
+            actor="system",
+            source="ai",
+            type="block.set",
+            payload={
+                "id": "block_standings_header",
+                "type": "heading",
+                "parent": "block_root",
+                "props": {"level": 2, "content": "Standings"},
+            },
+        )
+    )
 
     # 17. Create standings view block
     seq += 1
-    events.append(Event(
-        id=f"evt_{seq:03d}",
-        sequence=seq,
-        timestamp=now_iso(),
-        actor="system",
-        source="ai",
-        type="block.set",
-        payload={
-            "id": "block_standings",
-            "type": "collection_view",
-            "parent": "block_root",
-            "props": {"source": "players", "view": "standings_view"},
-        },
-    ))
+    events.append(
+        Event(
+            id=f"evt_{seq:03d}",
+            sequence=seq,
+            timestamp=now_iso(),
+            actor="system",
+            source="ai",
+            type="block.set",
+            payload={
+                "id": "block_standings",
+                "type": "collection_view",
+                "parent": "block_root",
+                "props": {"source": "players", "view": "standings_view"},
+            },
+        )
+    )
 
     # 18. Create recent games section
     seq += 1
-    events.append(Event(
-        id=f"evt_{seq:03d}",
-        sequence=seq,
-        timestamp=now_iso(),
-        actor="system",
-        source="ai",
-        type="block.set",
-        payload={
-            "id": "block_games_header",
-            "type": "heading",
-            "parent": "block_root",
-            "props": {"level": 2, "content": "Recent Games"},
-        },
-    ))
+    events.append(
+        Event(
+            id=f"evt_{seq:03d}",
+            sequence=seq,
+            timestamp=now_iso(),
+            actor="system",
+            source="ai",
+            type="block.set",
+            payload={
+                "id": "block_games_header",
+                "type": "heading",
+                "parent": "block_root",
+                "props": {"level": 2, "content": "Recent Games"},
+            },
+        )
+    )
 
     # 19. Create games view block
     seq += 1
-    events.append(Event(
-        id=f"evt_{seq:03d}",
-        sequence=seq,
-        timestamp=now_iso(),
-        actor="system",
-        source="ai",
-        type="block.set",
-        payload={
-            "id": "block_games",
-            "type": "collection_view",
-            "parent": "block_root",
-            "props": {"source": "games", "view": "recent_games_view"},
-        },
-    ))
+    events.append(
+        Event(
+            id=f"evt_{seq:03d}",
+            sequence=seq,
+            timestamp=now_iso(),
+            actor="system",
+            source="ai",
+            type="block.set",
+            payload={
+                "id": "block_games",
+                "type": "collection_view",
+                "parent": "block_root",
+                "props": {"source": "games", "view": "recent_games_view"},
+            },
+        )
+    )
 
     return events
 

@@ -22,7 +22,6 @@ This matters because:
 Reference: aide_renderer_spec.md (Block Rendering, Block Type → HTML)
 """
 
-
 from engine.kernel.reducer import empty_state
 from engine.kernel.renderer import render, render_block
 
@@ -56,6 +55,7 @@ def make_snapshot_with_block(block_id, block_type, props=None, children=None):
 def make_blueprint():
     """Minimal blueprint for rendering."""
     from engine.kernel.types import Blueprint
+
     return Blueprint(
         identity="Test aide.",
         voice="No first person.",
@@ -67,17 +67,14 @@ def assert_contains(html, *fragments):
     """Assert that the HTML output contains all given fragments."""
     for fragment in fragments:
         assert fragment in html, (
-            f"Expected to find {fragment!r} in rendered HTML.\n"
-            f"Got (first 2000 chars):\n{html[:2000]}"
+            f"Expected to find {fragment!r} in rendered HTML.\nGot (first 2000 chars):\n{html[:2000]}"
         )
 
 
 def assert_not_contains(html, *fragments):
     """Assert that the HTML output does NOT contain any of the given fragments."""
     for fragment in fragments:
-        assert fragment not in html, (
-            f"Did NOT expect to find {fragment!r} in rendered HTML."
-        )
+        assert fragment not in html, f"Did NOT expect to find {fragment!r} in rendered HTML."
 
 
 # ============================================================================
@@ -94,7 +91,8 @@ class TestHeadingBlock:
     def test_heading_level_1(self):
         """Level 1 heading renders as <h1> with serif font class."""
         snapshot = make_snapshot_with_block(
-            "block_title", "heading",
+            "block_title",
+            "heading",
             props={"level": 1, "content": "Poker League"},
         )
         html = render_block("block_title", snapshot)
@@ -111,7 +109,8 @@ class TestHeadingBlock:
     def test_heading_level_2(self):
         """Level 2 heading renders as <h2>."""
         snapshot = make_snapshot_with_block(
-            "block_section", "heading",
+            "block_section",
+            "heading",
             props={"level": 2, "content": "Schedule"},
         )
         html = render_block("block_section", snapshot)
@@ -128,7 +127,8 @@ class TestHeadingBlock:
     def test_heading_level_3(self):
         """Level 3 heading renders as <h3> with sans font class."""
         snapshot = make_snapshot_with_block(
-            "block_sub", "heading",
+            "block_sub",
+            "heading",
             props={"level": 3, "content": "Notes"},
         )
         html = render_block("block_sub", snapshot)
@@ -145,7 +145,8 @@ class TestHeadingBlock:
     def test_heading_content_is_escaped(self):
         """HTML in heading content must be escaped, not rendered."""
         snapshot = make_snapshot_with_block(
-            "block_xss", "heading",
+            "block_xss",
+            "heading",
             props={"level": 1, "content": '<script>alert("xss")</script>'},
         )
         html = render_block("block_xss", snapshot)
@@ -168,7 +169,8 @@ class TestTextBlock:
     def test_plain_text(self):
         """Plain text renders as a paragraph."""
         snapshot = make_snapshot_with_block(
-            "block_intro", "text",
+            "block_intro",
+            "text",
             props={"content": "Welcome to the poker league."},
         )
         html = render_block("block_intro", snapshot)
@@ -184,8 +186,9 @@ class TestTextBlock:
     def test_text_content_is_escaped(self):
         """HTML in text content must be escaped."""
         snapshot = make_snapshot_with_block(
-            "block_xss", "text",
-            props={"content": 'Try <img src=x onerror=alert(1)> this'},
+            "block_xss",
+            "text",
+            props={"content": "Try <img src=x onerror=alert(1)> this"},
         )
         html = render_block("block_xss", snapshot)
 
@@ -195,7 +198,8 @@ class TestTextBlock:
     def test_text_with_bold(self):
         """**bold** renders as <strong>."""
         snapshot = make_snapshot_with_block(
-            "block_bold", "text",
+            "block_bold",
+            "text",
             props={"content": "This is **important** info."},
         )
         html = render_block("block_bold", snapshot)
@@ -205,7 +209,8 @@ class TestTextBlock:
     def test_text_with_italic(self):
         """*italic* renders as <em>."""
         snapshot = make_snapshot_with_block(
-            "block_italic", "text",
+            "block_italic",
+            "text",
             props={"content": "This is *emphasized* text."},
         )
         html = render_block("block_italic", snapshot)
@@ -215,7 +220,8 @@ class TestTextBlock:
     def test_text_with_link(self):
         """[text](url) renders as <a> with href validated as http/https."""
         snapshot = make_snapshot_with_block(
-            "block_link", "text",
+            "block_link",
+            "text",
             props={"content": "Visit [our site](https://toaide.com) today."},
         )
         html = render_block("block_link", snapshot)
@@ -238,7 +244,8 @@ class TestMetricBlock:
     def test_metric_basic(self):
         """Metric renders label and value with correct classes."""
         snapshot = make_snapshot_with_block(
-            "block_metric", "metric",
+            "block_metric",
+            "metric",
             props={"label": "Next game", "value": "Thu Feb 27 at Dave's"},
         )
         html = render_block("block_metric", snapshot)
@@ -255,7 +262,8 @@ class TestMetricBlock:
     def test_metric_no_trend(self):
         """Metric without trend prop still renders correctly."""
         snapshot = make_snapshot_with_block(
-            "block_pot", "metric",
+            "block_pot",
+            "metric",
             props={"label": "Pot", "value": "$240"},
         )
         html = render_block("block_pot", snapshot)
@@ -265,7 +273,8 @@ class TestMetricBlock:
     def test_metric_with_trend_up(self):
         """Metric with trend='up' includes trend indicator."""
         snapshot = make_snapshot_with_block(
-            "block_score", "metric",
+            "block_score",
+            "metric",
             props={"label": "Score", "value": "1250", "trend": "up"},
         )
         html = render_block("block_score", snapshot)
@@ -277,8 +286,9 @@ class TestMetricBlock:
     def test_metric_value_is_escaped(self):
         """HTML in metric value must be escaped."""
         snapshot = make_snapshot_with_block(
-            "block_xss", "metric",
-            props={"label": "Status", "value": '<b>active</b>'},
+            "block_xss",
+            "metric",
+            props={"label": "Status", "value": "<b>active</b>"},
         )
         html = render_block("block_xss", snapshot)
 
@@ -288,8 +298,9 @@ class TestMetricBlock:
     def test_metric_label_is_escaped(self):
         """HTML in metric label must be escaped."""
         snapshot = make_snapshot_with_block(
-            "block_xss_label", "metric",
-            props={"label": '<script>x</script>', "value": "safe"},
+            "block_xss_label",
+            "metric",
+            props={"label": "<script>x</script>", "value": "safe"},
         )
         html = render_block("block_xss_label", snapshot)
 
@@ -535,7 +546,8 @@ class TestImageBlock:
     def test_image_basic(self):
         """Image renders with src and lazy loading."""
         snapshot = make_snapshot_with_block(
-            "block_img", "image",
+            "block_img",
+            "image",
             props={"src": "https://example.com/photo.jpg"},
         )
         html = render_block("block_img", snapshot)
@@ -552,7 +564,8 @@ class TestImageBlock:
     def test_image_with_alt(self):
         """Image renders alt attribute when provided."""
         snapshot = make_snapshot_with_block(
-            "block_img", "image",
+            "block_img",
+            "image",
             props={
                 "src": "https://example.com/photo.jpg",
                 "alt": "Team photo",
@@ -565,7 +578,8 @@ class TestImageBlock:
     def test_image_with_caption(self):
         """Image renders figcaption when caption is provided."""
         snapshot = make_snapshot_with_block(
-            "block_img", "image",
+            "block_img",
+            "image",
             props={
                 "src": "https://example.com/photo.jpg",
                 "caption": "The team at the 2026 kickoff",
@@ -583,7 +597,8 @@ class TestImageBlock:
     def test_image_without_caption(self):
         """Image without caption omits figcaption element."""
         snapshot = make_snapshot_with_block(
-            "block_img", "image",
+            "block_img",
+            "image",
             props={"src": "https://example.com/photo.jpg"},
         )
         html = render_block("block_img", snapshot)
@@ -593,7 +608,8 @@ class TestImageBlock:
     def test_image_src_is_escaped(self):
         """Image src with quotes/special chars must be escaped."""
         snapshot = make_snapshot_with_block(
-            "block_img", "image",
+            "block_img",
+            "image",
             props={"src": 'https://example.com/photo.jpg" onload="alert(1)'},
         )
         html = render_block("block_img", snapshot)
@@ -603,7 +619,8 @@ class TestImageBlock:
     def test_image_alt_is_escaped(self):
         """Image alt text must be escaped."""
         snapshot = make_snapshot_with_block(
-            "block_img", "image",
+            "block_img",
+            "image",
             props={
                 "src": "https://example.com/photo.jpg",
                 "alt": '<script>alert("xss")</script>',
@@ -628,7 +645,8 @@ class TestCalloutBlock:
     def test_callout_basic(self):
         """Callout renders content with correct class."""
         snapshot = make_snapshot_with_block(
-            "block_callout", "callout",
+            "block_callout",
+            "callout",
             props={"content": "Remember to bring snacks!"},
         )
         html = render_block("block_callout", snapshot)
@@ -643,7 +661,8 @@ class TestCalloutBlock:
     def test_callout_with_icon(self):
         """Callout with icon renders the icon element."""
         snapshot = make_snapshot_with_block(
-            "block_callout", "callout",
+            "block_callout",
+            "callout",
             props={"content": "Important note.", "icon": "⚠️"},
         )
         html = render_block("block_callout", snapshot)
@@ -653,7 +672,8 @@ class TestCalloutBlock:
     def test_callout_without_icon(self):
         """Callout without icon omits the icon element."""
         snapshot = make_snapshot_with_block(
-            "block_callout", "callout",
+            "block_callout",
+            "callout",
             props={"content": "Just a note."},
         )
         html = render_block("block_callout", snapshot)
@@ -663,7 +683,8 @@ class TestCalloutBlock:
     def test_callout_content_is_escaped(self):
         """Callout content must be HTML-escaped."""
         snapshot = make_snapshot_with_block(
-            "block_callout", "callout",
+            "block_callout",
+            "callout",
             props={"content": '<iframe src="evil.com">'},
         )
         html = render_block("block_callout", snapshot)
@@ -797,7 +818,9 @@ class TestBlockTreeRecursion:
             "props": {},
         }
         snapshot["blocks"]["block_root"]["children"] = [
-            "block_h1", "block_text", "block_divider",
+            "block_h1",
+            "block_text",
+            "block_divider",
         ]
 
         html = render_block("block_root", snapshot)
@@ -841,7 +864,8 @@ class TestBlockTreeRecursion:
     def test_empty_children_list(self):
         """Block with empty children list renders only itself."""
         snapshot = make_snapshot_with_block(
-            "block_heading", "heading",
+            "block_heading",
+            "heading",
             props={"level": 1, "content": "Solo Heading"},
         )
         # Explicitly set empty children
@@ -865,7 +889,8 @@ class TestFullRenderWithSingleBlock:
     def test_heading_in_full_render(self):
         """Full render with a heading block produces valid HTML structure."""
         snapshot = make_snapshot_with_block(
-            "block_title", "heading",
+            "block_title",
+            "heading",
             props={"level": 1, "content": "My Aide"},
         )
         snapshot["meta"] = {"title": "My Aide"}

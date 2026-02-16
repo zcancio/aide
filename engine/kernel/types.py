@@ -78,12 +78,17 @@ VIEW_TYPES: set[str] = {
 
 # Field types — simple string types and their nullable variants
 SIMPLE_FIELD_TYPES: set[str] = {
-    "string", "string?",
-    "int", "int?",
-    "float", "float?",
+    "string",
+    "string?",
+    "int",
+    "int?",
+    "float",
+    "float?",
     "bool",
-    "date", "date?",
-    "datetime", "datetime?",
+    "date",
+    "date?",
+    "datetime",
+    "datetime?",
 }
 
 # Known style tokens and their defaults
@@ -129,12 +134,14 @@ ESCALATION_REASONS: set[str] = {
 # Data classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Event:
     """
     Wraps a primitive with metadata for the append-only event log.
     The reducer reads only `type` and `payload`.
     """
+
     id: str
     sequence: int
     timestamp: str  # ISO 8601 UTC
@@ -183,6 +190,7 @@ class Event:
 @dataclass
 class Warning:
     """A non-fatal issue encountered during reduction."""
+
     code: str
     message: str
     details: dict[str, Any] | None = None
@@ -194,6 +202,7 @@ class ReduceResult:
     Result of applying one event to a snapshot.
     The reducer never throws — it always returns one of these.
     """
+
     snapshot: dict[str, Any]  # AideState
     applied: bool
     warnings: list[Warning] = field(default_factory=list)
@@ -206,6 +215,7 @@ class Blueprint:
     The aide's DNA — identity, voice rules, and LLM system prompt.
     Embedded in the HTML file for portability.
     """
+
     identity: str
     voice: str = "No first person. State reflections only."
     prompt: str = ""
@@ -229,6 +239,7 @@ class Blueprint:
 @dataclass
 class RenderOptions:
     """Options controlling what the renderer includes in output."""
+
     include_events: bool = True
     include_blueprint: bool = True
     include_fonts: bool = True
@@ -239,6 +250,7 @@ class RenderOptions:
 @dataclass
 class AideFile:
     """In-memory representation of a loaded aide HTML file."""
+
     aide_id: str
     snapshot: dict[str, Any]  # AideState
     events: list[Event]
@@ -252,6 +264,7 @@ class AideFile:
 @dataclass
 class ApplyResult:
     """Result of applying a batch of events through the assembly layer."""
+
     aide_file: AideFile
     applied: list[Event]
     rejected: list[tuple[Event, str]]  # (event, error_reason)
@@ -261,6 +274,7 @@ class ApplyResult:
 @dataclass
 class ParsedAide:
     """Result of parsing an existing aide HTML file."""
+
     blueprint: Blueprint | None
     snapshot: dict[str, Any] | None
     events: list[Event]
@@ -270,6 +284,7 @@ class ParsedAide:
 @dataclass
 class Escalation:
     """Signal from L2 when it can't compile a user message into primitives."""
+
     reason: str
     user_message: str
     context: str
@@ -288,6 +303,7 @@ class Escalation:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def parse_ref(ref: str) -> tuple[str, str]:
     """Parse 'collection_id/entity_id' into (collection_id, entity_id)."""

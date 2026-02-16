@@ -51,19 +51,21 @@ def make_many_events(count: int) -> list[Event]:
     ]
 
     for i in range(2, count + 1):
-        events.append(Event(
-            id=f"evt_{i:03d}",
-            sequence=i,
-            timestamp=now_iso(),
-            actor="user_test",
-            source="test",
-            type="entity.create",
-            payload={
-                "collection": "items",
-                "id": f"item_{i}",
-                "fields": {"name": f"Item number {i}", "index": i},
-            },
-        ))
+        events.append(
+            Event(
+                id=f"evt_{i:03d}",
+                sequence=i,
+                timestamp=now_iso(),
+                actor="user_test",
+                source="test",
+                type="entity.create",
+                payload={
+                    "collection": "items",
+                    "id": f"item_{i}",
+                    "fields": {"name": f"Item number {i}", "index": i},
+                },
+            )
+        )
 
     return events
 
@@ -333,23 +335,39 @@ class TestCompactionWithMixedEvents:
 
         # Create collection and entities
         events = [
-            Event(id="evt_001", sequence=1, timestamp=now_iso(), actor="test", source="test",
-                  type="collection.create", payload={"id": "items", "schema": {"name": "string"}}),
-            Event(id="evt_002", sequence=2, timestamp=now_iso(), actor="test", source="test",
-                  type="entity.create", payload={"collection": "items", "id": "item_1", "fields": {"name": "Original"}}),
+            Event(
+                id="evt_001",
+                sequence=1,
+                timestamp=now_iso(),
+                actor="test",
+                source="test",
+                type="collection.create",
+                payload={"id": "items", "schema": {"name": "string"}},
+            ),
+            Event(
+                id="evt_002",
+                sequence=2,
+                timestamp=now_iso(),
+                actor="test",
+                source="test",
+                type="entity.create",
+                payload={"collection": "items", "id": "item_1", "fields": {"name": "Original"}},
+            ),
         ]
 
         # Add many updates (entity.update uses ref and fields format)
         for i in range(3, 103):
-            events.append(Event(
-                id=f"evt_{i:03d}",
-                sequence=i,
-                timestamp=now_iso(),
-                actor="test",
-                source="test",
-                type="entity.update",
-                payload={"ref": "items/item_1", "fields": {"name": f"Updated {i}"}},
-            ))
+            events.append(
+                Event(
+                    id=f"evt_{i:03d}",
+                    sequence=i,
+                    timestamp=now_iso(),
+                    actor="test",
+                    source="test",
+                    type="entity.update",
+                    payload={"ref": "items/item_1", "fields": {"name": f"Updated {i}"}},
+                )
+            )
 
         await assembly.apply(aide_file, events)
 

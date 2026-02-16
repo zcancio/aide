@@ -48,15 +48,17 @@ def make_events(count: int) -> list[Event]:
     ]
 
     for i in range(2, count + 1):
-        events.append(Event(
-            id=f"evt_{i:03d}",
-            sequence=i,
-            timestamp=now_iso(),
-            actor="user_test",
-            source="test",
-            type="entity.create",
-            payload={"collection": "items", "id": f"item_{i}", "fields": {"name": f"Item {i}"}},
-        ))
+        events.append(
+            Event(
+                id=f"evt_{i:03d}",
+                sequence=i,
+                timestamp=now_iso(),
+                actor="user_test",
+                source="test",
+                type="entity.create",
+                payload={"collection": "items", "id": f"item_{i}", "fields": {"name": f"Item {i}"}},
+            )
+        )
 
     return events
 
@@ -170,7 +172,7 @@ class TestPublishFooter:
         published_html = storage.published["footer-location"]
 
         # Extract body content
-        body_match = re.search(r'<body[^>]*>(.*?)</body>', published_html, re.DOTALL)
+        body_match = re.search(r"<body[^>]*>(.*?)</body>", published_html, re.DOTALL)
         body = body_match.group(1) if body_match else ""
 
         assert "aide-footer" in body
@@ -316,8 +318,9 @@ class TestPublishSnapshot:
         workspace_parsed = parse_aide_html(workspace_html)
         published_parsed = parse_aide_html(published_html)
 
-        assert json.dumps(workspace_parsed.snapshot, sort_keys=True) == \
-               json.dumps(published_parsed.snapshot, sort_keys=True)
+        assert json.dumps(workspace_parsed.snapshot, sort_keys=True) == json.dumps(
+            published_parsed.snapshot, sort_keys=True
+        )
 
 
 class TestPublishSlugGeneration:

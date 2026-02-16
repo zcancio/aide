@@ -27,7 +27,6 @@ Additional from render_collection_view():
 Reference: aide_renderer_spec.md (Empty States, View Rendering)
 """
 
-
 from engine.kernel.reducer import empty_state
 from engine.kernel.renderer import render, render_block
 from engine.kernel.types import Blueprint
@@ -40,22 +39,20 @@ from engine.kernel.types import Blueprint
 def assert_contains(html, *fragments):
     for fragment in fragments:
         assert fragment in html, (
-            f"Expected to find {fragment!r} in rendered HTML.\n"
-            f"Got (first 3000 chars):\n{html[:3000]}"
+            f"Expected to find {fragment!r} in rendered HTML.\nGot (first 3000 chars):\n{html[:3000]}"
         )
 
 
 def assert_not_contains(html, *fragments):
     for fragment in fragments:
-        assert fragment not in html, (
-            f"Did NOT expect to find {fragment!r} in rendered HTML."
-        )
+        assert fragment not in html, f"Did NOT expect to find {fragment!r} in rendered HTML."
 
 
 def extract_main(html):
     """Extract content within <main> tags only (avoids CSS)."""
     import re
-    match = re.search(r'<main[^>]*>(.*?)</main>', html, re.DOTALL)
+
+    match = re.search(r"<main[^>]*>(.*?)</main>", html, re.DOTALL)
     return match.group(1) if match else ""
 
 
@@ -63,9 +60,7 @@ def assert_not_in_main(html, *fragments):
     """Assert fragments do NOT appear within <main> content."""
     main = extract_main(html)
     for fragment in fragments:
-        assert fragment not in main, (
-            f"Did NOT expect to find {fragment!r} in <main> content."
-        )
+        assert fragment not in main, f"Did NOT expect to find {fragment!r} in <main> content."
 
 
 def make_blueprint():
@@ -590,7 +585,8 @@ class TestEmptyCollectionWithOtherContent:
             "props": {"source": "items", "view": "items_view"},
         }
         snapshot["blocks"]["block_root"]["children"] = [
-            "block_heading", "block_collection",
+            "block_heading",
+            "block_collection",
         ]
 
         html = render(snapshot, make_blueprint())
@@ -638,7 +634,8 @@ class TestEmptyCollectionWithOtherContent:
             "props": {"source": "items", "view": "items_view"},
         }
         snapshot["blocks"]["block_root"]["children"] = [
-            "block_text", "block_collection",
+            "block_text",
+            "block_collection",
         ]
 
         html = render(snapshot, make_blueprint())
@@ -686,7 +683,8 @@ class TestMultipleEmptyCollections:
             }
 
         snapshot["blocks"]["block_root"]["children"] = [
-            "block_tasks", "block_notes",
+            "block_tasks",
+            "block_notes",
         ]
 
         html = render(snapshot, make_blueprint())

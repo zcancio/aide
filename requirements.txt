@@ -13,6 +13,7 @@ alembic==1.14.1
 
 # R2 / S3
 boto3==1.36.7
+aioboto3==13.3.0
 
 # Auth
 PyJWT==2.10.1
@@ -26,3 +27,7 @@ stripe==11.4.1
 # HTTP client (for webhooks, health checks)
 httpx==0.28.1
 psycopg2-binary==2.9.10
+
+# AI providers
+anthropic==0.43.1
+openai==1.59.5
