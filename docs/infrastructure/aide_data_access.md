@@ -869,3 +869,41 @@ async def test_rls_prevents_cross_user_access(test_user):
 ```
 
 Tests verify the repository behavior AND the RLS policies. If someone accidentally removes an RLS policy, the cross-user test fails.
+
+---
+
+## Kernel-Level Tables (No RLS)
+
+Some tables operate at the kernel/system level rather than being user-scoped. These intentionally do not have RLS policies.
+
+### `aide_files`
+
+**Purpose:** Stores rendered HTML for aide workspaces and published pages. Used by the kernel's PostgresStorage adapter.
+
+**Schema:**
+```sql
+CREATE TABLE aide_files (
+    aide_id UUID PRIMARY KEY,
+    html TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+**Why no RLS:**
+1. **Kernel operates at system level.** The assembly layer needs to read/write aide files without user context being set. The kernel is a pure function layer below the authentication boundary.
+2. **Access controlled at orchestrator layer.** The L2/L3 orchestrator authenticates the user and ensures they can only invoke operations on their own aides before calling the kernel.
+3. **Dual-use for published pages.** Published pages (stored with `published:{slug}` as aide_id) are publicly readable — RLS would block public access.
+
+**This is intentional, not an oversight.** The `aides` table has RLS; the `aide_files` table is a storage layer accessed through the `aides` table's authorization.
+
+**Access pattern:**
+```
+User request
+    → Route handler (authenticate via JWT)
+    → Verify user owns aide (via RLS-scoped query on `aides` table)
+    → Call kernel assembly layer
+    → PostgresStorage reads/writes `aide_files`
+```
+
+The RLS boundary is at the `aides` table lookup, not at the file storage level.
