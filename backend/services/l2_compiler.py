@@ -4,9 +4,10 @@ import json
 from pathlib import Path
 from typing import Any
 
+from engine.kernel.validator import validate_primitive
+
 from backend.services.ai_provider import ai_provider
 from engine.kernel.types import Event, Snapshot
-from engine.kernel.validator import validate_primitive
 
 
 class L2Compiler:
