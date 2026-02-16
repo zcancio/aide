@@ -25,10 +25,7 @@ from engine.kernel.types import (
     Blueprint,
     Event,
     RenderOptions,
-    DEFAULT_STYLES,
-    DENSITY_VALUES,
 )
-
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -376,7 +373,7 @@ def _render_image(block: dict, snapshot: dict) -> str:
     alt = escape(props.get("alt", ""))
     caption = props.get("caption")
 
-    parts = [f'    <figure class="aide-image">']
+    parts = ['    <figure class="aide-image">']
     parts.append(f'      <img src="{src}" alt="{alt}" loading="lazy">')
     if caption:
         parts.append(f'      <figcaption class="aide-image__caption">{escape(caption)}</figcaption>')

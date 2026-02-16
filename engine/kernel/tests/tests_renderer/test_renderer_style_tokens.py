@@ -36,12 +36,10 @@ Reference: aide_renderer_spec.md (CSS Generation, Style Token Overrides)
 """
 
 import re
-import pytest
 
-from engine.kernel.renderer import render
 from engine.kernel.reducer import empty_state
+from engine.kernel.renderer import render
 from engine.kernel.types import Blueprint
-
 
 # ============================================================================
 # Helpers

@@ -7,13 +7,10 @@ These are the contracts that bind the kernel together.
 
 from __future__ import annotations
 
-import copy
-import json
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
-
 
 # ---------------------------------------------------------------------------
 # Regex patterns (from aide_primitive_schemas.md)
@@ -346,4 +343,4 @@ def is_valid_field_type(field_type: str | dict) -> bool:
 
 def now_iso() -> str:
     """Current UTC time as ISO 8601 string."""
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")

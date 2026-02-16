@@ -23,7 +23,6 @@ from engine.kernel.assembly import AideAssembly, MemoryStorage, parse_aide_html
 from engine.kernel.reducer import empty_state
 from engine.kernel.types import Blueprint
 
-
 # ============================================================================
 # Create empty aide
 # ============================================================================

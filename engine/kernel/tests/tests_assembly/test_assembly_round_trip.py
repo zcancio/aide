@@ -22,7 +22,6 @@ import pytest
 from engine.kernel.assembly import AideAssembly, MemoryStorage
 from engine.kernel.types import Blueprint, Event, now_iso
 
-
 # ============================================================================
 # Fixtures
 # ============================================================================

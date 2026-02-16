@@ -18,9 +18,8 @@ Reference: aide_reducer_spec.md, section "Relationship Primitives"
 
 import pytest
 
-from engine.kernel.reducer import reduce, empty_state
 from engine.kernel.events import make_event
-
+from engine.kernel.reducer import empty_state, reduce
 
 # ============================================================================
 # Fixtures: Wedding seating scenario

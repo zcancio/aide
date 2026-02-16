@@ -33,11 +33,11 @@ Reference: aide_reducer_spec.md (entity.remove, collection.remove WARN behavior,
 
 import copy
 import json
+
 import pytest
 
-from engine.kernel.reducer import reduce, empty_state
 from engine.kernel.events import make_event
-
+from engine.kernel.reducer import empty_state, reduce
 
 # ============================================================================
 # Helpers

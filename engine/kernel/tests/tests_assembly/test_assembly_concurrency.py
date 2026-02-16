@@ -20,11 +20,11 @@ Reference: aide_assembly_spec.md (Locking, Testing Strategy)
 """
 
 import asyncio
+
 import pytest
 
 from engine.kernel.assembly import AideAssembly, MemoryStorage
 from engine.kernel.types import Blueprint, Event, now_iso
-
 
 # ============================================================================
 # Fixtures

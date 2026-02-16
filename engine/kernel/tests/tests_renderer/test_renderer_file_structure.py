@@ -44,12 +44,12 @@ Reference: aide_renderer_spec.md (Output Structure, Contract)
 
 import json
 import re
+
 import pytest
 
-from engine.kernel.renderer import render, RenderOptions
 from engine.kernel.reducer import empty_state
+from engine.kernel.renderer import RenderOptions, render
 from engine.kernel.types import Blueprint, Event
-
 
 # ============================================================================
 # Helpers

@@ -7,17 +7,15 @@ These are the foundation tests — if any of these fail, nothing else matters.
 Reference: aide_reducer_spec.md, aide_primitive_schemas.md
 """
 
-import copy
-import json
 import pytest
+
+from engine.kernel.events import make_event
 
 # ---------------------------------------------------------------------------
 # These imports assume the reducer module lives at backend/kernel/reducer.py
 # Adjust the import path to match the actual project layout.
 # ---------------------------------------------------------------------------
-from engine.kernel.reducer import reduce, empty_state
-from engine.kernel.events import make_event
-
+from engine.kernel.reducer import empty_state, reduce
 
 # ============================================================================
 # Fixtures

@@ -24,11 +24,9 @@ Reference: aide_reducer_spec.md, aide_primitive_schemas.md, aide_mvp_checklist.m
 """
 
 import json
-import pytest
 
-from engine.kernel.reducer import reduce, empty_state, replay
 from engine.kernel.events import make_event
-
+from engine.kernel.reducer import empty_state, reduce, replay
 
 # ============================================================================
 # Helpers

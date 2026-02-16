@@ -29,12 +29,10 @@ Reference: aide_renderer_spec.md (Sorting and Filtering)
            aide_primitive_schemas.md (view.create config options)
 """
 
-import re
 import pytest
 
-from engine.kernel.renderer import render_block
 from engine.kernel.reducer import empty_state
-
+from engine.kernel.renderer import render_block
 
 # ============================================================================
 # Helpers
