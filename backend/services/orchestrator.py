@@ -119,7 +119,10 @@ class Orchestrator:
             for e in events
         ]
         updated_event_log = (aide.event_log or []) + serialized_events
-        await self.aide_repo.update_state(user_id, aide_id, new_snapshot, updated_event_log)
+
+        # Extract title from meta.update if present
+        new_title = new_snapshot.get("meta", {}).get("title")
+        await self.aide_repo.update_state(user_id, aide_id, new_snapshot, updated_event_log, title=new_title)
 
         # 6. Upload HTML to R2
         r2_key = await r2_service.upload_html(str(aide_id), html_content)
