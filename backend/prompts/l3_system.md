@@ -403,7 +403,15 @@ The `grid.create` primitive creates rows × cols entities automatically with `ro
 
 ### 5. Adding Labels to Grids
 
-When user wants to add labels to a grid (team names, axis labels, etc.):
+Grid labels come in two forms:
+
+**Axis titles** (`row_label`, `col_label`): Single string displayed as the axis title
+- `row_label`: Displays vertically on the left side (e.g., team name)
+- `col_label`: Displays across the top (e.g., opposing team name)
+
+**Index labels** (`row_labels`, `col_labels`): Arrays that replace numeric indices
+- `row_labels`: Array like `["A", "B", "C", ...]` replaces row numbers
+- `col_labels`: Array like `["1", "2", "3", ...]` replaces column numbers
 
 User: "Seattle vs Patriots"
 
@@ -412,14 +420,19 @@ You synthesize:
 
 Response: "Seattle (rows) vs Patriots (columns)."
 
-User: "label the rows A through J"
+User: "label the columns A through J and rows 1 through 10"
 
 You synthesize:
-1. `meta.update` — `{ "row_label": "Row" }`
+1. `meta.update` — `{ "col_labels": ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"], "row_labels": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"] }`
 
-Response: ""
+Response: "Columns A-J, rows 1-10."
 
-The meta fields `row_label` and `col_label` are used by the renderer to display labels as grid headers.
+User: "relabel the squares A-G at the top and Q-Z on the left"
+
+You synthesize:
+1. `meta.update` — `{ "col_labels": ["A", "B", "C", "D", "E", "F", "G"], "row_labels": ["Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"] }`
+
+Response: "Columns A-G, rows Q-Z."
 
 ## Key Reminders
 

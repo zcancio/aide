@@ -332,8 +332,12 @@ def _render_auto_grid(entities: list[dict], schema: dict, meta: dict | None = No
             break
 
     # Get axis labels from meta (for Super Bowl squares, seating charts, etc.)
+    # row_label/col_label: single string label for the axis (e.g., team name)
+    # row_labels/col_labels: array of labels to replace numeric indices
     row_label = meta.get("row_label", "")
     col_label = meta.get("col_label", "")
+    row_labels = meta.get("row_labels", [])  # e.g., ["A", "B", "C", ...]
+    col_labels = meta.get("col_labels", [])  # e.g., ["1", "2", "3", ...]
 
     parts = ['    <div class="aide-grid-wrap" style="overflow-x:auto;">']
     parts.append('      <table class="aide-grid" style="border-collapse:collapse;text-align:center;">')
@@ -350,14 +354,16 @@ def _render_auto_grid(entities: list[dict], schema: dict, meta: dict | None = No
         parts.append(f'            <th colspan="{len(col_list)}" style="padding:12px 8px;font-weight:700;color:#222;font-size:14px;text-transform:uppercase;letter-spacing:1px;border-bottom:3px solid #333;">{escape(col_label)}</th>')
         parts.append("          </tr>")
 
-    # Header row with column numbers
+    # Header row with column numbers/labels
     parts.append("          <tr>")
     # Empty cells: 1 for row numbers, plus 1 if row_label exists
     if row_label:
         parts.append('            <th style="padding:8px;"></th>')  # Row label column
     parts.append('            <th style="padding:8px;"></th>')  # Row numbers column
-    for col in col_list:
-        parts.append(f'            <th style="padding:8px;font-weight:600;color:#444;font-size:13px;">{col}</th>')
+    for idx, col in enumerate(col_list):
+        # Use custom col_labels if provided, otherwise use numeric index
+        col_display = col_labels[idx] if idx < len(col_labels) else col
+        parts.append(f'            <th style="padding:8px;font-weight:600;color:#444;font-size:13px;">{escape(str(col_display))}</th>')
     parts.append("          </tr>")
     parts.append("        </thead>")
 
@@ -369,8 +375,9 @@ def _render_auto_grid(entities: list[dict], schema: dict, meta: dict | None = No
         if i == 0 and row_label:
             parts.append(f'            <th rowspan="{len(row_list)}" style="padding:12px 8px;font-weight:700;color:#222;font-size:14px;text-transform:uppercase;letter-spacing:1px;writing-mode:vertical-lr;transform:rotate(180deg);border-right:3px solid #333;text-align:center;">{escape(row_label)}</th>')
         # Note: when row_label exists and i > 0, we skip because rowspan covers it
-        # Row number
-        parts.append(f'            <th style="padding:8px;font-weight:600;color:#444;font-size:13px;">{row}</th>')
+        # Row number/label - use custom row_labels if provided
+        row_display = row_labels[i] if i < len(row_labels) else row
+        parts.append(f'            <th style="padding:8px;font-weight:600;color:#444;font-size:13px;">{escape(str(row_display))}</th>')
         for col in col_list:
             entity = grid_map.get((row, col))
             if entity and display_field:
