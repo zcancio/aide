@@ -667,7 +667,13 @@
       const res = await fetch('/auth/me', { credentials: 'include' });
       if (res.ok) {
         currentUser = await res.json();
-        loadDashboard();
+        // Check if there's an aide ID in the URL
+        const aideId = new URLSearchParams(location.search).get('aide');
+        if (aideId) {
+          openEditor(aideId);
+        } else {
+          loadDashboard();
+        }
       } else {
         showScreen('auth');
       }
@@ -796,6 +802,9 @@
     const frame = document.getElementById('preview-frame');
 
     if (aideId) {
+      // Update URL to include aide ID (for refresh persistence)
+      history.replaceState({}, '', `?aide=${aideId}`);
+
       // Existing AIde - load preview and conversation history
       frame.removeAttribute('srcdoc');
       frame.src = `/api/aides/${aideId}/preview`;
@@ -822,6 +831,7 @@
 
   document.getElementById('editor-back').addEventListener('click', () => {
     currentAideId = null;
+    history.replaceState({}, '', '/');
     loadDashboard();
   });
 
@@ -896,6 +906,8 @@
 
       // Update state
       currentAideId = data.aide_id;
+      // Update URL for new AIde (persist across refresh)
+      history.replaceState({}, '', `?aide=${data.aide_id}`);
 
       if (data.response_text) {
         conversationHistory.push({ role: 'assistant', content: data.response_text });
