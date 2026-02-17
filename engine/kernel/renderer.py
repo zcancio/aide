@@ -339,8 +339,8 @@ def _render_auto_grid(entities: list[dict], schema: dict, meta: dict | None = No
     row_labels = meta.get("row_labels", [])  # e.g., ["A", "B", "C", ...]
     col_labels = meta.get("col_labels", [])  # e.g., ["1", "2", "3", ...]
 
-    parts = ['    <div class="aide-grid-wrap" style="display:flex;justify-content:center;padding:16px;">']
-    parts.append('      <table class="aide-grid" style="border-collapse:collapse;text-align:center;width:100%;max-width:500px;table-layout:fixed;">')
+    parts = ['    <div class="aide-grid-wrap" style="display:flex;justify-content:center;padding:16px;overflow-x:auto;">']
+    parts.append('      <table class="aide-grid" style="border-collapse:collapse;text-align:center;width:100%;min-width:288px;max-width:500px;table-layout:fixed;">')
 
     parts.append("        <thead>")
 
@@ -384,14 +384,22 @@ def _render_auto_grid(entities: list[dict], schema: dict, meta: dict | None = No
                 value = entity.get(display_field)
                 if value:
                     cell_content = escape(str(value))
-                    cell_style = "padding:0;border:1px solid #ccc;background:#e8f4e8;font-size:11px;aspect-ratio:1;vertical-align:middle;"
+                    cell_bg = "background:#e8f4e8;"
                 else:
                     cell_content = ""
-                    cell_style = "padding:0;border:1px solid #ddd;aspect-ratio:1;vertical-align:middle;"
+                    cell_bg = ""
             else:
                 cell_content = ""
-                cell_style = "padding:0;border:1px solid #ddd;aspect-ratio:1;vertical-align:middle;"
-            parts.append(f'            <td style="{cell_style}">{cell_content}</td>')
+                cell_bg = ""
+            # Use inner div with aspect-ratio since it doesn't work on td elements
+            # Wrap text in span for ellipsis (doesn't work directly on flex container)
+            td_style = "padding:0;border:1px solid #ddd;vertical-align:middle;"
+            div_style = f"aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:11px;padding:2px;{cell_bg}"
+            span_style = "overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;"
+            if cell_content:
+                parts.append(f'            <td style="{td_style}"><div style="{div_style}"><span style="{span_style}">{cell_content}</span></div></td>')
+            else:
+                parts.append(f'            <td style="{td_style}"><div style="{div_style}"></div></td>')
         parts.append("          </tr>")
     parts.append("        </tbody>")
     parts.append("      </table>")

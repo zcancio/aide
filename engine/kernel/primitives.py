@@ -90,11 +90,12 @@ def _validate_entity_update(p: dict) -> list[str]:
     errors: list[str] = []
     has_ref = "ref" in p
     has_filter = "filter" in p
+    has_cell_ref = "cell_ref" in p  # Grid cell reference (resolved by backend)
 
-    if not has_ref and not has_filter:
-        errors.append("entity.update requires 'ref' or 'filter'")
-    elif has_ref and has_filter:
-        errors.append("entity.update: provide 'ref' or 'filter', not both")
+    if not has_ref and not has_filter and not has_cell_ref:
+        errors.append("entity.update requires 'ref', 'filter', or 'cell_ref'")
+    elif sum([has_ref, has_filter, has_cell_ref]) > 1:
+        errors.append("entity.update: provide only one of 'ref', 'filter', or 'cell_ref'")
 
     if has_ref and not is_valid_ref(p["ref"]):
         errors.append(f"Invalid ref: {p['ref']}")
@@ -105,6 +106,12 @@ def _validate_entity_update(p: dict) -> list[str]:
             errors.append("'filter' must be an object")
         elif "collection" not in f:
             errors.append("filter requires 'collection'")
+
+    if has_cell_ref:
+        if not isinstance(p["cell_ref"], str):
+            errors.append("'cell_ref' must be a string")
+        if "collection" not in p:
+            errors.append("cell_ref requires 'collection'")
 
     if "fields" not in p:
         errors.append("entity.update requires 'fields'")
@@ -179,6 +186,22 @@ def _validate_grid_create(p: dict) -> list[str]:
         errors.append("grid.create requires 'cols'")
     elif not isinstance(p["cols"], int) or p["cols"] < 1:
         errors.append("'cols' must be a positive integer")
+
+    return errors
+
+
+def _validate_grid_query(p: dict) -> list[str]:
+    """Validate grid.query primitive for cell lookups."""
+    errors: list[str] = []
+    if "cell_ref" not in p:
+        errors.append("grid.query requires 'cell_ref'")
+    elif not isinstance(p["cell_ref"], str):
+        errors.append("'cell_ref' must be a string")
+
+    if "collection" not in p:
+        errors.append("grid.query requires 'collection'")
+    elif not is_valid_id(p["collection"]):
+        errors.append(f"Invalid collection ID: {p['collection']}")
 
     return errors
 
@@ -411,6 +434,7 @@ _VALIDATORS: dict[str, Any] = {
     "collection.update": _validate_collection_update,
     "collection.remove": _validate_collection_remove,
     "grid.create": _validate_grid_create,
+    "grid.query": _validate_grid_query,
     "field.add": _validate_field_add,
     "field.update": _validate_field_update,
     "field.remove": _validate_field_remove,

@@ -438,19 +438,24 @@ Response: "Columns A-G, rows Q-Z."
 
 ### 6. Grid Cell References
 
-When users reference grid cells by label (e.g., "JW", "FU"), resolve the cell by matching each character to its axis:
+When users reference grid cells by label (e.g., "JW", "FU"), use `cell_ref` in the payload instead of computing the entity ref. The backend will resolve the cell reference to the correct entity.
 
-- If `col_labels` = ["A"-"J"] and `row_labels` = ["Q"-"Z"], then:
-  - "JW" → column J, row W → entity at (row=6, col=9) since W is index 6 in Q-Z, J is index 9 in A-J
-  - "WJ" → same cell (order doesn't matter when labels are non-overlapping)
-  - "FU" → column F, row U → entity at (row=4, col=5)
-
-**Key rule**: When row and column labels are non-overlapping sets, the order the user provides them in doesn't matter. Match each character to whichever axis contains it.
+**Format for grid updates:**
+```json
+{
+  "type": "entity.update",
+  "payload": {
+    "cell_ref": "JW",
+    "collection": "squares",
+    "fields": { "owner": "Zach" }
+  }
+}
+```
 
 User: "zach bought square JW"
 
 You synthesize:
-1. `entity.update` — `{ "ref": "squares/square_6_9", "fields": { "owner": "Zach" } }`
+1. `entity.update` — `{ "cell_ref": "JW", "collection": "squares", "fields": { "owner": "Zach" } }`
 
 Response: "Zach: JW."
 
