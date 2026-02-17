@@ -569,6 +569,51 @@ def _handle_collection_remove(snap: dict, event: Event) -> ReduceResult:
     return _ok(snap, warnings)
 
 
+def _handle_grid_create(snap: dict, event: Event) -> ReduceResult:
+    """
+    Create a grid of entities in one operation.
+    Payload: { collection, rows, cols, defaults? }
+    Creates rows × cols entities with row/col fields.
+    """
+    p = event.payload
+    coll_id = p["collection"]
+    rows = p["rows"]
+    cols = p["cols"]
+    defaults = p.get("defaults", {})
+
+    coll = _get_collection(snap, coll_id)
+    if coll is None:
+        return _reject(snap, "COLLECTION_NOT_FOUND", coll_id)
+
+    schema = coll.get("schema", {})
+
+    # Verify schema has row and col fields
+    if "row" not in schema or "col" not in schema:
+        return _reject(snap, "SCHEMA_MISMATCH", "Grid requires 'row' and 'col' fields in schema")
+
+    # Create all grid entities
+    for row in range(rows):
+        for col in range(cols):
+            entity_id = f"cell_{row}_{col}"
+
+            # Build entity fields from schema
+            entity_fields: dict[str, Any] = {"row": row, "col": col}
+            for field_name, field_type in schema.items():
+                if field_name in ("row", "col"):
+                    continue
+                if field_name in defaults:
+                    entity_fields[field_name] = defaults[field_name]
+                elif is_nullable_type(field_type):
+                    entity_fields[field_name] = None
+                # Required fields without defaults will fail - but grid.create assumes nullable fields
+
+            entity_fields["_removed"] = False
+            entity_fields["_created_seq"] = event.sequence
+            coll["entities"][entity_id] = entity_fields
+
+    return _ok(snap)
+
+
 def _handle_field_add(snap: dict, event: Event) -> ReduceResult:
     p = event.payload
     coll_id = p["collection"]
@@ -1176,6 +1221,7 @@ _HANDLERS: dict[str, Any] = {
     "collection.create": _handle_collection_create,
     "collection.update": _handle_collection_update,
     "collection.remove": _handle_collection_remove,
+    "grid.create": _handle_grid_create,
     "field.add": _handle_field_add,
     "field.update": _handle_field_update,
     "field.remove": _handle_field_remove,

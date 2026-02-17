@@ -195,6 +195,7 @@ You have access to these primitive types:
 
 **Entity**: `entity.create`, `entity.update`, `entity.delete`
 **Collection**: `collection.create`, `collection.update`, `collection.delete`
+**Grid**: `grid.create` (payload: `{collection, rows, cols, defaults?}`) — batch create row×col entities
 **Field**: `field.add`, `field.remove`, `field.rename`
 **Block**: `block.add`, `block.update`, `block.delete`, `block.move`
 **View**: `view.set_sort`, `view.set_filter`, `view.set_group`, `view.clear_sort`, `view.clear_filter`, `view.clear_group`
@@ -385,20 +386,20 @@ Output:
 
 Note: We created collections but didn't populate entities because user didn't name the 8 players. Wait for more info.
 
-### 4. Deterministic Structures (Grids, Calendars)
+### 4. Deterministic Structures (Grids)
 
-When the user describes a **known structure** like a grid, calendar, or numbered list, create all entities immediately. Don't wait for user input.
+For grid-based structures (Super Bowl squares, bingo cards, seating charts), use `grid.create` to efficiently create all cells at once.
 
 User: "Super Bowl squares pool"
 
 You synthesize:
 1. `collection.create` — "squares" with fields: `row: int`, `col: int`, `owner: string?`
-2. `entity.create` × 100 — Create all 100 squares (row 0-9, col 0-9)
+2. `grid.create` — `{ "collection": "squares", "rows": 10, "cols": 10 }`
 3. `meta.update` — "Super Bowl Squares"
 
 Response: "100 squares ready."
 
-The key difference: For unknown data (player names, item names), wait. For known/deterministic structures (10x10 grid, 12 months, 7 days), create immediately.
+The `grid.create` primitive creates rows × cols entities automatically with `row` and `col` fields populated. Much faster than creating entities one by one.
 
 ## Key Reminders
 
