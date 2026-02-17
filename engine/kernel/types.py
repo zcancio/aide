@@ -136,6 +136,45 @@ ESCALATION_REASONS: set[str] = {
 
 
 @dataclass
+class Snapshot:
+    """
+    The aide's current state — all collections, entities, blocks, views, and styles.
+    This is what gets persisted to the database and used for rendering.
+    """
+
+    collections: dict[str, Any] = field(default_factory=dict)
+    entities: dict[str, Any] = field(default_factory=dict)
+    blocks: list[dict[str, Any]] = field(default_factory=list)
+    views: dict[str, Any] = field(default_factory=dict)
+    styles: dict[str, Any] = field(default_factory=dict)
+    meta: dict[str, Any] = field(default_factory=dict)
+    relationships: list[dict[str, Any]] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "collections": self.collections,
+            "entities": self.entities,
+            "blocks": self.blocks,
+            "views": self.views,
+            "styles": self.styles,
+            "meta": self.meta,
+            "relationships": self.relationships,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> Snapshot:
+        return cls(
+            collections=d.get("collections", {}),
+            entities=d.get("entities", {}),
+            blocks=d.get("blocks", []),
+            views=d.get("views", {}),
+            styles=d.get("styles", {}),
+            meta=d.get("meta", {}),
+            relationships=d.get("relationships", []),
+        )
+
+
+@dataclass
 class Event:
     """
     Wraps a primitive with metadata for the append-only event log.

@@ -5,8 +5,8 @@ from pathlib import Path
 from typing import Any
 
 from backend.services.ai_provider import ai_provider
+from engine.kernel.primitives import validate_primitive
 from engine.kernel.types import Event, Snapshot
-from engine.kernel.validator import validate_primitive
 
 
 class L2Compiler:
@@ -77,17 +77,16 @@ class L2Compiler:
         validated_primitives = []
 
         for primitive in primitives:
-            try:
-                validate_primitive(primitive)
-                validated_primitives.append(primitive)
-            except ValueError as e:
+            errors = validate_primitive(primitive.get("type", ""), primitive.get("payload", {}))
+            if errors:
                 # Invalid primitive — escalate to L3
-                print(f"L2 emitted invalid primitive: {e}")
+                print(f"L2 emitted invalid primitive: {errors[0]}")
                 return {
                     "primitives": [],
                     "response": "",
                     "escalate": True,
                 }
+            validated_primitives.append(primitive)
 
         return {
             "primitives": validated_primitives,
