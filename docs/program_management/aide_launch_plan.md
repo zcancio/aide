@@ -84,19 +84,19 @@ _Wire the kernel to users. Web chat for creation, Signal for ongoing updates._
 - [x] Managed API routing: server-side keys, 70% Haiku / 30% Sonnet based on message complexity
 - [x] Voice rules: no first person, state reflections only, no encouragement/emojis
 
-### 1.4 Web Chat UI
-- [ ] Dashboard (post-login landing): grid/list of user's aides
+### 1.4 Web Chat UI ✅ COMPLETE
+- [x] Dashboard (post-login landing): grid/list of user's aides
   - Each card: title, status badge, last edited timestamp
   - "New AIde" button → enters chat with blank aide
   - Click existing aide → enters chat with that aide's state + conversation
   - Archive/delete aide (with confirmation)
-- [ ] Chat interface: full-viewport preview (iframe, `srcdoc`) + floating chat overlay pinned to bottom
+- [x] Chat interface: full-viewport preview (iframe, `srcdoc`) + floating chat overlay pinned to bottom
   - Chat overlay: input bar at bottom, expandable conversation history, backdrop blur
   - Image input: file picker + drag-and-drop, JPEG/PNG/WebP/HEIC, 10MB max → triggers L3 routing
   - Preview refreshes per AI turn
-- [ ] `POST /api/message` — accepts `{ aide_id, message, image? }`, returns `{ response_text, page_url, state }`
+- [x] `POST /api/message` — accepts `{ aide_id, message, image? }`, returns `{ response_text, page_url, state }`
   - Creates new aide on first message if no aide_id
-- [ ] Publish flow: creates/updates aide's slug in DB, uploads to R2
+- [x] Publish flow: creates/updates aide's slug in DB, uploads to R2
   - Published URL: `toaide.com/s/{slug}` (namespaced under `/s/` for route safety)
 
 ### 1.5 Signal Ear

@@ -105,7 +105,20 @@ class Orchestrator:
         html_content = render(new_snapshot, blueprint=blueprint, events=events)
 
         # 5. Save state to DB
-        await self.aide_repo.update_state(user_id, aide_id, aide.state, aide.event_log)
+        serialized_events = [
+            {
+                "id": e.id,
+                "sequence": e.sequence,
+                "timestamp": e.timestamp,
+                "actor": e.actor,
+                "source": e.source,
+                "type": e.type,
+                "payload": e.payload,
+            }
+            for e in events
+        ]
+        updated_event_log = (aide.event_log or []) + serialized_events
+        await self.aide_repo.update_state(user_id, aide_id, new_snapshot, updated_event_log)
 
         # 6. Upload HTML to R2
         r2_key = await r2_service.upload_html(str(aide_id), html_content)

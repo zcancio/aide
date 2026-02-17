@@ -8,13 +8,19 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from backend import db
 from backend.middleware.rate_limit import rate_limiter
 from backend.repos.magic_link_repo import MagicLinkRepo
+from backend.routes import aides as aide_routes
 from backend.routes import auth_routes
+from backend.routes import conversations as conversation_routes
+from backend.routes import publish as publish_routes
 
 
 # Background task for cleanup
@@ -83,9 +89,24 @@ app = FastAPI(
 
 # Register routes
 app.include_router(auth_routes.router)
+app.include_router(aide_routes.router)
+app.include_router(conversation_routes.router)
+app.include_router(publish_routes.router)
 
 
 @app.get("/health")
 async def health():
     """Health check endpoint for uptime monitoring."""
     return {"status": "ok"}
+
+
+# Serve frontend — must be after all API routes
+_FRONTEND = Path(__file__).parent.parent / "frontend"
+
+if _FRONTEND.is_dir():
+    app.mount("/static", StaticFiles(directory=str(_FRONTEND)), name="static")
+
+    @app.get("/")
+    async def serve_index():
+        """Serve the editor SPA."""
+        return FileResponse(str(_FRONTEND / "index.html"))
