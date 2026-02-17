@@ -1,11 +1,24 @@
 """AI provider abstraction for Anthropic and OpenAI models."""
 
+import asyncio
 from typing import Any
 
 import anthropic
 import openai
 
 from backend.config import settings
+
+# Transient error types that warrant a retry
+_RETRYABLE_ANTHROPIC = (
+    anthropic.RateLimitError,
+    anthropic.APIConnectionError,
+    anthropic.InternalServerError,
+)
+_RETRYABLE_OPENAI = (
+    openai.RateLimitError,
+    openai.APIConnectionError,
+    openai.InternalServerError,
+)
 
 
 class AIProvider:
@@ -23,9 +36,10 @@ class AIProvider:
         messages: list[dict[str, Any]],
         max_tokens: int = 4096,
         temperature: float = 1.0,
+        max_retries: int = 1,
     ) -> dict[str, Any]:
         """
-        Call Claude API.
+        Call Claude API with retry on transient failures.
 
         Args:
             model: Model name (e.g., "claude-3-5-haiku-20241022", "claude-3-5-sonnet-20241022")
@@ -33,31 +47,50 @@ class AIProvider:
             messages: List of message dicts with "role" and "content"
             max_tokens: Maximum tokens to generate
             temperature: Sampling temperature
+            max_retries: Number of retries on transient failures (default 1)
 
         Returns:
             Dict with "content" (text) and "usage" (token counts)
+
+        Raises:
+            anthropic.APIError: If all retries exhausted
         """
-        response = await self.anthropic_client.messages.create(
-            model=model,
-            system=system,
-            messages=messages,
-            max_tokens=max_tokens,
-            temperature=temperature,
-        )
+        last_error: Exception | None = None
 
-        # Extract text content from response
-        content_text = ""
-        for block in response.content:
-            if block.type == "text":
-                content_text += block.text
+        for attempt in range(max_retries + 1):
+            try:
+                response = await self.anthropic_client.messages.create(
+                    model=model,
+                    system=system,
+                    messages=messages,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                )
 
-        return {
-            "content": content_text,
-            "usage": {
-                "input_tokens": response.usage.input_tokens,
-                "output_tokens": response.usage.output_tokens,
-            },
-        }
+                # Extract text content from response
+                content_text = ""
+                for block in response.content:
+                    if block.type == "text":
+                        content_text += block.text
+
+                return {
+                    "content": content_text,
+                    "usage": {
+                        "input_tokens": response.usage.input_tokens,
+                        "output_tokens": response.usage.output_tokens,
+                    },
+                }
+            except _RETRYABLE_ANTHROPIC as e:
+                last_error = e
+                if attempt < max_retries:
+                    wait_time = 2**attempt  # Exponential backoff: 1s, 2s, 4s...
+                    print(f"Claude API error (attempt {attempt + 1}), retrying in {wait_time}s: {e}")
+                    await asyncio.sleep(wait_time)
+                else:
+                    print(f"Claude API error, retries exhausted: {e}")
+
+        # All retries failed
+        raise last_error  # type: ignore[misc]
 
     async def call_gpt(
         self,
@@ -66,9 +99,10 @@ class AIProvider:
         messages: list[dict[str, Any]],
         max_tokens: int = 4096,
         temperature: float = 1.0,
+        max_retries: int = 1,
     ) -> dict[str, Any]:
         """
-        Call OpenAI GPT API.
+        Call OpenAI GPT API with retry on transient failures.
 
         Args:
             model: Model name (e.g., "gpt-4o", "gpt-4o-mini")
@@ -76,27 +110,44 @@ class AIProvider:
             messages: List of message dicts with "role" and "content"
             max_tokens: Maximum tokens to generate
             temperature: Sampling temperature
+            max_retries: Number of retries on transient failures (default 1)
 
         Returns:
             Dict with "content" (text) and "usage" (token counts)
+
+        Raises:
+            openai.APIError: If all retries exhausted
         """
         # Prepend system message
         full_messages = [{"role": "system", "content": system}] + messages
+        last_error: Exception | None = None
 
-        response = await self.openai_client.chat.completions.create(
-            model=model,
-            messages=full_messages,
-            max_tokens=max_tokens,
-            temperature=temperature,
-        )
+        for attempt in range(max_retries + 1):
+            try:
+                response = await self.openai_client.chat.completions.create(
+                    model=model,
+                    messages=full_messages,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                )
 
-        return {
-            "content": response.choices[0].message.content or "",
-            "usage": {
-                "input_tokens": response.usage.prompt_tokens,
-                "output_tokens": response.usage.completion_tokens,
-            },
-        }
+                return {
+                    "content": response.choices[0].message.content or "",
+                    "usage": {
+                        "input_tokens": response.usage.prompt_tokens,
+                        "output_tokens": response.usage.completion_tokens,
+                    },
+                }
+            except _RETRYABLE_OPENAI as e:
+                last_error = e
+                if attempt < max_retries:
+                    wait_time = 2**attempt
+                    print(f"OpenAI API error (attempt {attempt + 1}), retrying in {wait_time}s: {e}")
+                    await asyncio.sleep(wait_time)
+                else:
+                    print(f"OpenAI API error, retries exhausted: {e}")
+
+        raise last_error  # type: ignore[misc]
 
     async def transcribe_audio(self, audio_data: bytes, filename: str = "audio.webm") -> str:
         """

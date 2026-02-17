@@ -69,28 +69,38 @@ class Orchestrator:
         primitives: list[dict[str, Any]] = []
         response_text = ""
 
-        # Check if image input or empty snapshot → route to L3
-        if image_data or not snapshot.collections:
-            # Route to L3 (Sonnet)
-            print(f"Routing to L3 (image={bool(image_data)}, empty_snapshot={not snapshot.collections})")
-            l3_result = await l3_synthesizer.synthesize(message, snapshot, recent_events, image_data=image_data)
-            primitives = l3_result["primitives"]
-            response_text = l3_result["response"]
-        else:
-            # Route to L2 (Haiku) first
-            print("Routing to L2 first")
-            l2_result = await l2_compiler.compile(message, snapshot, recent_events)
-
-            if l2_result["escalate"]:
-                # L2 requested escalation → route to L3
-                print("L2 escalated to L3")
-                l3_result = await l3_synthesizer.synthesize(message, snapshot, recent_events)
+        try:
+            # Check if image input or empty snapshot → route to L3
+            if image_data or not snapshot.collections:
+                # Route to L3 (Sonnet)
+                print(f"Routing to L3 (image={bool(image_data)}, empty_snapshot={not snapshot.collections})")
+                l3_result = await l3_synthesizer.synthesize(message, snapshot, recent_events, image_data=image_data)
                 primitives = l3_result["primitives"]
                 response_text = l3_result["response"]
             else:
-                print(f"L2 handled: {len(l2_result['primitives'])} primitives")
-                primitives = l2_result["primitives"]
-                response_text = l2_result["response"]
+                # Route to L2 (Haiku) first
+                print("Routing to L2 first")
+                l2_result = await l2_compiler.compile(message, snapshot, recent_events)
+
+                if l2_result["escalate"]:
+                    # L2 requested escalation → route to L3
+                    print("L2 escalated to L3")
+                    l3_result = await l3_synthesizer.synthesize(message, snapshot, recent_events)
+                    primitives = l3_result["primitives"]
+                    response_text = l3_result["response"]
+                else:
+                    print(f"L2 handled: {len(l2_result['primitives'])} primitives")
+                    primitives = l2_result["primitives"]
+                    response_text = l2_result["response"]
+        except Exception as e:
+            # AI call failed even after retries — return user-friendly error
+            print(f"AI routing failed: {e}")
+            return {
+                "response": "Something went wrong processing that message. Please try again.",
+                "html_url": f"/api/aides/{aide_id}/preview",
+                "primitives_count": 0,
+                "error": True,
+            }
 
         # 2.5. Resolve any grid cell references in primitives
         snapshot_dict = snapshot.to_dict()
@@ -152,8 +162,12 @@ class Orchestrator:
         new_title = new_snapshot.get("meta", {}).get("title")
         await self.aide_repo.update_state(user_id, aide_id, new_snapshot, updated_event_log, title=new_title)
 
-        # 6. Upload HTML to R2
-        await r2_service.upload_html(str(aide_id), html_content)
+        # 6. Upload HTML to R2 (non-blocking — DB is source of truth)
+        try:
+            await r2_service.upload_html(str(aide_id), html_content)
+        except Exception as e:
+            # Log but don't fail — state is saved in DB, R2 is just a cache
+            print(f"R2 upload failed (will retry on next message): {e}")
 
         # 7. Save messages to conversation
         user_message = Message(
