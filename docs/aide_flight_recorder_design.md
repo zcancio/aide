@@ -64,7 +64,7 @@ Each line in the JSONL file is one complete turn record:
     {
       "call_id": "call_1",
       "shadow": false,
-      "model": "claude-3-5-haiku-20241022",
+      "model": "claude-sonnet-4-20250514",
       "tier": "L2",
       "prompt": "...",
       "response": "...",
@@ -75,7 +75,7 @@ Each line in the JSONL file is one complete turn record:
     {
       "call_id": "call_2",
       "shadow": true,
-      "model": "claude-sonnet-4-20250514",
+      "model": "claude-3-5-haiku-20241022",
       "tier": "L2",
       "prompt": "...",
       "response": "...",
@@ -110,15 +110,15 @@ Batching reduces R2 API calls. Each batch is flushed when it reaches 100 records
 
 ## Model Configuration
 
-### Production Models
-- **L2**: `claude-3-5-haiku-20241022` (Haiku-class, ~$0.001/call for intent compilation)
-- **L3**: `claude-sonnet-4-20250514` (Sonnet-class, ~$0.02/call for schema synthesis)
+### Production Models (main flow)
+- **L2**: `claude-sonnet-4-20250514` (Sonnet-class, high quality intent compilation)
+- **L3**: `claude-opus-4-6` (Opus-class, schema synthesis + vision)
 
 ### Shadow Models (recorded, not applied)
-- **L2 shadow**: `claude-sonnet-4-20250514` (higher-tier for quality comparison)
-- **L3 shadow**: `claude-opus-4-6` (higher-tier for quality comparison)
+- **L2 shadow**: `claude-3-5-haiku-20241022` (lower-tier for cost comparison)
+- **L3 shadow**: `claude-sonnet-4-20250514` (lower-tier for cost comparison)
 
-Shadow calls use higher-tier models to measure the quality tradeoff of production model choices. They run sequentially after production calls complete and do not affect state or the user response.
+Shadow calls use lower-tier models to measure if cheaper models would produce acceptable results. They run sequentially after production calls complete and do not affect state or the user response.
 
 ---
 

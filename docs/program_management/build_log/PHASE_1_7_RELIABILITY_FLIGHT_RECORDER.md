@@ -35,10 +35,10 @@
 ### 1.7.3 Shadow LLM Calls
 
 **`backend/config.py`** (updated)
-- Added `L2_MODEL` (default: `claude-3-5-haiku-20241022`) — production L2 (Haiku-class per CLAUDE.md).
-- Added `L3_MODEL` (default: `claude-sonnet-4-20250514`) — production L3 (Sonnet-class per CLAUDE.md).
-- Added `L2_SHADOW_MODEL` (default: `claude-sonnet-4-20250514`) — shadow L2 (higher-tier for quality comparison).
-- Added `L3_SHADOW_MODEL` (default: `claude-opus-4-6`) — shadow L3 (higher-tier for quality comparison).
+- Added `L2_MODEL` (default: `claude-sonnet-4-20250514`) — production L2 (Sonnet for quality).
+- Added `L3_MODEL` (default: `claude-opus-4-6`) — production L3 (Opus for schema synthesis + vision).
+- Added `L2_SHADOW_MODEL` (default: `claude-3-5-haiku-20241022`) — shadow L2 (lower-tier for cost comparison).
+- Added `L3_SHADOW_MODEL` (default: `claude-sonnet-4-20250514`) — shadow L3 (lower-tier for cost comparison).
 - All four configurable via environment variables.
 
 **`backend/services/orchestrator.py`** (refactored)
