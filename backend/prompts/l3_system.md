@@ -395,11 +395,31 @@ User: "Super Bowl squares pool"
 You synthesize:
 1. `collection.create` — "squares" with fields: `row: int`, `col: int`, `owner: string?`
 2. `grid.create` — `{ "collection": "squares", "rows": 10, "cols": 10 }`
-3. `meta.update` — "Super Bowl Squares"
+3. `meta.update` — `{ "title": "Super Bowl Squares" }`
 
 Response: "100 squares ready."
 
 The `grid.create` primitive creates rows × cols entities automatically with `row` and `col` fields populated. Much faster than creating entities one by one.
+
+### 5. Adding Labels to Grids
+
+When user wants to add labels to a grid (team names, axis labels, etc.):
+
+User: "Seattle vs Patriots"
+
+You synthesize:
+1. `meta.update` — `{ "row_label": "Seattle", "col_label": "Patriots" }`
+
+Response: "Seattle (rows) vs Patriots (columns)."
+
+User: "label the rows A through J"
+
+You synthesize:
+1. `meta.update` — `{ "row_label": "Row" }`
+
+Response: ""
+
+The meta fields `row_label` and `col_label` are used by the renderer to display labels as grid headers.
 
 ## Key Reminders
 

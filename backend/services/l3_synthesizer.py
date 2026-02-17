@@ -63,8 +63,11 @@ class L3Synthesizer:
 
         try:
             response_data = json.loads(content)
+            print(f"L3 parsed: {len(response_data.get('primitives', []))} primitives, response='{response_data.get('response', '')[:50]}'")
         except json.JSONDecodeError as e:
             # L3 failed to return valid JSON — return empty result
+            print(f"L3 JSON parse error: {e}")
+            print(f"L3 raw content (last 500): {content[-500:]}")
             return {
                 "primitives": [],
                 "response": "",

@@ -288,8 +288,9 @@ def _auto_render_collections(snapshot: dict) -> str:
         has_col = schema.get("col") in ("int", "int?")
 
         if has_row and has_col:
-            # Render as grid
-            parts.append(_render_auto_grid(entities, schema))
+            # Render as grid (pass meta for team names)
+            meta = snapshot.get("meta", {})
+            parts.append(_render_auto_grid(entities, schema, meta))
         else:
             # Render as table view
             parts.append(_render_table_view(entities, schema, {}, {}))
@@ -297,11 +298,13 @@ def _auto_render_collections(snapshot: dict) -> str:
     return "\n".join(parts)
 
 
-def _render_auto_grid(entities: list[dict], schema: dict) -> str:
+def _render_auto_grid(entities: list[dict], schema: dict, meta: dict | None = None) -> str:
     """
     Render entities with row/col fields as a visual grid.
     Used for Super Bowl squares, bingo cards, seating charts, etc.
     """
+    meta = meta or {}
+
     # Find grid dimensions
     rows = set()
     cols = set()
@@ -328,42 +331,65 @@ def _render_auto_grid(entities: list[dict], schema: dict) -> str:
             display_field = field
             break
 
+    # Get axis labels from meta (for Super Bowl squares, seating charts, etc.)
+    row_label = meta.get("row_label", "")
+    col_label = meta.get("col_label", "")
+
     parts = ['    <div class="aide-grid-wrap" style="overflow-x:auto;">']
     parts.append('      <table class="aide-grid" style="border-collapse:collapse;text-align:center;">')
 
-    # Header row with column numbers
     parts.append("        <thead>")
+
+    # Column label header (if set)
+    if col_label:
+        parts.append("          <tr>")
+        # Empty corner cells: 1 for row numbers, plus 1 if row_label exists
+        if row_label:
+            parts.append('            <th style="padding:8px;"></th>')  # Row label column
+        parts.append('            <th style="padding:8px;"></th>')  # Row numbers column
+        parts.append(f'            <th colspan="{len(col_list)}" style="padding:12px 8px;font-weight:700;color:#222;font-size:14px;text-transform:uppercase;letter-spacing:1px;border-bottom:3px solid #333;">{escape(col_label)}</th>')
+        parts.append("          </tr>")
+
+    # Header row with column numbers
     parts.append("          <tr>")
-    parts.append('            <th style="padding:8px;"></th>')
+    # Empty cells: 1 for row numbers, plus 1 if row_label exists
+    if row_label:
+        parts.append('            <th style="padding:8px;"></th>')  # Row label column
+    parts.append('            <th style="padding:8px;"></th>')  # Row numbers column
     for col in col_list:
-        parts.append(f'            <th style="padding:8px;font-weight:500;color:#666;">{col}</th>')
+        parts.append(f'            <th style="padding:8px;font-weight:600;color:#444;font-size:13px;">{col}</th>')
     parts.append("          </tr>")
     parts.append("        </thead>")
 
-    # Grid rows
+    # Grid rows - with row label spanning all rows on the left
     parts.append("        <tbody>")
-    for row in row_list:
+    for i, row in enumerate(row_list):
         parts.append("          <tr>")
-        parts.append(f'            <th style="padding:8px;font-weight:500;color:#666;">{row}</th>')
+        # Add vertical row label on first row, spanning all rows
+        if i == 0 and row_label:
+            parts.append(f'            <th rowspan="{len(row_list)}" style="padding:12px 8px;font-weight:700;color:#222;font-size:14px;text-transform:uppercase;letter-spacing:1px;writing-mode:vertical-lr;transform:rotate(180deg);border-right:3px solid #333;text-align:center;">{escape(row_label)}</th>')
+        # Note: when row_label exists and i > 0, we skip because rowspan covers it
+        # Row number
+        parts.append(f'            <th style="padding:8px;font-weight:600;color:#444;font-size:13px;">{row}</th>')
         for col in col_list:
             entity = grid_map.get((row, col))
             if entity and display_field:
                 value = entity.get(display_field)
                 if value:
                     cell_content = escape(str(value))
-                    cell_style = "padding:12px;border:1px solid #ddd;background:#f5f5f5;min-width:60px;"
+                    cell_style = "padding:12px;border:1px solid #ccc;background:#e8f4e8;min-width:50px;font-size:12px;"
                 else:
                     cell_content = ""
-                    cell_style = "padding:12px;border:1px solid #ddd;min-width:60px;"
+                    cell_style = "padding:12px;border:1px solid #ddd;min-width:50px;"
             else:
                 cell_content = ""
-                cell_style = "padding:12px;border:1px solid #ddd;min-width:60px;"
+                cell_style = "padding:12px;border:1px solid #ddd;min-width:50px;"
             parts.append(f'            <td style="{cell_style}">{cell_content}</td>')
         parts.append("          </tr>")
     parts.append("        </tbody>")
-
     parts.append("      </table>")
     parts.append("    </div>")
+
     return "\n".join(parts)
 
 

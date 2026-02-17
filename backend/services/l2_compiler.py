@@ -64,12 +64,15 @@ class L2Compiler:
             response_data = json.loads(content)
         except json.JSONDecodeError as e:
             # L2 failed to return valid JSON — escalate to L3
+            print(f"L2 invalid JSON, escalating: {e}")
             return {
                 "primitives": [],
                 "response": "",
                 "escalate": True,
                 "error": f"L2 returned invalid JSON: {e}",
             }
+
+        print(f"L2 response: escalate={response_data.get('escalate')}, primitives={len(response_data.get('primitives', []))}")
 
         # Check if L2 is requesting escalation
         if response_data.get("escalate", False):

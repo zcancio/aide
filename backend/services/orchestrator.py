@@ -72,34 +72,46 @@ class Orchestrator:
         # Check if image input or empty snapshot → route to L3
         if image_data or not snapshot.collections:
             # Route to L3 (Sonnet)
+            print(f"Routing to L3 (image={bool(image_data)}, empty_snapshot={not snapshot.collections})")
             l3_result = await l3_synthesizer.synthesize(message, snapshot, recent_events, image_data=image_data)
             primitives = l3_result["primitives"]
             response_text = l3_result["response"]
         else:
             # Route to L2 (Haiku) first
+            print("Routing to L2 first")
             l2_result = await l2_compiler.compile(message, snapshot, recent_events)
 
             if l2_result["escalate"]:
                 # L2 requested escalation → route to L3
+                print("L2 escalated to L3")
                 l3_result = await l3_synthesizer.synthesize(message, snapshot, recent_events)
                 primitives = l3_result["primitives"]
                 response_text = l3_result["response"]
             else:
+                print(f"L2 handled: {len(l2_result['primitives'])} primitives")
                 primitives = l2_result["primitives"]
                 response_text = l2_result["response"]
 
         # 3. Apply primitives through reducer
+        print(f"Orchestrator: {len(primitives)} primitives from AI")
+        for p in primitives:
+            print(f"  - {p.get('type')}: {p.get('payload', {}).keys()}")
+
         events = self._wrap_primitives(primitives, str(user_id), source, message)
         # Convert Snapshot to dict for reducer (which expects dict-style access)
         new_snapshot = snapshot.to_dict()
 
+        applied_count = 0
         for event in events:
             result: ReduceResult = reduce(new_snapshot, event)
             if result.error:
-                print(f"Reducer error: {result.error}")
+                print(f"Reducer REJECTED {event.type}: {result.error}")
                 # Skip invalid event, continue with others
                 continue
+            applied_count += 1
             new_snapshot = result.snapshot
+
+        print(f"Orchestrator: {applied_count}/{len(events)} events applied successfully")
 
         # 4. Render HTML
         blueprint = Blueprint(identity=aide.title if hasattr(aide, "title") else "AIde")
