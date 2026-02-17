@@ -447,3 +447,144 @@ STRIPE_WEBHOOK_SECRET # Webhook signature verification
 SLACK_WEBHOOK       # Alerts (abuse, errors, deploy, break-glass)
 JWT_SECRET          # 256-bit minimum, HS256
 ```
+
+---
+
+## Local Development
+
+### Prerequisites
+
+- Python 3.12+
+- Docker and Docker Compose
+
+### 1. Start PostgreSQL in Docker
+
+```bash
+# Start Postgres container
+docker run -d \
+  --name aide-postgres \
+  -e POSTGRES_USER=aide_app \
+  -e POSTGRES_PASSWORD=localdev \
+  -e POSTGRES_DB=aide \
+  -p 5432:5432 \
+  postgres:16
+
+# Verify it's running
+docker ps | grep aide-postgres
+```
+
+Or use Docker Compose (create `docker-compose.yml`):
+
+```yaml
+version: '3.8'
+services:
+  postgres:
+    image: postgres:16
+    container_name: aide-postgres
+    environment:
+      POSTGRES_USER: aide_app
+      POSTGRES_PASSWORD: localdev
+      POSTGRES_DB: aide
+    ports:
+      - "5432:5432"
+    volumes:
+      - aide_pgdata:/var/lib/postgresql/data
+
+volumes:
+  aide_pgdata:
+```
+
+```bash
+docker-compose up -d
+```
+
+### 2. Create `.env` File
+
+```bash
+# Database
+DATABASE_URL=postgresql://aide_app:localdev@localhost:5432/aide
+
+# JWT (generate with: python -c "import secrets; print(secrets.token_hex(32))")
+JWT_SECRET=your-256-bit-secret-here
+
+# Optional for local dev (use dummy values or real keys)
+ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_API_KEY=sk-...
+RESEND_API_KEY=re_...
+
+# R2 (optional for local dev - uploads will fail gracefully)
+R2_ENDPOINT=
+R2_ACCESS_KEY=
+R2_SECRET_KEY=
+
+# Stripe (optional)
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+```
+
+### 3. Set Up Python Environment
+
+```bash
+# Create virtual environment
+python3.12 -m venv .venv
+source .venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
+```
+
+### 4. Run Migrations
+
+```bash
+# Load env vars and run Alembic
+set -a && source .env && set +a
+alembic upgrade head
+```
+
+### 5. Start the Server
+
+```bash
+# Load env vars and start uvicorn with hot reload
+set -a && source .env && set +a
+uvicorn backend.main:app --reload --port 8000
+```
+
+Server runs at http://127.0.0.1:8000
+
+### 6. Run Tests
+
+```bash
+# Run all tests
+./run_tests.sh
+
+# Or run specific test file
+set -a && source .env && set +a
+pytest backend/tests/test_auth.py -v
+```
+
+### 7. Linting
+
+```bash
+source .venv/bin/activate
+ruff check backend/
+ruff format --check backend/
+```
+
+### Common Commands
+
+```bash
+# Reset database
+docker exec -it aide-postgres psql -U aide_app -d aide -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+alembic upgrade head
+
+# View logs
+docker logs -f aide-postgres
+
+# Stop Postgres
+docker stop aide-postgres
+
+# Remove Postgres container and data
+docker rm aide-postgres
+docker volume rm aide_pgdata
+```
