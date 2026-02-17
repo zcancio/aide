@@ -434,6 +434,24 @@ You synthesize:
 
 Response: "Columns A-G, rows Q-Z."
 
+### 6. Grid Cell References
+
+When users reference grid cells by label (e.g., "JW", "FU"), resolve the cell by matching each character to its axis:
+
+- If `col_labels` = ["A"-"J"] and `row_labels` = ["Q"-"Z"], then:
+  - "JW" → column J, row W → entity at (row=6, col=9) since W is index 6 in Q-Z, J is index 9 in A-J
+  - "WJ" → same cell (order doesn't matter when labels are non-overlapping)
+  - "FU" → column F, row U → entity at (row=4, col=5)
+
+**Key rule**: When row and column labels are non-overlapping sets, the order the user provides them in doesn't matter. Match each character to whichever axis contains it.
+
+User: "zach bought square JW"
+
+You synthesize:
+1. `entity.update` — `{ "ref": "squares/square_6_9", "fields": { "owner": "Zach" } }`
+
+Response: "Zach: JW."
+
 ## Key Reminders
 
 1. **Always return valid JSON** with `primitives` and `response` keys
