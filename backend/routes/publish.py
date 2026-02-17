@@ -15,11 +15,11 @@ from backend.services.r2 import r2_service
 from engine.kernel.renderer import render
 from engine.kernel.types import Blueprint, RenderOptions
 
-router = APIRouter(prefix="/api/aides", tags=["publish"])
+router = APIRouter(tags=["publish"])
 aide_repo = AideRepo()
 
 
-@router.post("/{aide_id}/publish", status_code=200)
+@router.post("/api/aides/{aide_id}/publish", status_code=200)
 async def publish_aide(
     aide_id: UUID,
     req: PublishRequest,
@@ -54,7 +54,7 @@ async def publish_aide(
     return PublishResponse(slug=req.slug, url=public_url)
 
 
-@router.post("/{aide_id}/unpublish", status_code=200)
+@router.post("/api/aides/{aide_id}/unpublish", status_code=200)
 async def unpublish_aide(
     aide_id: UUID,
     user: User = Depends(get_current_user),

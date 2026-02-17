@@ -53,13 +53,20 @@ class L3Synthesizer:
             temperature=1.0,
         )
 
-        # Parse JSON response (strip markdown code blocks if present)
+        # Parse JSON response (extract from markdown code blocks if present)
         content = result["content"].strip()
-        if content.startswith("```"):
-            # Remove markdown fencing
-            lines = content.split("\n")
-            # Remove first line (```json) and last line (```)
-            content = "\n".join(lines[1:-1])
+
+        # Try to extract JSON from markdown code block anywhere in response
+        if "```json" in content:
+            start = content.find("```json") + 7
+            end = content.find("```", start)
+            if end > start:
+                content = content[start:end].strip()
+        elif "```" in content:
+            start = content.find("```") + 3
+            end = content.find("```", start)
+            if end > start:
+                content = content[start:end].strip()
 
         try:
             response_data = json.loads(content)

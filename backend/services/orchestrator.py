@@ -8,6 +8,7 @@ from uuid import UUID
 from backend.models.conversation import Message
 from backend.repos.aide_repo import AideRepo
 from backend.repos.conversation_repo import ConversationRepo
+from backend.services.grid_resolver import resolve_primitives
 from backend.services.l2_compiler import l2_compiler
 from backend.services.l3_synthesizer import l3_synthesizer
 from backend.services.r2 import r2_service
@@ -91,14 +92,30 @@ class Orchestrator:
                 primitives = l2_result["primitives"]
                 response_text = l2_result["response"]
 
+        # 2.5. Resolve any grid cell references in primitives
+        snapshot_dict = snapshot.to_dict()
+        resolve_result = resolve_primitives(primitives, snapshot_dict)
+        if resolve_result.error:
+            # Grid resolution failed — return error to user
+            print(f"Grid resolution error: {resolve_result.error}")
+            return {
+                "response": resolve_result.error,
+                "html_url": f"/api/aides/{aide_id}/preview",
+                "primitives_count": 0,
+            }
+        primitives = resolve_result.primitives
+        # If there was a grid query, use that as the response
+        if resolve_result.query_response:
+            response_text = resolve_result.query_response
+
         # 3. Apply primitives through reducer
         print(f"Orchestrator: {len(primitives)} primitives from AI")
         for p in primitives:
             print(f"  - {p.get('type')}: {p.get('payload', {}).keys()}")
 
         events = self._wrap_primitives(primitives, str(user_id), source, message)
-        # Convert Snapshot to dict for reducer (which expects dict-style access)
-        new_snapshot = snapshot.to_dict()
+        # Use snapshot_dict from grid resolution (already converted above)
+        new_snapshot = snapshot_dict
 
         applied_count = 0
         for event in events:

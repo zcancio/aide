@@ -14,7 +14,7 @@
       --text: #e8e8e8;
       --text-muted: #888;
       --accent: #fff;
-      --overlay-bg: rgba(10, 10, 10, 0.85);
+      --overlay-bg: rgba(0, 0, 0, 0.3);
       --radius: 12px;
       --input-height: 52px;
       --chat-max-width: 640px;
@@ -193,66 +193,79 @@
       display: flex;
       flex-direction: column;
       gap: 0;
+      background: transparent;
+      border-radius: var(--radius);
     }
 
     /* Conversation history (expandable) */
     #history-panel {
-      background: var(--overlay-bg);
-      backdrop-filter: blur(20px) saturate(1.5);
-      -webkit-backdrop-filter: blur(20px) saturate(1.5);
-      border: none;
+      background: rgba(20, 20, 20, 0.9);
       border-radius: var(--radius) var(--radius) 0 0;
       max-height: 0;
       overflow: hidden;
-      transition: max-height 0.25s ease, padding 0.25s ease, border 0.25s ease;
+      transition: max-height 0.25s ease, padding 0.25s ease;
     }
 
     #history-panel.open {
-      max-height: 320px;
+      max-height: 160px;
       overflow-y: auto;
       padding: 12px 16px;
-      border: 1px solid var(--border);
-      border-bottom: none;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    #history-panel::-webkit-scrollbar {
+      display: none;
+    }
+
+    #history-panel.open + #input-bar {
+      border-top: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 0 0 var(--radius) var(--radius);
     }
 
     .history-message {
-      margin-bottom: 12px;
+      margin-bottom: 8px;
       display: flex;
-      flex-direction: column;
-      gap: 2px;
     }
 
     .history-message:last-child { margin-bottom: 0; }
 
-    .history-role {
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--text-muted);
+    .history-message.user {
+      justify-content: flex-end;
+    }
+
+    .history-message.assistant {
+      justify-content: flex-start;
     }
 
     .history-content {
       font-size: 13px;
-      color: var(--text);
       line-height: 1.5;
       white-space: pre-wrap;
+      padding: 8px 12px;
+      border-radius: 16px;
+      max-width: 85%;
+    }
+
+    .history-message.user .history-content {
+      background: rgba(60, 60, 60, 0.6);
+      color: var(--text);
+      border-bottom-right-radius: 4px;
+    }
+
+    .history-message.assistant .history-content {
+      background: rgba(30, 30, 30, 0.6);
+      color: var(--text);
+      border-bottom-left-radius: 4px;
     }
 
     /* Input bar */
     #input-bar {
-      background: var(--overlay-bg);
-      backdrop-filter: blur(20px) saturate(1.5);
-      -webkit-backdrop-filter: blur(20px) saturate(1.5);
-      border: 1px solid var(--border);
+      background: rgba(20, 20, 20, 0.9);
       border-radius: var(--radius);
       display: flex;
       flex-direction: column;
       overflow: hidden;
-    }
-
-    #history-panel.open + #input-bar {
-      border-radius: 0 0 var(--radius) var(--radius);
     }
 
     /* Image preview strip */
@@ -398,19 +411,18 @@
       top: 14px;
       left: 14px;
       z-index: 200;
-      background: var(--overlay-bg);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 7px 14px;
+      background: rgba(20, 20, 20, 0.9);
+      border: none;
+      border-radius: var(--radius);
+      width: 36px;
+      height: 36px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
       color: var(--text);
       cursor: pointer;
-      font-size: 13px;
-      font-weight: 500;
-      display: none;
-      gap: 6px;
-      align-items: center;
+      font-size: 16px;
       transition: background 0.15s;
     }
 
@@ -423,18 +435,15 @@
       top: 14px;
       right: 14px;
       z-index: 200;
-      background: var(--overlay-bg);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 7px 14px;
+      background: rgba(20, 20, 20, 0.9);
+      border: none;
+      border-radius: var(--radius);
+      padding: 8px 16px;
       color: var(--text);
       cursor: pointer;
       font-size: 13px;
       font-weight: 500;
       display: none;
-      gap: 6px;
       align-items: center;
       transition: background 0.15s;
     }
@@ -592,7 +601,7 @@
 </div>
 
 <!-- Editor -->
-<button id="editor-back">← Dashboard</button>
+<button id="editor-back">←</button>
 <button id="publish-btn-floating">Publish</button>
 
 <div id="editor">
@@ -973,14 +982,16 @@
     }
 
     panel.innerHTML = conversationHistory.map(m => `
-      <div class="history-message">
-        <div class="history-role">${m.role}</div>
+      <div class="history-message ${m.role}">
         <div class="history-content">${escapeHtml(m.content)}</div>
       </div>
     `).join('');
 
     panel.classList.add('open');
-    panel.scrollTop = panel.scrollHeight;
+    // Delay scroll to allow panel to expand
+    setTimeout(() => {
+      panel.scrollTop = panel.scrollHeight;
+    }, 50);
   }
 
   // ── Image handling ─────────────────────────────────

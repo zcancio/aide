@@ -33,8 +33,9 @@ PRIMITIVE_TYPES: set[str] = {
     "collection.create",
     "collection.update",
     "collection.remove",
-    # Grid (batch entity creation)
+    # Grid (batch entity creation, query)
     "grid.create",
+    "grid.query",
     # Field (7-9)
     "field.add",
     "field.update",

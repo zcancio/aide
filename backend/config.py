@@ -47,8 +47,20 @@ class Settings:
 
     # Application
     ENVIRONMENT: str = os.environ.get("ENVIRONMENT", "development")
-    EDITOR_URL: str = os.environ.get("EDITOR_URL", "https://get.toaide.com")
-    PUBLIC_URL: str = os.environ.get("PUBLIC_URL", "https://toaide.com")
+
+    @property
+    def EDITOR_URL(self) -> str:
+        url = os.environ.get("EDITOR_URL")
+        if url:
+            return url
+        return "http://localhost:8000" if self.ENVIRONMENT == "development" else "https://get.toaide.com"
+
+    @property
+    def PUBLIC_URL(self) -> str:
+        url = os.environ.get("PUBLIC_URL")
+        if url:
+            return url
+        return "http://localhost:8000" if self.ENVIRONMENT == "development" else "https://toaide.com"
 
     # Rate Limits
     FREE_TIER_TURNS_PER_WEEK: int = 50

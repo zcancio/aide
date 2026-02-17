@@ -39,6 +39,8 @@ You MUST respond with a JSON object in this exact format:
 - `response`: brief state reflection to show the user (required, can be empty string)
 - `escalate`: boolean — set to `true` if you need L3 (schema synthesis) help (required)
 
+**CRITICAL**: Return ONLY the JSON object. No explanation, no thinking, no markdown outside the JSON. Just the raw JSON.
+
 ## When to Escalate
 
 Set `escalate: true` and return empty `primitives` array if:
@@ -102,6 +104,60 @@ You must map user references to actual entity IDs:
 If multiple entities match:
 - "got the eggs" but there are `item_eggs_dozen` and `item_eggs_organic` → use most recently created or mentioned
 - If truly ambiguous, emit empty `primitives` and ask in `response`: "Which eggs?"
+
+### Grid Cell References
+
+When users reference grid cells by label (e.g., "FU", "AQ", "JZ"), use `cell_ref` in the payload instead of computing the entity ref. The backend will resolve the cell reference to the correct entity.
+
+**Format for grid updates:**
+```json
+{
+  "type": "entity.update",
+  "payload": {
+    "cell_ref": "FU",
+    "collection": "squares",
+    "fields": { "owner": "Zach" }
+  }
+}
+```
+
+**Examples:**
+- "zach claims FU" → `{"cell_ref": "FU", "collection": "squares", "fields": {"owner": "Zach"}}`
+- "clear AQ" → `{"cell_ref": "AQ", "collection": "squares", "fields": {"owner": null}}`
+- "mark JZ as sold" → `{"cell_ref": "JZ", "collection": "squares", "fields": {"owner": "sold"}}`
+
+**Key rules**:
+- Extract the cell reference exactly as the user says it (e.g., "FU", "AQ")
+- Always include `collection` (usually "squares" for grid collections)
+- Do NOT try to compute row/col indices — just pass the cell_ref
+- For SINGLE cell operations only — do not use cell_ref for bulk updates
+
+**Bulk operations** (clear all, reset board, etc.):
+For "clear the board", "clear all", "reset", use a filter-based update:
+```json
+{
+  "type": "entity.update",
+  "payload": {
+    "filter": { "collection": "squares" },
+    "fields": { "owner": null }
+  }
+}
+```
+This clears ALL cells in the collection. Do NOT enumerate individual cells.
+
+**Grid queries** (who owns a cell, what's at cell X):
+For questions like "who's at UH?", "who owns square FU?", use a query primitive:
+```json
+{
+  "type": "grid.query",
+  "payload": {
+    "cell_ref": "UH",
+    "collection": "squares",
+    "field": "owner"
+  }
+}
+```
+The backend will resolve the cell and return the value in the response.
 
 ## Temporal Resolution
 
