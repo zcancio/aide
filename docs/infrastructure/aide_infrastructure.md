@@ -39,6 +39,30 @@
 
 ---
 
+## Environments
+
+AIde uses three environments with isolated resources:
+
+| Environment | Purpose | Database | R2 Buckets | URL |
+|-------------|---------|----------|------------|-----|
+| **Local Dev** | Your machine | Docker Postgres | `aide-workspaces-dev`, `aide-published-dev` | `localhost:8000` |
+| **Staging** | Pre-prod testing, smoke tests | Neon `staging` branch | `aide-workspaces-staging`, `aide-published-staging` | Railway staging URL |
+| **Production** | Real users | Neon `main` branch | `aide-workspaces`, `aide-published` | `get.toaide.com` |
+
+### Environment Isolation
+
+- **Local dev** is fully isolated (Docker Postgres, dev R2 buckets). Safe to experiment.
+- **Staging** mirrors production but with separate data. Used for CI smoke tests and QA.
+- **Production** serves real users. Deploy here only after staging passes.
+
+### Deploy Flow
+
+```
+Local dev → Push to main → Staging auto-deploys → Smoke tests pass → Manual promote to Production
+```
+
+---
+
 ## Why This Stack
 
 | Decision | Rationale |
@@ -84,17 +108,33 @@ That `startCommand` is the key line: **migrations run automatically before every
 
 Set in Railway dashboard (Settings → Variables). Injected at runtime, never in code or build.
 
+**Required:**
 ```
 DATABASE_URL=postgres://user:pass@ep-xxx.us-east-1.aws.neon.tech/aidedb?sslmode=require
+JWT_SECRET=xxx
 R2_ENDPOINT=https://ACCOUNT.r2.cloudflarestorage.com
 R2_ACCESS_KEY=xxx
 R2_SECRET_KEY=xxx
+ANTHROPIC_API_KEY=xxx
+```
+
+**Optional (with defaults):**
+```
+R2_WORKSPACE_BUCKET=aide-workspaces        # Override per environment
+R2_PUBLISHED_BUCKET=aide-published         # Override per environment
 RESEND_API_KEY=xxx
 STRIPE_SECRET_KEY=xxx
 STRIPE_WEBHOOK_SECRET=xxx
 SLACK_WEBHOOK=xxx
-JWT_SECRET=xxx
 ```
+
+**Per-environment overrides:**
+
+| Variable | Local Dev | Staging | Production |
+|----------|-----------|---------|------------|
+| `DATABASE_URL` | `postgres://aide:test@localhost:5432/aide_test` | Neon staging branch | Neon main |
+| `R2_WORKSPACE_BUCKET` | `aide-workspaces-dev` | `aide-workspaces-staging` | `aide-workspaces` |
+| `R2_PUBLISHED_BUCKET` | `aide-published-dev` | `aide-published-staging` | `aide-published` |
 
 ### Deploy Flow
 
@@ -235,10 +275,15 @@ Aide files and published snapshots live in R2. App stays stateless.
 
 ### Buckets
 
-| Bucket | Purpose | Access |
-|--------|---------|--------|
-| `aide-workspaces` | Active aide files being edited | Private (app only) |
-| `aide-published` | Published page snapshots | Public (via R2 custom domain) |
+| Environment | Workspace Bucket | Published Bucket |
+|-------------|------------------|------------------|
+| **Local Dev** | `aide-workspaces-dev` | `aide-published-dev` |
+| **Staging** | `aide-workspaces-staging` | `aide-published-staging` |
+| **Production** | `aide-workspaces` | `aide-published` |
+
+Bucket names are configured via environment variables:
+- `R2_WORKSPACE_BUCKET` (default: `aide-workspaces`)
+- `R2_PUBLISHED_BUCKET` (default: `aide-published`)
 
 ### Published Page Serving
 
@@ -329,34 +374,63 @@ No backup scripts. No cron jobs. No snapshots to manage.
 ### Railway
 - [ ] Create Railway project
 - [ ] Connect GitHub repo
-- [ ] Set deploy branch to `main`
 - [ ] Add `railway.toml` to repo
-- [ ] Set all environment variables
-- [ ] Add custom domains (toaide.com, get.toaide.com)
-- [ ] Verify: push to main → builds → deploys → health check passes
+- [ ] Create `production` environment
+  - [ ] Set deploy branch to `main` (or tags only)
+  - [ ] Set all environment variables (production values)
+  - [ ] Add custom domains (get.toaide.com)
+- [ ] Create `staging` environment
+  - [ ] Set deploy branch to `main`
+  - [ ] Set all environment variables (staging values)
+  - [ ] Use Railway-provided URL for staging
+- [ ] Verify: push to main → staging deploys → health check passes
 
 ### Database
 - [ ] Create Neon project (free tier, us-east-1)
-- [ ] Run initial schema migration
-- [ ] Save connection string to Railway env vars
+- [ ] Create `main` branch (production)
+- [ ] Create `staging` branch (for staging environment)
+- [ ] Run initial schema migration on both branches
+- [ ] Save connection strings to Railway env vars per environment
 
 ### Storage
-- [ ] Create R2 buckets (aide-workspaces, aide-published)
-- [ ] Generate R2 API keys
+- [ ] Generate R2 API token (Object Read & Write)
+- [ ] Create R2 buckets:
+  - [ ] `aide-workspaces` (production)
+  - [ ] `aide-published` (production)
+  - [ ] `aide-workspaces-staging` (staging)
+  - [ ] `aide-published-staging` (staging)
+  - [ ] `aide-workspaces-dev` (local dev)
+  - [ ] `aide-published-dev` (local dev)
 - [ ] Save R2 credentials to Railway env vars
-- [ ] Configure R2 custom domain for published pages
+- [ ] Configure R2 custom domain for published pages (production)
+
+### Local Development
+- [ ] Create `.env` file (gitignored) with dev values:
+  ```
+  DATABASE_URL=postgres://aide:test@localhost:5432/aide_test
+  JWT_SECRET=dev-secret
+  R2_ENDPOINT=https://ACCOUNT.r2.cloudflarestorage.com
+  R2_ACCESS_KEY=xxx
+  R2_SECRET_KEY=xxx
+  R2_WORKSPACE_BUCKET=aide-workspaces-dev
+  R2_PUBLISHED_BUCKET=aide-published-dev
+  ANTHROPIC_API_KEY=xxx
+  ```
+- [ ] Docker Postgres running: `docker run -d --name aide-dev-db -e POSTGRES_USER=aide -e POSTGRES_PASSWORD=test -e POSTGRES_DB=aide_test -p 5432:5432 postgres:16`
 
 ### DNS
-- [ ] Cloudflare DNS: toaide.com → Railway
-- [ ] Cloudflare DNS: get.toaide.com → Railway
+- [ ] Cloudflare DNS: toaide.com → Railway (production)
+- [ ] Cloudflare DNS: get.toaide.com → Railway (production)
 - [ ] R2 custom domain for published pages
 - [ ] Verify SSL on all endpoints
 
 ### Monitoring
-- [ ] BetterStack uptime monitor
+- [ ] BetterStack uptime monitor (production)
 - [ ] Sentry error tracking
 - [ ] Slack webhook for alerts
 
 ### Verify
-- [ ] Full flow: magic link → create aide → edit → publish → view
+- [ ] Local dev: full flow works with Docker + dev buckets
+- [ ] Staging: push to main → deploys → smoke tests pass
+- [ ] Production: promote from staging → full flow works
 - [ ] Rollback: click rollback → previous version serves
