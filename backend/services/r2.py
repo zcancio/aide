@@ -151,34 +151,6 @@ class R2Service:
             except Exception:
                 return None
 
-    async def get_published(self, slug: str) -> str | None:
-        """
-        Get published HTML from R2.
-
-        Args:
-            slug: Public slug for the aide
-
-        Returns:
-            HTML content as string, or None if not found
-        """
-        bucket = settings.R2_PUBLISHED_BUCKET
-        key = f"{slug}/index.html"
-
-        async with self.session.client(
-            "s3",
-            endpoint_url=self.endpoint,
-            aws_access_key_id=self.access_key,
-            aws_secret_access_key=self.secret_key,
-        ) as s3:
-            try:
-                response = await s3.get_object(Bucket=bucket, Key=key)
-                body = await response["Body"].read()
-                return body.decode("utf-8")
-            except s3.exceptions.NoSuchKey:
-                return None
-            except Exception:
-                return None
-
 
 # Singleton instance
 r2_service = R2Service()

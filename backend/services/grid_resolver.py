@@ -51,8 +51,6 @@ def resolve_grid_cell(
     # Find which character belongs to which axis
     col_index: int | None = None
     row_index: int | None = None
-    col_char: str | None = None
-    row_char: str | None = None
 
     col_range = f"{col_labels[0]}-{col_labels[-1]}" if col_labels else ""
     row_range = f"{row_labels[0]}-{row_labels[-1]}" if row_labels else ""
@@ -66,7 +64,6 @@ def resolve_grid_cell(
                     error=f"No square {cell_ref}. Grid is {col_range} × {row_range}.",
                 )
             col_index = col_labels.index(char)
-            col_char = char
         elif char in row_labels:
             if row_index is not None:
                 # Already found a row char - invalid
@@ -75,7 +72,6 @@ def resolve_grid_cell(
                     error=f"No square {cell_ref}. Grid is {col_range} × {row_range}.",
                 )
             row_index = row_labels.index(char)
-            row_char = char
         else:
             # Character not in either axis
             return GridResolution(
