@@ -13,7 +13,7 @@ from backend.services.l3_synthesizer import l3_synthesizer
 from backend.services.r2 import r2_service
 from engine.kernel.reducer import reduce
 from engine.kernel.renderer import render
-from engine.kernel.types import Event, ReduceResult, Snapshot
+from engine.kernel.types import Blueprint, Event, ReduceResult, Snapshot
 
 
 class Orchestrator:
@@ -101,7 +101,8 @@ class Orchestrator:
             new_snapshot = result.snapshot
 
         # 4. Render HTML
-        html_content = render(new_snapshot, blueprint={}, events=events)
+        blueprint = Blueprint(identity=aide.title if hasattr(aide, "title") else "AIde")
+        html_content = render(new_snapshot, blueprint=blueprint, events=events)
 
         # 5. Save state to DB
         await self.aide_repo.update_state(user_id, aide_id, aide.state, aide.event_log)

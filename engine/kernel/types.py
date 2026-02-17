@@ -138,42 +138,50 @@ ESCALATION_REASONS: set[str] = {
 @dataclass
 class Snapshot:
     """
-    The aide's current state — all collections, entities, blocks, views, and styles.
-    This is what gets persisted to the database and used for rendering.
+    The aide's current state — matches the reducer's expected structure.
+
+    Note: Entities are stored INSIDE each collection as collection["entities"],
+    not at the top level. This matches how the reducer processes state.
     """
 
-    collections: dict[str, Any] = field(default_factory=dict)
-    entities: dict[str, Any] = field(default_factory=dict)
-    blocks: dict[str, Any] = field(default_factory=dict)  # Dict keyed by block_id
+    version: int = 1
+    meta: dict[str, Any] = field(default_factory=dict)
+    collections: dict[str, Any] = field(default_factory=dict)  # Each collection has "entities" inside
+    relationships: list[dict[str, Any]] = field(default_factory=list)
+    relationship_types: dict[str, Any] = field(default_factory=dict)
+    constraints: list[dict[str, Any]] = field(default_factory=list)
+    blocks: dict[str, Any] = field(default_factory=lambda: {"block_root": {"type": "root", "children": []}})
     views: dict[str, Any] = field(default_factory=dict)
     styles: dict[str, Any] = field(default_factory=dict)
-    meta: dict[str, Any] = field(default_factory=dict)
-    relationships: list[dict[str, Any]] = field(default_factory=list)
-    constraints: list[dict[str, Any]] = field(default_factory=list)
+    annotations: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "version": self.version,
+            "meta": self.meta,
             "collections": self.collections,
-            "entities": self.entities,
+            "relationships": self.relationships,
+            "relationship_types": self.relationship_types,
+            "constraints": self.constraints,
             "blocks": self.blocks,
             "views": self.views,
             "styles": self.styles,
-            "meta": self.meta,
-            "relationships": self.relationships,
-            "constraints": self.constraints,
+            "annotations": self.annotations,
         }
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> Snapshot:
         return cls(
+            version=d.get("version", 1),
+            meta=d.get("meta", {}),
             collections=d.get("collections", {}),
-            entities=d.get("entities", {}),
-            blocks=d.get("blocks", {}),
+            relationships=d.get("relationships", []),
+            relationship_types=d.get("relationship_types", {}),
+            constraints=d.get("constraints", []),
+            blocks=d.get("blocks", {"block_root": {"type": "root", "children": []}}),
             views=d.get("views", {}),
             styles=d.get("styles", {}),
-            meta=d.get("meta", {}),
-            relationships=d.get("relationships", []),
-            constraints=d.get("constraints", []),
+            annotations=d.get("annotations", []),
         )
 
 
