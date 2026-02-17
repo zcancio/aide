@@ -20,6 +20,7 @@ from backend.repos.magic_link_repo import MagicLinkRepo
 from backend.routes import aides as aide_routes
 from backend.routes import auth_routes
 from backend.routes import conversations as conversation_routes
+from backend.routes import pages as pages_routes
 from backend.routes import publish as publish_routes
 
 
@@ -92,6 +93,7 @@ app.include_router(auth_routes.router)
 app.include_router(aide_routes.router)
 app.include_router(conversation_routes.router)
 app.include_router(publish_routes.router)
+app.include_router(pages_routes.router)
 
 
 @app.get("/health")
