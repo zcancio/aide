@@ -50,3 +50,16 @@ class ConversationResponse(BaseModel):
             created_at=conversation.created_at,
             updated_at=conversation.updated_at,
         )
+
+
+class MessageResponse(BaseModel):
+    """A message for the API response (excludes internal metadata)."""
+
+    role: Literal["user", "assistant"]
+    content: str
+
+
+class ConversationHistoryResponse(BaseModel):
+    """Conversation history for loading in the editor."""
+
+    messages: list[MessageResponse]

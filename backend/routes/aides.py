@@ -9,12 +9,15 @@ from fastapi.responses import HTMLResponse
 
 from backend.auth import get_current_user
 from backend.models.aide import AideResponse, CreateAideRequest, UpdateAideRequest
+from backend.models.conversation import ConversationHistoryResponse, MessageResponse
 from backend.models.user import User
 from backend.repos.aide_repo import AideRepo
+from backend.repos.conversation_repo import ConversationRepo
 from backend.services.r2 import r2_service
 
 router = APIRouter(prefix="/api/aides", tags=["aides"])
 aide_repo = AideRepo()
+conversation_repo = ConversationRepo()
 
 
 @router.get("", status_code=200)
@@ -104,3 +107,29 @@ Send a message to get started.
 </body></html>"""
 
     return HTMLResponse(content=html_content)
+
+
+@router.get("/{aide_id}/history", status_code=200)
+async def get_aide_history(
+    aide_id: UUID,
+    user: User = Depends(get_current_user),
+) -> ConversationHistoryResponse:
+    """Get conversation history for an aide."""
+    # Verify user owns this aide
+    aide = await aide_repo.get(user.id, aide_id)
+    if not aide:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aide not found.")
+
+    # Get conversation for this aide
+    conversation = await conversation_repo.get_for_aide(user.id, aide_id)
+    if not conversation:
+        return ConversationHistoryResponse(messages=[])
+
+    # Convert messages to response format (exclude system messages and metadata)
+    messages = [
+        MessageResponse(role=m.role, content=m.content)
+        for m in conversation.messages
+        if m.role in ("user", "assistant")
+    ]
+
+    return ConversationHistoryResponse(messages=messages)

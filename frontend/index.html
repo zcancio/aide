@@ -796,9 +796,21 @@
     const frame = document.getElementById('preview-frame');
 
     if (aideId) {
-      // Existing AIde - load preview from backend
+      // Existing AIde - load preview and conversation history
       frame.removeAttribute('srcdoc');
       frame.src = `/api/aides/${aideId}/preview`;
+
+      // Load conversation history
+      try {
+        const res = await fetch(`/api/aides/${aideId}/history`, { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          conversationHistory = data.messages || [];
+          renderHistory();
+        }
+      } catch (e) {
+        console.error('Failed to load conversation history:', e);
+      }
     } else {
       // New AIde - show placeholder
       frame.srcdoc = '<html><body style="background:#f9f9f9;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#aaa;font-size:14px;">Send a message to get started.</body></html>';
