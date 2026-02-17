@@ -5,7 +5,6 @@ from __future__ import annotations
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import HTMLResponse
 
 from backend import config
 from backend.auth import get_current_user
@@ -18,20 +17,6 @@ from engine.kernel.types import Blueprint, RenderOptions
 
 router = APIRouter(tags=["publish"])
 aide_repo = AideRepo()
-
-
-@router.get("/s/{slug}", response_class=HTMLResponse)
-async def get_published_page(slug: str) -> HTMLResponse:
-    """
-    Serve a published aide page.
-
-    In production, this is served directly from R2/CDN.
-    This route exists for local development.
-    """
-    html_bytes = await r2_service.get_published(slug)
-    if not html_bytes:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Page not found.")
-    return HTMLResponse(content=html_bytes.decode("utf-8"))
 
 
 @router.post("/api/aides/{aide_id}/publish", status_code=200)
