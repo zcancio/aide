@@ -196,7 +196,7 @@ You have access to these primitive types:
 **Entity**: `entity.create`, `entity.update`, `entity.delete`
 **Collection**: `collection.create`, `collection.update`, `collection.delete`
 **Grid**: `grid.create` (payload: `{collection, rows, cols, defaults?}`) — batch create row×col entities
-**Field**: `field.add`, `field.remove`, `field.rename`
+**Field**: `field.add` (payload: `{collection, name, type, default?}`), `field.remove`, `field.rename`
 **Block**: `block.add`, `block.update`, `block.delete`, `block.move`
 **View**: `view.set_sort`, `view.set_filter`, `view.set_group`, `view.clear_sort`, `view.clear_filter`, `view.clear_group`
 **Style**: `style.set_theme`, `style.set_accent`
@@ -320,7 +320,7 @@ Output:
       "type": "field.add",
       "payload": {
         "collection": "grocery_list",
-        "field": "price",
+        "name": "price",
         "type": "float?",
         "default": null
       }
