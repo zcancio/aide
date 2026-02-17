@@ -17,22 +17,26 @@ from fastapi.staticfiles import StaticFiles
 from backend import db
 from backend.middleware.rate_limit import rate_limiter
 from backend.repos.magic_link_repo import MagicLinkRepo
+from backend.repos.signal_link_code_repo import SignalLinkCodeRepo
 from backend.routes import aides as aide_routes
 from backend.routes import auth_routes
 from backend.routes import conversations as conversation_routes
 from backend.routes import pages as pages_routes
 from backend.routes import publish as publish_routes
+from backend.routes import signal as signal_routes
 from backend.services.flight_recorder_uploader import flight_recorder_uploader
 
 
 # Background task for cleanup
 async def cleanup_task():
     """
-    Background task to clean up expired magic links and old rate limit entries.
+    Background task to clean up expired magic links, signal link codes,
+    and old rate limit entries.
 
     Runs every 60 seconds.
     """
     magic_link_repo = MagicLinkRepo()
+    signal_link_code_repo = SignalLinkCodeRepo()
 
     while True:
         try:
@@ -40,6 +44,11 @@ async def cleanup_task():
             deleted_count = await magic_link_repo.cleanup_expired(older_than_hours=1)
             if deleted_count > 0:
                 print(f"Cleaned up {deleted_count} expired magic links")
+
+            # Clean up expired/used signal link codes
+            deleted_codes = await signal_link_code_repo.cleanup_expired()
+            if deleted_codes > 0:
+                print(f"Cleaned up {deleted_codes} expired signal link codes")
 
             # Clean up old rate limit entries
             rate_limiter.cleanup_old_entries(max_age_hours=2)
@@ -108,6 +117,7 @@ app.include_router(aide_routes.router)
 app.include_router(conversation_routes.router)
 app.include_router(publish_routes.router)
 app.include_router(pages_routes.router)
+app.include_router(signal_routes.router)
 
 
 @app.get("/health")

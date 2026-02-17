@@ -68,6 +68,11 @@ class Settings:
     API_RATE_LIMIT_PER_MINUTE: int = 100  # per user
     WEBSOCKET_MAX_CONNECTIONS: int = 5  # per user
 
+    # Signal Ear
+    SIGNAL_CLI_URL: str = os.environ.get("SIGNAL_CLI_URL", "http://signal-cli:8080")
+    SIGNAL_PHONE_NUMBER: str = os.environ.get("SIGNAL_PHONE_NUMBER", "")
+    SIGNAL_WEBHOOK_SECRET: str = os.environ.get("SIGNAL_WEBHOOK_SECRET", "")
+
     # AI Providers (for managed API routing)
     ANTHROPIC_API_KEY: str = os.environ.get("ANTHROPIC_API_KEY", "")
     OPENAI_API_KEY: str = os.environ.get("OPENAI_API_KEY", "")
