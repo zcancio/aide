@@ -71,9 +71,7 @@ class Orchestrator:
         # Check if image input or empty snapshot → route to L3
         if image_data or not snapshot.collections:
             # Route to L3 (Sonnet)
-            l3_result = await l3_synthesizer.synthesize(
-                message, snapshot, recent_events, image_data=image_data
-            )
+            l3_result = await l3_synthesizer.synthesize(message, snapshot, recent_events, image_data=image_data)
             primitives = l3_result["primitives"]
             response_text = l3_result["response"]
         else:
