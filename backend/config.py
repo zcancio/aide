@@ -21,6 +21,7 @@ class Settings:
     R2_SECRET_KEY: str = os.environ.get("R2_SECRET_KEY", "")
     R2_WORKSPACE_BUCKET: str = os.environ.get("R2_WORKSPACE_BUCKET", "aide-workspaces")
     R2_PUBLISHED_BUCKET: str = os.environ.get("R2_PUBLISHED_BUCKET", "aide-published")
+    R2_PUBLIC_URL: str = os.environ.get("R2_PUBLIC_URL", "https://r2.toaide.com")
 
     # Email (Resend)
     RESEND_API_KEY: str = os.environ.get("RESEND_API_KEY", "")

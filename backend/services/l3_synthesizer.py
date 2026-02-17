@@ -53,9 +53,16 @@ class L3Synthesizer:
             temperature=1.0,
         )
 
-        # Parse JSON response
+        # Parse JSON response (strip markdown code blocks if present)
+        content = result["content"].strip()
+        if content.startswith("```"):
+            # Remove markdown fencing
+            lines = content.split("\n")
+            # Remove first line (```json) and last line (```)
+            content = "\n".join(lines[1:-1])
+
         try:
-            response_data = json.loads(result["content"])
+            response_data = json.loads(content)
         except json.JSONDecodeError as e:
             # L3 failed to return valid JSON — return empty result
             return {

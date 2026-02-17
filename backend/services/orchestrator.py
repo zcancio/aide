@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+from backend import config
 from backend.models.conversation import Message
 from backend.repos.aide_repo import AideRepo
 from backend.repos.conversation_repo import ConversationRepo
@@ -142,7 +143,7 @@ class Orchestrator:
 
         return {
             "response": response_text,
-            "html_url": f"https://r2.toaide.com/{r2_key}",
+            "html_url": f"{config.settings.R2_PUBLIC_URL}/{r2_key}",
             "primitives_count": len(primitives),
         }
 
