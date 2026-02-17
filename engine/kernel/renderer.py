@@ -340,7 +340,7 @@ def _render_auto_grid(entities: list[dict], schema: dict, meta: dict | None = No
     col_labels = meta.get("col_labels", [])  # e.g., ["1", "2", "3", ...]
 
     parts = ['    <div class="aide-grid-wrap" style="display:flex;justify-content:center;padding:16px;">']
-    parts.append('      <table class="aide-grid" style="border-collapse:collapse;text-align:center;width:100%;max-width:500px;">')
+    parts.append('      <table class="aide-grid" style="border-collapse:collapse;text-align:center;width:100%;max-width:500px;table-layout:fixed;">')
 
     parts.append("        <thead>")
 
@@ -384,13 +384,13 @@ def _render_auto_grid(entities: list[dict], schema: dict, meta: dict | None = No
                 value = entity.get(display_field)
                 if value:
                     cell_content = escape(str(value))
-                    cell_style = "padding:8px;border:1px solid #ccc;background:#e8f4e8;font-size:11px;"
+                    cell_style = "padding:0;border:1px solid #ccc;background:#e8f4e8;font-size:11px;aspect-ratio:1;vertical-align:middle;"
                 else:
                     cell_content = ""
-                    cell_style = "padding:8px;border:1px solid #ddd;"
+                    cell_style = "padding:0;border:1px solid #ddd;aspect-ratio:1;vertical-align:middle;"
             else:
                 cell_content = ""
-                cell_style = "padding:8px;border:1px solid #ddd;"
+                cell_style = "padding:0;border:1px solid #ddd;aspect-ratio:1;vertical-align:middle;"
             parts.append(f'            <td style="{cell_style}">{cell_content}</td>')
         parts.append("          </tr>")
     parts.append("        </tbody>")
