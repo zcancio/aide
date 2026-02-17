@@ -793,7 +793,15 @@
     document.getElementById('message-input').value = '';
 
     const frame = document.getElementById('preview-frame');
-    frame.srcdoc = '<html><body style="background:#f9f9f9;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#aaa;font-size:14px;">Send a message to get started.</body></html>';
+
+    if (aideId) {
+      // Existing AIde - load preview from backend
+      frame.removeAttribute('srcdoc');
+      frame.src = `/api/aides/${aideId}/preview`;
+    } else {
+      // New AIde - show placeholder
+      frame.srcdoc = '<html><body style="background:#f9f9f9;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#aaa;font-size:14px;">Send a message to get started.</body></html>';
+    }
 
     showScreen('editor');
     document.getElementById('message-input').focus();
