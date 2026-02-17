@@ -25,7 +25,6 @@ Reference: aide_renderer_spec.md (Entity Style Overrides)
            aide_primitive_schemas.md (style.set_entity)
 """
 
-
 from engine.kernel.reducer import empty_state
 from engine.kernel.renderer import render_block
 
@@ -38,17 +37,14 @@ def assert_contains(html, *fragments):
     """Assert that the HTML output contains all given fragments."""
     for fragment in fragments:
         assert fragment in html, (
-            f"Expected to find {fragment!r} in rendered HTML.\n"
-            f"Got (first 2000 chars):\n{html[:2000]}"
+            f"Expected to find {fragment!r} in rendered HTML.\nGot (first 2000 chars):\n{html[:2000]}"
         )
 
 
 def assert_not_contains(html, *fragments):
     """Assert that the HTML output does NOT contain any given fragments."""
     for fragment in fragments:
-        assert fragment not in html, (
-            f"Did NOT expect to find {fragment!r} in rendered HTML."
-        )
+        assert fragment not in html, f"Did NOT expect to find {fragment!r} in rendered HTML."
 
 
 def build_styled_entity_snapshot(
@@ -207,7 +203,8 @@ class TestHighlightInListView:
     def test_highlighted_entity_gets_aide_highlight_class(self):
         """Entity with highlight: true has aide-highlight on its <li>."""
         snapshot, block_id = build_styled_entity_snapshot(
-            roster_with_highlighted_player(), "list",
+            roster_with_highlighted_player(),
+            "list",
         )
         html = render_block(block_id, snapshot)
 
@@ -216,15 +213,14 @@ class TestHighlightInListView:
     def test_non_highlighted_entities_lack_aide_highlight(self):
         """Entities without _styles.highlight do NOT get aide-highlight."""
         snapshot, block_id = build_styled_entity_snapshot(
-            roster_with_highlighted_player(), "list",
+            roster_with_highlighted_player(),
+            "list",
         )
         html = render_block(block_id, snapshot)
 
         # Count aide-highlight occurrences — should be exactly 1 (Mike only)
         count = html.count("aide-highlight")
-        assert count == 1, (
-            f"Expected 1 aide-highlight occurrence (Mike), got {count}"
-        )
+        assert count == 1, f"Expected 1 aide-highlight occurrence (Mike), got {count}"
 
     def test_highlight_false_does_not_add_class(self):
         """Entity with highlight: false should NOT get aide-highlight."""
@@ -257,7 +253,8 @@ class TestHighlightInTableView:
     def test_highlighted_entity_gets_class_on_tr(self):
         """Entity with highlight: true has aide-highlight on its <tr>."""
         snapshot, block_id = build_styled_entity_snapshot(
-            roster_with_highlighted_player(), "table",
+            roster_with_highlighted_player(),
+            "table",
         )
         html = render_block(block_id, snapshot)
 
@@ -266,7 +263,8 @@ class TestHighlightInTableView:
     def test_only_highlighted_row_gets_class(self):
         """Only Mike's row gets aide-highlight, not Sarah's or Dave's."""
         snapshot, block_id = build_styled_entity_snapshot(
-            roster_with_highlighted_player(), "table",
+            roster_with_highlighted_player(),
+            "table",
         )
         html = render_block(block_id, snapshot)
 
@@ -288,7 +286,8 @@ class TestBgColorInlineStyle:
     def test_bg_color_in_list_view(self):
         """Entity with bg_color has inline background-color in list view."""
         snapshot, block_id = build_styled_entity_snapshot(
-            roster_with_bg_color(), "list",
+            roster_with_bg_color(),
+            "list",
         )
         html = render_block(block_id, snapshot)
 
@@ -297,7 +296,8 @@ class TestBgColorInlineStyle:
     def test_bg_color_in_table_view(self):
         """Entity with bg_color has inline background-color in table view."""
         snapshot, block_id = build_styled_entity_snapshot(
-            roster_with_bg_color(), "table",
+            roster_with_bg_color(),
+            "table",
         )
         html = render_block(block_id, snapshot)
 
@@ -333,7 +333,8 @@ class TestTextColorInlineStyle:
     def test_text_color_in_list_view(self):
         """Entity with text_color has inline color in list view."""
         snapshot, block_id = build_styled_entity_snapshot(
-            roster_with_text_color(), "list",
+            roster_with_text_color(),
+            "list",
         )
         html = render_block(block_id, snapshot)
 
@@ -342,7 +343,8 @@ class TestTextColorInlineStyle:
     def test_text_color_in_table_view(self):
         """Entity with text_color has inline color in table view."""
         snapshot, block_id = build_styled_entity_snapshot(
-            roster_with_text_color(), "table",
+            roster_with_text_color(),
+            "table",
         )
         html = render_block(block_id, snapshot)
 
@@ -365,7 +367,11 @@ class TestTextColorInlineStyle:
         # (or at least no "color:" inline)
         # Be careful: CSS classes reference "color" too, so check specifically
         # for inline style pattern
-        assert 'style="' not in html or "color:" not in html.split("style=")[1].split('"')[1] if 'style="' in html else True
+        assert (
+            'style="' not in html or "color:" not in html.split("style=")[1].split('"')[1]
+            if 'style="' in html
+            else True
+        )
 
 
 # ============================================================================
@@ -382,7 +388,8 @@ class TestCombinedEntityStyles:
     def test_all_three_styles_in_list(self):
         """highlight class + bg_color + text_color all appear on list item."""
         snapshot, block_id = build_styled_entity_snapshot(
-            roster_with_combined_styles(), "list",
+            roster_with_combined_styles(),
+            "list",
         )
         html = render_block(block_id, snapshot)
 
@@ -393,7 +400,8 @@ class TestCombinedEntityStyles:
     def test_all_three_styles_in_table(self):
         """highlight class + bg_color + text_color all appear on table row."""
         snapshot, block_id = build_styled_entity_snapshot(
-            roster_with_combined_styles(), "table",
+            roster_with_combined_styles(),
+            "table",
         )
         html = render_block(block_id, snapshot)
 
@@ -404,7 +412,8 @@ class TestCombinedEntityStyles:
     def test_only_styled_entity_has_overrides(self):
         """Non-styled entities in the same view don't get style overrides."""
         snapshot, block_id = build_styled_entity_snapshot(
-            roster_with_combined_styles(), "list",
+            roster_with_combined_styles(),
+            "list",
         )
         html = render_block(block_id, snapshot)
 
@@ -559,7 +568,8 @@ class TestAideHighlightCSSDefinition:
         from engine.kernel.types import Blueprint
 
         snapshot, _ = build_styled_entity_snapshot(
-            roster_with_highlighted_player(), "list",
+            roster_with_highlighted_player(),
+            "list",
         )
         snapshot["meta"] = {"title": "Test"}
         blueprint = Blueprint(

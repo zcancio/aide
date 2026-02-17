@@ -348,7 +348,7 @@ class TestCreateEmptyPage:
         aide_file = await assembly.create(bp)
 
         # Extract main content
-        main_match = re.search(r'<main[^>]*>(.*?)</main>', aide_file.html, re.DOTALL)
+        main_match = re.search(r"<main[^>]*>(.*?)</main>", aide_file.html, re.DOTALL)
         main = main_match.group(1) if main_match else ""
 
         assert "aide-table" not in main

@@ -28,6 +28,7 @@ from engine.kernel.types import (
 # Public API
 # ---------------------------------------------------------------------------
 
+
 def empty_state() -> dict[str, Any]:
     """
     The initial snapshot when an aide has zero events.
@@ -86,6 +87,7 @@ def replay(events: list[Event]) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _reject(snap: dict, code: str, msg: str) -> ReduceResult:
     return ReduceResult(snapshot=snap, applied=False, error=f"{code}: {msg}")
@@ -311,6 +313,7 @@ def _check_constraints(snap: dict, event: Event, warnings: list[Warning]) -> boo
 # Primitive handlers
 # ---------------------------------------------------------------------------
 
+
 def _handle_entity_create(snap: dict, event: Event) -> ReduceResult:
     p = event.payload
     coll_id = p["collection"]
@@ -354,10 +357,12 @@ def _handle_entity_create(snap: dict, event: Event) -> ReduceResult:
     # Warn about extra fields not in schema
     for key in fields:
         if key not in schema:
-            warnings.append(Warning(
-                code="UNKNOWN_FIELD_IGNORED",
-                message=f"Field '{key}' not in schema, ignored",
-            ))
+            warnings.append(
+                Warning(
+                    code="UNKNOWN_FIELD_IGNORED",
+                    message=f"Field '{key}' not in schema, ignored",
+                )
+            )
 
     # 5. Store entity
     entity_fields["_removed"] = False
@@ -424,10 +429,12 @@ def _handle_entity_update(snap: dict, event: Event) -> ReduceResult:
                 entity["_updated_seq"] = event.sequence
                 count += 1
 
-        warnings.append(Warning(
-            code="ENTITIES_AFFECTED",
-            message=f"{count} entities updated",
-        ))
+        warnings.append(
+            Warning(
+                code="ENTITIES_AFFECTED",
+                message=f"{count} entities updated",
+            )
+        )
 
     # Check constraints
     if not _check_constraints(snap, event, warnings):
@@ -533,8 +540,7 @@ def _handle_collection_remove(snap: dict, event: Event) -> ReduceResult:
 
     # Exclude relationships involving entities in this collection
     for rel in snap["relationships"]:
-        if (rel.get("from", "").startswith(f"{coll_id}/") or
-                rel.get("to", "").startswith(f"{coll_id}/")):
+        if rel.get("from", "").startswith(f"{coll_id}/") or rel.get("to", "").startswith(f"{coll_id}/"):
             rel["_excluded"] = True
 
     # Remove views sourced from this collection
@@ -580,8 +586,7 @@ def _handle_field_add(snap: dict, event: Event) -> ReduceResult:
     # Required field without default → reject (unless collection is empty)
     has_entities = any(not e.get("_removed") for e in coll["entities"].values())
     if not is_nullable_type(field_type) and "default" not in p and has_entities:
-        return _reject(snap, "REQUIRED_FIELD_NO_DEFAULT",
-                        f"Can't add required field '{field_name}' without default")
+        return _reject(snap, "REQUIRED_FIELD_NO_DEFAULT", f"Can't add required field '{field_name}' without default")
 
     schema[field_name] = field_type
 
@@ -619,8 +624,7 @@ def _handle_field_update(snap: dict, event: Event) -> ReduceResult:
         # Handle bare "list" string (should be {"list": "type"})
         if new_type == "list" or (isinstance(new_type, dict) and "list" in new_type):
             if old_base in ("string", "bool", "date", "datetime", "int", "float", "enum"):
-                return _reject(snap, "INCOMPATIBLE_TYPE_CHANGE",
-                               f"Cannot convert {old_base} to list")
+                return _reject(snap, "INCOMPATIBLE_TYPE_CHANGE", f"Cannot convert {old_base} to list")
 
         if not is_valid_field_type(new_type):
             return _reject(snap, "TYPE_MISMATCH", f"Invalid type: {new_type}")
@@ -639,22 +643,22 @@ def _handle_field_update(snap: dict, event: Event) -> ReduceResult:
         # Check compatibility based on type transition
         if old_base == "enum" and new_base not in ("enum", "string"):
             # enum → anything other than string is rejected
-            return _reject(snap, "INCOMPATIBLE_TYPE_CHANGE",
-                           f"Cannot convert enum to {new_base}")
+            return _reject(snap, "INCOMPATIBLE_TYPE_CHANGE", f"Cannot convert enum to {new_base}")
 
         if old_base == "list":
             # list → anything else is rejected
-            return _reject(snap, "INCOMPATIBLE_TYPE_CHANGE",
-                           f"Cannot convert list to {new_base}")
+            return _reject(snap, "INCOMPATIBLE_TYPE_CHANGE", f"Cannot convert list to {new_base}")
 
         if old_base == "float" and new_base == "int" and existing_values:
             # float → int: check for lossy conversion
             for val in existing_values:
                 if isinstance(val, float) and val != int(val):
-                    warnings.append(Warning(
-                        code="LOSSY_TYPE_CONVERSION",
-                        message="Converting float to int will truncate decimal values",
-                    ))
+                    warnings.append(
+                        Warning(
+                            code="LOSSY_TYPE_CONVERSION",
+                            message="Converting float to int will truncate decimal values",
+                        )
+                    )
                     break
 
         if old_base == "string" and new_base == "int" and existing_values:
@@ -664,8 +668,7 @@ def _handle_field_update(snap: dict, event: Event) -> ReduceResult:
                     try:
                         int(val)
                     except ValueError:
-                        return _reject(snap, "INCOMPATIBLE_TYPE_CHANGE",
-                                       f"Cannot convert '{val}' to int")
+                        return _reject(snap, "INCOMPATIBLE_TYPE_CHANGE", f"Cannot convert '{val}' to int")
 
         if old_base == "string" and new_base == "enum" and existing_values:
             # string → enum: check all values are in enum
@@ -673,20 +676,18 @@ def _handle_field_update(snap: dict, event: Event) -> ReduceResult:
                 allowed = set(new_type["enum"])
                 for val in existing_values:
                     if val not in allowed:
-                        return _reject(snap, "INCOMPATIBLE_TYPE_CHANGE",
-                                       f"Value '{val}' not in enum {new_type['enum']}")
+                        return _reject(
+                            snap, "INCOMPATIBLE_TYPE_CHANGE", f"Value '{val}' not in enum {new_type['enum']}"
+                        )
 
         if old_base in ("string", "bool", "date", "datetime") and new_base == "list":
-            return _reject(snap, "INCOMPATIBLE_TYPE_CHANGE",
-                           f"Cannot convert {old_base} to list")
+            return _reject(snap, "INCOMPATIBLE_TYPE_CHANGE", f"Cannot convert {old_base} to list")
 
         if old_base == "date" and new_base == "int":
-            return _reject(snap, "INCOMPATIBLE_TYPE_CHANGE",
-                           "Cannot convert date to int")
+            return _reject(snap, "INCOMPATIBLE_TYPE_CHANGE", "Cannot convert date to int")
 
         if old_base == "bool" and new_base == "float":
-            return _reject(snap, "INCOMPATIBLE_TYPE_CHANGE",
-                           "Cannot convert bool to float")
+            return _reject(snap, "INCOMPATIBLE_TYPE_CHANGE", "Cannot convert bool to float")
 
         schema[field_name] = new_type
 
@@ -731,13 +732,21 @@ def _handle_field_remove(snap: dict, event: Event) -> ReduceResult:
         for config_key in ("show_fields", "hide_fields"):
             if field_name in config.get(config_key, []):
                 config[config_key] = [f for f in config[config_key] if f != field_name]
-                warnings.append(Warning(code="VIEW_FIELD_MISSING",
-                                        message=f"View '{view['id']}' referenced removed field '{field_name}'"))
+                warnings.append(
+                    Warning(
+                        code="VIEW_FIELD_MISSING",
+                        message=f"View '{view['id']}' referenced removed field '{field_name}'",
+                    )
+                )
         for config_key in ("sort_by", "group_by"):
             if config.get(config_key) == field_name:
                 config.pop(config_key, None)
-                warnings.append(Warning(code="VIEW_FIELD_MISSING",
-                                        message=f"View '{view['id']}' referenced removed field '{field_name}'"))
+                warnings.append(
+                    Warning(
+                        code="VIEW_FIELD_MISSING",
+                        message=f"View '{view['id']}' referenced removed field '{field_name}'",
+                    )
+                )
 
     # Check constraints (e.g., required_fields referencing this field)
     _check_constraints(snap, event, warnings)
@@ -776,26 +785,32 @@ def _handle_relationship_set(snap: dict, event: Event) -> ReduceResult:
     if stored_cardinality == "many_to_one":
         # Remove existing relationships from this source of this type (each source has one target)
         snap["relationships"] = [
-            r for r in snap["relationships"]
+            r
+            for r in snap["relationships"]
             if not (r["from"] == from_ref and r["type"] == rel_type and not r.get("_excluded"))
         ]
     elif stored_cardinality == "one_to_one":
         # Remove both sides
         snap["relationships"] = [
-            r for r in snap["relationships"]
-            if not ((r["from"] == from_ref and r["type"] == rel_type and not r.get("_excluded")) or
-                    (r["to"] == to_ref and r["type"] == rel_type and not r.get("_excluded")))
+            r
+            for r in snap["relationships"]
+            if not (
+                (r["from"] == from_ref and r["type"] == rel_type and not r.get("_excluded"))
+                or (r["to"] == to_ref and r["type"] == rel_type and not r.get("_excluded"))
+            )
         ]
     # many_to_many: no auto-removal
 
     # Append new relationship
-    snap["relationships"].append({
-        "from": from_ref,
-        "to": to_ref,
-        "type": rel_type,
-        "data": data,
-        "_seq": event.sequence,
-    })
+    snap["relationships"].append(
+        {
+            "from": from_ref,
+            "to": to_ref,
+            "type": rel_type,
+            "data": data,
+            "_seq": event.sequence,
+        }
+    )
 
     warnings: list[Warning] = []
     if not _check_constraints(snap, event, warnings):
@@ -953,8 +968,7 @@ def _handle_block_reorder(snap: dict, event: Event) -> ReduceResult:
         if cid in current_children:
             valid_order.append(cid)
         else:
-            warnings.append(Warning(code="UNKNOWN_FIELD_IGNORED",
-                                     message=f"'{cid}' is not a child of '{parent_id}'"))
+            warnings.append(Warning(code="UNKNOWN_FIELD_IGNORED", message=f"'{cid}' is not a child of '{parent_id}'"))
 
     # Append any current children not in the provided order
     for cid in parent["children"]:
@@ -984,8 +998,9 @@ def _handle_view_create(snap: dict, event: Event) -> ReduceResult:
     for field_ref_key in ("show_fields", "hide_fields"):
         for f in config.get(field_ref_key, []):
             if f not in schema:
-                warnings.append(Warning(code="VIEW_FIELD_MISSING",
-                                        message=f"View '{view_id}' references field '{f}' not in schema"))
+                warnings.append(
+                    Warning(code="VIEW_FIELD_MISSING", message=f"View '{view_id}' references field '{f}' not in schema")
+                )
 
     snap["views"][view_id] = {
         "id": view_id,
@@ -1031,8 +1046,11 @@ def _handle_view_remove(snap: dict, event: Event) -> ReduceResult:
             props = block.get("props", {})
             if props.get("view") == view_id:
                 props["view"] = None
-                warnings.append(Warning(code="BLOCK_VIEW_MISSING",
-                                        message=f"Block '{block['id']}' referenced removed view '{view_id}'"))
+                warnings.append(
+                    Warning(
+                        code="BLOCK_VIEW_MISSING", message=f"Block '{block['id']}' referenced removed view '{view_id}'"
+                    )
+                )
 
     return _ok(snap, warnings)
 
@@ -1073,12 +1091,14 @@ def _handle_meta_update(snap: dict, event: Event) -> ReduceResult:
 
 def _handle_meta_annotate(snap: dict, event: Event) -> ReduceResult:
     p = event.payload
-    snap["annotations"].append({
-        "note": p["note"],
-        "pinned": p.get("pinned", False),
-        "seq": event.sequence,
-        "timestamp": event.timestamp,
-    })
+    snap["annotations"].append(
+        {
+            "note": p["note"],
+            "pinned": p.get("pinned", False),
+            "seq": event.sequence,
+            "timestamp": event.timestamp,
+        }
+    )
     return _ok(snap)
 
 
@@ -1132,8 +1152,12 @@ def _handle_meta_constrain(snap: dict, event: Event) -> ReduceResult:
                         continue
                     val = ent.get(field_name)
                     if val is not None and val in seen:
-                        warnings.append(Warning(code="CONSTRAINT_VIOLATED",
-                                                message=p.get("message", f"Duplicate value for '{field_name}'")))
+                        warnings.append(
+                            Warning(
+                                code="CONSTRAINT_VIOLATED",
+                                message=p.get("message", f"Duplicate value for '{field_name}'"),
+                            )
+                        )
                         break
                     if val is not None:
                         seen.add(val)

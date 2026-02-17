@@ -75,11 +75,15 @@ def make_ten_events() -> list[Event]:
     """Create 10 events that build a simple grocery list."""
     return [
         # 1. Create collection
-        make_collection_create_event(1, "groceries", {
-            "name": "string",
-            "quantity": "int",
-            "urgent": "bool",
-        }),
+        make_collection_create_event(
+            1,
+            "groceries",
+            {
+                "name": "string",
+                "quantity": "int",
+                "urgent": "bool",
+            },
+        ),
         # 2-9. Add 8 items
         make_entity_create_event(2, "groceries", "item_1", {"name": "Milk", "quantity": 2, "urgent": False}),
         make_entity_create_event(3, "groceries", "item_2", {"name": "Eggs", "quantity": 12, "urgent": True}),
@@ -350,15 +354,28 @@ class TestLastSequenceTracking:
 
         # Use auto-assigned sequences (sequence=0)
         events = [
-            Event(id="", sequence=0, timestamp=now_iso(), actor="test", source="test",
-                  type="collection.create", payload={"id": "items", "schema": {"name": "string"}}),
+            Event(
+                id="",
+                sequence=0,
+                timestamp=now_iso(),
+                actor="test",
+                source="test",
+                type="collection.create",
+                payload={"id": "items", "schema": {"name": "string"}},
+            ),
         ]
         for i in range(9):
-            events.append(Event(
-                id="", sequence=0, timestamp=now_iso(), actor="test", source="test",
-                type="entity.create",
-                payload={"collection": "items", "id": f"item_{i}", "fields": {"name": f"Item {i}"}},
-            ))
+            events.append(
+                Event(
+                    id="",
+                    sequence=0,
+                    timestamp=now_iso(),
+                    actor="test",
+                    source="test",
+                    type="entity.create",
+                    payload={"collection": "items", "id": f"item_{i}", "fields": {"name": f"Item {i}"}},
+                )
+            )
 
         await assembly.apply(aide_file, events)
 

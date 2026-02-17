@@ -33,7 +33,6 @@ Reference: aide_renderer_spec.md (Value Formatting, View Rendering)
            aide_primitive_schemas.md (Field types)
 """
 
-
 from engine.kernel.reducer import empty_state
 from engine.kernel.renderer import render_block
 
@@ -48,16 +47,13 @@ EM_DASH = "\u2014"  # —
 def assert_contains(html, *fragments):
     for fragment in fragments:
         assert fragment in html, (
-            f"Expected to find {fragment!r} in rendered HTML.\n"
-            f"Got (first 3000 chars):\n{html[:3000]}"
+            f"Expected to find {fragment!r} in rendered HTML.\nGot (first 3000 chars):\n{html[:3000]}"
         )
 
 
 def assert_not_contains(html, *fragments):
     for fragment in fragments:
-        assert fragment not in html, (
-            f"Did NOT expect to find {fragment!r} in rendered HTML."
-        )
+        assert fragment not in html, f"Did NOT expect to find {fragment!r} in rendered HTML."
 
 
 def build_single_entity_view(schema, fields, view_type="table", view_config=None):
@@ -793,7 +789,9 @@ class TestMixedFieldTypes:
             "store": None,
         }
         snapshot, block_id = build_single_entity_view(
-            schema, fields, view_type="list",
+            schema,
+            fields,
+            view_type="list",
         )
         html = render_block(block_id, snapshot)
 

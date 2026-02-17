@@ -39,113 +39,127 @@ def make_twenty_events() -> list[Event]:
 
     # 1. Create collection
     seq += 1
-    events.append(Event(
-        id=f"evt_{seq:03d}",
-        sequence=seq,
-        timestamp=now_iso(),
-        actor="user_test",
-        source="test",
-        type="collection.create",
-        payload={"id": "players", "schema": {"name": "string", "wins": "int", "active": "bool"}},
-    ))
+    events.append(
+        Event(
+            id=f"evt_{seq:03d}",
+            sequence=seq,
+            timestamp=now_iso(),
+            actor="user_test",
+            source="test",
+            type="collection.create",
+            payload={"id": "players", "schema": {"name": "string", "wins": "int", "active": "bool"}},
+        )
+    )
 
     # 2-11. Add 10 players
     for i in range(10):
         seq += 1
-        events.append(Event(
-            id=f"evt_{seq:03d}",
-            sequence=seq,
-            timestamp=now_iso(),
-            actor="user_test",
-            source="test",
-            type="entity.create",
-            payload={
-                "collection": "players",
-                "id": f"player_{i+1}",
-                "fields": {"name": f"Player {i+1}", "wins": i, "active": True},
-            },
-        ))
+        events.append(
+            Event(
+                id=f"evt_{seq:03d}",
+                sequence=seq,
+                timestamp=now_iso(),
+                actor="user_test",
+                source="test",
+                type="entity.create",
+                payload={
+                    "collection": "players",
+                    "id": f"player_{i + 1}",
+                    "fields": {"name": f"Player {i + 1}", "wins": i, "active": True},
+                },
+            )
+        )
 
     # 12-16. Update some players
     for i in range(5):
         seq += 1
-        events.append(Event(
+        events.append(
+            Event(
+                id=f"evt_{seq:03d}",
+                sequence=seq,
+                timestamp=now_iso(),
+                actor="user_test",
+                source="test",
+                type="field.update",
+                payload={
+                    "collection": "players",
+                    "entity": f"player_{i + 1}",
+                    "field": "wins",
+                    "value": (i + 1) * 10,
+                },
+            )
+        )
+
+    # 17. Update title
+    seq += 1
+    events.append(
+        Event(
             id=f"evt_{seq:03d}",
             sequence=seq,
             timestamp=now_iso(),
             actor="user_test",
             source="test",
-            type="field.update",
-            payload={
-                "collection": "players",
-                "entity": f"player_{i+1}",
-                "field": "wins",
-                "value": (i + 1) * 10,
-            },
-        ))
-
-    # 17. Update title
-    seq += 1
-    events.append(Event(
-        id=f"evt_{seq:03d}",
-        sequence=seq,
-        timestamp=now_iso(),
-        actor="user_test",
-        source="test",
-        type="meta.update",
-        payload={"title": "Thursday Night Poker"},
-    ))
+            type="meta.update",
+            payload={"title": "Thursday Night Poker"},
+        )
+    )
 
     # 18. Create view
     seq += 1
-    events.append(Event(
-        id=f"evt_{seq:03d}",
-        sequence=seq,
-        timestamp=now_iso(),
-        actor="user_test",
-        source="test",
-        type="view.create",
-        payload={
-            "id": "players_view",
-            "type": "table",
-            "source": "players",
-            "config": {"show_fields": ["name", "wins", "active"]},
-        },
-    ))
+    events.append(
+        Event(
+            id=f"evt_{seq:03d}",
+            sequence=seq,
+            timestamp=now_iso(),
+            actor="user_test",
+            source="test",
+            type="view.create",
+            payload={
+                "id": "players_view",
+                "type": "table",
+                "source": "players",
+                "config": {"show_fields": ["name", "wins", "active"]},
+            },
+        )
+    )
 
     # 19. Create heading block
     seq += 1
-    events.append(Event(
-        id=f"evt_{seq:03d}",
-        sequence=seq,
-        timestamp=now_iso(),
-        actor="user_test",
-        source="test",
-        type="block.set",
-        payload={
-            "id": "block_title",
-            "type": "heading",
-            "parent": "block_root",
-            "props": {"level": 1, "content": "Thursday Night Poker"},
-        },
-    ))
+    events.append(
+        Event(
+            id=f"evt_{seq:03d}",
+            sequence=seq,
+            timestamp=now_iso(),
+            actor="user_test",
+            source="test",
+            type="block.set",
+            payload={
+                "id": "block_title",
+                "type": "heading",
+                "parent": "block_root",
+                "props": {"level": 1, "content": "Thursday Night Poker"},
+            },
+        )
+    )
 
     # 20. Create collection view block
     seq += 1
-    events.append(Event(
-        id=f"evt_{seq:03d}",
-        sequence=seq,
-        timestamp=now_iso(),
-        actor="user_test",
-        source="test",
-        type="block.set",
-        payload={
-            "id": "block_players",
-            "type": "collection_view",
-            "parent": "block_root",
-            "props": {"source": "players", "view": "players_view"},
-        },
-    ))
+    events.append(
+        Event(
+            id=f"evt_{seq:03d}",
+            sequence=seq,
+            timestamp=now_iso(),
+            actor="user_test",
+            source="test",
+            type="block.set",
+            payload={
+                "id": "block_players",
+                "type": "collection_view",
+                "parent": "block_root",
+                "props": {"source": "players", "view": "players_view"},
+            },
+        )
+    )
 
     assert len(events) == 20
     return events
@@ -245,7 +259,9 @@ class TestForkSnapshotPreservation:
         forked = await assembly.fork(original.aide_id)
 
         assert "players" in forked.snapshot["collections"]
-        assert forked.snapshot["collections"]["players"]["schema"] == original.snapshot["collections"]["players"]["schema"]
+        assert (
+            forked.snapshot["collections"]["players"]["schema"] == original.snapshot["collections"]["players"]["schema"]
+        )
 
     @pytest.mark.asyncio
     async def test_fork_preserves_entities(self, assembly, storage):
@@ -299,15 +315,17 @@ class TestForkSnapshotPreservation:
         events = make_twenty_events()
 
         # Add a style event (style.set takes key-value pairs directly)
-        events.append(Event(
-            id="evt_021",
-            sequence=21,
-            timestamp=now_iso(),
-            actor="user_test",
-            source="test",
-            type="style.set",
-            payload={"primary_color": "#ff5500"},
-        ))
+        events.append(
+            Event(
+                id="evt_021",
+                sequence=21,
+                timestamp=now_iso(),
+                actor="user_test",
+                source="test",
+                type="style.set",
+                payload={"primary_color": "#ff5500"},
+            )
+        )
 
         await assembly.apply(original, events)
         await assembly.save(original)

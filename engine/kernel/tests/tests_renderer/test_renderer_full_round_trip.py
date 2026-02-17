@@ -44,16 +44,13 @@ from engine.kernel.types import Blueprint
 def assert_contains(html, *fragments):
     for fragment in fragments:
         assert fragment in html, (
-            f"Expected to find {fragment!r} in rendered HTML.\n"
-            f"Got (first 3000 chars):\n{html[:3000]}"
+            f"Expected to find {fragment!r} in rendered HTML.\nGot (first 3000 chars):\n{html[:3000]}"
         )
 
 
 def assert_not_contains(html, *fragments):
     for fragment in fragments:
-        assert fragment not in html, (
-            f"Did NOT expect to find {fragment!r} in rendered HTML."
-        )
+        assert fragment not in html, f"Did NOT expect to find {fragment!r} in rendered HTML."
 
 
 def assert_order(html, *fragments):
@@ -64,14 +61,12 @@ def assert_order(html, *fragments):
         assert pos != -1, f"{f!r} not found in HTML"
         positions.append((f, pos))
     for i in range(len(positions) - 1):
-        assert positions[i][1] < positions[i + 1][1], (
-            f"Expected {positions[i][0]!r} before {positions[i + 1][0]!r}"
-        )
+        assert positions[i][1] < positions[i + 1][1], f"Expected {positions[i][0]!r} before {positions[i + 1][0]!r}"
 
 
 def extract_main(html):
     """Extract content within <main> tags only (avoids CSS and embedded JSON)."""
-    match = re.search(r'<main[^>]*>(.*?)</main>', html, re.DOTALL)
+    match = re.search(r"<main[^>]*>(.*?)</main>", html, re.DOTALL)
     return match.group(1) if match else ""
 
 
@@ -85,19 +80,15 @@ def assert_order_in_main(html, *fragments):
         assert pos != -1, f"{f!r} not found in <main> content"
         positions.append((f, pos))
     for i in range(len(positions) - 1):
-        assert positions[i][1] < positions[i + 1][1], (
-            f"Expected {positions[i][0]!r} before {positions[i + 1][0]!r}"
-        )
+        assert positions[i][1] < positions[i + 1][1], f"Expected {positions[i][0]!r} before {positions[i + 1][0]!r}"
 
 
 def assert_not_in_body(html, *fragments):
     """Assert fragments do NOT appear in <body> content."""
-    match = re.search(r'<body[^>]*>(.*?)</body>', html, re.DOTALL)
+    match = re.search(r"<body[^>]*>(.*?)</body>", html, re.DOTALL)
     body = match.group(1) if match else ""
     for fragment in fragments:
-        assert fragment not in body, (
-            f"Did NOT expect to find {fragment!r} in <body> content."
-        )
+        assert fragment not in body, f"Did NOT expect to find {fragment!r} in <body> content."
 
 
 def extract_json_block(html, element_id):
@@ -213,9 +204,15 @@ def grocery_list_snapshot():
     }
 
     snapshot["blocks"] = {
-        "block_root": {"type": "root", "children": [
-            "block_title", "block_intro", "block_budget", "block_groceries",
-        ]},
+        "block_root": {
+            "type": "root",
+            "children": [
+                "block_title",
+                "block_intro",
+                "block_budget",
+                "block_groceries",
+            ],
+        },
         "block_title": {
             "type": "heading",
             "parent": "block_root",
@@ -266,6 +263,7 @@ def grocery_blueprint():
 
 def grocery_events():
     from engine.kernel.types import Event
+
     return [
         Event(
             id="evt_20260210_001",
@@ -339,17 +337,17 @@ class TestGroceryListFullRender:
 
     def test_og_title(self, html):
         """OG title tag matches aide title."""
-        assert_contains(html, 'og:title')
+        assert_contains(html, "og:title")
         assert_contains(html, "Weekly Groceries")
 
     def test_og_type(self, html):
         """OG type is 'website'."""
-        assert_contains(html, 'og:type')
+        assert_contains(html, "og:type")
         assert_contains(html, "website")
 
     def test_og_description(self, html):
         """OG description is derived from first text block content."""
-        assert_contains(html, 'og:description')
+        assert_contains(html, "og:description")
 
     # -- Embedded JSON --
 
@@ -432,7 +430,8 @@ class TestGroceryListFullRender:
         """Removed item is NOT in the rendered collection view (but may be in embedded JSON)."""
         # Extract the main content section, not the embedded JSON
         import re
-        main_match = re.search(r'<main[^>]*>(.*?)</main>', html, re.DOTALL)
+
+        main_match = re.search(r"<main[^>]*>(.*?)</main>", html, re.DOTALL)
         assert main_match, "Expected <main> element in output"
         main_content = main_match.group(1)
         assert "Removed Item" not in main_content, "Removed item should not appear in rendered content"
@@ -466,9 +465,9 @@ class TestGroceryListFullRender:
         assert_order(
             html,
             "Weekly Groceries",  # heading
-            "Sunday",            # text block
-            "Estimated total",   # metric
-            "aide-list",         # collection view
+            "Sunday",  # text block
+            "Estimated total",  # metric
+            "aide-list",  # collection view
         )
 
     # -- Annotations --
@@ -496,11 +495,9 @@ class TestGroceryListFullRender:
     def test_no_javascript(self, html):
         """Output has no executable JavaScript (only data script tags)."""
         # The only <script> tags should have type="application/..." (data)
-        script_pattern = re.findall(r'<script([^>]*)>', html)
+        script_pattern = re.findall(r"<script([^>]*)>", html)
         for attrs in script_pattern:
-            assert "application/" in attrs, (
-                f"Found script tag without data MIME type: <script{attrs}>"
-            )
+            assert "application/" in attrs, f"Found script tag without data MIME type: <script{attrs}>"
 
     # -- Output sanity --
 
@@ -637,12 +634,20 @@ def poker_league_snapshot():
     }
 
     snapshot["blocks"] = {
-        "block_root": {"type": "root", "children": [
-            "block_title", "block_intro", "block_next_game",
-            "block_total_pot", "block_divider",
-            "block_roster_heading", "block_roster",
-            "block_schedule_heading", "block_schedule",
-        ]},
+        "block_root": {
+            "type": "root",
+            "children": [
+                "block_title",
+                "block_intro",
+                "block_next_game",
+                "block_total_pot",
+                "block_divider",
+                "block_roster_heading",
+                "block_roster",
+                "block_schedule_heading",
+                "block_schedule",
+            ],
+        },
         "block_title": {
             "type": "heading",
             "parent": "block_root",
@@ -651,7 +656,9 @@ def poker_league_snapshot():
         "block_intro": {
             "type": "text",
             "parent": "block_root",
-            "props": {"content": "Biweekly Thursday games. $20 buy-in. See [rules](https://example.com/rules) for details."},
+            "props": {
+                "content": "Biweekly Thursday games. $20 buy-in. See [rules](https://example.com/rules) for details."
+            },
         },
         "block_next_game": {
             "type": "metric",
@@ -841,14 +848,14 @@ class TestPokerLeagueFullRender:
         # Search within <main> only to avoid finding class names in CSS
         assert_order_in_main(
             html,
-            "Poker League",            # H1
-            "Biweekly Thursday",       # text
-            "Next game",               # metric 1
-            "Season pot",              # metric 2
-            '<hr class="aide-divider', # divider element
-            ">Roster<",                # H2 (with angle brackets to avoid substring match)
-            '<table class="aide-table', # roster table element
-            ">Schedule<",              # H2
+            "Poker League",  # H1
+            "Biweekly Thursday",  # text
+            "Next game",  # metric 1
+            "Season pot",  # metric 2
+            '<hr class="aide-divider',  # divider element
+            ">Roster<",  # H2 (with angle brackets to avoid substring match)
+            '<table class="aide-table',  # roster table element
+            ">Schedule<",  # H2
         )
 
 
@@ -987,7 +994,7 @@ class TestOGDescriptionDerivation:
         """Description derived from first text block."""
         html = render(grocery_list_snapshot(), grocery_blueprint())
 
-        assert_contains(html, 'og:description')
+        assert_contains(html, "og:description")
         # The first text block starts with "Updated every..."
         assert_contains(html, "Updated every")
 
@@ -1020,7 +1027,7 @@ class TestOGDescriptionDerivation:
 
         html = render(snapshot, grocery_blueprint())
 
-        assert_contains(html, 'og:description')
+        assert_contains(html, "og:description")
         assert_contains(html, "Tasks")
         assert_contains(html, "3 items")
 
@@ -1031,4 +1038,4 @@ class TestOGDescriptionDerivation:
 
         html = render(snapshot, grocery_blueprint())
 
-        assert_contains(html, 'og:description')
+        assert_contains(html, "og:description")

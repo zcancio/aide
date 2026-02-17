@@ -120,9 +120,7 @@ def state_with_block(empty):
 def assert_rejected(result, expected_error):
     assert not result.applied, "Expected rejection but event was applied"
     assert result.error is not None, "Expected error code but got None"
-    assert expected_error in result.error, (
-        f"Expected error containing '{expected_error}', got '{result.error}'"
-    )
+    assert expected_error in result.error, f"Expected error containing '{expected_error}', got '{result.error}'"
 
 
 # ============================================================================

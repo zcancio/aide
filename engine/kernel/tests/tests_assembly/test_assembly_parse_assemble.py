@@ -360,6 +360,7 @@ class TestJSONIntegrity:
 
         # Extract the raw JSON
         import re
+
         state_match = re.search(
             r'<script[^>]*id="aide-state"[^>]*>(.*?)</script>',
             html,

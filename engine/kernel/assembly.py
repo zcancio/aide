@@ -38,24 +38,29 @@ from engine.kernel.types import (
 # Exceptions
 # ---------------------------------------------------------------------------
 
+
 class AideNotFound(Exception):
     """Aide does not exist in storage."""
+
     pass
 
 
 class ParseError(Exception):
     """HTML file exists but embedded JSON is malformed."""
+
     pass
 
 
 class VersionNotSupported(Exception):
     """Snapshot version is from a future format."""
+
     pass
 
 
 # ---------------------------------------------------------------------------
 # Storage protocol
 # ---------------------------------------------------------------------------
+
 
 class AideStorage:
     """
@@ -103,6 +108,7 @@ class MemoryStorage(AideStorage):
 # ---------------------------------------------------------------------------
 # HTML Parsing
 # ---------------------------------------------------------------------------
+
 
 def parse_aide_html(html: str) -> ParsedAide:
     """
@@ -163,6 +169,7 @@ def parse_aide_html(html: str) -> ParsedAide:
 # ---------------------------------------------------------------------------
 # Assembly class
 # ---------------------------------------------------------------------------
+
 
 class AideAssembly:
     """

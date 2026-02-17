@@ -30,13 +30,13 @@ def create_jwt(user_id: UUID) -> str:
     Returns:
         Signed JWT string
     """
-    expires_at = datetime.now(UTC) + timedelta(hours=config.JWT_EXPIRY_HOURS)
+    expires_at = datetime.now(UTC) + timedelta(hours=config.settings.JWT_EXPIRY_HOURS)
     payload = {
         "sub": str(user_id),
         "exp": expires_at,
         "iat": datetime.now(UTC),
     }
-    return jwt.encode(payload, config.JWT_SECRET, algorithm=config.JWT_ALGORITHM)
+    return jwt.encode(payload, config.settings.JWT_SECRET, algorithm=config.settings.JWT_ALGORITHM)
 
 
 def decode_jwt(token: str) -> dict:
@@ -53,7 +53,7 @@ def decode_jwt(token: str) -> dict:
         HTTPException: If token is invalid or expired
     """
     try:
-        payload = jwt.decode(token, config.JWT_SECRET, algorithms=[config.JWT_ALGORITHM])
+        payload = jwt.decode(token, config.settings.JWT_SECRET, algorithms=[config.settings.JWT_ALGORITHM])
         return payload
     except jwt.ExpiredSignatureError as e:
         raise HTTPException(

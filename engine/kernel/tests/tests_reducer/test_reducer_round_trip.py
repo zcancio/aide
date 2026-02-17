@@ -87,162 +87,238 @@ def poker_league_events():
         events.append(make_event(seq=seq, type=event_type, payload=payload))
 
     # Collections
-    e("collection.create", {
-        "id": "roster",
-        "name": "Roster",
-        "schema": {"name": "string", "status": "string", "snack_duty": "bool"},
-    })
-    e("collection.create", {
-        "id": "schedule",
-        "name": "Schedule",
-        "schema": {"date": "date", "host": "string?", "status": "string"},
-    })
+    e(
+        "collection.create",
+        {
+            "id": "roster",
+            "name": "Roster",
+            "schema": {"name": "string", "status": "string", "snack_duty": "bool"},
+        },
+    )
+    e(
+        "collection.create",
+        {
+            "id": "schedule",
+            "name": "Schedule",
+            "schema": {"date": "date", "host": "string?", "status": "string"},
+        },
+    )
 
     # Entities
-    for pid, name in [("player_mike", "Mike"), ("player_dave", "Dave"),
-                      ("player_linda", "Linda"), ("player_steve", "Steve")]:
-        e("entity.create", {
-            "collection": "roster",
-            "id": pid,
-            "fields": {"name": name, "status": "active", "snack_duty": False},
-        })
-    e("entity.create", {
-        "collection": "schedule",
-        "id": "game_feb27",
-        "fields": {"date": "2026-02-27", "host": "Dave", "status": "confirmed"},
-    })
+    for pid, name in [
+        ("player_mike", "Mike"),
+        ("player_dave", "Dave"),
+        ("player_linda", "Linda"),
+        ("player_steve", "Steve"),
+    ]:
+        e(
+            "entity.create",
+            {
+                "collection": "roster",
+                "id": pid,
+                "fields": {"name": name, "status": "active", "snack_duty": False},
+            },
+        )
+    e(
+        "entity.create",
+        {
+            "collection": "schedule",
+            "id": "game_feb27",
+            "fields": {"date": "2026-02-27", "host": "Dave", "status": "confirmed"},
+        },
+    )
 
     # Updates
-    e("entity.update", {
-        "ref": "roster/player_dave",
-        "fields": {"snack_duty": True},
-    })
+    e(
+        "entity.update",
+        {
+            "ref": "roster/player_dave",
+            "fields": {"snack_duty": True},
+        },
+    )
 
     # Schema evolution
-    e("field.add", {
-        "collection": "roster",
-        "name": "rating",
-        "type": "int",
-        "default": 1000,
-    })
-    e("field.add", {
-        "collection": "roster",
-        "name": "notes",
-        "type": "string?",
-    })
-    e("entity.update", {
-        "ref": "roster/player_mike",
-        "fields": {"rating": 1200},
-    })
+    e(
+        "field.add",
+        {
+            "collection": "roster",
+            "name": "rating",
+            "type": "int",
+            "default": 1000,
+        },
+    )
+    e(
+        "field.add",
+        {
+            "collection": "roster",
+            "name": "notes",
+            "type": "string?",
+        },
+    )
+    e(
+        "entity.update",
+        {
+            "ref": "roster/player_mike",
+            "fields": {"rating": 1200},
+        },
+    )
 
     # Relationships
-    e("relationship.set", {
-        "from": "roster/player_dave",
-        "to": "schedule/game_feb27",
-        "type": "hosting",
-        "cardinality": "many_to_one",
-    })
-    e("relationship.set", {
-        "from": "roster/player_mike",
-        "to": "schedule/game_feb27",
-        "type": "attending",
-        "cardinality": "many_to_many",
-    })
-    e("relationship.set", {
-        "from": "roster/player_dave",
-        "to": "schedule/game_feb27",
-        "type": "attending",
-    })
+    e(
+        "relationship.set",
+        {
+            "from": "roster/player_dave",
+            "to": "schedule/game_feb27",
+            "type": "hosting",
+            "cardinality": "many_to_one",
+        },
+    )
+    e(
+        "relationship.set",
+        {
+            "from": "roster/player_mike",
+            "to": "schedule/game_feb27",
+            "type": "attending",
+            "cardinality": "many_to_many",
+        },
+    )
+    e(
+        "relationship.set",
+        {
+            "from": "roster/player_dave",
+            "to": "schedule/game_feb27",
+            "type": "attending",
+        },
+    )
 
     # Relationship constraint
-    e("relationship.constrain", {
-        "id": "constraint_no_mike_dave",
-        "rule": "exclude_pair",
-        "entities": ["roster/player_mike", "roster/player_dave"],
-        "relationship_type": "hosting",
-        "message": "Mike and Dave can't both host the same game",
-    })
+    e(
+        "relationship.constrain",
+        {
+            "id": "constraint_no_mike_dave",
+            "rule": "exclude_pair",
+            "entities": ["roster/player_mike", "roster/player_dave"],
+            "relationship_type": "hosting",
+            "message": "Mike and Dave can't both host the same game",
+        },
+    )
 
     # Views
-    e("view.create", {
-        "id": "roster_view",
-        "type": "list",
-        "source": "roster",
-        "config": {
-            "show_fields": ["name", "status", "rating"],
-            "sort_by": "name",
-            "sort_order": "asc",
+    e(
+        "view.create",
+        {
+            "id": "roster_view",
+            "type": "list",
+            "source": "roster",
+            "config": {
+                "show_fields": ["name", "status", "rating"],
+                "sort_by": "name",
+                "sort_order": "asc",
+            },
         },
-    })
-    e("view.create", {
-        "id": "schedule_view",
-        "type": "table",
-        "source": "schedule",
-        "config": {"show_fields": ["date", "host", "status"]},
-    })
+    )
+    e(
+        "view.create",
+        {
+            "id": "schedule_view",
+            "type": "table",
+            "source": "schedule",
+            "config": {"show_fields": ["date", "host", "status"]},
+        },
+    )
 
     # Blocks
-    e("block.set", {
-        "id": "block_title",
-        "type": "heading",
-        "parent": "block_root",
-        "props": {"level": 1, "content": "Poker League"},
-    })
-    e("block.set", {
-        "id": "block_metric",
-        "type": "metric",
-        "parent": "block_root",
-        "props": {"label": "Next game", "value": "Thu Feb 27 at Dave's"},
-    })
-    e("block.set", {
-        "id": "block_roster",
-        "type": "collection_view",
-        "parent": "block_root",
-        "props": {"source": "roster", "view": "roster_view"},
-    })
-    e("block.set", {
-        "id": "block_schedule",
-        "type": "collection_view",
-        "parent": "block_root",
-        "props": {"source": "schedule", "view": "schedule_view"},
-    })
+    e(
+        "block.set",
+        {
+            "id": "block_title",
+            "type": "heading",
+            "parent": "block_root",
+            "props": {"level": 1, "content": "Poker League"},
+        },
+    )
+    e(
+        "block.set",
+        {
+            "id": "block_metric",
+            "type": "metric",
+            "parent": "block_root",
+            "props": {"label": "Next game", "value": "Thu Feb 27 at Dave's"},
+        },
+    )
+    e(
+        "block.set",
+        {
+            "id": "block_roster",
+            "type": "collection_view",
+            "parent": "block_root",
+            "props": {"source": "roster", "view": "roster_view"},
+        },
+    )
+    e(
+        "block.set",
+        {
+            "id": "block_schedule",
+            "type": "collection_view",
+            "parent": "block_root",
+            "props": {"source": "schedule", "view": "schedule_view"},
+        },
+    )
 
     # Styles
-    e("style.set", {
-        "primary_color": "#2d3748",
-        "font_family": "Inter",
-        "density": "comfortable",
-    })
-    e("style.set_entity", {
-        "ref": "roster/player_mike",
-        "styles": {"highlight": True, "bg_color": "#fef3c7"},
-    })
+    e(
+        "style.set",
+        {
+            "primary_color": "#2d3748",
+            "font_family": "Inter",
+            "density": "comfortable",
+        },
+    )
+    e(
+        "style.set_entity",
+        {
+            "ref": "roster/player_mike",
+            "styles": {"highlight": True, "bg_color": "#fef3c7"},
+        },
+    )
 
     # Meta
-    e("meta.update", {
-        "title": "Poker League — Spring 2026",
-        "identity": "8 players, biweekly Thursday.",
-    })
-    e("meta.annotate", {
-        "note": "League started Feb 1.",
-        "pinned": False,
-    })
-    e("meta.constrain", {
-        "id": "constraint_max_players",
-        "rule": "collection_max_entities",
-        "collection": "roster",
-        "value": 10,
-        "message": "Maximum 10 players",
-    })
+    e(
+        "meta.update",
+        {
+            "title": "Poker League — Spring 2026",
+            "identity": "8 players, biweekly Thursday.",
+        },
+    )
+    e(
+        "meta.annotate",
+        {
+            "note": "League started Feb 1.",
+            "pinned": False,
+        },
+    )
+    e(
+        "meta.constrain",
+        {
+            "id": "constraint_max_players",
+            "rule": "collection_max_entities",
+            "collection": "roster",
+            "value": 10,
+            "message": "Maximum 10 players",
+        },
+    )
 
     # Entity remove
     e("entity.remove", {"ref": "roster/player_steve"})
 
     # Block reorder
-    e("block.reorder", {
-        "parent": "block_root",
-        "children": ["block_title", "block_metric", "block_roster", "block_schedule"],
-    })
+    e(
+        "block.reorder",
+        {
+            "parent": "block_root",
+            "children": ["block_title", "block_metric", "block_roster", "block_schedule"],
+        },
+    )
 
     return events
 
@@ -285,142 +361,290 @@ class TestSnapshotRoundTripByCategory:
     def test_collection_state_round_trip(self, empty):
         result = reduce(
             empty,
-            make_event(seq=1, type="collection.create", payload={
-                "id": "items",
-                "name": "Items",
-                "schema": {"name": "string", "count": "int", "done": "bool", "note": "string?"},
-            }),
+            make_event(
+                seq=1,
+                type="collection.create",
+                payload={
+                    "id": "items",
+                    "name": "Items",
+                    "schema": {"name": "string", "count": "int", "done": "bool", "note": "string?"},
+                },
+            ),
         )
         assert_round_trip_equal(result.snapshot, "collection create")
 
     def test_entity_state_round_trip(self, empty):
-        snapshot = build_state([
-            make_event(seq=1, type="collection.create", payload={
-                "id": "items", "schema": {"name": "string", "done": "bool"},
-            }),
-            make_event(seq=2, type="entity.create", payload={
-                "collection": "items", "id": "item_a",
-                "fields": {"name": "Alpha", "done": False},
-            }),
-        ])
+        snapshot = build_state(
+            [
+                make_event(
+                    seq=1,
+                    type="collection.create",
+                    payload={
+                        "id": "items",
+                        "schema": {"name": "string", "done": "bool"},
+                    },
+                ),
+                make_event(
+                    seq=2,
+                    type="entity.create",
+                    payload={
+                        "collection": "items",
+                        "id": "item_a",
+                        "fields": {"name": "Alpha", "done": False},
+                    },
+                ),
+            ]
+        )
         assert_round_trip_equal(snapshot, "entity create")
 
     def test_relationship_state_round_trip(self, empty):
-        snapshot = build_state([
-            make_event(seq=1, type="collection.create", payload={
-                "id": "people", "schema": {"name": "string"},
-            }),
-            make_event(seq=2, type="collection.create", payload={
-                "id": "teams", "schema": {"name": "string"},
-            }),
-            make_event(seq=3, type="entity.create", payload={
-                "collection": "people", "id": "alice", "fields": {"name": "Alice"},
-            }),
-            make_event(seq=4, type="entity.create", payload={
-                "collection": "teams", "id": "red", "fields": {"name": "Red"},
-            }),
-            make_event(seq=5, type="relationship.set", payload={
-                "from": "people/alice", "to": "teams/red",
-                "type": "member_of", "cardinality": "many_to_one",
-                "data": {"role": "captain", "joined": "2026-01-15"},
-            }),
-        ])
+        snapshot = build_state(
+            [
+                make_event(
+                    seq=1,
+                    type="collection.create",
+                    payload={
+                        "id": "people",
+                        "schema": {"name": "string"},
+                    },
+                ),
+                make_event(
+                    seq=2,
+                    type="collection.create",
+                    payload={
+                        "id": "teams",
+                        "schema": {"name": "string"},
+                    },
+                ),
+                make_event(
+                    seq=3,
+                    type="entity.create",
+                    payload={
+                        "collection": "people",
+                        "id": "alice",
+                        "fields": {"name": "Alice"},
+                    },
+                ),
+                make_event(
+                    seq=4,
+                    type="entity.create",
+                    payload={
+                        "collection": "teams",
+                        "id": "red",
+                        "fields": {"name": "Red"},
+                    },
+                ),
+                make_event(
+                    seq=5,
+                    type="relationship.set",
+                    payload={
+                        "from": "people/alice",
+                        "to": "teams/red",
+                        "type": "member_of",
+                        "cardinality": "many_to_one",
+                        "data": {"role": "captain", "joined": "2026-01-15"},
+                    },
+                ),
+            ]
+        )
         assert_round_trip_equal(snapshot, "relationship with data")
 
     def test_view_state_round_trip(self, empty):
-        snapshot = build_state([
-            make_event(seq=1, type="collection.create", payload={
-                "id": "tasks", "schema": {"title": "string", "done": "bool"},
-            }),
-            make_event(seq=2, type="view.create", payload={
-                "id": "task_view", "type": "list", "source": "tasks",
-                "config": {
-                    "show_fields": ["title", "done"],
-                    "sort_by": "title",
-                    "sort_order": "desc",
-                    "filter": {"done": False},
-                },
-            }),
-        ])
+        snapshot = build_state(
+            [
+                make_event(
+                    seq=1,
+                    type="collection.create",
+                    payload={
+                        "id": "tasks",
+                        "schema": {"title": "string", "done": "bool"},
+                    },
+                ),
+                make_event(
+                    seq=2,
+                    type="view.create",
+                    payload={
+                        "id": "task_view",
+                        "type": "list",
+                        "source": "tasks",
+                        "config": {
+                            "show_fields": ["title", "done"],
+                            "sort_by": "title",
+                            "sort_order": "desc",
+                            "filter": {"done": False},
+                        },
+                    },
+                ),
+            ]
+        )
         assert_round_trip_equal(snapshot, "view with config")
 
     def test_block_tree_round_trip(self, empty):
-        snapshot = build_state([
-            make_event(seq=1, type="block.set", payload={
-                "id": "block_title", "type": "heading", "parent": "block_root",
-                "props": {"level": 1, "content": "My Page"},
-            }),
-            make_event(seq=2, type="block.set", payload={
-                "id": "block_cols", "type": "column_list", "parent": "block_root",
-            }),
-            make_event(seq=3, type="block.set", payload={
-                "id": "block_left", "type": "column", "parent": "block_cols",
-                "props": {"width": "60%"},
-            }),
-            make_event(seq=4, type="block.set", payload={
-                "id": "block_right", "type": "column", "parent": "block_cols",
-                "props": {"width": "40%"},
-            }),
-            make_event(seq=5, type="block.set", payload={
-                "id": "block_text", "type": "text", "parent": "block_left",
-                "props": {"content": "Hello world"},
-            }),
-        ])
+        snapshot = build_state(
+            [
+                make_event(
+                    seq=1,
+                    type="block.set",
+                    payload={
+                        "id": "block_title",
+                        "type": "heading",
+                        "parent": "block_root",
+                        "props": {"level": 1, "content": "My Page"},
+                    },
+                ),
+                make_event(
+                    seq=2,
+                    type="block.set",
+                    payload={
+                        "id": "block_cols",
+                        "type": "column_list",
+                        "parent": "block_root",
+                    },
+                ),
+                make_event(
+                    seq=3,
+                    type="block.set",
+                    payload={
+                        "id": "block_left",
+                        "type": "column",
+                        "parent": "block_cols",
+                        "props": {"width": "60%"},
+                    },
+                ),
+                make_event(
+                    seq=4,
+                    type="block.set",
+                    payload={
+                        "id": "block_right",
+                        "type": "column",
+                        "parent": "block_cols",
+                        "props": {"width": "40%"},
+                    },
+                ),
+                make_event(
+                    seq=5,
+                    type="block.set",
+                    payload={
+                        "id": "block_text",
+                        "type": "text",
+                        "parent": "block_left",
+                        "props": {"content": "Hello world"},
+                    },
+                ),
+            ]
+        )
         assert_round_trip_equal(snapshot, "nested block tree")
 
     def test_style_state_round_trip(self, empty):
-        snapshot = build_state([
-            make_event(seq=1, type="style.set", payload={
-                "primary_color": "#1a365d",
-                "bg_color": "#fffff0",
-                "font_family": "Inter",
-                "density": "compact",
-            }),
-        ])
+        snapshot = build_state(
+            [
+                make_event(
+                    seq=1,
+                    type="style.set",
+                    payload={
+                        "primary_color": "#1a365d",
+                        "bg_color": "#fffff0",
+                        "font_family": "Inter",
+                        "density": "compact",
+                    },
+                ),
+            ]
+        )
         assert_round_trip_equal(snapshot, "style tokens")
 
     def test_meta_state_round_trip(self, empty):
-        snapshot = build_state([
-            make_event(seq=1, type="meta.update", payload={
-                "title": "Test Aide",
-                "identity": "A test aide for round-trip verification.",
-                "visibility": "public",
-            }),
-            make_event(seq=2, type="meta.annotate", payload={
-                "note": "Created for testing.", "pinned": True,
-            }),
-            make_event(seq=3, type="meta.annotate", payload={
-                "note": "Second note.", "pinned": False,
-            }),
-        ])
+        snapshot = build_state(
+            [
+                make_event(
+                    seq=1,
+                    type="meta.update",
+                    payload={
+                        "title": "Test Aide",
+                        "identity": "A test aide for round-trip verification.",
+                        "visibility": "public",
+                    },
+                ),
+                make_event(
+                    seq=2,
+                    type="meta.annotate",
+                    payload={
+                        "note": "Created for testing.",
+                        "pinned": True,
+                    },
+                ),
+                make_event(
+                    seq=3,
+                    type="meta.annotate",
+                    payload={
+                        "note": "Second note.",
+                        "pinned": False,
+                    },
+                ),
+            ]
+        )
         assert_round_trip_equal(snapshot, "meta + annotations")
 
     def test_constraint_state_round_trip(self, empty):
-        snapshot = build_state([
-            make_event(seq=1, type="collection.create", payload={
-                "id": "roster", "schema": {"name": "string"},
-            }),
-            make_event(seq=2, type="meta.constrain", payload={
-                "id": "max_players", "rule": "collection_max_entities",
-                "collection": "roster", "value": 10,
-                "message": "Maximum 10 players",
-            }),
-            make_event(seq=3, type="collection.create", payload={
-                "id": "pairs", "schema": {"a": "string", "b": "string"},
-            }),
-            make_event(seq=4, type="entity.create", payload={
-                "collection": "roster", "id": "p1", "fields": {"name": "Alice"},
-            }),
-            make_event(seq=5, type="entity.create", payload={
-                "collection": "roster", "id": "p2", "fields": {"name": "Bob"},
-            }),
-            make_event(seq=6, type="relationship.constrain", payload={
-                "id": "no_alice_bob", "rule": "exclude_pair",
-                "entities": ["roster/p1", "roster/p2"],
-                "relationship_type": "seated_at",
-                "message": "Keep Alice and Bob apart",
-            }),
-        ])
+        snapshot = build_state(
+            [
+                make_event(
+                    seq=1,
+                    type="collection.create",
+                    payload={
+                        "id": "roster",
+                        "schema": {"name": "string"},
+                    },
+                ),
+                make_event(
+                    seq=2,
+                    type="meta.constrain",
+                    payload={
+                        "id": "max_players",
+                        "rule": "collection_max_entities",
+                        "collection": "roster",
+                        "value": 10,
+                        "message": "Maximum 10 players",
+                    },
+                ),
+                make_event(
+                    seq=3,
+                    type="collection.create",
+                    payload={
+                        "id": "pairs",
+                        "schema": {"a": "string", "b": "string"},
+                    },
+                ),
+                make_event(
+                    seq=4,
+                    type="entity.create",
+                    payload={
+                        "collection": "roster",
+                        "id": "p1",
+                        "fields": {"name": "Alice"},
+                    },
+                ),
+                make_event(
+                    seq=5,
+                    type="entity.create",
+                    payload={
+                        "collection": "roster",
+                        "id": "p2",
+                        "fields": {"name": "Bob"},
+                    },
+                ),
+                make_event(
+                    seq=6,
+                    type="relationship.constrain",
+                    payload={
+                        "id": "no_alice_bob",
+                        "rule": "exclude_pair",
+                        "entities": ["roster/p1", "roster/p2"],
+                        "relationship_type": "seated_at",
+                        "message": "Keep Alice and Bob apart",
+                    },
+                ),
+            ]
+        )
         assert_round_trip_equal(snapshot, "constraints")
 
 
@@ -531,8 +755,7 @@ class TestEventLogRoundTrip:
             restored = round_trip(event_dict)
             assert restored["type"] == event.type
             assert restored["sequence"] == event.sequence
-            assert json.dumps(restored["payload"], sort_keys=True) == \
-                   json.dumps(event.payload, sort_keys=True)
+            assert json.dumps(restored["payload"], sort_keys=True) == json.dumps(event.payload, sort_keys=True)
 
 
 # ============================================================================
@@ -545,43 +768,57 @@ class TestFieldTypeFidelity:
 
     def test_all_field_types_survive(self, empty):
         """Create entities with every field type and verify after round-trip."""
-        snapshot = build_state([
-            make_event(seq=1, type="collection.create", payload={
-                "id": "typed",
-                "schema": {
-                    "str_field": "string",
-                    "str_nullable": "string?",
-                    "int_field": "int",
-                    "float_field": "float",
-                    "bool_field": "bool",
-                    "date_field": "date",
-                },
-            }),
-            make_event(seq=2, type="entity.create", payload={
-                "collection": "typed",
-                "id": "entity_full",
-                "fields": {
-                    "str_field": "hello world",
-                    "str_nullable": "present",
-                    "int_field": 42,
-                    "float_field": 3.14159,
-                    "bool_field": True,
-                    "date_field": "2026-02-14",
-                },
-            }),
-            make_event(seq=3, type="entity.create", payload={
-                "collection": "typed",
-                "id": "entity_nulls",
-                "fields": {
-                    "str_field": "",
-                    "str_nullable": None,
-                    "int_field": 0,
-                    "float_field": 0.0,
-                    "bool_field": False,
-                    "date_field": "1970-01-01",
-                },
-            }),
-        ])
+        snapshot = build_state(
+            [
+                make_event(
+                    seq=1,
+                    type="collection.create",
+                    payload={
+                        "id": "typed",
+                        "schema": {
+                            "str_field": "string",
+                            "str_nullable": "string?",
+                            "int_field": "int",
+                            "float_field": "float",
+                            "bool_field": "bool",
+                            "date_field": "date",
+                        },
+                    },
+                ),
+                make_event(
+                    seq=2,
+                    type="entity.create",
+                    payload={
+                        "collection": "typed",
+                        "id": "entity_full",
+                        "fields": {
+                            "str_field": "hello world",
+                            "str_nullable": "present",
+                            "int_field": 42,
+                            "float_field": 3.14159,
+                            "bool_field": True,
+                            "date_field": "2026-02-14",
+                        },
+                    },
+                ),
+                make_event(
+                    seq=3,
+                    type="entity.create",
+                    payload={
+                        "collection": "typed",
+                        "id": "entity_nulls",
+                        "fields": {
+                            "str_field": "",
+                            "str_nullable": None,
+                            "int_field": 0,
+                            "float_field": 0.0,
+                            "bool_field": False,
+                            "date_field": "1970-01-01",
+                        },
+                    },
+                ),
+            ]
+        )
 
         restored = round_trip(snapshot)
         full = restored["collections"]["typed"]["entities"]["entity_full"]
@@ -605,16 +842,27 @@ class TestFieldTypeFidelity:
 
     def test_enum_field_survives(self, empty):
         """Enum-typed fields survive round-trip."""
-        snapshot = build_state([
-            make_event(seq=1, type="collection.create", payload={
-                "id": "tasks",
-                "schema": {"status": {"enum": ["todo", "in_progress", "done"]}},
-            }),
-            make_event(seq=2, type="entity.create", payload={
-                "collection": "tasks", "id": "t1",
-                "fields": {"status": "in_progress"},
-            }),
-        ])
+        snapshot = build_state(
+            [
+                make_event(
+                    seq=1,
+                    type="collection.create",
+                    payload={
+                        "id": "tasks",
+                        "schema": {"status": {"enum": ["todo", "in_progress", "done"]}},
+                    },
+                ),
+                make_event(
+                    seq=2,
+                    type="entity.create",
+                    payload={
+                        "collection": "tasks",
+                        "id": "t1",
+                        "fields": {"status": "in_progress"},
+                    },
+                ),
+            ]
+        )
 
         restored = round_trip(snapshot)
         assert restored["collections"]["tasks"]["entities"]["t1"]["status"] == "in_progress"
@@ -623,53 +871,97 @@ class TestFieldTypeFidelity:
 
     def test_float_precision_preserved(self, empty):
         """Float precision is maintained through JSON round-trip."""
-        snapshot = build_state([
-            make_event(seq=1, type="collection.create", payload={
-                "id": "data", "schema": {"value": "float"},
-            }),
-            make_event(seq=2, type="entity.create", payload={
-                "collection": "data", "id": "d1",
-                "fields": {"value": 0.1 + 0.2},  # Classic float: 0.30000000000000004
-            }),
-            make_event(seq=3, type="entity.create", payload={
-                "collection": "data", "id": "d2",
-                "fields": {"value": 1e-10},
-            }),
-            make_event(seq=4, type="entity.create", payload={
-                "collection": "data", "id": "d3",
-                "fields": {"value": 1.7976931348623157e+308},  # Near max float
-            }),
-        ])
+        snapshot = build_state(
+            [
+                make_event(
+                    seq=1,
+                    type="collection.create",
+                    payload={
+                        "id": "data",
+                        "schema": {"value": "float"},
+                    },
+                ),
+                make_event(
+                    seq=2,
+                    type="entity.create",
+                    payload={
+                        "collection": "data",
+                        "id": "d1",
+                        "fields": {"value": 0.1 + 0.2},  # Classic float: 0.30000000000000004
+                    },
+                ),
+                make_event(
+                    seq=3,
+                    type="entity.create",
+                    payload={
+                        "collection": "data",
+                        "id": "d2",
+                        "fields": {"value": 1e-10},
+                    },
+                ),
+                make_event(
+                    seq=4,
+                    type="entity.create",
+                    payload={
+                        "collection": "data",
+                        "id": "d3",
+                        "fields": {"value": 1.7976931348623157e308},  # Near max float
+                    },
+                ),
+            ]
+        )
 
         restored = round_trip(snapshot)
         entities = restored["collections"]["data"]["entities"]
         assert entities["d1"]["value"] == pytest.approx(0.3, abs=1e-15)
         assert entities["d2"]["value"] == pytest.approx(1e-10)
-        assert entities["d3"]["value"] == pytest.approx(1.7976931348623157e+308)
+        assert entities["d3"]["value"] == pytest.approx(1.7976931348623157e308)
 
     def test_special_string_characters(self, empty):
         """Strings with special characters survive round-trip."""
-        snapshot = build_state([
-            make_event(seq=1, type="collection.create", payload={
-                "id": "items", "schema": {"name": "string"},
-            }),
-            make_event(seq=2, type="entity.create", payload={
-                "collection": "items", "id": "unicode",
-                "fields": {"name": "Café ☕ naïve résumé — \"quoted\" <tag>"},
-            }),
-            make_event(seq=3, type="entity.create", payload={
-                "collection": "items", "id": "newlines",
-                "fields": {"name": "line1\nline2\ttab"},
-            }),
-            make_event(seq=4, type="entity.create", payload={
-                "collection": "items", "id": "empty_str",
-                "fields": {"name": ""},
-            }),
-        ])
+        snapshot = build_state(
+            [
+                make_event(
+                    seq=1,
+                    type="collection.create",
+                    payload={
+                        "id": "items",
+                        "schema": {"name": "string"},
+                    },
+                ),
+                make_event(
+                    seq=2,
+                    type="entity.create",
+                    payload={
+                        "collection": "items",
+                        "id": "unicode",
+                        "fields": {"name": 'Café ☕ naïve résumé — "quoted" <tag>'},
+                    },
+                ),
+                make_event(
+                    seq=3,
+                    type="entity.create",
+                    payload={
+                        "collection": "items",
+                        "id": "newlines",
+                        "fields": {"name": "line1\nline2\ttab"},
+                    },
+                ),
+                make_event(
+                    seq=4,
+                    type="entity.create",
+                    payload={
+                        "collection": "items",
+                        "id": "empty_str",
+                        "fields": {"name": ""},
+                    },
+                ),
+            ]
+        )
 
         restored = round_trip(snapshot)
         entities = restored["collections"]["items"]["entities"]
-        assert entities["unicode"]["name"] == "Café ☕ naïve résumé — \"quoted\" <tag>"
+        assert entities["unicode"]["name"] == 'Café ☕ naïve résumé — "quoted" <tag>'
         assert entities["newlines"]["name"] == "line1\nline2\ttab"
         assert entities["empty_str"]["name"] == ""
 
@@ -698,12 +990,15 @@ class TestContinueAfterDeserialization:
         next_seq = len(events) + 1
         result = reduce(
             restored,
-            make_event(seq=next_seq, type="entity.create", payload={
-                "collection": "roster",
-                "id": "player_new",
-                "fields": {"name": "New Player", "status": "active", "snack_duty": False,
-                           "rating": 800},
-            }),
+            make_event(
+                seq=next_seq,
+                type="entity.create",
+                payload={
+                    "collection": "roster",
+                    "id": "player_new",
+                    "fields": {"name": "New Player", "status": "active", "snack_duty": False, "rating": 800},
+                },
+            ),
         )
         assert result.applied
         new_player = result.snapshot["collections"]["roster"]["entities"]["player_new"]
@@ -719,12 +1014,16 @@ class TestContinueAfterDeserialization:
         next_seq = len(events) + 1
         result = reduce(
             restored,
-            make_event(seq=next_seq, type="field.add", payload={
-                "collection": "roster",
-                "name": "wins",
-                "type": "int",
-                "default": 0,
-            }),
+            make_event(
+                seq=next_seq,
+                type="field.add",
+                payload={
+                    "collection": "roster",
+                    "name": "wins",
+                    "type": "int",
+                    "default": 0,
+                },
+            ),
         )
         assert result.applied
 
@@ -744,17 +1043,20 @@ class TestContinueAfterDeserialization:
         # Re-assign hosting for game_feb27 (many_to_one should auto-unlink Dave)
         result = reduce(
             restored,
-            make_event(seq=next_seq, type="relationship.set", payload={
-                "from": "roster/player_linda",
-                "to": "schedule/game_feb27",
-                "type": "hosting",
-            }),
+            make_event(
+                seq=next_seq,
+                type="relationship.set",
+                payload={
+                    "from": "roster/player_linda",
+                    "to": "schedule/game_feb27",
+                    "type": "hosting",
+                },
+            ),
         )
         assert result.applied
 
         hosting_rels = [
-            r for r in result.snapshot["relationships"]
-            if r["type"] == "hosting" and r["to"] == "schedule/game_feb27"
+            r for r in result.snapshot["relationships"] if r["type"] == "hosting" and r["to"] == "schedule/game_feb27"
         ]
         # Only Linda should be hosting now (Dave auto-unlinked)
         from_refs = [r["from"] for r in hosting_rels]
@@ -786,33 +1088,38 @@ class TestLargeSnapshotRoundTrip:
     def test_200_entity_round_trip(self, empty):
         """Create 200 entities, round-trip, verify all survive."""
         events = [
-            make_event(seq=1, type="collection.create", payload={
-                "id": "guests",
-                "schema": {
-                    "name": "string",
-                    "table": "string?",
-                    "dietary": "string?",
-                    "rsvp": "bool",
+            make_event(
+                seq=1,
+                type="collection.create",
+                payload={
+                    "id": "guests",
+                    "schema": {
+                        "name": "string",
+                        "table": "string?",
+                        "dietary": "string?",
+                        "rsvp": "bool",
+                    },
                 },
-            }),
+            ),
         ]
 
         for i in range(200):
-            events.append(make_event(
-                seq=2 + i,
-                type="entity.create",
-                payload={
-                    "collection": "guests",
-                    "id": f"guest_{i:03d}",
-                    "fields": {
-                        "name": f"Guest {i}",
-                        "table": f"Table {(i % 20) + 1}" if i % 3 != 0 else None,
-                        "dietary": ["none", "vegetarian", "vegan", "gluten-free"][i % 4]
-                            if i % 5 != 0 else None,
-                        "rsvp": i % 2 == 0,
+            events.append(
+                make_event(
+                    seq=2 + i,
+                    type="entity.create",
+                    payload={
+                        "collection": "guests",
+                        "id": f"guest_{i:03d}",
+                        "fields": {
+                            "name": f"Guest {i}",
+                            "table": f"Table {(i % 20) + 1}" if i % 3 != 0 else None,
+                            "dietary": ["none", "vegetarian", "vegan", "gluten-free"][i % 4] if i % 5 != 0 else None,
+                            "rsvp": i % 2 == 0,
+                        },
                     },
-                },
-            ))
+                )
+            )
 
         snapshot = replay(events)
         restored = round_trip(snapshot)

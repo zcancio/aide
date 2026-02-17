@@ -42,16 +42,13 @@ from engine.kernel.renderer import render_block
 def assert_contains(html, *fragments):
     for fragment in fragments:
         assert fragment in html, (
-            f"Expected to find {fragment!r} in rendered HTML.\n"
-            f"Got (first 3000 chars):\n{html[:3000]}"
+            f"Expected to find {fragment!r} in rendered HTML.\nGot (first 3000 chars):\n{html[:3000]}"
         )
 
 
 def assert_not_contains(html, *fragments):
     for fragment in fragments:
-        assert fragment not in html, (
-            f"Did NOT expect to find {fragment!r} in rendered HTML."
-        )
+        assert fragment not in html, f"Did NOT expect to find {fragment!r} in rendered HTML."
 
 
 def assert_order(html, *names):
@@ -228,25 +225,33 @@ class TestSortAscending:
     def test_sort_by_name_asc(self):
         """Sort by name ascending: Alice, Bob, Carol, ..., Jack."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
-            {"sort_by": "name", "sort_order": "asc",
-             "show_fields": ["name", "rating"]},
+            ten_players(),
+            "list",
+            {"sort_by": "name", "sort_order": "asc", "show_fields": ["name", "rating"]},
         )
         html = render_block(block_id, snapshot)
 
         assert_order(
             html,
-            "Alice", "Bob", "Carol", "Dave", "Eve",
-            "Frank", "Grace", "Hank", "Iris", "Jack",
+            "Alice",
+            "Bob",
+            "Carol",
+            "Dave",
+            "Eve",
+            "Frank",
+            "Grace",
+            "Hank",
+            "Iris",
+            "Jack",
         )
 
     def test_sort_by_rating_asc(self):
         """Sort by rating ascending: Frank(1000), Dave(1100), Bob(1200), ...
         Nulls (Hank, Jack) sort last."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
-            {"sort_by": "rating", "sort_order": "asc",
-             "show_fields": ["name", "rating"]},
+            ten_players(),
+            "list",
+            {"sort_by": "rating", "sort_order": "asc", "show_fields": ["name", "rating"]},
         )
         html = render_block(block_id, snapshot)
 
@@ -262,9 +267,9 @@ class TestSortAscending:
     def test_sort_by_wins_asc(self):
         """Sort by wins ascending: Jack(0), Hank(0), Frank(1), Dave(3), ..."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
-            {"sort_by": "wins", "sort_order": "asc",
-             "show_fields": ["name", "wins"]},
+            ten_players(),
+            "list",
+            {"sort_by": "wins", "sort_order": "asc", "show_fields": ["name", "wins"]},
         )
         html = render_block(block_id, snapshot)
 
@@ -277,7 +282,8 @@ class TestSortAscending:
         Per spec: order = config.get("sort_order", "asc")
         """
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
+            ten_players(),
+            "list",
             {"sort_by": "name", "show_fields": ["name"]},
         )
         html = render_block(block_id, snapshot)
@@ -298,9 +304,9 @@ class TestSortDescending:
     def test_sort_by_name_desc(self):
         """Sort by name descending: Jack, Iris, ..., Alice."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
-            {"sort_by": "name", "sort_order": "desc",
-             "show_fields": ["name"]},
+            ten_players(),
+            "list",
+            {"sort_by": "name", "sort_order": "desc", "show_fields": ["name"]},
         )
         html = render_block(block_id, snapshot)
 
@@ -310,9 +316,9 @@ class TestSortDescending:
         """Sort by rating descending: Grace(1600), Carol(1550), ...
         Nulls still sort last even in descending order."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
-            {"sort_by": "rating", "sort_order": "desc",
-             "show_fields": ["name", "rating"]},
+            ten_players(),
+            "list",
+            {"sort_by": "rating", "sort_order": "desc", "show_fields": ["name", "rating"]},
         )
         html = render_block(block_id, snapshot)
 
@@ -328,9 +334,9 @@ class TestSortDescending:
     def test_sort_by_wins_desc(self):
         """Sort by wins descending: Grace(18), Carol(15), Alice(12), ..."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
-            {"sort_by": "wins", "sort_order": "desc",
-             "show_fields": ["name", "wins"]},
+            ten_players(),
+            "list",
+            {"sort_by": "wins", "sort_order": "desc", "show_fields": ["name", "wins"]},
         )
         html = render_block(block_id, snapshot)
 
@@ -351,9 +357,9 @@ class TestSortNullsLast:
     def test_nulls_last_ascending(self):
         """Null ratings appear after all non-null in ascending sort."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
-            {"sort_by": "rating", "sort_order": "asc",
-             "show_fields": ["name", "rating"]},
+            ten_players(),
+            "list",
+            {"sort_by": "rating", "sort_order": "asc", "show_fields": ["name", "rating"]},
         )
         html = render_block(block_id, snapshot)
 
@@ -368,9 +374,9 @@ class TestSortNullsLast:
     def test_nulls_last_descending(self):
         """Null ratings appear after all non-null in descending sort."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
-            {"sort_by": "rating", "sort_order": "desc",
-             "show_fields": ["name", "rating"]},
+            ten_players(),
+            "list",
+            {"sort_by": "rating", "sort_order": "desc", "show_fields": ["name", "rating"]},
         )
         html = render_block(block_id, snapshot)
 
@@ -383,9 +389,9 @@ class TestSortNullsLast:
     def test_null_date_sorts_last(self):
         """Null join date (Jack) sorts last."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
-            {"sort_by": "joined", "sort_order": "asc",
-             "show_fields": ["name", "joined"]},
+            ten_players(),
+            "list",
+            {"sort_by": "joined", "sort_order": "asc", "show_fields": ["name", "joined"]},
         )
         html = render_block(block_id, snapshot)
 
@@ -410,9 +416,9 @@ class TestSortBooleans:
     def test_sort_by_active_asc(self):
         """Sort by active ascending: inactive (false=0) before active (true=1)."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
-            {"sort_by": "active", "sort_order": "asc",
-             "show_fields": ["name", "active"]},
+            ten_players(),
+            "list",
+            {"sort_by": "active", "sort_order": "asc", "show_fields": ["name", "active"]},
         )
         html = render_block(block_id, snapshot)
 
@@ -426,9 +432,9 @@ class TestSortBooleans:
     def test_sort_by_active_desc(self):
         """Sort by active descending: active (true=1) before inactive (false=0)."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
-            {"sort_by": "active", "sort_order": "desc",
-             "show_fields": ["name", "active"]},
+            ten_players(),
+            "list",
+            {"sort_by": "active", "sort_order": "desc", "show_fields": ["name", "active"]},
         )
         html = render_block(block_id, snapshot)
 
@@ -451,14 +457,14 @@ class TestNoSortPreservesOrder:
     def test_no_sort_config(self):
         """Without sort_by, entities appear in their natural dict order."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
+            ten_players(),
+            "list",
             {"show_fields": ["name"]},
         )
         html = render_block(block_id, snapshot)
 
         # All 10 entities should be present
-        for name in ["Alice", "Bob", "Carol", "Dave", "Eve",
-                      "Frank", "Grace", "Hank", "Iris", "Jack"]:
+        for name in ["Alice", "Bob", "Carol", "Dave", "Eve", "Frank", "Grace", "Hank", "Iris", "Jack"]:
             assert_contains(html, name)
 
 
@@ -475,7 +481,8 @@ class TestFilterSingleCondition:
     def test_filter_by_status_active(self):
         """Filter status=active shows only active players."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
+            ten_players(),
+            "list",
             {"filter": {"status": "active"}, "show_fields": ["name", "status"]},
         )
         html = render_block(block_id, snapshot)
@@ -488,7 +495,8 @@ class TestFilterSingleCondition:
     def test_filter_by_status_inactive(self):
         """Filter status=inactive shows only inactive players."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
+            ten_players(),
+            "list",
             {"filter": {"status": "inactive"}, "show_fields": ["name", "status"]},
         )
         html = render_block(block_id, snapshot)
@@ -499,7 +507,8 @@ class TestFilterSingleCondition:
     def test_filter_by_status_pending(self):
         """Filter status=pending shows only pending players."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
+            ten_players(),
+            "list",
             {"filter": {"status": "pending"}, "show_fields": ["name", "status"]},
         )
         html = render_block(block_id, snapshot)
@@ -510,7 +519,8 @@ class TestFilterSingleCondition:
     def test_filter_by_boolean_true(self):
         """Filter active=true shows only active players."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
+            ten_players(),
+            "list",
             {"filter": {"active": True}, "show_fields": ["name", "active"]},
         )
         html = render_block(block_id, snapshot)
@@ -521,7 +531,8 @@ class TestFilterSingleCondition:
     def test_filter_by_boolean_false(self):
         """Filter active=false shows only inactive players."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
+            ten_players(),
+            "list",
             {"filter": {"active": False}, "show_fields": ["name", "active"]},
         )
         html = render_block(block_id, snapshot)
@@ -544,9 +555,9 @@ class TestFilterMultipleConditions:
     def test_filter_active_and_status(self):
         """Filter active=true AND status=active narrows to active players."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
-            {"filter": {"active": True, "status": "active"},
-             "show_fields": ["name"]},
+            ten_players(),
+            "list",
+            {"filter": {"active": True, "status": "active"}, "show_fields": ["name"]},
         )
         html = render_block(block_id, snapshot)
 
@@ -556,9 +567,9 @@ class TestFilterMultipleConditions:
     def test_filter_no_match(self):
         """Filter with impossible combination shows empty state."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
-            {"filter": {"status": "active", "active": False},
-             "show_fields": ["name"]},
+            ten_players(),
+            "list",
+            {"filter": {"status": "active", "active": False}, "show_fields": ["name"]},
         )
         html = render_block(block_id, snapshot)
 
@@ -579,13 +590,13 @@ class TestNoFilter:
     def test_no_filter_shows_all(self):
         """Without filter, all 10 entities appear."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
+            ten_players(),
+            "list",
             {"show_fields": ["name"]},
         )
         html = render_block(block_id, snapshot)
 
-        for name in ["Alice", "Bob", "Carol", "Dave", "Eve",
-                      "Frank", "Grace", "Hank", "Iris", "Jack"]:
+        for name in ["Alice", "Bob", "Carol", "Dave", "Eve", "Frank", "Grace", "Hank", "Iris", "Jack"]:
             assert_contains(html, name)
 
 
@@ -603,10 +614,14 @@ class TestSortAndFilterCombined:
     def test_filter_active_then_sort_by_rating_desc(self):
         """Filter to active players, then sort by rating descending."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
-            {"filter": {"status": "active"},
-             "sort_by": "rating", "sort_order": "desc",
-             "show_fields": ["name", "rating"]},
+            ten_players(),
+            "list",
+            {
+                "filter": {"status": "active"},
+                "sort_by": "rating",
+                "sort_order": "desc",
+                "show_fields": ["name", "rating"],
+            },
         )
         html = render_block(block_id, snapshot)
 
@@ -619,10 +634,9 @@ class TestSortAndFilterCombined:
     def test_filter_inactive_then_sort_by_name(self):
         """Filter to inactive, sort by name ascending."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
-            {"filter": {"status": "inactive"},
-             "sort_by": "name", "sort_order": "asc",
-             "show_fields": ["name"]},
+            ten_players(),
+            "list",
+            {"filter": {"status": "inactive"}, "sort_by": "name", "sort_order": "asc", "show_fields": ["name"]},
         )
         html = render_block(block_id, snapshot)
 
@@ -646,7 +660,8 @@ class TestGroupBy:
     def test_group_by_status(self):
         """Group by status produces group headers for each status value."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
+            ten_players(),
+            "list",
             {"group_by": "status", "show_fields": ["name", "status"]},
         )
         html = render_block(block_id, snapshot)
@@ -663,7 +678,8 @@ class TestGroupBy:
     def test_group_by_active(self):
         """Group by boolean 'active' field."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
+            ten_players(),
+            "list",
             {"group_by": "active", "show_fields": ["name", "active"]},
         )
         html = render_block(block_id, snapshot)
@@ -674,7 +690,8 @@ class TestGroupBy:
     def test_group_entities_in_correct_groups(self):
         """Entities appear under their correct group header."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
+            ten_players(),
+            "list",
             {"group_by": "status", "show_fields": ["name"]},
         )
         html = render_block(block_id, snapshot)
@@ -703,7 +720,8 @@ class TestGroupBy:
             "_removed": False,
         }
         snapshot, block_id = build_snapshot(
-            entities, "list",
+            entities,
+            "list",
             {"group_by": "status", "show_fields": ["name"]},
         )
         html = render_block(block_id, snapshot)
@@ -714,7 +732,8 @@ class TestGroupBy:
     def test_no_group_by_produces_no_group_wrappers(self):
         """Without group_by, no aide-group divs appear."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
+            ten_players(),
+            "list",
             {"show_fields": ["name"]},
         )
         html = render_block(block_id, snapshot)
@@ -735,10 +754,9 @@ class TestGroupByWithSort:
     def test_group_by_status_sort_by_rating_desc(self):
         """Group by status, sort by rating descending within each group."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
-            {"group_by": "status",
-             "sort_by": "rating", "sort_order": "desc",
-             "show_fields": ["name", "rating"]},
+            ten_players(),
+            "list",
+            {"group_by": "status", "sort_by": "rating", "sort_order": "desc", "show_fields": ["name", "rating"]},
         )
         html = render_block(block_id, snapshot)
 
@@ -764,10 +782,9 @@ class TestGroupByWithFilter:
     def test_filter_then_group(self):
         """Filter to active, then group by... well, all are 'active'."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
-            {"filter": {"active": True},
-             "group_by": "status",
-             "show_fields": ["name"]},
+            ten_players(),
+            "list",
+            {"filter": {"active": True}, "group_by": "status", "show_fields": ["name"]},
         )
         html = render_block(block_id, snapshot)
 
@@ -790,9 +807,9 @@ class TestSortFilterInTableView:
     def test_table_sort_by_rating_desc(self):
         """Table rows appear in rating descending order."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "table",
-            {"sort_by": "rating", "sort_order": "desc",
-             "show_fields": ["name", "rating"]},
+            ten_players(),
+            "table",
+            {"sort_by": "rating", "sort_order": "desc", "show_fields": ["name", "rating"]},
         )
         html = render_block(block_id, snapshot)
 
@@ -801,9 +818,9 @@ class TestSortFilterInTableView:
     def test_table_filter_active(self):
         """Table shows only active players when filtered."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "table",
-            {"filter": {"status": "active"},
-             "show_fields": ["name", "status"]},
+            ten_players(),
+            "table",
+            {"filter": {"status": "active"}, "show_fields": ["name", "status"]},
         )
         html = render_block(block_id, snapshot)
 
@@ -813,10 +830,9 @@ class TestSortFilterInTableView:
     def test_table_sort_and_filter_combined(self):
         """Table: filter to active, sort by name ascending."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "table",
-            {"filter": {"status": "active"},
-             "sort_by": "name", "sort_order": "asc",
-             "show_fields": ["name"]},
+            ten_players(),
+            "table",
+            {"filter": {"status": "active"}, "sort_by": "name", "sort_order": "asc", "show_fields": ["name"]},
         )
         html = render_block(block_id, snapshot)
 
@@ -836,7 +852,8 @@ class TestSortFilterEdgeCases:
     def test_sort_by_nonexistent_field(self):
         """Sorting by a field that doesn't exist should not crash."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
+            ten_players(),
+            "list",
             {"sort_by": "nonexistent", "show_fields": ["name"]},
         )
         # Should not raise — all entities have None for missing field
@@ -847,7 +864,8 @@ class TestSortFilterEdgeCases:
     def test_filter_by_nonexistent_field(self):
         """Filtering by a field no entity has should return empty."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
+            ten_players(),
+            "list",
             {"filter": {"nonexistent": "value"}, "show_fields": ["name"]},
         )
         html = render_block(block_id, snapshot)
@@ -858,7 +876,8 @@ class TestSortFilterEdgeCases:
     def test_filter_empty_dict(self):
         """Empty filter dict shows all entities."""
         snapshot, block_id = build_snapshot(
-            ten_players(), "list",
+            ten_players(),
+            "list",
             {"filter": {}, "show_fields": ["name"]},
         )
         html = render_block(block_id, snapshot)
@@ -880,7 +899,8 @@ class TestSortFilterEdgeCases:
             for i in range(5)
         }
         snapshot, block_id = build_snapshot(
-            entities, "list",
+            entities,
+            "list",
             {"sort_by": "rating", "show_fields": ["name"]},
         )
         html = render_block(block_id, snapshot)

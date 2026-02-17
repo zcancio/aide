@@ -264,9 +264,7 @@ class TestEntityCreate:
         )
 
         assert result.applied
-        entity = result.snapshot["collections"]["grocery_list"]["entities"][
-            "item_bread"
-        ]
+        entity = result.snapshot["collections"]["grocery_list"]["entities"]["item_bread"]
         assert entity["store"] is None
 
 
@@ -448,9 +446,7 @@ class TestFieldAdd:
         assert schema["category"] == "string?"
 
         # Existing entities backfilled with default
-        for entity in result.snapshot["collections"]["grocery_list"][
-            "entities"
-        ].values():
+        for entity in result.snapshot["collections"]["grocery_list"]["entities"].values():
             assert entity["category"] is None
 
 
@@ -486,18 +482,14 @@ class TestFieldUpdate:
                 payload={
                     "collection": "grocery_list",
                     "name": "category",
-                    "type": {
-                        "enum": ["produce", "dairy", "meat", "pantry", "other"]
-                    },
+                    "type": {"enum": ["produce", "dairy", "meat", "pantry", "other"]},
                 },
             ),
         )
 
         assert result.applied
         schema = result.snapshot["collections"]["grocery_list"]["schema"]
-        assert schema["category"] == {
-            "enum": ["produce", "dairy", "meat", "pantry", "other"]
-        }
+        assert schema["category"] == {"enum": ["produce", "dairy", "meat", "pantry", "other"]}
 
 
 # ============================================================================
@@ -521,9 +513,7 @@ class TestFieldRemove:
         assert "store" not in schema
 
         # Field removed from all entities
-        for entity in result.snapshot["collections"]["grocery_list"][
-            "entities"
-        ].values():
+        for entity in result.snapshot["collections"]["grocery_list"]["entities"].values():
             assert "store" not in entity
 
 
@@ -557,10 +547,7 @@ class TestRelationshipSet:
 
         # Relationship type registered
         assert "hosting" in result.snapshot["relationship_types"]
-        assert (
-            result.snapshot["relationship_types"]["hosting"]["cardinality"]
-            == "many_to_one"
-        )
+        assert result.snapshot["relationship_types"]["hosting"]["cardinality"] == "many_to_one"
 
 
 # ============================================================================
@@ -637,10 +624,7 @@ class TestBlockSet:
         )
 
         assert result.applied
-        assert (
-            result.snapshot["blocks"]["block_title"]["props"]["content"]
-            == "Updated Title"
-        )
+        assert result.snapshot["blocks"]["block_title"]["props"]["content"] == "Updated Title"
         # Type unchanged
         assert result.snapshot["blocks"]["block_title"]["type"] == "heading"
 

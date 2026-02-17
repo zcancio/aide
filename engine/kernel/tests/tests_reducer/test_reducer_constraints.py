@@ -38,43 +38,84 @@ def seating_state():
 
     # Guests
     seq += 1
-    r = reduce(snapshot, make_event(seq=seq, type="collection.create", payload={
-        "id": "guests", "name": "Guests",
-        "schema": {"name": "string", "email": "string?"},
-    }))
+    r = reduce(
+        snapshot,
+        make_event(
+            seq=seq,
+            type="collection.create",
+            payload={
+                "id": "guests",
+                "name": "Guests",
+                "schema": {"name": "string", "email": "string?"},
+            },
+        ),
+    )
     snapshot = r.snapshot
 
     for name in ["Linda", "Steve", "Alice", "Bob"]:
         seq += 1
-        r = reduce(snapshot, make_event(seq=seq, type="entity.create", payload={
-            "collection": "guests", "id": f"guest_{name.lower()}",
-            "fields": {"name": name, "email": None},
-        }))
+        r = reduce(
+            snapshot,
+            make_event(
+                seq=seq,
+                type="entity.create",
+                payload={
+                    "collection": "guests",
+                    "id": f"guest_{name.lower()}",
+                    "fields": {"name": name, "email": None},
+                },
+            ),
+        )
         snapshot = r.snapshot
 
     # Tables
     seq += 1
-    r = reduce(snapshot, make_event(seq=seq, type="collection.create", payload={
-        "id": "tables", "name": "Tables",
-        "schema": {"label": "string", "capacity": "int"},
-    }))
+    r = reduce(
+        snapshot,
+        make_event(
+            seq=seq,
+            type="collection.create",
+            payload={
+                "id": "tables",
+                "name": "Tables",
+                "schema": {"label": "string", "capacity": "int"},
+            },
+        ),
+    )
     snapshot = r.snapshot
 
     for i in range(1, 4):
         seq += 1
-        r = reduce(snapshot, make_event(seq=seq, type="entity.create", payload={
-            "collection": "tables", "id": f"table_{i}",
-            "fields": {"label": f"Table {i}", "capacity": 8},
-        }))
+        r = reduce(
+            snapshot,
+            make_event(
+                seq=seq,
+                type="entity.create",
+                payload={
+                    "collection": "tables",
+                    "id": f"table_{i}",
+                    "fields": {"label": f"Table {i}", "capacity": 8},
+                },
+            ),
+        )
         snapshot = r.snapshot
 
     # Seat guests: Linda->table_1, Steve->table_1, Alice->table_2
     for guest, table in [("linda", "1"), ("steve", "1"), ("alice", "2")]:
         seq += 1
-        r = reduce(snapshot, make_event(seq=seq, type="relationship.set", payload={
-            "from": f"guests/guest_{guest}", "to": f"tables/table_{table}",
-            "type": "seated_at", "cardinality": "many_to_one",
-        }))
+        r = reduce(
+            snapshot,
+            make_event(
+                seq=seq,
+                type="relationship.set",
+                payload={
+                    "from": f"guests/guest_{guest}",
+                    "to": f"tables/table_{table}",
+                    "type": "seated_at",
+                    "cardinality": "many_to_one",
+                },
+            ),
+        )
         snapshot = r.snapshot
 
     return snapshot, seq
@@ -89,18 +130,34 @@ def roster_state():
     seq = 0
 
     seq += 1
-    r = reduce(snapshot, make_event(seq=seq, type="collection.create", payload={
-        "id": "roster", "name": "Roster",
-        "schema": {"name": "string", "email": "string?", "status": "string"},
-    }))
+    r = reduce(
+        snapshot,
+        make_event(
+            seq=seq,
+            type="collection.create",
+            payload={
+                "id": "roster",
+                "name": "Roster",
+                "schema": {"name": "string", "email": "string?", "status": "string"},
+            },
+        ),
+    )
     snapshot = r.snapshot
 
     for name in ["Mike", "Dave", "Jake"]:
         seq += 1
-        r = reduce(snapshot, make_event(seq=seq, type="entity.create", payload={
-            "collection": "roster", "id": f"player_{name.lower()}",
-            "fields": {"name": name, "email": f"{name.lower()}@test.com", "status": "active"},
-        }))
+        r = reduce(
+            snapshot,
+            make_event(
+                seq=seq,
+                type="entity.create",
+                payload={
+                    "collection": "roster",
+                    "id": f"player_{name.lower()}",
+                    "fields": {"name": name, "email": f"{name.lower()}@test.com", "status": "active"},
+                },
+            ),
+        )
         snapshot = r.snapshot
 
     return snapshot, seq
@@ -138,19 +195,31 @@ class TestExcludePair:
         # Linda and Steve are already both at table_1
 
         # Add constraint: exclude Linda and Steve from same table
-        snapshot = _add_constraint(snapshot, seq + 1, {
-            "id": "no_linda_steve",
-            "rule": "exclude_pair",
-            "entities": ["guests/guest_linda", "guests/guest_steve"],
-            "relationship_type": "seated_at",
-            "message": "Keep Linda and Steve apart",
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 1,
+            {
+                "id": "no_linda_steve",
+                "rule": "exclude_pair",
+                "entities": ["guests/guest_linda", "guests/guest_steve"],
+                "relationship_type": "seated_at",
+                "message": "Keep Linda and Steve apart",
+            },
+        )
 
         # Move Bob to table_1 -- unrelated, no warning
-        result = reduce(snapshot, make_event(seq=seq + 2, type="relationship.set", payload={
-            "from": "guests/guest_bob", "to": "tables/table_1",
-            "type": "seated_at",
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 2,
+                type="relationship.set",
+                payload={
+                    "from": "guests/guest_bob",
+                    "to": "tables/table_1",
+                    "type": "seated_at",
+                },
+            ),
+        )
         assert result.applied
         assert not _has_warning(result, "CONSTRAINT_VIOLATED")
 
@@ -159,26 +228,46 @@ class TestExcludePair:
         snapshot, seq = seating_state
 
         # Move Steve to table_2 first (so they're apart)
-        result = reduce(snapshot, make_event(seq=seq + 1, type="relationship.set", payload={
-            "from": "guests/guest_steve", "to": "tables/table_2",
-            "type": "seated_at",
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 1,
+                type="relationship.set",
+                payload={
+                    "from": "guests/guest_steve",
+                    "to": "tables/table_2",
+                    "type": "seated_at",
+                },
+            ),
+        )
         snapshot = result.snapshot
 
         # Add constraint
-        snapshot = _add_constraint(snapshot, seq + 2, {
-            "id": "no_linda_steve",
-            "rule": "exclude_pair",
-            "entities": ["guests/guest_linda", "guests/guest_steve"],
-            "relationship_type": "seated_at",
-            "message": "Keep Linda and Steve apart",
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 2,
+            {
+                "id": "no_linda_steve",
+                "rule": "exclude_pair",
+                "entities": ["guests/guest_linda", "guests/guest_steve"],
+                "relationship_type": "seated_at",
+                "message": "Keep Linda and Steve apart",
+            },
+        )
 
         # Move Steve back to table_1 (where Linda is) -- should warn
-        result = reduce(snapshot, make_event(seq=seq + 3, type="relationship.set", payload={
-            "from": "guests/guest_steve", "to": "tables/table_1",
-            "type": "seated_at",
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 3,
+                type="relationship.set",
+                payload={
+                    "from": "guests/guest_steve",
+                    "to": "tables/table_1",
+                    "type": "seated_at",
+                },
+            ),
+        )
         assert result.applied  # Non-strict: still applies
         assert _has_warning(result, "CONSTRAINT_VIOLATED")
 
@@ -187,27 +276,47 @@ class TestExcludePair:
         snapshot, seq = seating_state
 
         # Move Steve to table_2 first
-        result = reduce(snapshot, make_event(seq=seq + 1, type="relationship.set", payload={
-            "from": "guests/guest_steve", "to": "tables/table_2",
-            "type": "seated_at",
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 1,
+                type="relationship.set",
+                payload={
+                    "from": "guests/guest_steve",
+                    "to": "tables/table_2",
+                    "type": "seated_at",
+                },
+            ),
+        )
         snapshot = result.snapshot
 
         # Add strict constraint
-        snapshot = _add_constraint(snapshot, seq + 2, {
-            "id": "no_linda_steve",
-            "rule": "exclude_pair",
-            "entities": ["guests/guest_linda", "guests/guest_steve"],
-            "relationship_type": "seated_at",
-            "message": "Keep Linda and Steve apart",
-            "strict": True,
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 2,
+            {
+                "id": "no_linda_steve",
+                "rule": "exclude_pair",
+                "entities": ["guests/guest_linda", "guests/guest_steve"],
+                "relationship_type": "seated_at",
+                "message": "Keep Linda and Steve apart",
+                "strict": True,
+            },
+        )
 
         # Try to seat Steve at table_1 (where Linda is) -- should reject
-        result = reduce(snapshot, make_event(seq=seq + 3, type="relationship.set", payload={
-            "from": "guests/guest_steve", "to": "tables/table_1",
-            "type": "seated_at",
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 3,
+                type="relationship.set",
+                payload={
+                    "from": "guests/guest_steve",
+                    "to": "tables/table_1",
+                    "type": "seated_at",
+                },
+            ),
+        )
         assert not result.applied
         assert "STRICT_CONSTRAINT_VIOLATED" in result.error
 
@@ -216,26 +325,46 @@ class TestExcludePair:
         snapshot, seq = seating_state
 
         # Move Steve to table_2
-        result = reduce(snapshot, make_event(seq=seq + 1, type="relationship.set", payload={
-            "from": "guests/guest_steve", "to": "tables/table_2",
-            "type": "seated_at",
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 1,
+                type="relationship.set",
+                payload={
+                    "from": "guests/guest_steve",
+                    "to": "tables/table_2",
+                    "type": "seated_at",
+                },
+            ),
+        )
         snapshot = result.snapshot
 
         # Add constraint
-        snapshot = _add_constraint(snapshot, seq + 2, {
-            "id": "no_linda_steve",
-            "rule": "exclude_pair",
-            "entities": ["guests/guest_linda", "guests/guest_steve"],
-            "relationship_type": "seated_at",
-            "message": "Keep Linda and Steve apart",
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 2,
+            {
+                "id": "no_linda_steve",
+                "rule": "exclude_pair",
+                "entities": ["guests/guest_linda", "guests/guest_steve"],
+                "relationship_type": "seated_at",
+                "message": "Keep Linda and Steve apart",
+            },
+        )
 
         # Move Steve to table_3 (still not with Linda) -- no warning
-        result = reduce(snapshot, make_event(seq=seq + 3, type="relationship.set", payload={
-            "from": "guests/guest_steve", "to": "tables/table_3",
-            "type": "seated_at",
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 3,
+                type="relationship.set",
+                payload={
+                    "from": "guests/guest_steve",
+                    "to": "tables/table_3",
+                    "type": "seated_at",
+                },
+            ),
+        )
         assert result.applied
         assert not _has_warning(result, "CONSTRAINT_VIOLATED")
 
@@ -254,19 +383,31 @@ class TestRequireSame:
         # Linda at table_1, Alice at table_2
 
         # Constrain: Linda and Alice must be together
-        snapshot = _add_constraint(snapshot, seq + 1, {
-            "id": "linda_alice_together",
-            "rule": "require_same",
-            "entities": ["guests/guest_linda", "guests/guest_alice"],
-            "relationship_type": "seated_at",
-            "message": "Linda and Alice must sit together",
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 1,
+            {
+                "id": "linda_alice_together",
+                "rule": "require_same",
+                "entities": ["guests/guest_linda", "guests/guest_alice"],
+                "relationship_type": "seated_at",
+                "message": "Linda and Alice must sit together",
+            },
+        )
 
         # Move Linda to table_3 (away from Alice at table_2) -- should warn
-        result = reduce(snapshot, make_event(seq=seq + 2, type="relationship.set", payload={
-            "from": "guests/guest_linda", "to": "tables/table_3",
-            "type": "seated_at",
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 2,
+                type="relationship.set",
+                payload={
+                    "from": "guests/guest_linda",
+                    "to": "tables/table_3",
+                    "type": "seated_at",
+                },
+            ),
+        )
         assert result.applied
         assert _has_warning(result, "CONSTRAINT_VIOLATED")
 
@@ -275,19 +416,31 @@ class TestRequireSame:
         snapshot, seq = seating_state
 
         # Constrain: Linda and Alice must be together
-        snapshot = _add_constraint(snapshot, seq + 1, {
-            "id": "linda_alice_together",
-            "rule": "require_same",
-            "entities": ["guests/guest_linda", "guests/guest_alice"],
-            "relationship_type": "seated_at",
-            "message": "Linda and Alice must sit together",
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 1,
+            {
+                "id": "linda_alice_together",
+                "rule": "require_same",
+                "entities": ["guests/guest_linda", "guests/guest_alice"],
+                "relationship_type": "seated_at",
+                "message": "Linda and Alice must sit together",
+            },
+        )
 
         # Move Alice to table_1 (where Linda already is) -- satisfied, no warning
-        result = reduce(snapshot, make_event(seq=seq + 2, type="relationship.set", payload={
-            "from": "guests/guest_alice", "to": "tables/table_1",
-            "type": "seated_at",
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 2,
+                type="relationship.set",
+                payload={
+                    "from": "guests/guest_alice",
+                    "to": "tables/table_1",
+                    "type": "seated_at",
+                },
+            ),
+        )
         assert result.applied
         assert not _has_warning(result, "CONSTRAINT_VIOLATED")
 
@@ -295,27 +448,47 @@ class TestRequireSame:
         snapshot, seq = seating_state
 
         # Move Alice to table_1 so they start together
-        result = reduce(snapshot, make_event(seq=seq + 1, type="relationship.set", payload={
-            "from": "guests/guest_alice", "to": "tables/table_1",
-            "type": "seated_at",
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 1,
+                type="relationship.set",
+                payload={
+                    "from": "guests/guest_alice",
+                    "to": "tables/table_1",
+                    "type": "seated_at",
+                },
+            ),
+        )
         snapshot = result.snapshot
 
         # Strict constraint
-        snapshot = _add_constraint(snapshot, seq + 2, {
-            "id": "linda_alice_together",
-            "rule": "require_same",
-            "entities": ["guests/guest_linda", "guests/guest_alice"],
-            "relationship_type": "seated_at",
-            "message": "Linda and Alice must sit together",
-            "strict": True,
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 2,
+            {
+                "id": "linda_alice_together",
+                "rule": "require_same",
+                "entities": ["guests/guest_linda", "guests/guest_alice"],
+                "relationship_type": "seated_at",
+                "message": "Linda and Alice must sit together",
+                "strict": True,
+            },
+        )
 
         # Try to move Alice away -- should reject
-        result = reduce(snapshot, make_event(seq=seq + 3, type="relationship.set", payload={
-            "from": "guests/guest_alice", "to": "tables/table_3",
-            "type": "seated_at",
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 3,
+                type="relationship.set",
+                payload={
+                    "from": "guests/guest_alice",
+                    "to": "tables/table_3",
+                    "type": "seated_at",
+                },
+            ),
+        )
         assert not result.applied
         assert "STRICT_CONSTRAINT_VIOLATED" in result.error
 
@@ -334,19 +507,31 @@ class TestMaxPerTarget:
         # Linda and Steve already at table_1
 
         # Constraint: max 2 per table
-        snapshot = _add_constraint(snapshot, seq + 1, {
-            "id": "max_2_per_table",
-            "rule": "max_per_target",
-            "relationship_type": "seated_at",
-            "value": 2,
-            "message": "Max 2 guests per table",
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 1,
+            {
+                "id": "max_2_per_table",
+                "rule": "max_per_target",
+                "relationship_type": "seated_at",
+                "value": 2,
+                "message": "Max 2 guests per table",
+            },
+        )
 
         # Seat Bob at table_1 (would be 3rd) -- should warn
-        result = reduce(snapshot, make_event(seq=seq + 2, type="relationship.set", payload={
-            "from": "guests/guest_bob", "to": "tables/table_1",
-            "type": "seated_at",
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 2,
+                type="relationship.set",
+                payload={
+                    "from": "guests/guest_bob",
+                    "to": "tables/table_1",
+                    "type": "seated_at",
+                },
+            ),
+        )
         assert result.applied  # Non-strict
         assert _has_warning(result, "CONSTRAINT_VIOLATED")
 
@@ -356,39 +541,63 @@ class TestMaxPerTarget:
         # Alice at table_2 (alone)
 
         # Constraint: max 2 per table
-        snapshot = _add_constraint(snapshot, seq + 1, {
-            "id": "max_2_per_table",
-            "rule": "max_per_target",
-            "relationship_type": "seated_at",
-            "value": 2,
-            "message": "Max 2 guests per table",
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 1,
+            {
+                "id": "max_2_per_table",
+                "rule": "max_per_target",
+                "relationship_type": "seated_at",
+                "value": 2,
+                "message": "Max 2 guests per table",
+            },
+        )
 
         # Seat Bob at table_2 (would be 2nd, within limit) -- no warning
-        result = reduce(snapshot, make_event(seq=seq + 2, type="relationship.set", payload={
-            "from": "guests/guest_bob", "to": "tables/table_2",
-            "type": "seated_at",
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 2,
+                type="relationship.set",
+                payload={
+                    "from": "guests/guest_bob",
+                    "to": "tables/table_2",
+                    "type": "seated_at",
+                },
+            ),
+        )
         assert result.applied
         assert not _has_warning(result, "CONSTRAINT_VIOLATED")
 
     def test_strict_rejects_over_max(self, seating_state):
         snapshot, seq = seating_state
 
-        snapshot = _add_constraint(snapshot, seq + 1, {
-            "id": "max_2_per_table",
-            "rule": "max_per_target",
-            "relationship_type": "seated_at",
-            "value": 2,
-            "message": "Max 2 guests per table",
-            "strict": True,
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 1,
+            {
+                "id": "max_2_per_table",
+                "rule": "max_per_target",
+                "relationship_type": "seated_at",
+                "value": 2,
+                "message": "Max 2 guests per table",
+                "strict": True,
+            },
+        )
 
         # 3rd guest at table_1 -- reject
-        result = reduce(snapshot, make_event(seq=seq + 2, type="relationship.set", payload={
-            "from": "guests/guest_bob", "to": "tables/table_1",
-            "type": "seated_at",
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 2,
+                type="relationship.set",
+                payload={
+                    "from": "guests/guest_bob",
+                    "to": "tables/table_1",
+                    "type": "seated_at",
+                },
+            ),
+        )
         assert not result.applied
         assert "STRICT_CONSTRAINT_VIOLATED" in result.error
 
@@ -407,20 +616,32 @@ class TestMinPerTarget:
         # Alice alone at table_2
 
         # Constraint: min 2 per table
-        snapshot = _add_constraint(snapshot, seq + 1, {
-            "id": "min_2_per_table",
-            "rule": "min_per_target",
-            "relationship_type": "seated_at",
-            "value": 2,
-            "message": "Every table needs at least 2 guests",
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 1,
+            {
+                "id": "min_2_per_table",
+                "rule": "min_per_target",
+                "relationship_type": "seated_at",
+                "value": 2,
+                "message": "Every table needs at least 2 guests",
+            },
+        )
 
         # Move Steve from table_1 to table_2
         # table_1 drops from 2 to 1 -- should warn
-        result = reduce(snapshot, make_event(seq=seq + 2, type="relationship.set", payload={
-            "from": "guests/guest_steve", "to": "tables/table_2",
-            "type": "seated_at",
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 2,
+                type="relationship.set",
+                payload={
+                    "from": "guests/guest_steve",
+                    "to": "tables/table_2",
+                    "type": "seated_at",
+                },
+            ),
+        )
         assert result.applied
         assert _has_warning(result, "CONSTRAINT_VIOLATED")
 
@@ -429,41 +650,65 @@ class TestMinPerTarget:
         snapshot, seq = seating_state
         # Linda and Steve at table_1 (2 guests)
 
-        snapshot = _add_constraint(snapshot, seq + 1, {
-            "id": "min_2_per_table",
-            "rule": "min_per_target",
-            "relationship_type": "seated_at",
-            "value": 2,
-            "message": "Every table needs at least 2 guests",
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 1,
+            {
+                "id": "min_2_per_table",
+                "rule": "min_per_target",
+                "relationship_type": "seated_at",
+                "value": 2,
+                "message": "Every table needs at least 2 guests",
+            },
+        )
 
         # Seat Bob at table_1 (goes from 2 to 3) -- still above min, no warning from this target
         # But table_2 (Alice alone) and table_3 (empty) may already violate.
         # The check is on the event's affected targets, not all targets.
         # Bob going to table_1 doesn't change table_2 or table_3.
-        result = reduce(snapshot, make_event(seq=seq + 2, type="relationship.set", payload={
-            "from": "guests/guest_bob", "to": "tables/table_1",
-            "type": "seated_at",
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 2,
+                type="relationship.set",
+                payload={
+                    "from": "guests/guest_bob",
+                    "to": "tables/table_1",
+                    "type": "seated_at",
+                },
+            ),
+        )
         assert result.applied
 
     def test_strict_rejects(self, seating_state):
         snapshot, seq = seating_state
 
-        snapshot = _add_constraint(snapshot, seq + 1, {
-            "id": "min_2_per_table",
-            "rule": "min_per_target",
-            "relationship_type": "seated_at",
-            "value": 2,
-            "message": "Every table needs at least 2 guests",
-            "strict": True,
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 1,
+            {
+                "id": "min_2_per_table",
+                "rule": "min_per_target",
+                "relationship_type": "seated_at",
+                "value": 2,
+                "message": "Every table needs at least 2 guests",
+                "strict": True,
+            },
+        )
 
         # Move Steve from table_1 to table_2 -- table_1 drops to 1, reject
-        result = reduce(snapshot, make_event(seq=seq + 2, type="relationship.set", payload={
-            "from": "guests/guest_steve", "to": "tables/table_2",
-            "type": "seated_at",
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 2,
+                type="relationship.set",
+                payload={
+                    "from": "guests/guest_steve",
+                    "to": "tables/table_2",
+                    "type": "seated_at",
+                },
+            ),
+        )
         assert not result.applied
         assert "STRICT_CONSTRAINT_VIOLATED" in result.error
 
@@ -480,55 +725,91 @@ class TestCollectionMaxEntities:
         """4th player when max is 3 should warn."""
         snapshot, seq = roster_state  # 3 players
 
-        snapshot = _add_constraint(snapshot, seq + 1, {
-            "id": "max_players",
-            "rule": "collection_max_entities",
-            "collection": "roster",
-            "value": 3,
-            "message": "Max 3 players",
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 1,
+            {
+                "id": "max_players",
+                "rule": "collection_max_entities",
+                "collection": "roster",
+                "value": 3,
+                "message": "Max 3 players",
+            },
+        )
 
-        result = reduce(snapshot, make_event(seq=seq + 2, type="entity.create", payload={
-            "collection": "roster", "id": "player_new",
-            "fields": {"name": "New Player", "email": None, "status": "active"},
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 2,
+                type="entity.create",
+                payload={
+                    "collection": "roster",
+                    "id": "player_new",
+                    "fields": {"name": "New Player", "email": None, "status": "active"},
+                },
+            ),
+        )
         assert result.applied
         assert _has_warning(result, "CONSTRAINT_VIOLATED")
 
     def test_no_warning_within_limit(self, roster_state):
         snapshot, seq = roster_state  # 3 players
 
-        snapshot = _add_constraint(snapshot, seq + 1, {
-            "id": "max_players",
-            "rule": "collection_max_entities",
-            "collection": "roster",
-            "value": 10,  # Well above current count
-            "message": "Max 10 players",
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 1,
+            {
+                "id": "max_players",
+                "rule": "collection_max_entities",
+                "collection": "roster",
+                "value": 10,  # Well above current count
+                "message": "Max 10 players",
+            },
+        )
 
-        result = reduce(snapshot, make_event(seq=seq + 2, type="entity.create", payload={
-            "collection": "roster", "id": "player_new",
-            "fields": {"name": "New Player", "email": None, "status": "active"},
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 2,
+                type="entity.create",
+                payload={
+                    "collection": "roster",
+                    "id": "player_new",
+                    "fields": {"name": "New Player", "email": None, "status": "active"},
+                },
+            ),
+        )
         assert result.applied
         assert not _has_warning(result, "CONSTRAINT_VIOLATED")
 
     def test_strict_rejects(self, roster_state):
         snapshot, seq = roster_state
 
-        snapshot = _add_constraint(snapshot, seq + 1, {
-            "id": "max_players",
-            "rule": "collection_max_entities",
-            "collection": "roster",
-            "value": 3,
-            "message": "Max 3 players",
-            "strict": True,
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 1,
+            {
+                "id": "max_players",
+                "rule": "collection_max_entities",
+                "collection": "roster",
+                "value": 3,
+                "message": "Max 3 players",
+                "strict": True,
+            },
+        )
 
-        result = reduce(snapshot, make_event(seq=seq + 2, type="entity.create", payload={
-            "collection": "roster", "id": "player_new",
-            "fields": {"name": "New Player", "email": None, "status": "active"},
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 2,
+                type="entity.create",
+                payload={
+                    "collection": "roster",
+                    "id": "player_new",
+                    "fields": {"name": "New Player", "email": None, "status": "active"},
+                },
+            ),
+        )
         assert not result.applied
         assert "STRICT_CONSTRAINT_VIOLATED" in result.error
 
@@ -537,38 +818,64 @@ class TestCollectionMaxEntities:
         snapshot, seq = roster_state  # 3 players
 
         # Remove one player
-        result = reduce(snapshot, make_event(seq=seq + 1, type="entity.remove", payload={
-            "ref": "roster/player_jake",
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 1,
+                type="entity.remove",
+                payload={
+                    "ref": "roster/player_jake",
+                },
+            ),
+        )
         snapshot = result.snapshot
 
         # Strict max 3 -- only 2 active now
-        snapshot = _add_constraint(snapshot, seq + 2, {
-            "id": "max_players",
-            "rule": "collection_max_entities",
-            "collection": "roster",
-            "value": 3,
-            "message": "Max 3 players",
-            "strict": True,
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 2,
+            {
+                "id": "max_players",
+                "rule": "collection_max_entities",
+                "collection": "roster",
+                "value": 3,
+                "message": "Max 3 players",
+                "strict": True,
+            },
+        )
 
-        result = reduce(snapshot, make_event(seq=seq + 3, type="entity.create", payload={
-            "collection": "roster", "id": "player_new",
-            "fields": {"name": "New Player", "email": None, "status": "active"},
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 3,
+                type="entity.create",
+                payload={
+                    "collection": "roster",
+                    "id": "player_new",
+                    "fields": {"name": "New Player", "email": None, "status": "active"},
+                },
+            ),
+        )
         assert result.applied  # 3rd active entity, within limit
 
     def test_immediate_validation_on_constrain(self, roster_state):
         """Adding a constraint that's already violated produces an immediate warning."""
         snapshot, seq = roster_state  # 3 players
 
-        result = reduce(snapshot, make_event(seq=seq + 1, type="meta.constrain", payload={
-            "id": "max_players",
-            "rule": "collection_max_entities",
-            "collection": "roster",
-            "value": 2,  # Already exceeded
-            "message": "Max 2 players",
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 1,
+                type="meta.constrain",
+                payload={
+                    "id": "max_players",
+                    "rule": "collection_max_entities",
+                    "collection": "roster",
+                    "value": 2,  # Already exceeded
+                    "message": "Max 2 players",
+                },
+            ),
+        )
         assert result.applied  # Constraint is stored
         assert _has_warning(result, "CONSTRAINT_VIOLATED")
 
@@ -584,57 +891,92 @@ class TestUniqueField:
     def test_warn_on_duplicate_create(self, roster_state):
         snapshot, seq = roster_state
 
-        snapshot = _add_constraint(snapshot, seq + 1, {
-            "id": "unique_email",
-            "rule": "unique_field",
-            "collection": "roster",
-            "field": "email",
-            "message": "Email must be unique",
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 1,
+            {
+                "id": "unique_email",
+                "rule": "unique_field",
+                "collection": "roster",
+                "field": "email",
+                "message": "Email must be unique",
+            },
+        )
 
         # Create player with duplicate email
-        result = reduce(snapshot, make_event(seq=seq + 2, type="entity.create", payload={
-            "collection": "roster", "id": "player_new",
-            "fields": {"name": "New", "email": "mike@test.com", "status": "active"},
-            # mike@test.com already exists on player_mike
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 2,
+                type="entity.create",
+                payload={
+                    "collection": "roster",
+                    "id": "player_new",
+                    "fields": {"name": "New", "email": "mike@test.com", "status": "active"},
+                    # mike@test.com already exists on player_mike
+                },
+            ),
+        )
         assert result.applied
         assert _has_warning(result, "CONSTRAINT_VIOLATED")
 
     def test_warn_on_duplicate_update(self, roster_state):
         snapshot, seq = roster_state
 
-        snapshot = _add_constraint(snapshot, seq + 1, {
-            "id": "unique_email",
-            "rule": "unique_field",
-            "collection": "roster",
-            "field": "email",
-            "message": "Email must be unique",
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 1,
+            {
+                "id": "unique_email",
+                "rule": "unique_field",
+                "collection": "roster",
+                "field": "email",
+                "message": "Email must be unique",
+            },
+        )
 
         # Update Dave's email to Mike's
-        result = reduce(snapshot, make_event(seq=seq + 2, type="entity.update", payload={
-            "ref": "roster/player_dave",
-            "fields": {"email": "mike@test.com"},
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 2,
+                type="entity.update",
+                payload={
+                    "ref": "roster/player_dave",
+                    "fields": {"email": "mike@test.com"},
+                },
+            ),
+        )
         assert result.applied
         assert _has_warning(result, "CONSTRAINT_VIOLATED")
 
     def test_no_warning_on_unique_value(self, roster_state):
         snapshot, seq = roster_state
 
-        snapshot = _add_constraint(snapshot, seq + 1, {
-            "id": "unique_email",
-            "rule": "unique_field",
-            "collection": "roster",
-            "field": "email",
-            "message": "Email must be unique",
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 1,
+            {
+                "id": "unique_email",
+                "rule": "unique_field",
+                "collection": "roster",
+                "field": "email",
+                "message": "Email must be unique",
+            },
+        )
 
-        result = reduce(snapshot, make_event(seq=seq + 2, type="entity.create", payload={
-            "collection": "roster", "id": "player_new",
-            "fields": {"name": "New", "email": "unique@test.com", "status": "active"},
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 2,
+                type="entity.create",
+                payload={
+                    "collection": "roster",
+                    "id": "player_new",
+                    "fields": {"name": "New", "email": "unique@test.com", "status": "active"},
+                },
+            ),
+        )
         assert result.applied
         assert not _has_warning(result, "CONSTRAINT_VIOLATED")
 
@@ -645,44 +987,75 @@ class TestUniqueField:
         # Clear all emails to null first
         for player in ["mike", "dave", "jake"]:
             seq += 1
-            result = reduce(snapshot, make_event(seq=seq, type="entity.update", payload={
-                "ref": f"roster/player_{player}",
-                "fields": {"email": None},
-            }))
+            result = reduce(
+                snapshot,
+                make_event(
+                    seq=seq,
+                    type="entity.update",
+                    payload={
+                        "ref": f"roster/player_{player}",
+                        "fields": {"email": None},
+                    },
+                ),
+            )
             snapshot = result.snapshot
 
-        snapshot = _add_constraint(snapshot, seq + 1, {
-            "id": "unique_email",
-            "rule": "unique_field",
-            "collection": "roster",
-            "field": "email",
-            "message": "Email must be unique",
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 1,
+            {
+                "id": "unique_email",
+                "rule": "unique_field",
+                "collection": "roster",
+                "field": "email",
+                "message": "Email must be unique",
+            },
+        )
 
         # Create player with null email -- should not warn even though others are null
-        result = reduce(snapshot, make_event(seq=seq + 2, type="entity.create", payload={
-            "collection": "roster", "id": "player_new",
-            "fields": {"name": "New", "email": None, "status": "active"},
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 2,
+                type="entity.create",
+                payload={
+                    "collection": "roster",
+                    "id": "player_new",
+                    "fields": {"name": "New", "email": None, "status": "active"},
+                },
+            ),
+        )
         assert result.applied
         assert not _has_warning(result, "CONSTRAINT_VIOLATED")
 
     def test_strict_rejects_duplicate(self, roster_state):
         snapshot, seq = roster_state
 
-        snapshot = _add_constraint(snapshot, seq + 1, {
-            "id": "unique_email",
-            "rule": "unique_field",
-            "collection": "roster",
-            "field": "email",
-            "message": "Email must be unique",
-            "strict": True,
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 1,
+            {
+                "id": "unique_email",
+                "rule": "unique_field",
+                "collection": "roster",
+                "field": "email",
+                "message": "Email must be unique",
+                "strict": True,
+            },
+        )
 
-        result = reduce(snapshot, make_event(seq=seq + 2, type="entity.create", payload={
-            "collection": "roster", "id": "player_new",
-            "fields": {"name": "New", "email": "mike@test.com", "status": "active"},
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 2,
+                type="entity.create",
+                payload={
+                    "collection": "roster",
+                    "id": "player_new",
+                    "fields": {"name": "New", "email": "mike@test.com", "status": "active"},
+                },
+            ),
+        )
         assert not result.applied
         assert "STRICT_CONSTRAINT_VIOLATED" in result.error
 
@@ -691,20 +1064,34 @@ class TestUniqueField:
         snapshot, seq = roster_state
 
         # Give Dave the same email as Mike
-        result = reduce(snapshot, make_event(seq=seq + 1, type="entity.update", payload={
-            "ref": "roster/player_dave",
-            "fields": {"email": "mike@test.com"},
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 1,
+                type="entity.update",
+                payload={
+                    "ref": "roster/player_dave",
+                    "fields": {"email": "mike@test.com"},
+                },
+            ),
+        )
         snapshot = result.snapshot
 
         # Now add the constraint -- immediate validation should warn
-        result = reduce(snapshot, make_event(seq=seq + 2, type="meta.constrain", payload={
-            "id": "unique_email",
-            "rule": "unique_field",
-            "collection": "roster",
-            "field": "email",
-            "message": "Email must be unique",
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 2,
+                type="meta.constrain",
+                payload={
+                    "id": "unique_email",
+                    "rule": "unique_field",
+                    "collection": "roster",
+                    "field": "email",
+                    "message": "Email must be unique",
+                },
+            ),
+        )
         assert result.applied
         assert _has_warning(result, "CONSTRAINT_VIOLATED")
 
@@ -720,19 +1107,31 @@ class TestRequiredFields:
     def test_warn_on_null_required_field_create(self, roster_state):
         snapshot, seq = roster_state
 
-        snapshot = _add_constraint(snapshot, seq + 1, {
-            "id": "require_name",
-            "rule": "required_fields",
-            "collection": "roster",
-            "fields": ["name"],
-            "message": "Every player must have a name",
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 1,
+            {
+                "id": "require_name",
+                "rule": "required_fields",
+                "collection": "roster",
+                "fields": ["name"],
+                "message": "Every player must have a name",
+            },
+        )
 
         # Create player with null name -- should warn
-        result = reduce(snapshot, make_event(seq=seq + 2, type="entity.create", payload={
-            "collection": "roster", "id": "player_anonymous",
-            "fields": {"name": None, "email": None, "status": "active"},
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 2,
+                type="entity.create",
+                payload={
+                    "collection": "roster",
+                    "id": "player_anonymous",
+                    "fields": {"name": None, "email": None, "status": "active"},
+                },
+            ),
+        )
         # Note: "name" is "string" (required type) so this would already fail
         # as REQUIRED_FIELD_MISSING or TYPE_MISMATCH from schema validation.
         # The constraint adds an additional layer for nullable fields.
@@ -744,57 +1143,90 @@ class TestRequiredFields:
         snapshot, seq = roster_state
 
         # Make email a required field via constraint (email is string?, nullable at schema level)
-        snapshot = _add_constraint(snapshot, seq + 1, {
-            "id": "require_email",
-            "rule": "required_fields",
-            "collection": "roster",
-            "fields": ["email"],
-            "message": "Every player must have an email",
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 1,
+            {
+                "id": "require_email",
+                "rule": "required_fields",
+                "collection": "roster",
+                "fields": ["email"],
+                "message": "Every player must have an email",
+            },
+        )
 
         # Set Mike's email to null -- should warn (nullable at schema level, but constraint says required)
-        result = reduce(snapshot, make_event(seq=seq + 2, type="entity.update", payload={
-            "ref": "roster/player_mike",
-            "fields": {"email": None},
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 2,
+                type="entity.update",
+                payload={
+                    "ref": "roster/player_mike",
+                    "fields": {"email": None},
+                },
+            ),
+        )
         assert result.applied  # Schema allows null (string?), but constraint warns
         assert _has_warning(result, "CONSTRAINT_VIOLATED")
 
     def test_no_warning_when_field_present(self, roster_state):
         snapshot, seq = roster_state
 
-        snapshot = _add_constraint(snapshot, seq + 1, {
-            "id": "require_email",
-            "rule": "required_fields",
-            "collection": "roster",
-            "fields": ["email"],
-            "message": "Every player must have an email",
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 1,
+            {
+                "id": "require_email",
+                "rule": "required_fields",
+                "collection": "roster",
+                "fields": ["email"],
+                "message": "Every player must have an email",
+            },
+        )
 
         # Update email to a real value -- no warning
-        result = reduce(snapshot, make_event(seq=seq + 2, type="entity.update", payload={
-            "ref": "roster/player_mike",
-            "fields": {"email": "mike@new.com"},
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 2,
+                type="entity.update",
+                payload={
+                    "ref": "roster/player_mike",
+                    "fields": {"email": "mike@new.com"},
+                },
+            ),
+        )
         assert result.applied
         assert not _has_warning(result, "CONSTRAINT_VIOLATED")
 
     def test_strict_rejects_null(self, roster_state):
         snapshot, seq = roster_state
 
-        snapshot = _add_constraint(snapshot, seq + 1, {
-            "id": "require_email",
-            "rule": "required_fields",
-            "collection": "roster",
-            "fields": ["email"],
-            "message": "Every player must have an email",
-            "strict": True,
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 1,
+            {
+                "id": "require_email",
+                "rule": "required_fields",
+                "collection": "roster",
+                "fields": ["email"],
+                "message": "Every player must have an email",
+                "strict": True,
+            },
+        )
 
-        result = reduce(snapshot, make_event(seq=seq + 2, type="entity.update", payload={
-            "ref": "roster/player_mike",
-            "fields": {"email": None},
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 2,
+                type="entity.update",
+                payload={
+                    "ref": "roster/player_mike",
+                    "fields": {"email": None},
+                },
+            ),
+        )
         assert not result.applied
         assert "STRICT_CONSTRAINT_VIOLATED" in result.error
 
@@ -802,18 +1234,30 @@ class TestRequiredFields:
         """Removing a field that a required_fields constraint references should warn."""
         snapshot, seq = roster_state
 
-        snapshot = _add_constraint(snapshot, seq + 1, {
-            "id": "require_email",
-            "rule": "required_fields",
-            "collection": "roster",
-            "fields": ["email"],
-            "message": "Every player must have an email",
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 1,
+            {
+                "id": "require_email",
+                "rule": "required_fields",
+                "collection": "roster",
+                "fields": ["email"],
+                "message": "Every player must have an email",
+            },
+        )
 
         # Remove the email field entirely
-        result = reduce(snapshot, make_event(seq=seq + 2, type="field.remove", payload={
-            "collection": "roster", "name": "email",
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 2,
+                type="field.remove",
+                payload={
+                    "collection": "roster",
+                    "name": "email",
+                },
+            ),
+        )
         assert result.applied  # Field removal still works
         assert len(result.warnings) > 0  # But warns about the constraint
 
@@ -831,29 +1275,45 @@ class TestMultipleConstraints:
         snapshot, seq = seating_state
 
         # Constraint 1: max 2 per table
-        snapshot = _add_constraint(snapshot, seq + 1, {
-            "id": "max_2",
-            "rule": "max_per_target",
-            "relationship_type": "seated_at",
-            "value": 2,
-            "message": "Max 2 per table",
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 1,
+            {
+                "id": "max_2",
+                "rule": "max_per_target",
+                "relationship_type": "seated_at",
+                "value": 2,
+                "message": "Max 2 per table",
+            },
+        )
 
         # Constraint 2: exclude Linda and Bob from same table
-        snapshot = _add_constraint(snapshot, seq + 2, {
-            "id": "no_linda_bob",
-            "rule": "exclude_pair",
-            "entities": ["guests/guest_linda", "guests/guest_bob"],
-            "relationship_type": "seated_at",
-            "message": "Keep Linda and Bob apart",
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 2,
+            {
+                "id": "no_linda_bob",
+                "rule": "exclude_pair",
+                "entities": ["guests/guest_linda", "guests/guest_bob"],
+                "relationship_type": "seated_at",
+                "message": "Keep Linda and Bob apart",
+            },
+        )
 
         # Seat Bob at table_1 (where Linda and Steve already are)
         # Violates BOTH: max_per_target (3rd guest) AND exclude_pair (Bob + Linda)
-        result = reduce(snapshot, make_event(seq=seq + 3, type="relationship.set", payload={
-            "from": "guests/guest_bob", "to": "tables/table_1",
-            "type": "seated_at",
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 3,
+                type="relationship.set",
+                payload={
+                    "from": "guests/guest_bob",
+                    "to": "tables/table_1",
+                    "type": "seated_at",
+                },
+            ),
+        )
         assert result.applied  # Both non-strict
         assert len(result.warnings) >= 2
 
@@ -863,28 +1323,44 @@ class TestMultipleConstraints:
         snapshot, seq = seating_state
 
         # Non-strict: max 2 per table
-        snapshot = _add_constraint(snapshot, seq + 1, {
-            "id": "max_2",
-            "rule": "max_per_target",
-            "relationship_type": "seated_at",
-            "value": 2,
-            "message": "Max 2 per table",
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 1,
+            {
+                "id": "max_2",
+                "rule": "max_per_target",
+                "relationship_type": "seated_at",
+                "value": 2,
+                "message": "Max 2 per table",
+            },
+        )
 
         # Strict: exclude Linda and Bob
-        snapshot = _add_constraint(snapshot, seq + 2, {
-            "id": "no_linda_bob",
-            "rule": "exclude_pair",
-            "entities": ["guests/guest_linda", "guests/guest_bob"],
-            "relationship_type": "seated_at",
-            "message": "Keep Linda and Bob apart",
-            "strict": True,
-        })
+        snapshot = _add_constraint(
+            snapshot,
+            seq + 2,
+            {
+                "id": "no_linda_bob",
+                "rule": "exclude_pair",
+                "entities": ["guests/guest_linda", "guests/guest_bob"],
+                "relationship_type": "seated_at",
+                "message": "Keep Linda and Bob apart",
+                "strict": True,
+            },
+        )
 
         # Seat Bob at table_1 -- violates both, strict one rejects
-        result = reduce(snapshot, make_event(seq=seq + 3, type="relationship.set", payload={
-            "from": "guests/guest_bob", "to": "tables/table_1",
-            "type": "seated_at",
-        }))
+        result = reduce(
+            snapshot,
+            make_event(
+                seq=seq + 3,
+                type="relationship.set",
+                payload={
+                    "from": "guests/guest_bob",
+                    "to": "tables/table_1",
+                    "type": "seated_at",
+                },
+            ),
+        )
         assert not result.applied
         assert "STRICT_CONSTRAINT_VIOLATED" in result.error

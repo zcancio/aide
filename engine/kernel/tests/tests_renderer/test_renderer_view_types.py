@@ -22,7 +22,6 @@ This matters because:
 Reference: aide_renderer_spec.md (View Rendering, Value Formatting, Sorting and Filtering)
 """
 
-
 from engine.kernel.reducer import empty_state
 from engine.kernel.renderer import render_block
 
@@ -35,17 +34,14 @@ def assert_contains(html, *fragments):
     """Assert that the HTML output contains all given fragments."""
     for fragment in fragments:
         assert fragment in html, (
-            f"Expected to find {fragment!r} in rendered HTML.\n"
-            f"Got (first 2000 chars):\n{html[:2000]}"
+            f"Expected to find {fragment!r} in rendered HTML.\nGot (first 2000 chars):\n{html[:2000]}"
         )
 
 
 def assert_not_contains(html, *fragments):
     """Assert that the HTML output does NOT contain any given fragments."""
     for fragment in fragments:
-        assert fragment not in html, (
-            f"Did NOT expect to find {fragment!r} in rendered HTML."
-        )
+        assert fragment not in html, f"Did NOT expect to find {fragment!r} in rendered HTML."
 
 
 def build_view_snapshot(
@@ -242,8 +238,12 @@ class TestListViewGroceryList:
     def test_list_view_renders_ul(self):
         """List view produces a <ul class='aide-list'>."""
         snapshot, block_id = build_view_snapshot(
-            "grocery_list", "Grocery List", GROCERY_SCHEMA,
-            grocery_entities(), "grocery_view", "list",
+            "grocery_list",
+            "Grocery List",
+            GROCERY_SCHEMA,
+            grocery_entities(),
+            "grocery_view",
+            "list",
         )
         html = render_block(block_id, snapshot)
 
@@ -252,8 +252,12 @@ class TestListViewGroceryList:
     def test_list_view_renders_all_entities(self):
         """All non-removed entities appear in the list."""
         snapshot, block_id = build_view_snapshot(
-            "grocery_list", "Grocery List", GROCERY_SCHEMA,
-            grocery_entities(), "grocery_view", "list",
+            "grocery_list",
+            "Grocery List",
+            GROCERY_SCHEMA,
+            grocery_entities(),
+            "grocery_view",
+            "list",
         )
         html = render_block(block_id, snapshot)
 
@@ -263,8 +267,12 @@ class TestListViewGroceryList:
     def test_list_view_items_are_li_elements(self):
         """Each entity renders as an <li class='aide-list__item'>."""
         snapshot, block_id = build_view_snapshot(
-            "grocery_list", "Grocery List", GROCERY_SCHEMA,
-            grocery_entities(), "grocery_view", "list",
+            "grocery_list",
+            "Grocery List",
+            GROCERY_SCHEMA,
+            grocery_entities(),
+            "grocery_view",
+            "list",
         )
         html = render_block(block_id, snapshot)
 
@@ -279,8 +287,12 @@ class TestListViewGroceryList:
         .aide-list__field--primary (stronger weight).'
         """
         snapshot, block_id = build_view_snapshot(
-            "grocery_list", "Grocery List", GROCERY_SCHEMA,
-            grocery_entities(), "grocery_view", "list",
+            "grocery_list",
+            "Grocery List",
+            GROCERY_SCHEMA,
+            grocery_entities(),
+            "grocery_view",
+            "list",
             view_config={"show_fields": ["name", "store", "checked"]},
         )
         html = render_block(block_id, snapshot)
@@ -293,8 +305,12 @@ class TestListViewGroceryList:
         Per spec: 'If show_fields is set, show only those fields in that order.'
         """
         snapshot, block_id = build_view_snapshot(
-            "grocery_list", "Grocery List", GROCERY_SCHEMA,
-            grocery_entities(), "grocery_view", "list",
+            "grocery_list",
+            "Grocery List",
+            GROCERY_SCHEMA,
+            grocery_entities(),
+            "grocery_view",
+            "list",
             view_config={"show_fields": ["name", "checked"]},
         )
         html = render_block(block_id, snapshot)
@@ -310,8 +326,12 @@ class TestListViewGroceryList:
         Per spec: 'If hide_fields is set, show all fields except those.'
         """
         snapshot, block_id = build_view_snapshot(
-            "grocery_list", "Grocery List", GROCERY_SCHEMA,
-            grocery_entities(), "grocery_view", "list",
+            "grocery_list",
+            "Grocery List",
+            GROCERY_SCHEMA,
+            grocery_entities(),
+            "grocery_view",
+            "list",
             view_config={"hide_fields": ["category"]},
         )
         html = render_block(block_id, snapshot)
@@ -334,9 +354,12 @@ class TestListViewGroceryList:
         entities["item_milk"]["_styles"] = {"highlight": True}
 
         snapshot, block_id = build_view_snapshot(
-            "grocery_list", "Grocery List",
+            "grocery_list",
+            "Grocery List",
             {**GROCERY_SCHEMA, "_internal_score": "int"},
-            entities, "grocery_view", "list",
+            entities,
+            "grocery_view",
+            "list",
         )
         html = render_block(block_id, snapshot)
 
@@ -351,8 +374,12 @@ class TestListViewGroceryList:
                   false → ○ (aide-list__field--bool-false)
         """
         snapshot, block_id = build_view_snapshot(
-            "grocery_list", "Grocery List", GROCERY_SCHEMA,
-            grocery_entities(), "grocery_view", "list",
+            "grocery_list",
+            "Grocery List",
+            GROCERY_SCHEMA,
+            grocery_entities(),
+            "grocery_view",
+            "list",
             view_config={"show_fields": ["name", "checked"]},
         )
         html = render_block(block_id, snapshot)
@@ -375,8 +402,12 @@ class TestTableViewPokerSchedule:
     def test_table_view_renders_table_element(self):
         """Table view produces <table class='aide-table'> inside a wrapper."""
         snapshot, block_id = build_view_snapshot(
-            "schedule", "Schedule", SCHEDULE_SCHEMA,
-            schedule_entities(), "schedule_view", "table",
+            "schedule",
+            "Schedule",
+            SCHEDULE_SCHEMA,
+            schedule_entities(),
+            "schedule_view",
+            "table",
         )
         html = render_block(block_id, snapshot)
 
@@ -385,8 +416,12 @@ class TestTableViewPokerSchedule:
     def test_table_view_renders_thead_with_headers(self):
         """Table has <thead> with <th> for each visible field."""
         snapshot, block_id = build_view_snapshot(
-            "schedule", "Schedule", SCHEDULE_SCHEMA,
-            schedule_entities(), "schedule_view", "table",
+            "schedule",
+            "Schedule",
+            SCHEDULE_SCHEMA,
+            schedule_entities(),
+            "schedule_view",
+            "table",
             view_config={"show_fields": ["date", "hosted_by", "status", "buy_in"]},
         )
         html = render_block(block_id, snapshot)
@@ -400,8 +435,12 @@ class TestTableViewPokerSchedule:
         requested_by → "Requested By". checked → "Checked".'
         """
         snapshot, block_id = build_view_snapshot(
-            "schedule", "Schedule", SCHEDULE_SCHEMA,
-            schedule_entities(), "schedule_view", "table",
+            "schedule",
+            "Schedule",
+            SCHEDULE_SCHEMA,
+            schedule_entities(),
+            "schedule_view",
+            "table",
             view_config={"show_fields": ["date", "hosted_by", "status", "buy_in"]},
         )
         html = render_block(block_id, snapshot)
@@ -414,8 +453,12 @@ class TestTableViewPokerSchedule:
     def test_table_view_renders_all_entities_as_rows(self):
         """Each entity becomes a <tr> in <tbody>."""
         snapshot, block_id = build_view_snapshot(
-            "schedule", "Schedule", SCHEDULE_SCHEMA,
-            schedule_entities(), "schedule_view", "table",
+            "schedule",
+            "Schedule",
+            SCHEDULE_SCHEMA,
+            schedule_entities(),
+            "schedule_view",
+            "table",
         )
         html = render_block(block_id, snapshot)
 
@@ -428,8 +471,12 @@ class TestTableViewPokerSchedule:
         Per spec: aide-table__td--bool, aide-table__td--int, aide-table__td--float
         """
         snapshot, block_id = build_view_snapshot(
-            "schedule", "Schedule", SCHEDULE_SCHEMA,
-            schedule_entities(), "schedule_view", "table",
+            "schedule",
+            "Schedule",
+            SCHEDULE_SCHEMA,
+            schedule_entities(),
+            "schedule_view",
+            "table",
             view_config={"show_fields": ["date", "hosted_by", "buy_in"]},
         )
         html = render_block(block_id, snapshot)
@@ -440,8 +487,12 @@ class TestTableViewPokerSchedule:
     def test_table_view_show_fields_controls_columns(self):
         """show_fields limits which columns appear in the table."""
         snapshot, block_id = build_view_snapshot(
-            "schedule", "Schedule", SCHEDULE_SCHEMA,
-            schedule_entities(), "schedule_view", "table",
+            "schedule",
+            "Schedule",
+            SCHEDULE_SCHEMA,
+            schedule_entities(),
+            "schedule_view",
+            "table",
             view_config={"show_fields": ["date", "hosted_by"]},
         )
         html = render_block(block_id, snapshot)
@@ -457,8 +508,12 @@ class TestTableViewPokerSchedule:
         Per spec: "2026-02-27" → "Feb 27"
         """
         snapshot, block_id = build_view_snapshot(
-            "schedule", "Schedule", SCHEDULE_SCHEMA,
-            schedule_entities(), "schedule_view", "table",
+            "schedule",
+            "Schedule",
+            SCHEDULE_SCHEMA,
+            schedule_entities(),
+            "schedule_view",
+            "table",
         )
         html = render_block(block_id, snapshot)
 
@@ -472,8 +527,12 @@ class TestTableViewPokerSchedule:
         Per spec: "produce" → "Produce"
         """
         snapshot, block_id = build_view_snapshot(
-            "schedule", "Schedule", SCHEDULE_SCHEMA,
-            schedule_entities(), "schedule_view", "table",
+            "schedule",
+            "Schedule",
+            SCHEDULE_SCHEMA,
+            schedule_entities(),
+            "schedule_view",
+            "table",
         )
         html = render_block(block_id, snapshot)
 
@@ -487,8 +546,12 @@ class TestTableViewPokerSchedule:
         Per spec: aide-table__td--int, aide-table__td--float
         """
         snapshot, block_id = build_view_snapshot(
-            "schedule", "Schedule", SCHEDULE_SCHEMA,
-            schedule_entities(), "schedule_view", "table",
+            "schedule",
+            "Schedule",
+            SCHEDULE_SCHEMA,
+            schedule_entities(),
+            "schedule_view",
+            "table",
             view_config={"show_fields": ["date", "buy_in"]},
         )
         html = render_block(block_id, snapshot)
@@ -515,8 +578,12 @@ class TestGridViewSuperBowlSquares:
             "show_fields": ["owner"],
         }
         return build_view_snapshot(
-            "squares", "Super Bowl Squares", SQUARES_SCHEMA,
-            squares_entities(), "squares_view", "grid",
+            "squares",
+            "Super Bowl Squares",
+            SQUARES_SCHEMA,
+            squares_entities(),
+            "squares_view",
+            "grid",
             view_config=config,
         )
 
@@ -551,10 +618,10 @@ class TestGridViewSuperBowlSquares:
         html = render_block(block_id, snapshot)
 
         # These owners have positions on the grid
-        assert_contains(html, "Mike")   # position A3
+        assert_contains(html, "Mike")  # position A3
         assert_contains(html, "Sarah")  # position B7
-        assert_contains(html, "Dave")   # position C1
-        assert_contains(html, "Alex")   # position E5
+        assert_contains(html, "Dave")  # position C1
+        assert_contains(html, "Alex")  # position E5
 
     def test_grid_view_filled_cells_have_filled_class(self):
         """
@@ -616,7 +683,8 @@ class TestUnknownViewTypeFallback:
     def test_unknown_view_type_renders_as_table(self):
         """A view with type 'kanban' (not in v1) falls back to table."""
         snapshot, block_id = build_view_snapshot(
-            "tasks", "Tasks",
+            "tasks",
+            "Tasks",
             {"name": "string", "status": "enum"},
             {
                 "task_1": {
@@ -630,7 +698,8 @@ class TestUnknownViewTypeFallback:
                     "_removed": False,
                 },
             },
-            "task_view", "kanban",
+            "task_view",
+            "kanban",
         )
         html = render_block(block_id, snapshot)
 
@@ -641,7 +710,8 @@ class TestUnknownViewTypeFallback:
     def test_calendar_view_falls_back_to_table(self):
         """Calendar view (not in v1) falls back to table."""
         snapshot, block_id = build_view_snapshot(
-            "events", "Events",
+            "events",
+            "Events",
             {"name": "string", "date": "date"},
             {
                 "evt_1": {
@@ -650,7 +720,8 @@ class TestUnknownViewTypeFallback:
                     "_removed": False,
                 },
             },
-            "events_view", "calendar",
+            "events_view",
+            "calendar",
         )
         html = render_block(block_id, snapshot)
 
@@ -660,7 +731,8 @@ class TestUnknownViewTypeFallback:
     def test_dashboard_view_falls_back_to_table(self):
         """Dashboard view (not in v1) falls back to table."""
         snapshot, block_id = build_view_snapshot(
-            "metrics", "Metrics",
+            "metrics",
+            "Metrics",
             {"label": "string", "value": "float"},
             {
                 "m_1": {
@@ -669,7 +741,8 @@ class TestUnknownViewTypeFallback:
                     "_removed": False,
                 },
             },
-            "metrics_view", "dashboard",
+            "metrics_view",
+            "dashboard",
         )
         html = render_block(block_id, snapshot)
 
@@ -696,8 +769,12 @@ class TestFieldVisibilityRules:
         First field in show_fields becomes the primary field.
         """
         snapshot, block_id = build_view_snapshot(
-            "grocery_list", "Grocery List", GROCERY_SCHEMA,
-            grocery_entities(), "grocery_view", "list",
+            "grocery_list",
+            "Grocery List",
+            GROCERY_SCHEMA,
+            grocery_entities(),
+            "grocery_view",
+            "list",
             view_config={"show_fields": ["store", "name"]},
         )
         html = render_block(block_id, snapshot)
@@ -712,8 +789,12 @@ class TestFieldVisibilityRules:
         show_fields determines the order of <th> headers in table.
         """
         snapshot, block_id = build_view_snapshot(
-            "schedule", "Schedule", SCHEDULE_SCHEMA,
-            schedule_entities(), "schedule_view", "table",
+            "schedule",
+            "Schedule",
+            SCHEDULE_SCHEMA,
+            schedule_entities(),
+            "schedule_view",
+            "table",
             view_config={"show_fields": ["status", "hosted_by", "date"]},
         )
         html = render_block(block_id, snapshot)
@@ -739,9 +820,12 @@ class TestFieldVisibilityRules:
             },
         }
         snapshot, block_id = build_view_snapshot(
-            "items", "Items",
+            "items",
+            "Items",
             {"name": "string", "score": "int", "active": "bool"},
-            entities, "items_view", "table",
+            entities,
+            "items_view",
+            "table",
         )
         html = render_block(block_id, snapshot)
 
@@ -770,9 +854,12 @@ class TestNullValuesInViews:
             },
         }
         snapshot, block_id = build_view_snapshot(
-            "grocery_list", "Grocery List",
+            "grocery_list",
+            "Grocery List",
             {"name": "string", "store": "string?"},
-            entities, "grocery_view", "list",
+            entities,
+            "grocery_view",
+            "list",
         )
         html = render_block(block_id, snapshot)
 
@@ -790,9 +877,12 @@ class TestNullValuesInViews:
             },
         }
         snapshot, block_id = build_view_snapshot(
-            "items", "Items",
+            "items",
+            "Items",
             {"name": "string", "amount": "int?"},
-            entities, "items_view", "table",
+            entities,
+            "items_view",
+            "table",
         )
         html = render_block(block_id, snapshot)
 
@@ -816,8 +906,12 @@ class TestRemovedEntitiesExcluded:
         entities["item_milk"]["_removed"] = True
 
         snapshot, block_id = build_view_snapshot(
-            "grocery_list", "Grocery List", GROCERY_SCHEMA,
-            entities, "grocery_view", "list",
+            "grocery_list",
+            "Grocery List",
+            GROCERY_SCHEMA,
+            entities,
+            "grocery_view",
+            "list",
         )
         html = render_block(block_id, snapshot)
 
@@ -830,8 +924,12 @@ class TestRemovedEntitiesExcluded:
         entities["game_1"]["_removed"] = True
 
         snapshot, block_id = build_view_snapshot(
-            "schedule", "Schedule", SCHEDULE_SCHEMA,
-            entities, "schedule_view", "table",
+            "schedule",
+            "Schedule",
+            SCHEDULE_SCHEMA,
+            entities,
+            "schedule_view",
+            "table",
         )
         html = render_block(block_id, snapshot)
 
@@ -850,8 +948,12 @@ class TestRemovedEntitiesExcluded:
             "show_fields": ["owner"],
         }
         snapshot, block_id = build_view_snapshot(
-            "squares", "Squares", SQUARES_SCHEMA,
-            entities, "squares_view", "grid",
+            "squares",
+            "Squares",
+            SQUARES_SCHEMA,
+            entities,
+            "squares_view",
+            "grid",
             view_config=config,
         )
         html = render_block(block_id, snapshot)
@@ -875,8 +977,12 @@ class TestEmptyCollectionViews:
     def test_empty_list_view(self):
         """Empty collection in list view shows empty state."""
         snapshot, block_id = build_view_snapshot(
-            "items", "Items", {"name": "string"},
-            {}, "items_view", "list",
+            "items",
+            "Items",
+            {"name": "string"},
+            {},
+            "items_view",
+            "list",
         )
         html = render_block(block_id, snapshot)
 
@@ -885,8 +991,12 @@ class TestEmptyCollectionViews:
     def test_empty_table_view(self):
         """Empty collection in table view shows empty state."""
         snapshot, block_id = build_view_snapshot(
-            "items", "Items", {"name": "string"},
-            {}, "items_view", "table",
+            "items",
+            "Items",
+            {"name": "string"},
+            {},
+            "items_view",
+            "table",
         )
         html = render_block(block_id, snapshot)
 
@@ -901,8 +1011,12 @@ class TestEmptyCollectionViews:
             "col_labels": ["1", "2"],
         }
         snapshot, block_id = build_view_snapshot(
-            "board", "Board", {"position": "string", "owner": "string"},
-            {}, "board_view", "grid",
+            "board",
+            "Board",
+            {"position": "string", "owner": "string"},
+            {},
+            "board_view",
+            "grid",
             view_config=config,
         )
         html = render_block(block_id, snapshot)
@@ -919,8 +1033,12 @@ class TestEmptyCollectionViews:
             },
         }
         snapshot, block_id = build_view_snapshot(
-            "items", "Items", {"name": "string"},
-            entities, "items_view", "list",
+            "items",
+            "Items",
+            {"name": "string"},
+            entities,
+            "items_view",
+            "list",
         )
         html = render_block(block_id, snapshot)
 

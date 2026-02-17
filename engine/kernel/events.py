@@ -69,17 +69,19 @@ def assign_metadata(
 
     for i, primitive in enumerate(events):
         seq = start_sequence + i
-        result.append(Event(
-            id=f"evt_{ts[:10].replace('-', '')}_{seq:03d}",
-            sequence=seq,
-            timestamp=ts,
-            actor=actor,
-            source=source,
-            type=primitive["type"],
-            payload=primitive["payload"],
-            intent=primitive.get("intent"),
-            message=message if i == 0 else None,  # attach message to first event only
-            message_id=message_id if i == 0 else None,
-        ))
+        result.append(
+            Event(
+                id=f"evt_{ts[:10].replace('-', '')}_{seq:03d}",
+                sequence=seq,
+                timestamp=ts,
+                actor=actor,
+                source=source,
+                type=primitive["type"],
+                payload=primitive["payload"],
+                intent=primitive.get("intent"),
+                message=message if i == 0 else None,  # attach message to first event only
+                message_id=message_id if i == 0 else None,
+            )
+        )
 
     return result

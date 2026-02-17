@@ -22,7 +22,6 @@ Strict allowlist — no other HTML passes through:
 Reference: aide_renderer_spec.md (Block Rendering → text, HTML Sanitization)
 """
 
-
 from engine.kernel.reducer import empty_state
 from engine.kernel.renderer import render_block
 
@@ -34,16 +33,13 @@ from engine.kernel.renderer import render_block
 def assert_contains(html, *fragments):
     for fragment in fragments:
         assert fragment in html, (
-            f"Expected to find {fragment!r} in rendered HTML.\n"
-            f"Got (first 3000 chars):\n{html[:3000]}"
+            f"Expected to find {fragment!r} in rendered HTML.\nGot (first 3000 chars):\n{html[:3000]}"
         )
 
 
 def assert_not_contains(html, *fragments):
     for fragment in fragments:
-        assert fragment not in html, (
-            f"Did NOT expect to find {fragment!r} in rendered HTML."
-        )
+        assert fragment not in html, f"Did NOT expect to find {fragment!r} in rendered HTML."
 
 
 def make_text_block(content):
@@ -182,9 +178,7 @@ class TestLinkFormatting:
 
     def test_basic_link(self):
         """Standard http link."""
-        snapshot, block_id = make_text_block(
-            "Visit [our site](https://toaide.com) for details."
-        )
+        snapshot, block_id = make_text_block("Visit [our site](https://toaide.com) for details.")
         html = render_block(block_id, snapshot)
 
         assert_contains(html, '<a href="https://toaide.com">our site</a>')
@@ -192,18 +186,14 @@ class TestLinkFormatting:
 
     def test_http_link(self):
         """http:// link is allowed."""
-        snapshot, block_id = make_text_block(
-            "See [example](http://example.com) here."
-        )
+        snapshot, block_id = make_text_block("See [example](http://example.com) here.")
         html = render_block(block_id, snapshot)
 
         assert_contains(html, '<a href="http://example.com">example</a>')
 
     def test_https_link(self):
         """https:// link is allowed."""
-        snapshot, block_id = make_text_block(
-            "Check [docs](https://docs.toaide.com/guide) now."
-        )
+        snapshot, block_id = make_text_block("Check [docs](https://docs.toaide.com/guide) now.")
         html = render_block(block_id, snapshot)
 
         assert_contains(html, '<a href="https://docs.toaide.com/guide">')
@@ -211,18 +201,14 @@ class TestLinkFormatting:
 
     def test_link_with_long_text(self):
         """Link text can be a longer phrase."""
-        snapshot, block_id = make_text_block(
-            "Read [the full announcement post](https://blog.example.com/post)."
-        )
+        snapshot, block_id = make_text_block("Read [the full announcement post](https://blog.example.com/post).")
         html = render_block(block_id, snapshot)
 
         assert_contains(html, ">the full announcement post</a>")
 
     def test_multiple_links(self):
         """Multiple links in one text block."""
-        snapshot, block_id = make_text_block(
-            "See [Google](https://google.com) and [GitHub](https://github.com)."
-        )
+        snapshot, block_id = make_text_block("See [Google](https://google.com) and [GitHub](https://github.com).")
         html = render_block(block_id, snapshot)
 
         assert_contains(html, '<a href="https://google.com">Google</a>')
@@ -230,18 +216,14 @@ class TestLinkFormatting:
 
     def test_link_at_start(self):
         """Link at the beginning of content."""
-        snapshot, block_id = make_text_block(
-            "[Click here](https://example.com) to begin."
-        )
+        snapshot, block_id = make_text_block("[Click here](https://example.com) to begin.")
         html = render_block(block_id, snapshot)
 
         assert_contains(html, '<a href="https://example.com">Click here</a>')
 
     def test_link_at_end(self):
         """Link at the end of content."""
-        snapshot, block_id = make_text_block(
-            "More info at [our docs](https://docs.example.com)"
-        )
+        snapshot, block_id = make_text_block("More info at [our docs](https://docs.example.com)")
         html = render_block(block_id, snapshot)
 
         assert_contains(html, '<a href="https://docs.example.com">our docs</a>')
@@ -259,9 +241,7 @@ class TestCombinedInlineFormatting:
 
     def test_bold_and_italic(self):
         """Bold and italic in same text block."""
-        snapshot, block_id = make_text_block(
-            "This is **bold** and this is *italic* text."
-        )
+        snapshot, block_id = make_text_block("This is **bold** and this is *italic* text.")
         html = render_block(block_id, snapshot)
 
         assert_contains(html, "<strong>bold</strong>")
@@ -269,9 +249,7 @@ class TestCombinedInlineFormatting:
 
     def test_bold_and_link(self):
         """Bold and link in same text block."""
-        snapshot, block_id = make_text_block(
-            "**Important:** visit [our site](https://toaide.com)."
-        )
+        snapshot, block_id = make_text_block("**Important:** visit [our site](https://toaide.com).")
         html = render_block(block_id, snapshot)
 
         assert_contains(html, "<strong>Important:</strong>")
@@ -279,9 +257,7 @@ class TestCombinedInlineFormatting:
 
     def test_italic_and_link(self):
         """Italic and link in same text block."""
-        snapshot, block_id = make_text_block(
-            "*Note:* see [details](https://example.com) for more."
-        )
+        snapshot, block_id = make_text_block("*Note:* see [details](https://example.com) for more.")
         html = render_block(block_id, snapshot)
 
         assert_contains(html, "<em>Note:</em>")
@@ -289,9 +265,7 @@ class TestCombinedInlineFormatting:
 
     def test_all_three_in_one_block(self):
         """Bold, italic, and link all in one text block."""
-        snapshot, block_id = make_text_block(
-            "**Bold** then *italic* then [link](https://example.com) done."
-        )
+        snapshot, block_id = make_text_block("**Bold** then *italic* then [link](https://example.com) done.")
         html = render_block(block_id, snapshot)
 
         assert_contains(html, "<strong>Bold</strong>")
@@ -359,9 +333,7 @@ class TestXSSScriptInjection:
 
     def test_script_tag_escaped(self):
         """<script> tag in content is HTML-escaped."""
-        snapshot, block_id = make_text_block(
-            'Hello <script>alert("xss")</script> world'
-        )
+        snapshot, block_id = make_text_block('Hello <script>alert("xss")</script> world')
         html = render_block(block_id, snapshot)
 
         assert_not_contains(html, "<script>")
@@ -369,9 +341,7 @@ class TestXSSScriptInjection:
 
     def test_script_tag_in_bold(self):
         """<script> inside bold markers is still escaped."""
-        snapshot, block_id = make_text_block(
-            '**<script>alert("xss")</script>**'
-        )
+        snapshot, block_id = make_text_block('**<script>alert("xss")</script>**')
         html = render_block(block_id, snapshot)
 
         assert_not_contains(html, "<script>")
@@ -379,18 +349,14 @@ class TestXSSScriptInjection:
 
     def test_iframe_escaped(self):
         """<iframe> in content is escaped."""
-        snapshot, block_id = make_text_block(
-            'See <iframe src="https://evil.com"></iframe> here'
-        )
+        snapshot, block_id = make_text_block('See <iframe src="https://evil.com"></iframe> here')
         html = render_block(block_id, snapshot)
 
         assert_not_contains(html, "<iframe")
 
     def test_img_onerror_escaped(self):
         """<img onerror=...> in content is escaped - no actual element created."""
-        snapshot, block_id = make_text_block(
-            '<img src=x onerror=alert(1)>'
-        )
+        snapshot, block_id = make_text_block("<img src=x onerror=alert(1)>")
         html = render_block(block_id, snapshot)
 
         # Critical: no actual img element (< is escaped)
@@ -400,9 +366,7 @@ class TestXSSScriptInjection:
 
     def test_event_handler_in_tag(self):
         """Event handler attributes are escaped - no actual element created."""
-        snapshot, block_id = make_text_block(
-            '<div onmouseover="alert(1)">hover me</div>'
-        )
+        snapshot, block_id = make_text_block('<div onmouseover="alert(1)">hover me</div>')
         html = render_block(block_id, snapshot)
 
         # Critical: no actual div element (< is escaped)
@@ -425,9 +389,7 @@ class TestXSSLinkHrefInjection:
 
     def test_javascript_href_rejected(self):
         """javascript: URL in link href is NOT converted to a link."""
-        snapshot, block_id = make_text_block(
-            '[click me](javascript:alert("xss"))'
-        )
+        snapshot, block_id = make_text_block('[click me](javascript:alert("xss"))')
         html = render_block(block_id, snapshot)
 
         # Critical: no href with javascript: (only https?:// links are converted)
@@ -436,9 +398,7 @@ class TestXSSLinkHrefInjection:
 
     def test_javascript_case_insensitive(self):
         """JavaScript: (mixed case) in href is also rejected."""
-        snapshot, block_id = make_text_block(
-            "[click](JavaScript:alert(1))"
-        )
+        snapshot, block_id = make_text_block("[click](JavaScript:alert(1))")
         html = render_block(block_id, snapshot)
 
         # Critical: no href with javascript: (case insensitive check)
@@ -447,9 +407,7 @@ class TestXSSLinkHrefInjection:
 
     def test_data_uri_rejected(self):
         """data: URI in link href is NOT converted to a link."""
-        snapshot, block_id = make_text_block(
-            "[click](data:text/html,<script>alert(1)</script>)"
-        )
+        snapshot, block_id = make_text_block("[click](data:text/html,<script>alert(1)</script>)")
         html = render_block(block_id, snapshot)
 
         # Critical: no href with data: URI
@@ -458,9 +416,7 @@ class TestXSSLinkHrefInjection:
 
     def test_vbscript_href_rejected(self):
         """vbscript: in link href is NOT converted to a link."""
-        snapshot, block_id = make_text_block(
-            "[click](vbscript:MsgBox(1))"
-        )
+        snapshot, block_id = make_text_block("[click](vbscript:MsgBox(1))")
         html = render_block(block_id, snapshot)
 
         # Critical: no href with vbscript:
@@ -469,27 +425,21 @@ class TestXSSLinkHrefInjection:
 
     def test_valid_https_link_allowed(self):
         """https:// links pass validation and render correctly."""
-        snapshot, block_id = make_text_block(
-            "[safe link](https://example.com)"
-        )
+        snapshot, block_id = make_text_block("[safe link](https://example.com)")
         html = render_block(block_id, snapshot)
 
         assert_contains(html, '<a href="https://example.com">safe link</a>')
 
     def test_valid_http_link_allowed(self):
         """http:// links pass validation and render correctly."""
-        snapshot, block_id = make_text_block(
-            "[safe link](http://example.com)"
-        )
+        snapshot, block_id = make_text_block("[safe link](http://example.com)")
         html = render_block(block_id, snapshot)
 
         assert_contains(html, '<a href="http://example.com">safe link</a>')
 
     def test_protocol_relative_url_rejected(self):
         """Protocol-relative URL (//evil.com) should be rejected."""
-        snapshot, block_id = make_text_block(
-            "[click](//evil.com/payload)"
-        )
+        snapshot, block_id = make_text_block("[click](//evil.com/payload)")
         html = render_block(block_id, snapshot)
 
         # Should NOT produce an <a> with this href
@@ -529,7 +479,7 @@ class TestXSSEntityInjection:
         assert_contains(html, "x &gt; y")
 
     def test_double_quote_escaped(self):
-        '''" is escaped to &quot;'''
+        """ " is escaped to &quot;"""
         snapshot, block_id = make_text_block('She said "hello" to me')
         html = render_block(block_id, snapshot)
 
@@ -566,9 +516,7 @@ class TestXSSInLinkText:
 
     def test_html_in_link_text_escaped(self):
         """<script> in link text is escaped."""
-        snapshot, block_id = make_text_block(
-            '[<script>alert(1)</script>](https://example.com)'
-        )
+        snapshot, block_id = make_text_block("[<script>alert(1)</script>](https://example.com)")
         html = render_block(block_id, snapshot)
 
         assert_not_contains(html, "<script>")
@@ -578,9 +526,7 @@ class TestXSSInLinkText:
 
     def test_html_entities_in_link_text(self):
         """Special chars in link text are escaped."""
-        snapshot, block_id = make_text_block(
-            '[Tom & Jerry\'s "Page"](https://example.com)'
-        )
+        snapshot, block_id = make_text_block('[Tom & Jerry\'s "Page"](https://example.com)')
         html = render_block(block_id, snapshot)
 
         assert_contains(html, "&amp;")
@@ -599,23 +545,19 @@ class TestXSSInURLParameters:
 
     def test_url_with_quotes_in_params(self):
         """URL containing quotes in query params should be escaped in href."""
-        snapshot, block_id = make_text_block(
-            '[link](https://example.com?q=a"onmouseover="alert(1))'
-        )
+        snapshot, block_id = make_text_block('[link](https://example.com?q=a"onmouseover="alert(1))')
         html = render_block(block_id, snapshot)
 
         # The quote in the URL should be escaped to prevent attribute breakout
         # Either the URL is rejected due to the closing paren being consumed,
         # or quotes are properly escaped in the href value
-        if 'href=' in html:
+        if "href=" in html:
             # Check that no unescaped attribute injection occurred
-            assert ' onmouseover=' not in html, "Event handler attribute should not be injected"
+            assert " onmouseover=" not in html, "Event handler attribute should not be injected"
 
     def test_url_with_angle_brackets(self):
         """URL with angle brackets should be escaped."""
-        snapshot, block_id = make_text_block(
-            "[link](https://example.com/<script>)"
-        )
+        snapshot, block_id = make_text_block("[link](https://example.com/<script>)")
         html = render_block(block_id, snapshot)
 
         assert_not_contains(html, "<script>")
@@ -710,9 +652,7 @@ class TestInlineFormattingEdgeCases:
 
     def test_nested_bold_italic(self):
         """Bold inside italic or vice versa — reasonable behavior expected."""
-        snapshot, block_id = make_text_block(
-            "This is ***bold and italic*** text."
-        )
+        snapshot, block_id = make_text_block("This is ***bold and italic*** text.")
         html = render_block(block_id, snapshot)
 
         # Should produce some combination of <strong> and <em>
@@ -722,9 +662,7 @@ class TestInlineFormattingEdgeCases:
 
     def test_link_with_empty_text(self):
         """Link with empty text [](url) — should handle gracefully."""
-        snapshot, block_id = make_text_block(
-            "[](https://example.com)"
-        )
+        snapshot, block_id = make_text_block("[](https://example.com)")
         html = render_block(block_id, snapshot)
 
         # Should not crash; may render empty <a> or skip
@@ -732,9 +670,7 @@ class TestInlineFormattingEdgeCases:
 
     def test_link_with_empty_url(self):
         """Link with empty URL [text]() — should handle gracefully."""
-        snapshot, block_id = make_text_block(
-            "[click here]()"
-        )
+        snapshot, block_id = make_text_block("[click here]()")
         html = render_block(block_id, snapshot)
 
         # Should not produce a link with empty href, or handle gracefully
@@ -768,9 +704,7 @@ class TestInlineFormattingEdgeCases:
 
     def test_link_with_parentheses_in_url(self):
         """URL containing parentheses (e.g., Wikipedia)."""
-        snapshot, block_id = make_text_block(
-            "[wiki](https://en.wikipedia.org/wiki/Poker_(card_game))"
-        )
+        snapshot, block_id = make_text_block("[wiki](https://en.wikipedia.org/wiki/Poker_(card_game))")
         html = render_block(block_id, snapshot)
 
         # Should handle the nested parens reasonably

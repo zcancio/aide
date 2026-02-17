@@ -259,6 +259,7 @@ class TestPostgresStorageWithAssembly:
 
         # Verify HTML can be re-parsed
         from engine.kernel.assembly import parse_aide_html
+
         parsed = parse_aide_html(loaded.html)
         assert parsed.snapshot is not None
         assert parsed.blueprint is not None

@@ -7,7 +7,7 @@ import resend
 from backend import config
 
 # Initialize Resend with API key
-resend.api_key = config.RESEND_API_KEY
+resend.api_key = config.settings.RESEND_API_KEY
 
 
 async def send_magic_link(email: str, token: str) -> None:
@@ -21,7 +21,7 @@ async def send_magic_link(email: str, token: str) -> None:
     Raises:
         Exception: If email sending fails
     """
-    magic_link_url = f"{config.EDITOR_URL}/auth/verify?token={token}"
+    magic_link_url = f"{config.settings.EDITOR_URL}/auth/verify?token={token}"
 
     # HTML email template
     html_content = f"""

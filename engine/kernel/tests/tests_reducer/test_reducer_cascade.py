@@ -35,11 +35,7 @@ def active_entities(snapshot, collection_id):
     coll = snapshot["collections"].get(collection_id)
     if not coll:
         return {}
-    return {
-        eid: e
-        for eid, e in coll["entities"].items()
-        if not e.get("_removed")
-    }
+    return {eid: e for eid, e in coll["entities"].items() if not e.get("_removed")}
 
 
 def active_relationships(snapshot, rel_type=None):
@@ -73,10 +69,7 @@ def active_relationships(snapshot, rel_type=None):
 
 def has_warning(result, code):
     """Check if a specific warning code is present."""
-    return any(
-        w.code == code
-        for w in result.warnings
-    )
+    return any(w.code == code for w in result.warnings)
 
 
 # ============================================================================
@@ -113,121 +106,179 @@ def poker_league(empty):
         snapshot = result.snapshot
 
     # -- Collections --
-    apply("collection.create", {
-        "id": "roster",
-        "name": "Roster",
-        "schema": {"name": "string", "status": "string", "snack_duty": "bool"},
-    })
-    apply("collection.create", {
-        "id": "schedule",
-        "name": "Schedule",
-        "schema": {"date": "date", "host": "string?", "status": "string"},
-    })
+    apply(
+        "collection.create",
+        {
+            "id": "roster",
+            "name": "Roster",
+            "schema": {"name": "string", "status": "string", "snack_duty": "bool"},
+        },
+    )
+    apply(
+        "collection.create",
+        {
+            "id": "schedule",
+            "name": "Schedule",
+            "schema": {"date": "date", "host": "string?", "status": "string"},
+        },
+    )
 
     # -- Roster entities --
-    for pid, name in [("player_mike", "Mike"), ("player_dave", "Dave"),
-                      ("player_linda", "Linda"), ("player_steve", "Steve")]:
-        apply("entity.create", {
-            "collection": "roster",
-            "id": pid,
-            "fields": {"name": name, "status": "active", "snack_duty": False},
-        })
+    for pid, name in [
+        ("player_mike", "Mike"),
+        ("player_dave", "Dave"),
+        ("player_linda", "Linda"),
+        ("player_steve", "Steve"),
+    ]:
+        apply(
+            "entity.create",
+            {
+                "collection": "roster",
+                "id": pid,
+                "fields": {"name": name, "status": "active", "snack_duty": False},
+            },
+        )
 
     # -- Schedule entities --
-    apply("entity.create", {
-        "collection": "schedule",
-        "id": "game_feb27",
-        "fields": {"date": "2026-02-27", "host": "Dave", "status": "confirmed"},
-    })
-    apply("entity.create", {
-        "collection": "schedule",
-        "id": "game_mar13",
-        "fields": {"date": "2026-03-13", "host": "Linda", "status": "tentative"},
-    })
+    apply(
+        "entity.create",
+        {
+            "collection": "schedule",
+            "id": "game_feb27",
+            "fields": {"date": "2026-02-27", "host": "Dave", "status": "confirmed"},
+        },
+    )
+    apply(
+        "entity.create",
+        {
+            "collection": "schedule",
+            "id": "game_mar13",
+            "fields": {"date": "2026-03-13", "host": "Linda", "status": "tentative"},
+        },
+    )
 
     # -- Relationships --
-    apply("relationship.set", {
-        "from": "roster/player_dave",
-        "to": "schedule/game_feb27",
-        "type": "hosting",
-        "cardinality": "many_to_one",
-    })
-    apply("relationship.set", {
-        "from": "roster/player_linda",
-        "to": "schedule/game_mar13",
-        "type": "hosting",
-    })
+    apply(
+        "relationship.set",
+        {
+            "from": "roster/player_dave",
+            "to": "schedule/game_feb27",
+            "type": "hosting",
+            "cardinality": "many_to_one",
+        },
+    )
+    apply(
+        "relationship.set",
+        {
+            "from": "roster/player_linda",
+            "to": "schedule/game_mar13",
+            "type": "hosting",
+        },
+    )
     # Attending is many_to_many
-    apply("relationship.set", {
-        "from": "roster/player_mike",
-        "to": "schedule/game_feb27",
-        "type": "attending",
-        "cardinality": "many_to_many",
-    })
-    apply("relationship.set", {
-        "from": "roster/player_dave",
-        "to": "schedule/game_feb27",
-        "type": "attending",
-    })
-    apply("relationship.set", {
-        "from": "roster/player_linda",
-        "to": "schedule/game_feb27",
-        "type": "attending",
-    })
-    apply("relationship.set", {
-        "from": "roster/player_steve",
-        "to": "schedule/game_feb27",
-        "type": "attending",
-    })
+    apply(
+        "relationship.set",
+        {
+            "from": "roster/player_mike",
+            "to": "schedule/game_feb27",
+            "type": "attending",
+            "cardinality": "many_to_many",
+        },
+    )
+    apply(
+        "relationship.set",
+        {
+            "from": "roster/player_dave",
+            "to": "schedule/game_feb27",
+            "type": "attending",
+        },
+    )
+    apply(
+        "relationship.set",
+        {
+            "from": "roster/player_linda",
+            "to": "schedule/game_feb27",
+            "type": "attending",
+        },
+    )
+    apply(
+        "relationship.set",
+        {
+            "from": "roster/player_steve",
+            "to": "schedule/game_feb27",
+            "type": "attending",
+        },
+    )
 
     # -- Views --
-    apply("view.create", {
-        "id": "roster_view",
-        "type": "list",
-        "source": "roster",
-        "config": {"show_fields": ["name", "status"], "sort_by": "name"},
-    })
-    apply("view.create", {
-        "id": "schedule_view",
-        "type": "table",
-        "source": "schedule",
-        "config": {"show_fields": ["date", "host", "status"]},
-    })
+    apply(
+        "view.create",
+        {
+            "id": "roster_view",
+            "type": "list",
+            "source": "roster",
+            "config": {"show_fields": ["name", "status"], "sort_by": "name"},
+        },
+    )
+    apply(
+        "view.create",
+        {
+            "id": "schedule_view",
+            "type": "table",
+            "source": "schedule",
+            "config": {"show_fields": ["date", "host", "status"]},
+        },
+    )
 
     # -- Blocks --
-    apply("block.set", {
-        "id": "block_title",
-        "type": "heading",
-        "parent": "block_root",
-        "props": {"level": 1, "content": "Poker League"},
-    })
-    apply("block.set", {
-        "id": "block_next_game",
-        "type": "metric",
-        "parent": "block_root",
-        "props": {"label": "Next game", "value": "Thu Feb 27 at Dave's"},
-    })
-    apply("block.set", {
-        "id": "block_roster",
-        "type": "collection_view",
-        "parent": "block_root",
-        "props": {"source": "roster", "view": "roster_view"},
-    })
-    apply("block.set", {
-        "id": "block_schedule",
-        "type": "collection_view",
-        "parent": "block_root",
-        "props": {"source": "schedule", "view": "schedule_view"},
-    })
+    apply(
+        "block.set",
+        {
+            "id": "block_title",
+            "type": "heading",
+            "parent": "block_root",
+            "props": {"level": 1, "content": "Poker League"},
+        },
+    )
+    apply(
+        "block.set",
+        {
+            "id": "block_next_game",
+            "type": "metric",
+            "parent": "block_root",
+            "props": {"label": "Next game", "value": "Thu Feb 27 at Dave's"},
+        },
+    )
+    apply(
+        "block.set",
+        {
+            "id": "block_roster",
+            "type": "collection_view",
+            "parent": "block_root",
+            "props": {"source": "roster", "view": "roster_view"},
+        },
+    )
+    apply(
+        "block.set",
+        {
+            "id": "block_schedule",
+            "type": "collection_view",
+            "parent": "block_root",
+            "props": {"source": "schedule", "view": "schedule_view"},
+        },
+    )
 
     # -- Constraint --
-    apply("meta.constrain", {
-        "id": "constraint_max_players",
-        "rule": "collection_max_entities",
-        "collection": "roster",
-        "value": 8,
-        "message": "Maximum 8 players",
-    })
+    apply(
+        "meta.constrain",
+        {
+            "id": "constraint_max_players",
+            "rule": "collection_max_entities",
+            "collection": "roster",
+            "value": 8,
+            "message": "Maximum 8 players",
+        },
+    )
 
     return snapshot, seq
 
@@ -503,12 +554,10 @@ class TestEntityRemoveRelationshipCascade:
 
         # Dave has: hosting→game_feb27, attending→game_feb27
         dave_hosting_before = [
-            r for r in active_relationships(snapshot, "hosting")
-            if r["from"] == "roster/player_dave"
+            r for r in active_relationships(snapshot, "hosting") if r["from"] == "roster/player_dave"
         ]
         dave_attending_before = [
-            r for r in active_relationships(snapshot, "attending")
-            if r["from"] == "roster/player_dave"
+            r for r in active_relationships(snapshot, "attending") if r["from"] == "roster/player_dave"
         ]
         assert len(dave_hosting_before) == 1
         assert len(dave_attending_before) == 1
@@ -526,12 +575,10 @@ class TestEntityRemoveRelationshipCascade:
 
         # Dave's relationships excluded
         dave_hosting_after = [
-            r for r in active_relationships(result.snapshot, "hosting")
-            if r["from"] == "roster/player_dave"
+            r for r in active_relationships(result.snapshot, "hosting") if r["from"] == "roster/player_dave"
         ]
         dave_attending_after = [
-            r for r in active_relationships(result.snapshot, "attending")
-            if r["from"] == "roster/player_dave"
+            r for r in active_relationships(result.snapshot, "attending") if r["from"] == "roster/player_dave"
         ]
         assert len(dave_hosting_after) == 0
         assert len(dave_attending_after) == 0
@@ -541,10 +588,7 @@ class TestEntityRemoveRelationshipCascade:
         snapshot, seq = poker_league
 
         # game_feb27 is target of: hosting (Dave), attending (Mike, Dave, Linda, Steve)
-        feb27_as_target = [
-            r for r in active_relationships(snapshot)
-            if r["to"] == "schedule/game_feb27"
-        ]
+        feb27_as_target = [r for r in active_relationships(snapshot) if r["to"] == "schedule/game_feb27"]
         assert len(feb27_as_target) >= 5  # 1 hosting + 4 attending
 
         # Remove game_feb27
@@ -559,10 +603,7 @@ class TestEntityRemoveRelationshipCascade:
         assert result.applied
 
         # All relationships to game_feb27 excluded
-        feb27_after = [
-            r for r in active_relationships(result.snapshot)
-            if r["to"] == "schedule/game_feb27"
-        ]
+        feb27_after = [r for r in active_relationships(result.snapshot) if r["to"] == "schedule/game_feb27"]
         assert len(feb27_after) == 0
 
     def test_other_entity_relationships_unaffected(self, poker_league):
@@ -570,10 +611,7 @@ class TestEntityRemoveRelationshipCascade:
         snapshot, seq = poker_league
 
         # Linda hosts game_mar13
-        linda_hosting = [
-            r for r in active_relationships(snapshot, "hosting")
-            if r["from"] == "roster/player_linda"
-        ]
+        linda_hosting = [r for r in active_relationships(snapshot, "hosting") if r["from"] == "roster/player_linda"]
         assert len(linda_hosting) == 1
 
         # Remove Dave — shouldn't affect Linda's hosting
@@ -587,8 +625,7 @@ class TestEntityRemoveRelationshipCascade:
         )
 
         linda_hosting_after = [
-            r for r in active_relationships(result.snapshot, "hosting")
-            if r["from"] == "roster/player_linda"
+            r for r in active_relationships(result.snapshot, "hosting") if r["from"] == "roster/player_linda"
         ]
         assert len(linda_hosting_after) == 1
         assert linda_hosting_after[0]["to"] == "schedule/game_mar13"
@@ -641,41 +678,59 @@ class TestBlockRemoveChildCascade:
             assert result.applied, f"Event {seq} ({event_type}) rejected: {result.error}"
             snapshot = result.snapshot
 
-        apply("block.set", {
-            "id": "block_columns",
-            "type": "column_list",
-            "parent": "block_root",
-        })
-        apply("block.set", {
-            "id": "block_col_left",
-            "type": "column",
-            "parent": "block_columns",
-            "props": {"width": "60%"},
-        })
-        apply("block.set", {
-            "id": "block_col_right",
-            "type": "column",
-            "parent": "block_columns",
-            "props": {"width": "40%"},
-        })
-        apply("block.set", {
-            "id": "block_heading",
-            "type": "heading",
-            "parent": "block_col_left",
-            "props": {"level": 2, "content": "Players"},
-        })
-        apply("block.set", {
-            "id": "block_text",
-            "type": "text",
-            "parent": "block_col_left",
-            "props": {"content": "Current active roster."},
-        })
-        apply("block.set", {
-            "id": "block_metric",
-            "type": "metric",
-            "parent": "block_col_right",
-            "props": {"label": "Total", "value": "8"},
-        })
+        apply(
+            "block.set",
+            {
+                "id": "block_columns",
+                "type": "column_list",
+                "parent": "block_root",
+            },
+        )
+        apply(
+            "block.set",
+            {
+                "id": "block_col_left",
+                "type": "column",
+                "parent": "block_columns",
+                "props": {"width": "60%"},
+            },
+        )
+        apply(
+            "block.set",
+            {
+                "id": "block_col_right",
+                "type": "column",
+                "parent": "block_columns",
+                "props": {"width": "40%"},
+            },
+        )
+        apply(
+            "block.set",
+            {
+                "id": "block_heading",
+                "type": "heading",
+                "parent": "block_col_left",
+                "props": {"level": 2, "content": "Players"},
+            },
+        )
+        apply(
+            "block.set",
+            {
+                "id": "block_text",
+                "type": "text",
+                "parent": "block_col_left",
+                "props": {"content": "Current active roster."},
+            },
+        )
+        apply(
+            "block.set",
+            {
+                "id": "block_metric",
+                "type": "metric",
+                "parent": "block_col_right",
+                "props": {"label": "Total", "value": "8"},
+            },
+        )
 
         return snapshot, seq
 
@@ -725,8 +780,14 @@ class TestBlockRemoveChildCascade:
         assert result.applied
 
         # Everything under block_columns is gone
-        for block_id in ["block_columns", "block_col_left", "block_col_right",
-                         "block_heading", "block_text", "block_metric"]:
+        for block_id in [
+            "block_columns",
+            "block_col_left",
+            "block_col_right",
+            "block_heading",
+            "block_text",
+            "block_metric",
+        ]:
             assert block_id not in result.snapshot["blocks"], f"{block_id} should be removed"
 
         # Root still exists with block_columns removed from children
@@ -1018,20 +1079,29 @@ class TestEmptyCollectionCascade:
             assert result.applied
             snapshot = result.snapshot
 
-        apply("collection.create", {
-            "id": "items",
-            "schema": {"name": "string"},
-        })
-        apply("entity.create", {
-            "collection": "items",
-            "id": "item_a",
-            "fields": {"name": "A"},
-        })
-        apply("entity.create", {
-            "collection": "items",
-            "id": "item_b",
-            "fields": {"name": "B"},
-        })
+        apply(
+            "collection.create",
+            {
+                "id": "items",
+                "schema": {"name": "string"},
+            },
+        )
+        apply(
+            "entity.create",
+            {
+                "collection": "items",
+                "id": "item_a",
+                "fields": {"name": "A"},
+            },
+        )
+        apply(
+            "entity.create",
+            {
+                "collection": "items",
+                "id": "item_b",
+                "fields": {"name": "B"},
+            },
+        )
 
         # Remove — no views or blocks to cascade to
         result = reduce(

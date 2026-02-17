@@ -27,6 +27,7 @@ from engine.kernel.types import (
 # Public API
 # ---------------------------------------------------------------------------
 
+
 def validate_primitive(type: str, payload: dict[str, Any]) -> list[str]:
     """
     Validate a primitive's type and payload structure.
@@ -65,6 +66,7 @@ def validate_primitive(type: str, payload: dict[str, Any]) -> list[str]:
 # ---------------------------------------------------------------------------
 # Per-primitive validators
 # ---------------------------------------------------------------------------
+
 
 def _validate_entity_create(p: dict) -> list[str]:
     errors: list[str] = []

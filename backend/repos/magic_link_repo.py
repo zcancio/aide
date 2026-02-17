@@ -38,7 +38,7 @@ class MagicLinkRepo:
             MagicLink model with token and expiry
         """
         token = secrets.token_hex(32)  # 64 character hex string
-        expires_at = datetime.now(UTC) + timedelta(minutes=config.MAGIC_LINK_EXPIRY_MINUTES)
+        expires_at = datetime.now(UTC) + timedelta(minutes=config.settings.MAGIC_LINK_EXPIRY_MINUTES)
 
         async with system_conn() as conn:
             row = await conn.fetchrow(

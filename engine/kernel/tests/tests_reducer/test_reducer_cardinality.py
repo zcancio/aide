@@ -113,20 +113,12 @@ def _active_rels(snapshot, rel_type=None):
 
 def _rels_from(snapshot, entity_ref, rel_type):
     """Get relationships from a specific entity of a specific type."""
-    return [
-        r
-        for r in snapshot["relationships"]
-        if r["from"] == entity_ref and r["type"] == rel_type
-    ]
+    return [r for r in snapshot["relationships"] if r["from"] == entity_ref and r["type"] == rel_type]
 
 
 def _rels_to(snapshot, entity_ref, rel_type):
     """Get relationships pointing to a specific entity of a specific type."""
-    return [
-        r
-        for r in snapshot["relationships"]
-        if r["to"] == entity_ref and r["type"] == rel_type
-    ]
+    return [r for r in snapshot["relationships"] if r["to"] == entity_ref and r["type"] == rel_type]
 
 
 # ============================================================================
@@ -204,10 +196,7 @@ class TestManyToOne:
         assert len(rels) == 1
         assert rels[0]["to"] == "tables/table_1"  # New assignment
         # Old table_3 link is gone
-        assert not any(
-            r["to"] == "tables/table_3"
-            for r in _active_rels(result.snapshot, "seated_at")
-        )
+        assert not any(r["to"] == "tables/table_3" for r in _active_rels(result.snapshot, "seated_at"))
 
     def test_multiple_guests_at_same_table(self, seating_state):
         """many_to_one allows multiple sources pointing to the same target."""
@@ -425,10 +414,7 @@ class TestOneToOne:
         assert rels[0]["from"] == "guests/guest_alice"
         assert rels[0]["to"] == "guests/guest_carol"
         # Bob is unlinked
-        assert not any(
-            r["from"] == "guests/guest_bob" or r["to"] == "guests/guest_bob"
-            for r in rels
-        )
+        assert not any(r["from"] == "guests/guest_bob" or r["to"] == "guests/guest_bob" for r in rels)
 
     def test_repairing_target_removes_old_link(self, seating_state):
         """A->B exists. Set C->B. A->B is removed (B can only have one partner)."""
@@ -470,10 +456,7 @@ class TestOneToOne:
         assert rels[0]["from"] == "guests/guest_carol"
         assert rels[0]["to"] == "guests/guest_bob"
         # Alice is fully unlinked
-        assert not any(
-            r["from"] == "guests/guest_alice" or r["to"] == "guests/guest_alice"
-            for r in rels
-        )
+        assert not any(r["from"] == "guests/guest_alice" or r["to"] == "guests/guest_alice" for r in rels)
 
     def test_double_displacement(self, seating_state):
         """
@@ -773,10 +756,7 @@ class TestRelationshipTypeRegistration:
 
         assert result.applied
         # Still many_to_one
-        assert (
-            result.snapshot["relationship_types"]["seated_at"]["cardinality"]
-            == "many_to_one"
-        )
+        assert result.snapshot["relationship_types"]["seated_at"]["cardinality"] == "many_to_one"
 
     def test_default_cardinality_is_many_to_one(self, seating_state):
         """If no cardinality is provided, default to many_to_one."""
@@ -797,10 +777,7 @@ class TestRelationshipTypeRegistration:
         )
 
         assert result.applied
-        assert (
-            result.snapshot["relationship_types"]["assigned_to"]["cardinality"]
-            == "many_to_one"
-        )
+        assert result.snapshot["relationship_types"]["assigned_to"]["cardinality"] == "many_to_one"
 
     def test_stored_cardinality_enforced_on_subsequent_sets(self, seating_state):
         """

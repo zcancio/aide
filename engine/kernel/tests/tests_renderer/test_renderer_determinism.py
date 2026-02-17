@@ -27,7 +27,6 @@ Reference: aide_renderer_spec.md (Contract, CSS Generation, Testing Strategy)
            aide_architecture.md (Renderer description)
 """
 
-
 from engine.kernel.reducer import empty_state
 from engine.kernel.renderer import render
 from engine.kernel.types import Blueprint, Event
@@ -150,9 +149,15 @@ def grocery_list_snapshot():
     }
 
     snapshot["blocks"] = {
-        "block_root": {"type": "root", "children": [
-            "block_title", "block_intro", "block_budget", "block_groceries",
-        ]},
+        "block_root": {
+            "type": "root",
+            "children": [
+                "block_title",
+                "block_intro",
+                "block_budget",
+                "block_groceries",
+            ],
+        },
         "block_title": {
             "type": "heading",
             "parent": "block_root",
@@ -291,11 +296,19 @@ def poker_league_snapshot():
     }
 
     snapshot["blocks"] = {
-        "block_root": {"type": "root", "children": [
-            "block_title", "block_intro", "block_metric",
-            "block_divider", "block_roster_h", "block_roster",
-            "block_schedule_h", "block_schedule",
-        ]},
+        "block_root": {
+            "type": "root",
+            "children": [
+                "block_title",
+                "block_intro",
+                "block_metric",
+                "block_divider",
+                "block_roster_h",
+                "block_roster",
+                "block_schedule_h",
+                "block_schedule",
+            ],
+        },
         "block_title": {
             "type": "heading",
             "parent": "block_root",
@@ -433,11 +446,11 @@ class TestCSSGenerationDeterminism:
         bp = make_blueprint()
 
         first_html = render(snapshot, bp)
-        first_css = re.search(r'<style>(.*?)</style>', first_html, re.DOTALL).group(1)
+        first_css = re.search(r"<style>(.*?)</style>", first_html, re.DOTALL).group(1)
 
         for _ in range(49):
             html = render(snapshot, bp)
-            css = re.search(r'<style>(.*?)</style>', html, re.DOTALL).group(1)
+            css = re.search(r"<style>(.*?)</style>", html, re.DOTALL).group(1)
             assert css == first_css
 
 
@@ -504,20 +517,30 @@ class TestEntityOrderDeterminism:
 
         first_html = render(snapshot, bp)
         # Extract the order of entity names in the output
-        first_order = _extract_entity_order(first_html, [
-            "Whole Milk", "Eggs (dozen)", "Sourdough Bread",
-            "Chicken Thighs", "Baby Spinach",
-        ])
+        first_order = _extract_entity_order(
+            first_html,
+            [
+                "Whole Milk",
+                "Eggs (dozen)",
+                "Sourdough Bread",
+                "Chicken Thighs",
+                "Baby Spinach",
+            ],
+        )
 
         for _ in range(49):
             html = render(snapshot, bp)
-            order = _extract_entity_order(html, [
-                "Whole Milk", "Eggs (dozen)", "Sourdough Bread",
-                "Chicken Thighs", "Baby Spinach",
-            ])
-            assert order == first_order, (
-                f"Entity order changed. First: {first_order}, Now: {order}"
+            order = _extract_entity_order(
+                html,
+                [
+                    "Whole Milk",
+                    "Eggs (dozen)",
+                    "Sourdough Bread",
+                    "Chicken Thighs",
+                    "Baby Spinach",
+                ],
             )
+            assert order == first_order, f"Entity order changed. First: {first_order}, Now: {order}"
 
 
 class TestBlockOrderDeterminism:
@@ -529,8 +552,12 @@ class TestBlockOrderDeterminism:
         bp = make_blueprint()
 
         markers = [
-            "Poker League", "Biweekly Thursday", "Next game",
-            "aide-divider", "Roster", "Schedule",
+            "Poker League",
+            "Biweekly Thursday",
+            "Next game",
+            "aide-divider",
+            "Roster",
+            "Schedule",
         ]
 
         first_html = render(snapshot, bp)
@@ -561,9 +588,7 @@ class TestStyleTokenDeterminism:
             for override in overrides:
                 pos_first = first_html.find(override)
                 pos_now = html.find(override)
-                assert pos_first == pos_now, (
-                    f"Override {override!r} moved from position {pos_first} to {pos_now}"
-                )
+                assert pos_first == pos_now, f"Override {override!r} moved from position {pos_first} to {pos_now}"
 
 
 # ============================================================================
@@ -621,10 +646,7 @@ def _find_diff(a, b, context=200):
     for i, (ca, cb) in enumerate(zip(a, b, strict=False)):
         if ca != cb:
             start = max(0, i - 50)
-            return (
-                f"Position {i}: ...{a[start:i+context]!r}... vs "
-                f"...{b[start:i+context]!r}..."
-            )
+            return f"Position {i}: ...{a[start : i + context]!r}... vs ...{b[start : i + context]!r}..."
     if len(a) != len(b):
         return f"Lengths differ: {len(a)} vs {len(b)}"
     return "Strings are identical"
