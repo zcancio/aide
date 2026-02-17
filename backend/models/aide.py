@@ -9,6 +9,40 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 
+class SendMessageRequest(BaseModel):
+    """What the client sends to POST /api/message."""
+
+    model_config = {"extra": "forbid"}
+
+    aide_id: UUID | None = None
+    message: str = Field(min_length=1, max_length=10000)
+    image: str | None = None  # base64-encoded image data
+
+
+class SendMessageResponse(BaseModel):
+    """What the message endpoint returns."""
+
+    response_text: str
+    page_url: str
+    state: dict[str, Any]
+    aide_id: UUID
+
+
+class PublishRequest(BaseModel):
+    """What the client sends to publish an aide."""
+
+    model_config = {"extra": "forbid"}
+
+    slug: str = Field(min_length=1, max_length=100, pattern=r"^[a-z0-9-]+$")
+
+
+class PublishResponse(BaseModel):
+    """What the publish endpoint returns."""
+
+    slug: str
+    url: str
+
+
 class Aide(BaseModel):
     """Core aide model. Represents a row in the aides table."""
 

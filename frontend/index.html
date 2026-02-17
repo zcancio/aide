@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AIde</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f0f;
+      --surface: #1a1a1a;
+      --border: #2a2a2a;
+      --text: #e8e8e8;
+      --text-muted: #888;
+      --accent: #fff;
+      --overlay-bg: rgba(10, 10, 10, 0.85);
+      --radius: 12px;
+      --input-height: 52px;
+      --chat-max-width: 640px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      overflow: hidden;
+    }
+
+    /* ── DASHBOARD ─────────────────────────────────── */
+    #dashboard {
+      display: none;
+      flex-direction: column;
+      height: 100vh;
+      overflow-y: auto;
+      padding: 40px 24px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    #dashboard.active { display: flex; }
+
+    .dashboard-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+    }
+
+    .dashboard-header h1 {
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: background 0.15s, opacity 0.15s;
+    }
+
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: #000; }
+    .btn-primary:hover:not(:disabled) { background: #ddd; }
+    .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+    .btn-ghost:hover { background: var(--surface); color: var(--text); }
+    .btn-danger { background: transparent; color: #e55; border: 1px solid #e55; }
+    .btn-danger:hover { background: rgba(238,85,85,0.1); }
+
+    .aide-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .aide-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      position: relative;
+    }
+
+    .aide-card:hover { border-color: #444; background: #202020; }
+
+    .aide-card-title {
+      font-size: 15px;
+      font-weight: 500;
+      margin-bottom: 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding-right: 60px;
+    }
+
+    .aide-card-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .status-draft { background: #2a2a2a; color: #888; }
+    .status-published { background: rgba(80, 200, 120, 0.15); color: #5c8; }
+    .status-archived { background: rgba(255, 100, 100, 0.1); color: #e66; }
+
+    .aide-card-actions {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      display: flex;
+      gap: 6px;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .aide-card:hover .aide-card-actions { opacity: 1; }
+
+    .icon-btn {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      background: var(--border);
+      color: var(--text-muted);
+      font-size: 13px;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .icon-btn:hover { background: #333; color: var(--text); }
+    .icon-btn.danger:hover { background: rgba(238,85,85,0.2); color: #e55; }
+
+    .empty-state {
+      text-align: center;
+      padding: 80px 0;
+      color: var(--text-muted);
+    }
+
+    .empty-state p { margin-bottom: 20px; font-size: 15px; }
+
+    /* ── EDITOR (preview + chat) ────────────────────── */
+    #editor {
+      display: none;
+      height: 100vh;
+      position: relative;
+    }
+
+    #editor.active { display: block; }
+
+    /* Full-viewport preview iframe */
+    #preview-frame {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #fff;
+    }
+
+    /* Floating chat overlay */
+    #chat-overlay {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(var(--chat-max-width), calc(100vw - 32px));
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    /* Conversation history (expandable) */
+    #history-panel {
+      background: var(--overlay-bg);
+      backdrop-filter: blur(20px) saturate(1.5);
+      -webkit-backdrop-filter: blur(20px) saturate(1.5);
+      border: 1px solid var(--border);
+      border-radius: var(--radius) var(--radius) 0 0;
+      border-bottom: none;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.25s ease, padding 0.25s ease;
+    }
+
+    #history-panel.open {
+      max-height: 320px;
+      overflow-y: auto;
+      padding: 12px 16px;
+    }
+
+    .history-message {
+      margin-bottom: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .history-message:last-child { margin-bottom: 0; }
+
+    .history-role {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+    }
+
+    .history-content {
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    /* Input bar */
+    #input-bar {
+      background: var(--overlay-bg);
+      backdrop-filter: blur(20px) saturate(1.5);
+      -webkit-backdrop-filter: blur(20px) saturate(1.5);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #history-panel.open + #input-bar {
+      border-radius: 0 0 var(--radius) var(--radius);
+    }
+
+    /* Image preview strip */
+    #image-preview-strip {
+      display: none;
+      padding: 8px 12px 0;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    #image-preview-strip.has-image { display: flex; }
+
+    .image-thumb {
+      position: relative;
+      width: 56px;
+      height: 56px;
+    }
+
+    .image-thumb img {
+      width: 56px;
+      height: 56px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    .image-thumb-remove {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #333;
+      border: 1px solid var(--border);
+      color: #fff;
+      font-size: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+
+    /* Row: text + actions */
+    .input-row {
+      display: flex;
+      align-items: flex-end;
+      padding: 8px 10px;
+      gap: 8px;
+      min-height: var(--input-height);
+    }
+
+    #message-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+      resize: none;
+      max-height: 120px;
+      overflow-y: auto;
+      line-height: 1.5;
+      padding: 6px 0;
+      scrollbar-width: thin;
+    }
+
+    #message-input::placeholder { color: var(--text-muted); }
+
+    .input-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .action-btn {
+      width: 34px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 16px;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .action-btn:hover { background: var(--border); color: var(--text); }
+    .action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    #send-btn {
+      background: var(--accent);
+      color: #000;
+      border-radius: 8px;
+    }
+
+    #send-btn:hover:not(:disabled) { background: #ddd; }
+
+    /* Thinking indicator */
+    #thinking-indicator {
+      display: none;
+      font-size: 12px;
+      color: var(--text-muted);
+      padding: 6px 12px;
+      text-align: center;
+    }
+
+    #thinking-indicator.visible { display: block; }
+
+    /* Back button (editor toolbar) */
+    #editor-back {
+      position: fixed;
+      top: 14px;
+      left: 14px;
+      z-index: 200;
+      background: var(--overlay-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 14px;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      display: none;
+      gap: 6px;
+      align-items: center;
+      transition: background 0.15s;
+    }
+
+    #editor-back.visible { display: flex; }
+    #editor-back:hover { background: rgba(30, 30, 30, 0.95); }
+
+    /* Publish button (editor toolbar) */
+    #publish-btn-floating {
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      z-index: 200;
+      background: var(--overlay-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 14px;
+      color: var(--text);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      display: none;
+      gap: 6px;
+      align-items: center;
+      transition: background 0.15s;
+    }
+
+    #publish-btn-floating.visible { display: flex; }
+    #publish-btn-floating:hover { background: rgba(30, 30, 30, 0.95); }
+
+    /* ── AUTH ───────────────────────────────────────── */
+    #auth-screen {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    #auth-screen.active { display: flex; }
+
+    .auth-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 40px;
+      width: 340px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .auth-title {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+    }
+
+    .auth-subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: -12px;
+    }
+
+    .auth-form { display: flex; flex-direction: column; gap: 12px; }
+
+    .form-input {
+      background: #111;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      width: 100%;
+      transition: border-color 0.15s;
+    }
+
+    .form-input:focus { border-color: #555; }
+    .form-input::placeholder { color: var(--text-muted); }
+
+    .auth-message {
+      font-size: 13px;
+      color: var(--text-muted);
+      text-align: center;
+      min-height: 20px;
+    }
+
+    .auth-message.error { color: #e66; }
+    .auth-message.success { color: #5c8; }
+
+    /* ── MODAL ──────────────────────────────────────── */
+    #modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+      z-index: 300;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #modal-overlay.active { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px;
+      width: 360px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .modal-title { font-size: 16px; font-weight: 600; }
+    .modal-desc { font-size: 13px; color: var(--text-muted); }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
+
+    /* ── DRAG OVERLAY ───────────────────────────────── */
+    #drag-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(255,255,255,0.04);
+      border: 2px dashed #555;
+      border-radius: 12px;
+      z-index: 500;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      color: #888;
+      pointer-events: none;
+    }
+
+    #drag-overlay.active { display: flex; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+  </style>
+</head>
+<body>
+
+<!-- Auth screen -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div>
+      <div class="auth-title">AIde</div>
+      <div class="auth-subtitle">Sign in to continue.</div>
+    </div>
+    <div id="auth-send-form" class="auth-form">
+      <input id="email-input" class="form-input" type="email" placeholder="you@example.com" autocomplete="email" />
+      <button id="send-link-btn" class="btn btn-primary" style="width:100%;justify-content:center;">Send magic link</button>
+      <p id="auth-msg" class="auth-message"></p>
+    </div>
+    <div id="auth-sent-msg" style="display:none;text-align:center;">
+      <p style="color:var(--text-muted);font-size:13px;">Check your email — link sent.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Dashboard -->
+<div id="dashboard">
+  <div class="dashboard-header">
+    <h1>AIde</h1>
+    <button id="new-aide-btn" class="btn btn-primary">+ New AIde</button>
+  </div>
+  <div id="aide-grid" class="aide-grid"></div>
+  <div id="empty-state" class="empty-state" style="display:none;">
+    <p>Nothing yet.</p>
+    <button class="btn btn-ghost" onclick="startNewAide()">Create your first AIde</button>
+  </div>
+</div>
+
+<!-- Editor -->
+<button id="editor-back">← Dashboard</button>
+<button id="publish-btn-floating">Publish</button>
+
+<div id="editor">
+  <iframe id="preview-frame" sandbox="allow-scripts allow-same-origin"></iframe>
+
+  <div id="chat-overlay">
+    <div id="history-panel"></div>
+    <div id="input-bar">
+      <div id="image-preview-strip"></div>
+      <div id="thinking-indicator">...</div>
+      <div class="input-row">
+        <textarea
+          id="message-input"
+          rows="1"
+          placeholder="Tell AIde what you're running…"
+        ></textarea>
+        <div class="input-actions">
+          <button id="image-btn" class="action-btn" title="Attach image">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+              <polyline points="21 15 16 10 5 21"/>
+            </svg>
+          </button>
+          <input id="image-file-input" type="file" accept="image/jpeg,image/png,image/webp,image/heic" style="display:none;" />
+          <button id="send-btn" class="action-btn" title="Send">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M2 21L23 12 2 3v7l15 2-15 2z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Drag overlay -->
+<div id="drag-overlay">Drop image here</div>
+
+<!-- Modal -->
+<div id="modal-overlay">
+  <div class="modal">
+    <div class="modal-title" id="modal-title"></div>
+    <div class="modal-desc" id="modal-desc"></div>
+    <div id="modal-body"></div>
+    <div class="modal-actions" id="modal-actions"></div>
+  </div>
+</div>
+
+<script>
+  // ── State ──────────────────────────────────────────
+  let currentUser = null;
+  let currentAideId = null;
+  let pendingImage = null; // { dataUrl, base64 }
+  let conversationHistory = []; // {role, content}
+  let isSending = false;
+
+  // ── Screens ────────────────────────────────────────
+  function showScreen(name) {
+    document.getElementById('auth-screen').classList.toggle('active', name === 'auth');
+    document.getElementById('dashboard').classList.toggle('active', name === 'dashboard');
+    document.getElementById('editor').classList.toggle('active', name === 'editor');
+    document.getElementById('editor-back').classList.toggle('visible', name === 'editor');
+    document.getElementById('publish-btn-floating').classList.toggle('visible', name === 'editor');
+  }
+
+  // ── Auth ───────────────────────────────────────────
+  async function checkAuth() {
+    try {
+      const res = await fetch('/auth/me', { credentials: 'include' });
+      if (res.ok) {
+        currentUser = await res.json();
+        loadDashboard();
+      } else {
+        showScreen('auth');
+      }
+    } catch {
+      showScreen('auth');
+    }
+  }
+
+  document.getElementById('send-link-btn').addEventListener('click', async () => {
+    const email = document.getElementById('email-input').value.trim();
+    const msg = document.getElementById('auth-msg');
+    if (!email) { msg.textContent = 'Enter your email.'; msg.className = 'auth-message error'; return; }
+
+    const btn = document.getElementById('send-link-btn');
+    btn.disabled = true;
+    msg.textContent = '';
+
+    try {
+      const res = await fetch('/auth/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (res.ok) {
+        document.getElementById('auth-send-form').style.display = 'none';
+        document.getElementById('auth-sent-msg').style.display = 'block';
+      } else {
+        const data = await res.json();
+        msg.textContent = data.detail || 'Something went wrong.';
+        msg.className = 'auth-message error';
+        btn.disabled = false;
+      }
+    } catch {
+      msg.textContent = 'Network error.';
+      msg.className = 'auth-message error';
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById('email-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('send-link-btn').click();
+  });
+
+  // ── Dashboard ──────────────────────────────────────
+  async function loadDashboard() {
+    showScreen('dashboard');
+    const grid = document.getElementById('aide-grid');
+    const empty = document.getElementById('empty-state');
+    grid.innerHTML = '';
+
+    try {
+      const res = await fetch('/api/aides', { credentials: 'include' });
+      if (!res.ok) { showScreen('auth'); return; }
+      const aides = await res.json();
+
+      if (aides.length === 0) {
+        empty.style.display = 'block';
+        return;
+      }
+
+      empty.style.display = 'none';
+      aides.forEach(aide => {
+        const card = createAideCard(aide);
+        grid.appendChild(card);
+      });
+    } catch {
+      empty.style.display = 'block';
+    }
+  }
+
+  function createAideCard(aide) {
+    const card = document.createElement('div');
+    card.className = 'aide-card';
+
+    const updated = new Date(aide.updated_at).toLocaleDateString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric'
+    });
+
+    card.innerHTML = `
+      <div class="aide-card-title">${escapeHtml(aide.title)}</div>
+      <div class="aide-card-meta">
+        <span class="status-badge status-${aide.status}">${aide.status}</span>
+        <span>${updated}</span>
+      </div>
+      <div class="aide-card-actions">
+        <button class="icon-btn danger" title="Archive" data-id="${aide.id}">×</button>
+      </div>
+    `;
+
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.aide-card-actions')) return;
+      openEditor(aide.id);
+    });
+
+    card.querySelector('.icon-btn.danger').addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const confirmed = await confirmModal('Archive aide?', `"${aide.title}" will be archived.`, 'Archive');
+      if (!confirmed) return;
+      await archiveAide(aide.id);
+    });
+
+    return card;
+  }
+
+  async function archiveAide(aideId) {
+    await fetch(`/api/aides/${aideId}/archive`, { method: 'POST', credentials: 'include' });
+    loadDashboard();
+  }
+
+  function startNewAide() {
+    openEditor(null);
+  }
+
+  document.getElementById('new-aide-btn').addEventListener('click', startNewAide);
+
+  // ── Editor ─────────────────────────────────────────
+  async function openEditor(aideId) {
+    currentAideId = aideId;
+    conversationHistory = [];
+    pendingImage = null;
+
+    renderHistory();
+    clearImagePreview();
+    document.getElementById('message-input').value = '';
+
+    const frame = document.getElementById('preview-frame');
+    frame.srcdoc = '<html><body style="background:#f9f9f9;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#aaa;font-size:14px;">Send a message to get started.</body></html>';
+
+    showScreen('editor');
+    document.getElementById('message-input').focus();
+  }
+
+  document.getElementById('editor-back').addEventListener('click', () => {
+    currentAideId = null;
+    loadDashboard();
+  });
+
+  // ── Publish ────────────────────────────────────────
+  document.getElementById('publish-btn-floating').addEventListener('click', async () => {
+    if (!currentAideId) return;
+
+    const slug = await promptModal('Publish', 'Enter a URL slug for your page:', 'my-page');
+    if (!slug) return;
+
+    try {
+      const res = await fetch(`/api/aides/${currentAideId}/publish`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        await alertModal('Published', `Your page is live at: ${data.url}`);
+      } else {
+        const data = await res.json();
+        await alertModal('Error', data.detail || 'Could not publish.');
+      }
+    } catch {
+      await alertModal('Error', 'Network error.');
+    }
+  });
+
+  // ── Sending messages ───────────────────────────────
+  async function sendMessage() {
+    if (isSending) return;
+    const input = document.getElementById('message-input');
+    const text = input.value.trim();
+    if (!text && !pendingImage) return;
+
+    isSending = true;
+    setSendingState(true);
+
+    const userContent = text || '(image)';
+    conversationHistory.push({ role: 'user', content: userContent });
+    renderHistory();
+
+    input.value = '';
+    resizeTextarea(input);
+
+    const body = {
+      aide_id: currentAideId || undefined,
+      message: text || ' ',
+      image: pendingImage ? pendingImage.base64 : undefined,
+    };
+
+    clearImagePreview();
+
+    try {
+      const res = await fetch('/api/message', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (res.status === 401) { showScreen('auth'); return; }
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        conversationHistory.push({ role: 'assistant', content: data.detail || 'Error.' });
+        renderHistory();
+        return;
+      }
+
+      // Update state
+      currentAideId = data.aide_id;
+
+      if (data.response_text) {
+        conversationHistory.push({ role: 'assistant', content: data.response_text });
+        renderHistory();
+      }
+
+      // Refresh preview: use page_url if accessible, otherwise fetch HTML
+      refreshPreview(data.page_url);
+
+    } catch (e) {
+      conversationHistory.push({ role: 'assistant', content: 'Network error.' });
+      renderHistory();
+    } finally {
+      isSending = false;
+      setSendingState(false);
+    }
+  }
+
+  async function refreshPreview(pageUrl) {
+    // Try to load the URL directly in the iframe
+    // If R2 is not configured, the iframe will show an error, which is acceptable
+    const frame = document.getElementById('preview-frame');
+    if (pageUrl && pageUrl.startsWith('http')) {
+      frame.src = pageUrl;
+    }
+  }
+
+  function setSendingState(sending) {
+    document.getElementById('send-btn').disabled = sending;
+    document.getElementById('message-input').disabled = sending;
+    const indicator = document.getElementById('thinking-indicator');
+    indicator.classList.toggle('visible', sending);
+  }
+
+  // ── History ────────────────────────────────────────
+  function renderHistory() {
+    const panel = document.getElementById('history-panel');
+    if (conversationHistory.length === 0) {
+      panel.classList.remove('open');
+      panel.innerHTML = '';
+      return;
+    }
+
+    panel.innerHTML = conversationHistory.map(m => `
+      <div class="history-message">
+        <div class="history-role">${m.role}</div>
+        <div class="history-content">${escapeHtml(m.content)}</div>
+      </div>
+    `).join('');
+
+    panel.classList.add('open');
+    panel.scrollTop = panel.scrollHeight;
+  }
+
+  // ── Image handling ─────────────────────────────────
+  document.getElementById('image-btn').addEventListener('click', () => {
+    document.getElementById('image-file-input').click();
+  });
+
+  document.getElementById('image-file-input').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (file) handleImageFile(file);
+    e.target.value = '';
+  });
+
+  function handleImageFile(file) {
+    if (file.size > 10 * 1024 * 1024) { alert('Image must be under 10 MB.'); return; }
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const dataUrl = ev.target.result;
+      const base64 = dataUrl.split(',')[1];
+      pendingImage = { dataUrl, base64 };
+      showImagePreview(dataUrl);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function showImagePreview(dataUrl) {
+    const strip = document.getElementById('image-preview-strip');
+    strip.innerHTML = `
+      <div class="image-thumb">
+        <img src="${dataUrl}" alt="attachment" />
+        <button class="image-thumb-remove" id="remove-image-btn">×</button>
+      </div>
+    `;
+    strip.classList.add('has-image');
+    document.getElementById('remove-image-btn').addEventListener('click', clearImagePreview);
+  }
+
+  function clearImagePreview() {
+    pendingImage = null;
+    const strip = document.getElementById('image-preview-strip');
+    strip.innerHTML = '';
+    strip.classList.remove('has-image');
+  }
+
+  // Drag-and-drop
+  let dragCounter = 0;
+  document.addEventListener('dragenter', e => {
+    if (e.dataTransfer.types.includes('Files')) {
+      dragCounter++;
+      document.getElementById('drag-overlay').classList.add('active');
+    }
+  });
+  document.addEventListener('dragleave', () => {
+    dragCounter--;
+    if (dragCounter <= 0) {
+      dragCounter = 0;
+      document.getElementById('drag-overlay').classList.remove('active');
+    }
+  });
+  document.addEventListener('dragover', e => e.preventDefault());
+  document.addEventListener('drop', e => {
+    e.preventDefault();
+    dragCounter = 0;
+    document.getElementById('drag-overlay').classList.remove('active');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) handleImageFile(file);
+  });
+
+  // ── Input handlers ─────────────────────────────────
+  const messageInput = document.getElementById('message-input');
+
+  messageInput.addEventListener('input', () => resizeTextarea(messageInput));
+
+  messageInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  document.getElementById('send-btn').addEventListener('click', sendMessage);
+
+  function resizeTextarea(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  }
+
+  // ── Modals ─────────────────────────────────────────
+  function openModal({ title, desc, body = '', actions }) {
+    document.getElementById('modal-title').textContent = title;
+    document.getElementById('modal-desc').textContent = desc;
+    document.getElementById('modal-body').innerHTML = body;
+    document.getElementById('modal-actions').innerHTML = actions;
+    document.getElementById('modal-overlay').classList.add('active');
+  }
+
+  function closeModal() {
+    document.getElementById('modal-overlay').classList.remove('active');
+  }
+
+  function confirmModal(title, desc, confirmLabel = 'Confirm') {
+    return new Promise(resolve => {
+      openModal({
+        title, desc,
+        actions: `
+          <button class="btn btn-ghost" id="modal-cancel">Cancel</button>
+          <button class="btn btn-danger" id="modal-confirm">${escapeHtml(confirmLabel)}</button>
+        `,
+      });
+      document.getElementById('modal-cancel').onclick = () => { closeModal(); resolve(false); };
+      document.getElementById('modal-confirm').onclick = () => { closeModal(); resolve(true); };
+    });
+  }
+
+  function promptModal(title, desc, placeholder = '') {
+    return new Promise(resolve => {
+      openModal({
+        title, desc,
+        body: `<input id="modal-input" class="form-input" placeholder="${escapeHtml(placeholder)}" style="margin-top:4px;" />`,
+        actions: `
+          <button class="btn btn-ghost" id="modal-cancel">Cancel</button>
+          <button class="btn btn-primary" id="modal-confirm">OK</button>
+        `,
+      });
+      const inp = document.getElementById('modal-input');
+      inp.focus();
+      const submit = () => { const v = inp.value.trim(); closeModal(); resolve(v || null); };
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+      document.getElementById('modal-cancel').onclick = () => { closeModal(); resolve(null); };
+      document.getElementById('modal-confirm').onclick = submit;
+    });
+  }
+
+  function alertModal(title, desc) {
+    return new Promise(resolve => {
+      openModal({
+        title, desc,
+        actions: `<button class="btn btn-primary" id="modal-ok">OK</button>`,
+      });
+      document.getElementById('modal-ok').onclick = () => { closeModal(); resolve(); };
+    });
+  }
+
+  document.getElementById('modal-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal-overlay')) closeModal();
+  });
+
+  // ── Utils ──────────────────────────────────────────
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // Handle magic link token in URL
+  const urlParams = new URLSearchParams(location.search);
+  const token = urlParams.get('token');
+  if (token) {
+    fetch(`/auth/verify?token=${encodeURIComponent(token)}`, { credentials: 'include' })
+      .then(res => {
+        history.replaceState({}, '', '/');
+        if (res.ok) return res.json().then(user => { currentUser = user; loadDashboard(); });
+        showScreen('auth');
+      })
+      .catch(() => showScreen('auth'));
+  } else {
+    checkAuth();
+  }
+</script>
+</body>
+</html>
