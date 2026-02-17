@@ -411,24 +411,18 @@
       top: 14px;
       left: 14px;
       z-index: 200;
-      background: var(--overlay-bg);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
+      background: rgba(20, 20, 20, 0.9);
       border: none;
-      border-radius: 8px;
+      border-radius: var(--radius);
       width: 36px;
       height: 36px;
-      display: flex;
+      display: none;
       align-items: center;
       justify-content: center;
       padding: 0;
       color: var(--text);
       cursor: pointer;
       font-size: 16px;
-      font-weight: 500;
-      display: none;
-      gap: 6px;
-      align-items: center;
       transition: background 0.15s;
     }
 
@@ -441,18 +435,15 @@
       top: 14px;
       right: 14px;
       z-index: 200;
-      background: var(--overlay-bg);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
+      background: rgba(20, 20, 20, 0.9);
       border: none;
-      border-radius: 8px;
-      padding: 7px 14px;
+      border-radius: var(--radius);
+      padding: 8px 16px;
       color: var(--text);
       cursor: pointer;
       font-size: 13px;
       font-weight: 500;
       display: none;
-      gap: 6px;
       align-items: center;
       transition: background 0.15s;
     }
