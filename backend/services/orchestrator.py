@@ -89,7 +89,8 @@ class Orchestrator:
 
         # 3. Apply primitives through reducer
         events = self._wrap_primitives(primitives, str(user_id), source, message)
-        new_snapshot = snapshot
+        # Convert Snapshot to dict for reducer (which expects dict-style access)
+        new_snapshot = snapshot.to_dict()
 
         for event in events:
             result: ReduceResult = reduce(new_snapshot, event)
