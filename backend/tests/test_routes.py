@@ -105,6 +105,73 @@ class TestAideRoutes:
         assert res.status_code == 404
 
 
+# ── preview route ──────────────────────────────────────────────────────────
+
+
+class TestPreviewRoute:
+    """Tests for GET /api/aides/{id}/preview."""
+
+    async def test_preview_unauthenticated(self, async_client):
+        """GET /api/aides/{id}/preview without session → 401."""
+        res = await async_client.get(f"/api/aides/{uuid4()}/preview")
+        assert res.status_code == 401
+
+    async def test_preview_not_found(self, async_client, test_user_id):
+        """GET /api/aides/{nonexistent}/preview → 404."""
+        token = create_jwt(test_user_id)
+        res = await async_client.get(f"/api/aides/{uuid4()}/preview", cookies={"session": token})
+        assert res.status_code == 404
+
+    async def test_preview_returns_html(self, async_client, test_user_id):
+        """GET /api/aides/{id}/preview → 200 with HTML content."""
+        repo = AideRepo()
+        aide = await repo.create(test_user_id, CreateAideRequest(title="Preview Test"))
+        token = create_jwt(test_user_id)
+
+        with patch(
+            "backend.routes.aides.r2_service.get_html",
+            new_callable=AsyncMock,
+            return_value="<html><body>Preview content</body></html>",
+        ):
+            res = await async_client.get(
+                f"/api/aides/{aide.id}/preview",
+                cookies={"session": token},
+            )
+
+        assert res.status_code == 200
+        assert res.headers["content-type"].startswith("text/html")
+        assert "Preview content" in res.text
+
+    async def test_preview_empty_returns_placeholder(self, async_client, test_user_id):
+        """GET /api/aides/{id}/preview with no R2 content → placeholder HTML."""
+        repo = AideRepo()
+        aide = await repo.create(test_user_id, CreateAideRequest(title="Empty Preview"))
+        token = create_jwt(test_user_id)
+
+        with patch(
+            "backend.routes.aides.r2_service.get_html",
+            new_callable=AsyncMock,
+            return_value=None,
+        ):
+            res = await async_client.get(
+                f"/api/aides/{aide.id}/preview",
+                cookies={"session": token},
+            )
+
+        assert res.status_code == 200
+        assert res.headers["content-type"].startswith("text/html")
+        # Should return placeholder HTML
+        assert "<!DOCTYPE html>" in res.text
+
+    async def test_rls_cross_user_preview(self, async_client, test_user_id, second_user_id):
+        """User B cannot preview user A's aide."""
+        repo = AideRepo()
+        aide = await repo.create(test_user_id, CreateAideRequest(title="User A Preview"))
+        token_b = create_jwt(second_user_id)
+        res = await async_client.get(f"/api/aides/{aide.id}/preview", cookies={"session": token_b})
+        assert res.status_code == 404
+
+
 # ── message route ───────────────────────────────────────────────────────────
 
 
