@@ -72,7 +72,8 @@ class L2Compiler:
                 "error": f"L2 returned invalid JSON: {e}",
             }
 
-        print(f"L2 response: escalate={response_data.get('escalate')}, primitives={len(response_data.get('primitives', []))}")
+        primitives_count = len(response_data.get("primitives", []))
+        print(f"L2 response: escalate={response_data.get('escalate')}, primitives={primitives_count}")
 
         # Check if L2 is requesting escalation
         if response_data.get("escalate", False):

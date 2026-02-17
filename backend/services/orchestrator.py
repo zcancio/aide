@@ -5,7 +5,6 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from backend import config
 from backend.models.conversation import Message
 from backend.repos.aide_repo import AideRepo
 from backend.repos.conversation_repo import ConversationRepo
@@ -137,7 +136,7 @@ class Orchestrator:
         await self.aide_repo.update_state(user_id, aide_id, new_snapshot, updated_event_log, title=new_title)
 
         # 6. Upload HTML to R2
-        r2_key = await r2_service.upload_html(str(aide_id), html_content)
+        await r2_service.upload_html(str(aide_id), html_content)
 
         # 7. Save messages to conversation
         user_message = Message(

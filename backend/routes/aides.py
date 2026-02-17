@@ -101,10 +101,12 @@ async def get_aide_preview(
     html_content = await r2_service.get_html(str(aide_id))
     if not html_content:
         # Return placeholder if no HTML yet
-        html_content = """<!DOCTYPE html>
-<html><body style="background:#f9f9f9;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#aaa;font-size:14px;">
-Send a message to get started.
-</body></html>"""
+        html_content = (
+            '<!DOCTYPE html><html><body style="background:#f9f9f9;'
+            "display:flex;align-items:center;justify-content:center;"
+            'height:100vh;font-family:sans-serif;color:#aaa;font-size:14px;">'
+            "Send a message to get started.</body></html>"
+        )
 
     return HTMLResponse(content=html_content)
 
