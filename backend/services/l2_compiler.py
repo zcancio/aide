@@ -45,7 +45,7 @@ class L2Compiler:
         messages = [{"role": "user", "content": user_content}]
 
         result = await ai_provider.call_claude(
-            model="claude-3-5-haiku-20241022",
+            model="claude-haiku-4-20250514",
             system=self.system_prompt,
             messages=messages,
             max_tokens=4096,
