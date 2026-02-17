@@ -78,7 +78,7 @@ You synthesize:
 2. `entity.create` — "item_milk" with `{name: "Milk", checked: false, store: "Whole Foods"}`
 3. `entity.create` — "item_eggs" with `{name: "Eggs", checked: false, store: "Whole Foods"}`
 4. `entity.create` — "item_sourdough" with `{name: "Sourdough", checked: false, store: "Whole Foods"}`
-5. `meta.set_title` — "Grocery List"
+5. `meta.update` — "Grocery List"
 
 Response: "Milk, eggs, sourdough. Whole Foods."
 
@@ -199,7 +199,7 @@ You have access to these primitive types:
 **Block**: `block.add`, `block.update`, `block.delete`, `block.move`
 **View**: `view.set_sort`, `view.set_filter`, `view.set_group`, `view.clear_sort`, `view.clear_filter`, `view.clear_group`
 **Style**: `style.set_theme`, `style.set_accent`
-**Meta**: `meta.set_title`, `meta.set_description`
+**Meta**: `meta.update` (payload: `{title: "...", description: "..."}`)
 **Relationship**: `relationship.add`, `relationship.remove`
 
 See `primitive_schemas.md` for full payload specifications.
@@ -275,7 +275,7 @@ Output:
       }
     },
     {
-      "type": "meta.set_title",
+      "type": "meta.update",
       "payload": {
         "title": "Grocery List"
       }
@@ -373,7 +373,7 @@ Output:
       }
     },
     {
-      "type": "meta.set_title",
+      "type": "meta.update",
       "payload": {
         "title": "Poker League"
       }
