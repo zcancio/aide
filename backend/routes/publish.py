@@ -13,7 +13,7 @@ from backend.models.user import User
 from backend.repos.aide_repo import AideRepo
 from backend.services.r2 import r2_service
 from engine.kernel.renderer import render
-from engine.kernel.types import Blueprint, Snapshot
+from engine.kernel.types import Blueprint
 
 router = APIRouter(prefix="/api/aides", tags=["publish"])
 aide_repo = AideRepo()
@@ -36,9 +36,8 @@ async def publish_aide(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aide not found.")
 
     # Render current state to HTML
-    snapshot = Snapshot.from_dict(aide.state)
     blueprint = Blueprint(identity=aide.title)
-    html_content = render(snapshot, blueprint=blueprint, events=[])
+    html_content = render(aide.state, blueprint=blueprint, events=[])
 
     # Upload to public R2 bucket
     await r2_service.upload_published(req.slug, html_content)
