@@ -20,6 +20,7 @@ from backend.repos.magic_link_repo import MagicLinkRepo
 from backend.routes import aides as aide_routes
 from backend.routes import auth_routes
 from backend.routes import conversations as conversation_routes
+from backend.routes import flight_recorder as flight_recorder_routes
 from backend.routes import pages as pages_routes
 from backend.routes import publish as publish_routes
 from backend.services.flight_recorder_uploader import flight_recorder_uploader
@@ -108,6 +109,7 @@ app.include_router(aide_routes.router)
 app.include_router(conversation_routes.router)
 app.include_router(publish_routes.router)
 app.include_router(pages_routes.router)
+app.include_router(flight_recorder_routes.router)
 
 
 @app.get("/health")
@@ -126,3 +128,8 @@ if _FRONTEND.is_dir():
     async def serve_index():
         """Serve the editor SPA."""
         return FileResponse(str(_FRONTEND / "index.html"))
+
+    @app.get("/flight-recorder")
+    async def serve_flight_recorder():
+        """Serve the flight recorder replay page."""
+        return FileResponse(str(_FRONTEND / "flight-recorder.html"))

@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flight Recorder - AIde</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f0f17;
+      color: #e2e8f0;
+      overflow: hidden;
+    }
+    #root { height: 100vh; width: 100vw; }
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      font-size: 16px;
+      color: #64748b;
+    }
+    .error {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      gap: 16px;
+    }
+    .error h2 { color: #ef4444; }
+    .error a { color: #3b82f6; text-decoration: none; }
+    .error a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div id="root"><div class="loading">Loading flight recorder...</div></div>
+
+  <script type="text/babel">
+    const { useState, useRef, useEffect, useCallback } = React;
+
+    // Event type colors
+    const EVENT_COLORS = {
+      "meta.update": { bg: "#f0f4ff", border: "#6b7bf7", text: "#4050c0" },
+      "collection.create": { bg: "#ecfdf5", border: "#34d399", text: "#065f46" },
+      "entity.create": { bg: "#f0fdf4", border: "#86efac", text: "#166534" },
+      "entity.update": { bg: "#fffbeb", border: "#fbbf24", text: "#92400e" },
+      "entity.remove": { bg: "#fef2f2", border: "#f87171", text: "#991b1b" },
+      "view.create": { bg: "#faf5ff", border: "#c084fc", text: "#6b21a8" },
+      "block.set": { bg: "#f8fafc", border: "#94a3b8", text: "#475569" },
+      "field.add": { bg: "#fff7ed", border: "#fb923c", text: "#9a3412" },
+      "style.set": { bg: "#fdf2f8", border: "#f472b6", text: "#9d174d" },
+    };
+
+    const getEventColor = (type) =>
+      EVENT_COLORS[type] || { bg: "#f9fafb", border: "#d1d5db", text: "#374151" };
+
+    function EventPill({ event }) {
+      const c = getEventColor(event.type);
+      return (
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "4px 10px",
+            borderRadius: 4,
+            background: c.bg,
+            border: `1px solid ${c.border}`,
+            fontSize: 12,
+            fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
+            color: c.text,
+            whiteSpace: "nowrap",
+          }}
+        >
+          <span style={{ fontWeight: 600 }}>{event.type}</span>
+          {event.payload?.id && (
+            <span style={{ opacity: 0.7 }}>{event.payload.id}</span>
+          )}
+          {event.payload?.ref && (
+            <span style={{ opacity: 0.7 }}>{event.payload.ref}</span>
+          )}
+        </div>
+      );
+    }
+
+    function ChatBubble({ text, isUser, isActive }) {
+      return (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: isUser ? "flex-end" : "flex-start",
+            marginBottom: 8,
+            opacity: isActive ? 1 : 0.35,
+            transition: "opacity 0.3s ease",
+          }}
+        >
+          <div
+            style={{
+              maxWidth: "85%",
+              padding: "10px 14px",
+              borderRadius: isUser ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
+              background: isUser ? "#1a1a2e" : "#ffffff",
+              color: isUser ? "#e2e8f0" : "#2d3748",
+              fontSize: 14,
+              lineHeight: 1.5,
+              fontFamily: "system-ui, -apple-system, sans-serif",
+              border: isUser ? "none" : "1px solid #e2e8f0",
+              whiteSpace: "pre-wrap",
+            }}
+          >
+            {text}
+          </div>
+        </div>
+      );
+    }
+
+    function FlightRecorderApp() {
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState(null);
+      const [recording, setRecording] = useState(null);
+      const [currentTurn, setCurrentTurn] = useState(0);
+      const [isPlaying, setIsPlaying] = useState(false);
+      const [playSpeed, setPlaySpeed] = useState(2000);
+      const iframeRef = useRef(null);
+      const chatEndRef = useRef(null);
+      const intervalRef = useRef(null);
+
+      // Get aide_id from URL
+      const params = new URLSearchParams(window.location.search);
+      const aideId = params.get('aide_id');
+
+      // Fetch data on mount
+      useEffect(() => {
+        async function fetchData() {
+          if (!aideId) {
+            setError('No aide_id provided');
+            setLoading(false);
+            return;
+          }
+
+          try {
+            // Check auth
+            const authRes = await fetch('/auth/me', { credentials: 'include' });
+            if (!authRes.ok) {
+              window.location.href = '/';
+              return;
+            }
+
+            // Fetch flight recorder data
+            const res = await fetch(`/api/flight-recorder/${aideId}`, { credentials: 'include' });
+            if (!res.ok) {
+              if (res.status === 404) {
+                setError('Aide not found or no flight recorder data');
+              } else {
+                setError('Failed to load flight recorder data');
+              }
+              setLoading(false);
+              return;
+            }
+
+            const data = await res.json();
+            setRecording(data);
+            setLoading(false);
+          } catch (err) {
+            setError('Failed to load flight recorder data');
+            setLoading(false);
+          }
+        }
+
+        fetchData();
+      }, [aideId]);
+
+      // Update iframe when turn changes
+      useEffect(() => {
+        if (iframeRef.current && recording && recording.turns.length > 0) {
+          iframeRef.current.src = `/api/flight-recorder/${aideId}/render?turn_index=${currentTurn}`;
+        }
+      }, [currentTurn, recording, aideId]);
+
+      // Scroll chat
+      useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, [currentTurn]);
+
+      // Playback
+      useEffect(() => {
+        if (isPlaying && recording) {
+          intervalRef.current = setInterval(() => {
+            setCurrentTurn((prev) => {
+              if (prev >= recording.turns.length - 1) {
+                setIsPlaying(false);
+                return prev;
+              }
+              return prev + 1;
+            });
+          }, playSpeed);
+        }
+        return () => clearInterval(intervalRef.current);
+      }, [isPlaying, playSpeed, recording]);
+
+      const handleScrub = useCallback((e) => {
+        if (!recording) return;
+        const totalTurns = recording.turns.length;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+        const pct = x / rect.width;
+        const idx = Math.min(Math.round(pct * (totalTurns - 1)), totalTurns - 1);
+        setCurrentTurn(idx);
+        setIsPlaying(false);
+      }, [recording]);
+
+      // Keyboard controls
+      useEffect(() => {
+        if (!recording) return;
+        const totalTurns = recording.turns.length;
+
+        const handler = (e) => {
+          if (e.key === "ArrowRight" || e.key === "l") {
+            setCurrentTurn((p) => Math.min(p + 1, totalTurns - 1));
+            setIsPlaying(false);
+          } else if (e.key === "ArrowLeft" || e.key === "h") {
+            setCurrentTurn((p) => Math.max(p - 1, 0));
+            setIsPlaying(false);
+          } else if (e.key === " ") {
+            e.preventDefault();
+            setIsPlaying((p) => !p);
+          } else if (e.key === "Home") {
+            setCurrentTurn(0);
+            setIsPlaying(false);
+          } else if (e.key === "End") {
+            setCurrentTurn(totalTurns - 1);
+            setIsPlaying(false);
+          }
+        };
+        window.addEventListener("keydown", handler);
+        return () => window.removeEventListener("keydown", handler);
+      }, [recording]);
+
+      if (loading) {
+        return <div className="loading">Loading flight recorder...</div>;
+      }
+
+      if (error) {
+        return (
+          <div className="error">
+            <h2>Error</h2>
+            <p>{error}</p>
+            <a href="/">Back to dashboard</a>
+          </div>
+        );
+      }
+
+      if (!recording || recording.turns.length === 0) {
+        return (
+          <div className="error">
+            <h2>No Data</h2>
+            <p>No flight recorder data found for this aide.</p>
+            <a href="/">Back to dashboard</a>
+          </div>
+        );
+      }
+
+      const turn = recording.turns[currentTurn];
+      const totalTurns = recording.turns.length;
+      const progress = ((currentTurn) / (totalTurns - 1)) * 100;
+
+      const formatTime = (ts) => {
+        const d = new Date(ts);
+        return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit" });
+      };
+
+      const getTier = (turn) => {
+        const prodCall = turn.llm_calls.find(c => !c.shadow);
+        return prodCall ? prodCall.tier : 'Unknown';
+      };
+
+      return (
+        <div
+          style={{
+            height: "100vh",
+            width: "100vw",
+            display: "flex",
+            flexDirection: "column",
+            background: "#0f0f17",
+            color: "#e2e8f0",
+            fontFamily: "system-ui, -apple-system, sans-serif",
+            overflow: "hidden",
+          }}
+        >
+          {/* Top bar */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "12px 20px",
+              borderBottom: "1px solid #1e1e2e",
+              flexShrink: 0,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <a href="/" style={{ color: "#64748b", textDecoration: "none", fontSize: 14 }}>
+                &larr; Back
+              </a>
+              <div
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: isPlaying ? "#ef4444" : "#4ade80",
+                  boxShadow: isPlaying ? "0 0 8px #ef4444" : "0 0 8px #4ade8040",
+                }}
+              />
+              <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", color: "#94a3b8" }}>
+                Flight Recorder
+              </span>
+              <span style={{ fontSize: 13, color: "#64748b" }}>|</span>
+              <span style={{ fontSize: 13, color: "#cbd5e1" }}>
+                {recording.aide_title}
+              </span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 16, fontSize: 12, color: "#64748b" }}>
+              <span>
+                Turn {currentTurn + 1} / {totalTurns}
+              </span>
+              <span>{formatTime(turn.timestamp)}</span>
+              <span
+                style={{
+                  padding: "2px 8px",
+                  borderRadius: 3,
+                  background: getTier(turn) === "L3" ? "#4c1d95" : "#1e293b",
+                  color: getTier(turn) === "L3" ? "#c4b5fd" : "#94a3b8",
+                  fontWeight: 600,
+                  fontSize: 11,
+                }}
+              >
+                {getTier(turn)}
+              </span>
+              <span style={{ color: "#64748b", fontFamily: "monospace" }}>
+                {turn.total_latency_ms}ms
+              </span>
+            </div>
+          </div>
+
+          {/* Main content */}
+          <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+            {/* Left: Chat + Events */}
+            <div
+              style={{
+                width: 380,
+                flexShrink: 0,
+                display: "flex",
+                flexDirection: "column",
+                borderRight: "1px solid #1e1e2e",
+              }}
+            >
+              {/* Chat history */}
+              <div
+                style={{
+                  flex: 1,
+                  overflowY: "auto",
+                  padding: "16px 14px",
+                }}
+              >
+                <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "1.5px", color: "#475569", marginBottom: 16, fontWeight: 600 }}>
+                  Conversation
+                </div>
+                {recording.turns.slice(0, currentTurn + 1).map((t, i) => (
+                  <div key={i} style={{ marginBottom: 12 }}>
+                    <ChatBubble
+                      text={t.user_message}
+                      isUser={true}
+                      isActive={i === currentTurn}
+                    />
+                    <ChatBubble
+                      text={t.response_text}
+                      isUser={false}
+                      isActive={i === currentTurn}
+                    />
+                  </div>
+                ))}
+                <div ref={chatEndRef} />
+              </div>
+
+              {/* Events for current turn */}
+              <div
+                style={{
+                  borderTop: "1px solid #1e1e2e",
+                  padding: "12px 14px",
+                  maxHeight: 220,
+                  overflowY: "auto",
+                  background: "#0a0a12",
+                }}
+              >
+                <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "1.5px", color: "#475569", marginBottom: 10, fontWeight: 600 }}>
+                  Events emitted - Turn {currentTurn + 1}
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {turn.primitives_emitted.map((evt, i) => (
+                    <EventPill key={i} event={evt} />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Page preview */}
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "#ffffff" }}>
+              <div
+                style={{
+                  padding: "8px 16px",
+                  background: "#f8fafc",
+                  borderBottom: "1px solid #e2e8f0",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ display: "flex", gap: 5 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#fee2e2" }} />
+                    <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#fef3c7" }} />
+                    <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#dcfce7" }} />
+                  </div>
+                  <span style={{ fontSize: 12, color: "#94a3b8", fontFamily: "monospace", marginLeft: 8 }}>
+                    Preview
+                  </span>
+                </div>
+                <span style={{ fontSize: 11, color: "#94a3b8" }}>
+                  {turn.primitives_applied} primitives applied
+                </span>
+              </div>
+              <iframe
+                ref={iframeRef}
+                title="AIde Preview"
+                style={{
+                  flex: 1,
+                  border: "none",
+                  width: "100%",
+                }}
+                sandbox="allow-same-origin"
+              />
+            </div>
+          </div>
+
+          {/* Timeline / scrub bar */}
+          <div
+            style={{
+              flexShrink: 0,
+              background: "#0a0a12",
+              borderTop: "1px solid #1e1e2e",
+              padding: "12px 20px 16px",
+            }}
+          >
+            {/* Controls */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+              {/* Rewind */}
+              <button
+                onClick={() => { setCurrentTurn(0); setIsPlaying(false); }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#64748b",
+                  cursor: "pointer",
+                  fontSize: 16,
+                  padding: "4px 6px",
+                  borderRadius: 4,
+                  display: "flex",
+                  alignItems: "center",
+                }}
+                title="Rewind (Home)"
+              >
+                &#x23EE;
+              </button>
+
+              {/* Prev */}
+              <button
+                onClick={() => { setCurrentTurn((p) => Math.max(0, p - 1)); setIsPlaying(false); }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#94a3b8",
+                  cursor: "pointer",
+                  fontSize: 18,
+                  padding: "4px 6px",
+                  borderRadius: 4,
+                }}
+                title="Previous (Left Arrow)"
+              >
+                &#x25C2;
+              </button>
+
+              {/* Play/Pause */}
+              <button
+                onClick={() => setIsPlaying((p) => !p)}
+                style={{
+                  background: isPlaying ? "#ef4444" : "#3b82f6",
+                  border: "none",
+                  color: "#fff",
+                  cursor: "pointer",
+                  fontSize: 14,
+                  width: 36,
+                  height: 36,
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: isPlaying ? "0 0 16px #ef444440" : "0 0 16px #3b82f640",
+                  transition: "all 0.2s ease",
+                }}
+                title="Play/Pause (Space)"
+              >
+                {isPlaying ? "&#x23F8;" : "&#x25B6;"}
+              </button>
+
+              {/* Next */}
+              <button
+                onClick={() => { setCurrentTurn((p) => Math.min(totalTurns - 1, p + 1)); setIsPlaying(false); }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#94a3b8",
+                  cursor: "pointer",
+                  fontSize: 18,
+                  padding: "4px 6px",
+                  borderRadius: 4,
+                }}
+                title="Next (Right Arrow)"
+              >
+                &#x25B8;
+              </button>
+
+              {/* Speed */}
+              <div style={{ marginLeft: 16, display: "flex", alignItems: "center", gap: 6 }}>
+                {[3000, 2000, 1000, 500].map((sp) => (
+                  <button
+                    key={sp}
+                    onClick={() => setPlaySpeed(sp)}
+                    style={{
+                      background: playSpeed === sp ? "#1e293b" : "transparent",
+                      border: playSpeed === sp ? "1px solid #334155" : "1px solid transparent",
+                      color: playSpeed === sp ? "#e2e8f0" : "#64748b",
+                      cursor: "pointer",
+                      fontSize: 11,
+                      padding: "3px 8px",
+                      borderRadius: 4,
+                      fontFamily: "monospace",
+                    }}
+                  >
+                    {sp >= 1000 ? `${sp / 1000}s` : `${sp}ms`}
+                  </button>
+                ))}
+              </div>
+
+              {/* Keyboard hints */}
+              <div style={{ marginLeft: "auto", fontSize: 11, color: "#334155" }}>
+                <span style={{ padding: "2px 6px", background: "#1e1e2e", borderRadius: 3, marginRight: 4, fontFamily: "monospace" }}>&larr;&rarr;</span>
+                step
+                <span style={{ padding: "2px 6px", background: "#1e1e2e", borderRadius: 3, margin: "0 4px 0 12px", fontFamily: "monospace" }}>Space</span>
+                play
+              </div>
+            </div>
+
+            {/* Scrub track */}
+            <div
+              onClick={handleScrub}
+              style={{
+                position: "relative",
+                height: 40,
+                cursor: "pointer",
+                borderRadius: 6,
+                background: "#1e1e2e",
+                overflow: "hidden",
+              }}
+            >
+              {/* Progress fill */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  height: "100%",
+                  width: `${progress}%`,
+                  background: "linear-gradient(90deg, #1e3a5f 0%, #2563eb 100%)",
+                  transition: isPlaying ? `width ${playSpeed}ms linear` : "width 0.15s ease",
+                  borderRadius: 6,
+                }}
+              />
+
+              {/* Turn markers */}
+              {recording.turns.map((t, i) => {
+                const x = (i / (totalTurns - 1)) * 100;
+                const isActive = i === currentTurn;
+                const isL3 = getTier(t) === "L3";
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      position: "absolute",
+                      left: `${x}%`,
+                      top: "50%",
+                      transform: "translate(-50%, -50%)",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 2,
+                      zIndex: isActive ? 10 : 1,
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: isActive ? 14 : 10,
+                        height: isActive ? 14 : 10,
+                        borderRadius: "50%",
+                        background: isActive ? "#ffffff" : isL3 ? "#7c3aed" : "#475569",
+                        border: isActive ? "2px solid #3b82f6" : "2px solid transparent",
+                        boxShadow: isActive ? "0 0 12px #3b82f680" : "none",
+                        transition: "all 0.15s ease",
+                      }}
+                    />
+                    {isActive && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: -22,
+                          fontSize: 10,
+                          color: "#94a3b8",
+                          whiteSpace: "nowrap",
+                          fontWeight: 600,
+                        }}
+                      >
+                        Turn {i + 1}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<FlightRecorderApp />);
+  </script>
+</body>
+</html>
