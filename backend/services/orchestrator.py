@@ -143,7 +143,7 @@ class Orchestrator:
 
         return {
             "response": response_text,
-            "html_url": f"{config.settings.R2_PUBLIC_URL}/{r2_key}",
+            "html_url": f"/api/aides/{aide_id}/preview",
             "primitives_count": len(primitives),
         }
 

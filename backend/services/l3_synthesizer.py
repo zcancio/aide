@@ -49,7 +49,7 @@ class L3Synthesizer:
             model="claude-sonnet-4-20250514",
             system=self.system_prompt,
             messages=messages,
-            max_tokens=4096,
+            max_tokens=16384,  # Increased for large entity batches (grids, etc.)
             temperature=1.0,
         )
 

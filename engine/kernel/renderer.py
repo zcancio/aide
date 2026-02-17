@@ -115,7 +115,12 @@ def render(
     if body_html:
         parts.append(body_html)
     else:
-        parts.append('    <p class="aide-empty">This page is empty.</p>')
+        # No explicit blocks — auto-render collections if they exist
+        auto_html = _auto_render_collections(snapshot)
+        if auto_html:
+            parts.append(auto_html)
+        else:
+            parts.append('    <p class="aide-empty">This page is empty.</p>')
 
     # Annotations
     annotations_html = _render_annotations(snapshot)
@@ -246,6 +251,120 @@ def _render_css(snapshot: dict) -> str:
 # ---------------------------------------------------------------------------
 # Block tree rendering
 # ---------------------------------------------------------------------------
+
+
+def _auto_render_collections(snapshot: dict) -> str:
+    """
+    Auto-render all collections when no explicit blocks exist.
+    Creates a heading + appropriate view for each non-removed collection.
+    Detects grid patterns (row/col fields) and renders as grid.
+    """
+    collections = snapshot.get("collections", {})
+    parts: list[str] = []
+
+    for coll_id, coll in collections.items():
+        if coll.get("_removed"):
+            continue
+
+        # Collection heading
+        name = coll.get("name", coll_id)
+        parts.append(f'    <h2 class="aide-heading aide-heading--2">{escape(name)}</h2>')
+
+        # Get non-removed entities
+        entities = [
+            {**e, "_id": eid}
+            for eid, e in coll.get("entities", {}).items()
+            if not e.get("_removed")
+        ]
+
+        if not entities:
+            parts.append('    <p class="aide-collection-empty">No items yet.</p>')
+            continue
+
+        schema = coll.get("schema", {})
+
+        # Detect grid pattern: has row and col integer fields
+        has_row = schema.get("row") in ("int", "int?")
+        has_col = schema.get("col") in ("int", "int?")
+
+        if has_row and has_col:
+            # Render as grid
+            parts.append(_render_auto_grid(entities, schema))
+        else:
+            # Render as table view
+            parts.append(_render_table_view(entities, schema, {}, {}))
+
+    return "\n".join(parts)
+
+
+def _render_auto_grid(entities: list[dict], schema: dict) -> str:
+    """
+    Render entities with row/col fields as a visual grid.
+    Used for Super Bowl squares, bingo cards, seating charts, etc.
+    """
+    # Find grid dimensions
+    rows = set()
+    cols = set()
+    grid_map: dict[tuple[int, int], dict] = {}
+
+    for entity in entities:
+        row = entity.get("row")
+        col = entity.get("col")
+        if row is not None and col is not None:
+            rows.add(row)
+            cols.add(col)
+            grid_map[(row, col)] = entity
+
+    if not rows or not cols:
+        return '    <p class="aide-collection-empty">No grid data.</p>'
+
+    row_list = sorted(rows)
+    col_list = sorted(cols)
+
+    # Determine what to show in each cell (first non-row/col field, or owner)
+    display_field = None
+    for field in schema:
+        if field not in ("row", "col") and not field.startswith("_"):
+            display_field = field
+            break
+
+    parts = ['    <div class="aide-grid-wrap" style="overflow-x:auto;">']
+    parts.append('      <table class="aide-grid" style="border-collapse:collapse;text-align:center;">')
+
+    # Header row with column numbers
+    parts.append("        <thead>")
+    parts.append("          <tr>")
+    parts.append('            <th style="padding:8px;"></th>')
+    for col in col_list:
+        parts.append(f'            <th style="padding:8px;font-weight:500;color:#666;">{col}</th>')
+    parts.append("          </tr>")
+    parts.append("        </thead>")
+
+    # Grid rows
+    parts.append("        <tbody>")
+    for row in row_list:
+        parts.append("          <tr>")
+        parts.append(f'            <th style="padding:8px;font-weight:500;color:#666;">{row}</th>')
+        for col in col_list:
+            entity = grid_map.get((row, col))
+            if entity and display_field:
+                value = entity.get(display_field)
+                if value:
+                    cell_content = escape(str(value))
+                    cell_style = "padding:12px;border:1px solid #ddd;background:#f5f5f5;min-width:60px;"
+                else:
+                    cell_content = ""
+                    cell_style = "padding:12px;border:1px solid #ddd;min-width:60px;"
+            else:
+                cell_content = ""
+                cell_style = "padding:12px;border:1px solid #ddd;min-width:60px;"
+            parts.append(f'            <td style="{cell_style}">{cell_content}</td>')
+        parts.append("          </tr>")
+    parts.append("        </tbody>")
+
+    parts.append("      </table>")
+    parts.append("    </div>")
+    return "\n".join(parts)
 
 
 def _render_block_tree(snapshot: dict) -> str:

@@ -867,10 +867,12 @@
   }
 
   async function refreshPreview(pageUrl) {
-    // Try to load the URL directly in the iframe
-    // If R2 is not configured, the iframe will show an error, which is acceptable
+    // Load the preview URL in the iframe
+    // Preview URL is now a backend proxy endpoint that handles auth
     const frame = document.getElementById('preview-frame');
-    if (pageUrl && pageUrl.startsWith('http')) {
+    if (pageUrl) {
+      // Clear srcdoc first - it takes precedence over src
+      frame.removeAttribute('srcdoc');
       frame.src = pageUrl;
     }
   }
