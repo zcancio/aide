@@ -17,11 +17,12 @@ def mock_aide():
         "state": {
             "collections": {},
             "entities": {},
-            "blocks": [],
+            "blocks": {},
             "views": {},
             "styles": {},
             "meta": {},
             "relationships": [],
+            "constraints": [],
         },
     }
 
@@ -75,11 +76,12 @@ def mock_grocery_aide():
                     },
                 },
             },
-            "blocks": [],
+            "blocks": {},
             "views": {},
             "styles": {},
             "meta": {"title": "Grocery List"},
             "relationships": [],
+            "constraints": [],
         },
     }
 
