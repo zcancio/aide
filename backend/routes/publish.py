@@ -13,7 +13,7 @@ from backend.models.user import User
 from backend.repos.aide_repo import AideRepo
 from backend.services.r2 import r2_service
 from engine.kernel.renderer import render
-from engine.kernel.types import Blueprint
+from engine.kernel.types import Blueprint, RenderOptions
 
 router = APIRouter(prefix="/api/aides", tags=["publish"])
 aide_repo = AideRepo()
@@ -36,8 +36,11 @@ async def publish_aide(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aide not found.")
 
     # Render current state to HTML
+    # Free tier pages include "Made with AIde" footer; pro tier pages do not
+    footer_text = "Made with AIde" if user.tier == "free" else None
     blueprint = Blueprint(identity=aide.title)
-    html_content = render(aide.state, blueprint=blueprint, events=[])
+    options = RenderOptions(footer=footer_text)
+    html_content = render(aide.state, blueprint=blueprint, events=[], options=options)
 
     # Upload to public R2 bucket
     await r2_service.upload_published(req.slug, html_content)

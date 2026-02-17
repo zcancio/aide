@@ -116,12 +116,12 @@ _Wire the kernel to users. Web chat for creation, Signal for ongoing updates._
   - Text the aide's Signal number with a link code from the dashboard
   - Or: dashboard shows "Text [number] to update this aide via Signal"
 
-### 1.6 Published Page Serving
-- [ ] Route `toaide.com/s/{slug}` → serve HTML from R2 via Cloudflare CDN
-- [ ] "Made with AIde" footer injected on free tier pages (links to toaide.com)
-- [ ] Proper cache headers
-- [ ] Blueprint embedded in HTML (identity, voice rules, event log, snapshot)
-- [ ] Open Graph tags for link previews
+### 1.6 Published Page Serving ✅ COMPLETE
+- [x] Route `toaide.com/s/{slug}` → serve HTML from R2 via Cloudflare CDN
+- [x] "Made with AIde" footer injected on free tier pages (links to toaide.com)
+- [x] Proper cache headers (Cache-Control, ETag)
+- [x] Blueprint embedded in HTML (identity, voice rules, event log, snapshot)
+- [x] Open Graph tags for link previews
 
 ### 1.7 Reliability
 - [ ] Error handling: invalid primitives from AI caught by validation, not applied

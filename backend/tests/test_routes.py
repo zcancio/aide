@@ -260,3 +260,101 @@ class TestPublishRoute:
             cookies={"session": token_b},
         )
         assert res.status_code == 404
+
+
+# ── public page serving ──────────────────────────────────────────────────────
+
+
+class TestPublishedPageServing:
+    """Tests for GET /s/{slug} public page serving."""
+
+    async def test_serve_published_page(self, async_client):
+        """GET /s/{slug} → 200 with HTML and cache headers."""
+        html_bytes = b"<html><body>Test Page</body></html>"
+
+        with patch(
+            "backend.routes.pages.r2_service.get_published",
+            new_callable=AsyncMock,
+            return_value=html_bytes,
+        ):
+            res = await async_client.get("/s/my-page")
+
+        assert res.status_code == 200
+        assert res.headers["content-type"].startswith("text/html")
+        assert "Cache-Control" in res.headers
+        assert "public" in res.headers["Cache-Control"]
+        assert "ETag" in res.headers
+        assert res.content == html_bytes
+
+    async def test_serve_missing_slug(self, async_client):
+        """GET /s/{slug} for nonexistent slug → 404."""
+        with patch(
+            "backend.routes.pages.r2_service.get_published",
+            new_callable=AsyncMock,
+            return_value=None,
+        ):
+            res = await async_client.get("/s/nonexistent-page")
+
+        assert res.status_code == 404
+
+    async def test_serve_no_auth_required(self, async_client):
+        """GET /s/{slug} is public — no session cookie needed."""
+        html_bytes = b"<html><body>Public Page</body></html>"
+
+        with patch(
+            "backend.routes.pages.r2_service.get_published",
+            new_callable=AsyncMock,
+            return_value=html_bytes,
+        ):
+            # No cookies — should still succeed
+            res = await async_client.get("/s/public-page")
+
+        assert res.status_code == 200
+
+    async def test_etag_content_hash(self, async_client):
+        """ETag is an MD5 hash of the HTML content."""
+        import hashlib
+
+        html_bytes = b"<html><body>Deterministic</body></html>"
+        expected_etag = f'"{hashlib.md5(html_bytes, usedforsecurity=False).hexdigest()}"'
+
+        with patch(
+            "backend.routes.pages.r2_service.get_published",
+            new_callable=AsyncMock,
+            return_value=html_bytes,
+        ):
+            res = await async_client.get("/s/deterministic-page")
+
+        assert res.headers["ETag"] == expected_etag
+
+    async def test_publish_free_tier_includes_footer(self, async_client, test_user_id):
+        """Free tier publish renders HTML with RenderOptions footer set."""
+        captured_options: list = []
+
+        def capture_render(snapshot, blueprint, events, options=None):
+            captured_options.append(options)
+            return "<html>test</html>"
+
+        repo = AideRepo()
+        aide = await repo.create(test_user_id, CreateAideRequest(title="Footer Test"))
+        token = create_jwt(test_user_id)
+
+        with (
+            patch(
+                "backend.routes.publish.r2_service.upload_published",
+                new_callable=AsyncMock,
+                return_value="footer-test/index.html",
+            ),
+            patch("backend.routes.publish.render", side_effect=capture_render),
+        ):
+            res = await async_client.post(
+                f"/api/aides/{aide.id}/publish",
+                json={"slug": f"footer-{aide.id}"},
+                cookies={"session": token},
+            )
+
+        assert res.status_code == 200
+        assert len(captured_options) == 1
+        opts = captured_options[0]
+        # Default test users are free tier → footer should be "Made with AIde"
+        assert opts.footer == "Made with AIde"

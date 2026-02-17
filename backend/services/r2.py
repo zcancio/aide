@@ -75,6 +75,36 @@ class R2Service:
 
         return key
 
+    async def get_published(self, slug: str) -> bytes | None:
+        """
+        Fetch published HTML from R2 by slug.
+
+        Args:
+            slug: Public slug for the aide
+
+        Returns:
+            HTML bytes if found, None if not found
+        """
+        from botocore.exceptions import ClientError
+
+        bucket = "aide-published"
+        key = f"{slug}/index.html"
+
+        async with self.session.client(
+            "s3",
+            endpoint_url=self.endpoint,
+            aws_access_key_id=self.access_key,
+            aws_secret_access_key=self.secret_key,
+        ) as s3:
+            try:
+                response = await s3.get_object(Bucket=bucket, Key=key)
+                body = await response["Body"].read()
+                return body
+            except ClientError as e:
+                if e.response["Error"]["Code"] in ("NoSuchKey", "404"):
+                    return None
+                raise
+
     async def delete_published(self, slug: str) -> None:
         """
         Delete published HTML from R2.
