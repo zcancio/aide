@@ -487,7 +487,7 @@ class TestOrchestrationFlow:
 
             # Verify result
             assert result["response"] == "Bread added."
-            assert result["html_url"] == "https://r2.toaide.com/aide_456/index.html"
+            assert result["html_url"] == "/api/aides/aide_456/preview"
             assert result["primitives_count"] == 1
 
     @pytest.mark.asyncio

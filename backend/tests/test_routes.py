@@ -188,7 +188,7 @@ class TestMessageRoute:
         token = create_jwt(test_user_id)
         mock_result = {
             "response": "Tasks: none yet.",
-            "html_url": "https://r2.toaide.com/abc/index.html",
+            "html_url": "/api/aides/abc/preview",
             "primitives_count": 2,
         }
         with patch(
@@ -225,7 +225,7 @@ class TestMessageRoute:
 
         mock_result = {
             "response": "State updated.",
-            "html_url": "https://r2.toaide.com/abc/index.html",
+            "html_url": "/api/aides/abc/preview",
             "primitives_count": 1,
         }
         with patch(
