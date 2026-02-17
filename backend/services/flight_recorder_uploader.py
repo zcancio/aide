@@ -6,13 +6,9 @@ import asyncio
 import json
 import uuid
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
 
 from backend.config import settings
 from backend.services.flight_recorder import TurnRecord
-
-if TYPE_CHECKING:
-    pass
 
 # Maximum records held in memory before dropping oldest
 _MAX_QUEUE_SIZE = 10_000

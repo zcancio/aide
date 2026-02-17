@@ -73,13 +73,14 @@ class Settings:
     OPENAI_API_KEY: str = os.environ.get("OPENAI_API_KEY", "")
     GEMINI_API_KEY: str = os.environ.get("GEMINI_API_KEY", "")
 
-    # Production models
-    L2_MODEL: str = os.environ.get("L2_MODEL", "claude-sonnet-4-20250514")
-    L3_MODEL: str = os.environ.get("L3_MODEL", "claude-opus-4-6")
+    # Production models (L2 = Haiku-class for intent compilation, L3 = Sonnet/Opus for schema synthesis)
+    L2_MODEL: str = os.environ.get("L2_MODEL", "claude-3-5-haiku-20241022")
+    L3_MODEL: str = os.environ.get("L3_MODEL", "claude-sonnet-4-20250514")
 
     # Shadow models (run after production calls, results recorded but not applied)
-    L2_SHADOW_MODEL: str = os.environ.get("L2_SHADOW_MODEL", "claude-3-5-haiku-20241022")
-    L3_SHADOW_MODEL: str = os.environ.get("L3_SHADOW_MODEL", "claude-sonnet-4-20250514")
+    # Shadow uses higher-tier models to measure quality tradeoff of production choices
+    L2_SHADOW_MODEL: str = os.environ.get("L2_SHADOW_MODEL", "claude-sonnet-4-20250514")
+    L3_SHADOW_MODEL: str = os.environ.get("L3_SHADOW_MODEL", "claude-opus-4-6")
 
 
 # Singleton instance
