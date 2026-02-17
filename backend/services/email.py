@@ -144,7 +144,7 @@ async def send_magic_link(email: str, token: str) -> None:
 
     # Send email via Resend
     params = {
-        "from": "AIde <auth@toaide.com>",
+        "from": config.settings.EMAIL_FROM,
         "to": [email],
         "subject": "Sign in to AIde",
         "html": html_content,

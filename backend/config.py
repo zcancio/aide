@@ -24,6 +24,7 @@ class Settings:
 
     # Email (Resend)
     RESEND_API_KEY: str = os.environ.get("RESEND_API_KEY", "")
+    EMAIL_FROM: str = os.environ.get("EMAIL_FROM", "AIde <auth@toaide.com>")
 
     # Auth
     JWT_SECRET: str = os.environ.get("JWT_SECRET", "")
