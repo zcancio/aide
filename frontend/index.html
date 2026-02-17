@@ -988,7 +988,10 @@
     `).join('');
 
     panel.classList.add('open');
-    panel.scrollTop = panel.scrollHeight;
+    // Delay scroll to allow panel to expand
+    setTimeout(() => {
+      panel.scrollTop = panel.scrollHeight;
+    }, 50);
   }
 
   // ── Image handling ─────────────────────────────────
