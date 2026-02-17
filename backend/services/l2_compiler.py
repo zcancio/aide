@@ -97,18 +97,7 @@ class L2Compiler:
     def _build_user_message(self, message: str, snapshot: Snapshot, recent_events: list[Event]) -> str:
         """Build user message with snapshot and event context."""
         # Serialize snapshot
-        snapshot_json = json.dumps(
-            {
-                "collections": snapshot.collections,
-                "entities": snapshot.entities,
-                "blocks": snapshot.blocks,
-                "views": snapshot.views,
-                "styles": snapshot.styles,
-                "meta": snapshot.meta,
-                "relationships": snapshot.relationships,
-            },
-            indent=2,
-        )
+        snapshot_json = json.dumps(snapshot.to_dict(), indent=2)
 
         # Serialize recent events (last 10)
         events_json = json.dumps(

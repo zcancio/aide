@@ -134,27 +134,11 @@ class Orchestrator:
 
     def _parse_snapshot(self, state_json: dict[str, Any]) -> Snapshot:
         """Parse snapshot from DB JSON."""
-        return Snapshot(
-            collections=state_json.get("collections", {}),
-            entities=state_json.get("entities", {}),
-            blocks=state_json.get("blocks", []),
-            views=state_json.get("views", {}),
-            styles=state_json.get("styles", {}),
-            meta=state_json.get("meta", {}),
-            relationships=state_json.get("relationships", []),
-        )
+        return Snapshot.from_dict(state_json)
 
     def _serialize_snapshot(self, snapshot: Snapshot) -> dict[str, Any]:
         """Serialize snapshot to DB JSON."""
-        return {
-            "collections": snapshot.collections,
-            "entities": snapshot.entities,
-            "blocks": snapshot.blocks,
-            "views": snapshot.views,
-            "styles": snapshot.styles,
-            "meta": snapshot.meta,
-            "relationships": snapshot.relationships,
-        }
+        return snapshot.to_dict()
 
     def _load_recent_events(self, messages: list[Message]) -> list[Event]:
         """Load recent events from conversation messages."""

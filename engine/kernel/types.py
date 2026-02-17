@@ -144,11 +144,12 @@ class Snapshot:
 
     collections: dict[str, Any] = field(default_factory=dict)
     entities: dict[str, Any] = field(default_factory=dict)
-    blocks: list[dict[str, Any]] = field(default_factory=list)
+    blocks: dict[str, Any] = field(default_factory=dict)  # Dict keyed by block_id
     views: dict[str, Any] = field(default_factory=dict)
     styles: dict[str, Any] = field(default_factory=dict)
     meta: dict[str, Any] = field(default_factory=dict)
     relationships: list[dict[str, Any]] = field(default_factory=list)
+    constraints: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -159,6 +160,7 @@ class Snapshot:
             "styles": self.styles,
             "meta": self.meta,
             "relationships": self.relationships,
+            "constraints": self.constraints,
         }
 
     @classmethod
@@ -166,11 +168,12 @@ class Snapshot:
         return cls(
             collections=d.get("collections", {}),
             entities=d.get("entities", {}),
-            blocks=d.get("blocks", []),
+            blocks=d.get("blocks", {}),
             views=d.get("views", {}),
             styles=d.get("styles", {}),
             meta=d.get("meta", {}),
             relationships=d.get("relationships", []),
+            constraints=d.get("constraints", []),
         )
 
 
