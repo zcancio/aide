@@ -162,6 +162,27 @@ def _validate_collection_remove(p: dict) -> list[str]:
     return errors
 
 
+def _validate_grid_create(p: dict) -> list[str]:
+    """Validate grid.create primitive for batch entity creation."""
+    errors: list[str] = []
+    if "collection" not in p:
+        errors.append("grid.create requires 'collection'")
+    elif not is_valid_id(p["collection"]):
+        errors.append(f"Invalid collection ID: {p['collection']}")
+
+    if "rows" not in p:
+        errors.append("grid.create requires 'rows'")
+    elif not isinstance(p["rows"], int) or p["rows"] < 1:
+        errors.append("'rows' must be a positive integer")
+
+    if "cols" not in p:
+        errors.append("grid.create requires 'cols'")
+    elif not isinstance(p["cols"], int) or p["cols"] < 1:
+        errors.append("'cols' must be a positive integer")
+
+    return errors
+
+
 def _validate_field_add(p: dict) -> list[str]:
     errors: list[str] = []
     if "collection" not in p:
@@ -389,6 +410,7 @@ _VALIDATORS: dict[str, Any] = {
     "collection.create": _validate_collection_create,
     "collection.update": _validate_collection_update,
     "collection.remove": _validate_collection_remove,
+    "grid.create": _validate_grid_create,
     "field.add": _validate_field_add,
     "field.update": _validate_field_update,
     "field.remove": _validate_field_remove,

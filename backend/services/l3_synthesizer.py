@@ -49,7 +49,7 @@ class L3Synthesizer:
             model="claude-sonnet-4-20250514",
             system=self.system_prompt,
             messages=messages,
-            max_tokens=4096,
+            max_tokens=16384,  # Increased for large entity batches (grids, etc.)
             temperature=1.0,
         )
 
@@ -63,8 +63,13 @@ class L3Synthesizer:
 
         try:
             response_data = json.loads(content)
+            primitives_count = len(response_data.get("primitives", []))
+            response_preview = response_data.get("response", "")[:50]
+            print(f"L3 parsed: {primitives_count} primitives, response='{response_preview}'")
         except json.JSONDecodeError as e:
             # L3 failed to return valid JSON — return empty result
+            print(f"L3 JSON parse error: {e}")
+            print(f"L3 raw content (last 500): {content[-500:]}")
             return {
                 "primitives": [],
                 "response": "",

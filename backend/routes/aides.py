@@ -5,14 +5,19 @@ from __future__ import annotations
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import HTMLResponse
 
 from backend.auth import get_current_user
 from backend.models.aide import AideResponse, CreateAideRequest, UpdateAideRequest
+from backend.models.conversation import ConversationHistoryResponse, MessageResponse
 from backend.models.user import User
 from backend.repos.aide_repo import AideRepo
+from backend.repos.conversation_repo import ConversationRepo
+from backend.services.r2 import r2_service
 
 router = APIRouter(prefix="/api/aides", tags=["aides"])
 aide_repo = AideRepo()
+conversation_repo = ConversationRepo()
 
 
 @router.get("", status_code=200)
@@ -79,3 +84,54 @@ async def delete_aide(
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aide not found.")
     return {"message": "Aide deleted."}
+
+
+@router.get("/{aide_id}/preview", status_code=200)
+async def get_aide_preview(
+    aide_id: UUID,
+    user: User = Depends(get_current_user),
+) -> HTMLResponse:
+    """Get rendered HTML preview for an aide (proxied from R2)."""
+    # Verify user owns this aide
+    aide = await aide_repo.get(user.id, aide_id)
+    if not aide:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aide not found.")
+
+    # Fetch HTML from R2
+    html_content = await r2_service.get_html(str(aide_id))
+    if not html_content:
+        # Return placeholder if no HTML yet
+        html_content = (
+            '<!DOCTYPE html><html><body style="background:#f9f9f9;'
+            "display:flex;align-items:center;justify-content:center;"
+            'height:100vh;font-family:sans-serif;color:#aaa;font-size:14px;">'
+            "Send a message to get started.</body></html>"
+        )
+
+    return HTMLResponse(content=html_content)
+
+
+@router.get("/{aide_id}/history", status_code=200)
+async def get_aide_history(
+    aide_id: UUID,
+    user: User = Depends(get_current_user),
+) -> ConversationHistoryResponse:
+    """Get conversation history for an aide."""
+    # Verify user owns this aide
+    aide = await aide_repo.get(user.id, aide_id)
+    if not aide:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aide not found.")
+
+    # Get conversation for this aide
+    conversation = await conversation_repo.get_for_aide(user.id, aide_id)
+    if not conversation:
+        return ConversationHistoryResponse(messages=[])
+
+    # Convert messages to response format (exclude system messages and metadata)
+    messages = [
+        MessageResponse(role=m.role, content=m.content)
+        for m in conversation.messages
+        if m.role in ("user", "assistant")
+    ]
+
+    return ConversationHistoryResponse(messages=messages)

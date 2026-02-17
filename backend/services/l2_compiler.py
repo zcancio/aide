@@ -45,7 +45,7 @@ class L2Compiler:
         messages = [{"role": "user", "content": user_content}]
 
         result = await ai_provider.call_claude(
-            model="claude-haiku-4-20250514",
+            model="claude-3-5-haiku-20241022",
             system=self.system_prompt,
             messages=messages,
             max_tokens=4096,
@@ -64,12 +64,16 @@ class L2Compiler:
             response_data = json.loads(content)
         except json.JSONDecodeError as e:
             # L2 failed to return valid JSON — escalate to L3
+            print(f"L2 invalid JSON, escalating: {e}")
             return {
                 "primitives": [],
                 "response": "",
                 "escalate": True,
                 "error": f"L2 returned invalid JSON: {e}",
             }
+
+        primitives_count = len(response_data.get("primitives", []))
+        print(f"L2 response: escalate={response_data.get('escalate')}, primitives={primitives_count}")
 
         # Check if L2 is requesting escalation
         if response_data.get("escalate", False):

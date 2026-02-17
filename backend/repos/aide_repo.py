@@ -250,7 +250,14 @@ class AideRepo:
             count = await conn.fetchval("SELECT count(*) FROM aides WHERE status != 'archived'")
             return count or 0
 
-    async def update_state(self, user_id: UUID, aide_id: UUID, state: dict, event_log: list) -> Aide | None:
+    async def update_state(
+        self,
+        user_id: UUID,
+        aide_id: UUID,
+        state: dict,
+        event_log: list,
+        title: str | None = None,
+    ) -> Aide | None:
         """
         Update aide state and event log (for kernel operations).
 
@@ -259,20 +266,35 @@ class AideRepo:
             aide_id: Aide UUID
             state: New state snapshot
             event_log: Updated event log
+            title: Optional new title (from meta.update primitive)
 
         Returns:
             Updated Aide if found and owned by user, None otherwise
         """
         async with user_conn(user_id) as conn:
-            row = await conn.fetchrow(
-                """
-                UPDATE aides
-                SET state = $2, event_log = $3, updated_at = now()
-                WHERE id = $1
-                RETURNING *
-                """,
-                aide_id,
-                state,
-                event_log,
-            )
+            if title:
+                row = await conn.fetchrow(
+                    """
+                    UPDATE aides
+                    SET state = $2, event_log = $3, title = $4, updated_at = now()
+                    WHERE id = $1
+                    RETURNING *
+                    """,
+                    aide_id,
+                    state,
+                    event_log,
+                    title,
+                )
+            else:
+                row = await conn.fetchrow(
+                    """
+                    UPDATE aides
+                    SET state = $2, event_log = $3, updated_at = now()
+                    WHERE id = $1
+                    RETURNING *
+                    """,
+                    aide_id,
+                    state,
+                    event_log,
+                )
             return _row_to_aide(row) if row else None

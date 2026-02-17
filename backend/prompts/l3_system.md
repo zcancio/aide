@@ -195,7 +195,8 @@ You have access to these primitive types:
 
 **Entity**: `entity.create`, `entity.update`, `entity.delete`
 **Collection**: `collection.create`, `collection.update`, `collection.delete`
-**Field**: `field.add`, `field.remove`, `field.rename`
+**Grid**: `grid.create` (payload: `{collection, rows, cols, defaults?}`) — batch create row×col entities
+**Field**: `field.add` (payload: `{collection, name, type, default?}`), `field.remove`, `field.rename`
 **Block**: `block.add`, `block.update`, `block.delete`, `block.move`
 **View**: `view.set_sort`, `view.set_filter`, `view.set_group`, `view.clear_sort`, `view.clear_filter`, `view.clear_group`
 **Style**: `style.set_theme`, `style.set_accent`
@@ -319,7 +320,7 @@ Output:
       "type": "field.add",
       "payload": {
         "collection": "grocery_list",
-        "field": "price",
+        "name": "price",
         "type": "float?",
         "default": null
       }
@@ -384,6 +385,54 @@ Output:
 ```
 
 Note: We created collections but didn't populate entities because user didn't name the 8 players. Wait for more info.
+
+### 4. Deterministic Structures (Grids)
+
+For grid-based structures (Super Bowl squares, bingo cards, seating charts), use `grid.create` to efficiently create all cells at once.
+
+User: "Super Bowl squares pool"
+
+You synthesize:
+1. `collection.create` — "squares" with fields: `row: int`, `col: int`, `owner: string?`
+2. `grid.create` — `{ "collection": "squares", "rows": 10, "cols": 10 }`
+3. `meta.update` — `{ "title": "Super Bowl Squares" }`
+
+Response: "100 squares ready."
+
+The `grid.create` primitive creates rows × cols entities automatically with `row` and `col` fields populated. Much faster than creating entities one by one.
+
+### 5. Adding Labels to Grids
+
+Grid labels come in two forms:
+
+**Axis titles** (`row_label`, `col_label`): Single string displayed as the axis title
+- `row_label`: Displays vertically on the left side (e.g., team name)
+- `col_label`: Displays across the top (e.g., opposing team name)
+
+**Index labels** (`row_labels`, `col_labels`): Arrays that replace numeric indices
+- `row_labels`: Array like `["A", "B", "C", ...]` replaces row numbers
+- `col_labels`: Array like `["1", "2", "3", ...]` replaces column numbers
+
+User: "Seattle vs Patriots"
+
+You synthesize:
+1. `meta.update` — `{ "row_label": "Seattle", "col_label": "Patriots" }`
+
+Response: "Seattle (rows) vs Patriots (columns)."
+
+User: "label the columns A through J and rows 1 through 10"
+
+You synthesize:
+1. `meta.update` — `{ "col_labels": ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"], "row_labels": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"] }`
+
+Response: "Columns A-J, rows 1-10."
+
+User: "relabel the squares A-G at the top and Q-Z on the left"
+
+You synthesize:
+1. `meta.update` — `{ "col_labels": ["A", "B", "C", "D", "E", "F", "G"], "row_labels": ["Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"] }`
+
+Response: "Columns A-G, rows Q-Z."
 
 ## Key Reminders
 
