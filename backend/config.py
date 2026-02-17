@@ -63,8 +63,20 @@ class Settings:
 # Singleton instance
 settings = Settings()
 
-# Validate required settings
+# Validate required settings (skip in test mode)
+_testing = os.environ.get("TESTING", "").lower() == "true"
+
 if not settings.DATABASE_URL:
     raise RuntimeError("DATABASE_URL environment variable is required")
 if not settings.JWT_SECRET:
     raise RuntimeError("JWT_SECRET environment variable is required")
+
+if not _testing:
+    if not settings.R2_ENDPOINT:
+        raise RuntimeError("R2_ENDPOINT environment variable is required")
+    if not settings.R2_ACCESS_KEY:
+        raise RuntimeError("R2_ACCESS_KEY environment variable is required")
+    if not settings.R2_SECRET_KEY:
+        raise RuntimeError("R2_SECRET_KEY environment variable is required")
+    if not settings.ANTHROPIC_API_KEY:
+        raise RuntimeError("ANTHROPIC_API_KEY environment variable is required")
