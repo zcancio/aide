@@ -165,10 +165,12 @@ def resolve_primitives(
             new_payload = {k: v for k, v in payload.items() if k not in ("cell_ref", "collection")}
             new_payload["ref"] = resolution.entity_ref
 
-            resolved.append({
-                "type": p_type,
-                "payload": new_payload,
-            })
+            resolved.append(
+                {
+                    "type": p_type,
+                    "payload": new_payload,
+                }
+            )
         else:
             # No cell_ref, pass through unchanged
             resolved.append(primitive)
