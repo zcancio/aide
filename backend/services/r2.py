@@ -26,7 +26,7 @@ class R2Service:
         Returns:
             R2 key (path) where HTML was uploaded
         """
-        bucket = "aide-workspaces"
+        bucket = settings.R2_WORKSPACE_BUCKET
         key = f"{aide_id}/index.html"
 
         async with self.session.client(
@@ -55,7 +55,7 @@ class R2Service:
         Returns:
             R2 key (path) where HTML was uploaded
         """
-        bucket = "aide-published"
+        bucket = settings.R2_PUBLISHED_BUCKET
         key = f"{slug}/index.html"
 
         async with self.session.client(
@@ -82,7 +82,7 @@ class R2Service:
         Args:
             slug: Public slug for the aide
         """
-        bucket = "aide-published"
+        bucket = settings.R2_PUBLISHED_BUCKET
         key = f"{slug}/index.html"
 
         async with self.session.client(
