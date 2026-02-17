@@ -359,13 +359,37 @@
     /* Thinking indicator */
     #thinking-indicator {
       display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
       font-size: 12px;
       color: var(--text-muted);
-      padding: 6px 12px;
-      text-align: center;
+      padding: 10px 12px;
     }
 
-    #thinking-indicator.visible { display: block; }
+    #thinking-indicator.visible { display: flex; }
+
+    .thinking-dots {
+      display: flex;
+      gap: 4px;
+    }
+
+    .thinking-dots span {
+      width: 6px;
+      height: 6px;
+      background: var(--text-muted);
+      border-radius: 50%;
+      animation: thinking-bounce 1.4s infinite ease-in-out both;
+    }
+
+    .thinking-dots span:nth-child(1) { animation-delay: -0.32s; }
+    .thinking-dots span:nth-child(2) { animation-delay: -0.16s; }
+    .thinking-dots span:nth-child(3) { animation-delay: 0s; }
+
+    @keyframes thinking-bounce {
+      0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+      40% { transform: scale(1); opacity: 1; }
+    }
 
     /* Back button (editor toolbar) */
     #editor-back {
@@ -577,7 +601,10 @@
     <div id="history-panel"></div>
     <div id="input-bar">
       <div id="image-preview-strip"></div>
-      <div id="thinking-indicator">...</div>
+      <div id="thinking-indicator">
+        <div class="thinking-dots"><span></span><span></span><span></span></div>
+        <span id="thinking-text">Thinking</span>
+      </div>
       <div class="input-row">
         <textarea
           id="message-input"
@@ -877,11 +904,30 @@
     }
   }
 
+  let thinkingInterval = null;
+  const thinkingStates = ['Thinking', 'Processing', 'Generating'];
+
   function setSendingState(sending) {
     document.getElementById('send-btn').disabled = sending;
     document.getElementById('message-input').disabled = sending;
     const indicator = document.getElementById('thinking-indicator');
-    indicator.classList.toggle('visible', sending);
+    const thinkingText = document.getElementById('thinking-text');
+
+    if (sending) {
+      indicator.classList.add('visible');
+      let stateIndex = 0;
+      thinkingText.textContent = thinkingStates[0];
+      thinkingInterval = setInterval(() => {
+        stateIndex = (stateIndex + 1) % thinkingStates.length;
+        thinkingText.textContent = thinkingStates[stateIndex];
+      }, 2000);
+    } else {
+      indicator.classList.remove('visible');
+      if (thinkingInterval) {
+        clearInterval(thinkingInterval);
+        thinkingInterval = null;
+      }
+    }
   }
 
   // ── History ────────────────────────────────────────
