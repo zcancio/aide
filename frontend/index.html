@@ -216,40 +216,27 @@
     }
 
     .history-message {
-      margin-bottom: 8px;
+      margin-bottom: 12px;
       display: flex;
+      flex-direction: column;
+      gap: 2px;
     }
 
     .history-message:last-child { margin-bottom: 0; }
 
-    .history-message.user {
-      justify-content: flex-end;
-    }
-
-    .history-message.assistant {
-      justify-content: flex-start;
+    .history-role {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
     }
 
     .history-content {
       font-size: 13px;
+      color: var(--text);
       line-height: 1.5;
       white-space: pre-wrap;
-      padding: 8px 12px;
-      border-radius: 16px;
-      max-width: 85%;
-    }
-
-    .history-message.user .history-content {
-      background: var(--accent);
-      color: #000;
-      border-bottom-right-radius: 4px;
-    }
-
-    .history-message.assistant .history-content {
-      background: var(--surface);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-bottom-left-radius: 4px;
     }
 
     /* Input bar */
@@ -986,7 +973,8 @@
     }
 
     panel.innerHTML = conversationHistory.map(m => `
-      <div class="history-message ${m.role}">
+      <div class="history-message">
+        <div class="history-role">${m.role}</div>
         <div class="history-content">${escapeHtml(m.content)}</div>
       </div>
     `).join('');
