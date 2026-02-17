@@ -330,9 +330,8 @@ class TestL2Compilation:
                             "type": "field.add",
                             "payload": {
                                 "collection": "grocery_list",
-                                "field": "price",
+                                "name": "price",
                                 "type": "float?",
-                                "default": None,
                             },
                         }
                     ],
