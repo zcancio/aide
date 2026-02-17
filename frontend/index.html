@@ -200,8 +200,6 @@
     /* Conversation history (expandable) */
     #history-panel {
       background: rgba(20, 20, 20, 0.9);
-      border: 1px solid var(--border);
-      border-bottom: none;
       border-radius: var(--radius) var(--radius) 0 0;
       max-height: 0;
       overflow: hidden;
@@ -221,7 +219,6 @@
     }
 
     #history-panel.open + #input-bar {
-      border-top: none;
       border-radius: 0 0 var(--radius) var(--radius);
     }
 
@@ -258,14 +255,12 @@
     .history-message.assistant .history-content {
       background: rgba(30, 30, 30, 0.6);
       color: var(--text);
-      border: 1px solid rgba(255, 255, 255, 0.1);
       border-bottom-left-radius: 4px;
     }
 
     /* Input bar */
     #input-bar {
       background: rgba(20, 20, 20, 0.9);
-      border: 1px solid var(--border);
       border-radius: var(--radius);
       display: flex;
       flex-direction: column;
