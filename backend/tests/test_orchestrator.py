@@ -107,6 +107,7 @@ class TestL3Synthesis:
             # Create mock aide object with attributes
             mock_aide_obj = MagicMock()
             mock_aide_obj.state = mock_aide["state"]
+            mock_aide_obj.title = mock_aide.get("title", "Untitled")
             mock_aide_obj.event_log = []
 
             orchestrator.aide_repo.get = AsyncMock(return_value=mock_aide_obj)
@@ -185,6 +186,7 @@ class TestL3Synthesis:
 
             mock_aide_obj = MagicMock()
             mock_aide_obj.state = mock_aide["state"]
+            mock_aide_obj.title = mock_aide.get("title", "Untitled")
             mock_aide_obj.event_log = []
 
             orchestrator.aide_repo.get = AsyncMock(return_value=mock_aide_obj)
@@ -233,6 +235,7 @@ class TestL2Compilation:
 
             mock_aide_obj = MagicMock()
             mock_aide_obj.state = mock_grocery_aide["state"]
+            mock_aide_obj.title = mock_grocery_aide.get("title", "Untitled")
             mock_aide_obj.event_log = []
 
             orchestrator.aide_repo.get = AsyncMock(return_value=mock_aide_obj)
@@ -295,6 +298,7 @@ class TestL2Compilation:
 
             mock_aide_obj = MagicMock()
             mock_aide_obj.state = mock_grocery_aide["state"]
+            mock_aide_obj.title = mock_grocery_aide.get("title", "Untitled")
             mock_aide_obj.event_log = []
 
             orchestrator.aide_repo.get = AsyncMock(return_value=mock_aide_obj)
@@ -365,6 +369,7 @@ class TestL2Compilation:
 
             mock_aide_obj = MagicMock()
             mock_aide_obj.state = mock_grocery_aide["state"]
+            mock_aide_obj.title = mock_grocery_aide.get("title", "Untitled")
             mock_aide_obj.event_log = []
 
             orchestrator.aide_repo.get = AsyncMock(return_value=mock_aide_obj)
@@ -431,6 +436,7 @@ class TestOrchestrationFlow:
 
             mock_aide_obj = MagicMock()
             mock_aide_obj.state = mock_grocery_aide["state"]
+            mock_aide_obj.title = mock_grocery_aide.get("title", "Untitled")
             mock_aide_obj.event_log = []
 
             orchestrator.aide_repo.get = AsyncMock(return_value=mock_aide_obj)
@@ -498,6 +504,7 @@ class TestOrchestrationFlow:
 
             mock_aide_obj = MagicMock()
             mock_aide_obj.state = mock_grocery_aide["state"]
+            mock_aide_obj.title = mock_grocery_aide.get("title", "Untitled")
             mock_aide_obj.event_log = []
 
             orchestrator.aide_repo.get = AsyncMock(return_value=mock_aide_obj)
