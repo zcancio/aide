@@ -349,21 +349,21 @@ def _render_auto_grid(entities: list[dict], schema: dict, meta: dict | None = No
         parts.append("          <tr>")
         # Empty corner cells: 1 for row numbers, plus 1 if row_label exists
         if row_label:
-            parts.append('            <th style="padding:8px;"></th>')  # Row label column
-        parts.append('            <th style="padding:8px;"></th>')  # Row numbers column
-        parts.append(f'            <th colspan="{len(col_list)}" style="padding:12px 8px;font-weight:700;color:#222;font-size:14px;text-transform:uppercase;letter-spacing:1px;border-bottom:3px solid #333;">{escape(col_label)}</th>')
+            parts.append('            <th style="padding:4px;"></th>')  # Row label column
+        parts.append('            <th style="padding:4px;"></th>')  # Row numbers column
+        parts.append(f'            <th colspan="{len(col_list)}" style="padding:6px 4px;font-weight:700;color:#222;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #333;">{escape(col_label)}</th>')
         parts.append("          </tr>")
 
     # Header row with column numbers/labels
     parts.append("          <tr>")
     # Empty cells: 1 for row numbers, plus 1 if row_label exists
     if row_label:
-        parts.append('            <th style="padding:8px;"></th>')  # Row label column
-    parts.append('            <th style="padding:8px;"></th>')  # Row numbers column
+        parts.append('            <th style="padding:4px;"></th>')  # Row label column
+    parts.append('            <th style="padding:4px;"></th>')  # Row numbers column
     for idx, col in enumerate(col_list):
         # Use custom col_labels if provided, otherwise use numeric index
         col_display = col_labels[idx] if idx < len(col_labels) else col
-        parts.append(f'            <th style="padding:8px;font-weight:600;color:#444;font-size:13px;">{escape(str(col_display))}</th>')
+        parts.append(f'            <th style="padding:4px;font-weight:600;color:#444;font-size:11px;">{escape(str(col_display))}</th>')
     parts.append("          </tr>")
     parts.append("        </thead>")
 
@@ -373,24 +373,24 @@ def _render_auto_grid(entities: list[dict], schema: dict, meta: dict | None = No
         parts.append("          <tr>")
         # Add vertical row label on first row, spanning all rows
         if i == 0 and row_label:
-            parts.append(f'            <th rowspan="{len(row_list)}" style="padding:12px 8px;font-weight:700;color:#222;font-size:14px;text-transform:uppercase;letter-spacing:1px;writing-mode:vertical-lr;transform:rotate(180deg);border-right:3px solid #333;text-align:center;">{escape(row_label)}</th>')
+            parts.append(f'            <th rowspan="{len(row_list)}" style="padding:6px 4px;font-weight:700;color:#222;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;writing-mode:vertical-lr;transform:rotate(180deg);border-right:2px solid #333;text-align:center;">{escape(row_label)}</th>')
         # Note: when row_label exists and i > 0, we skip because rowspan covers it
         # Row number/label - use custom row_labels if provided
         row_display = row_labels[i] if i < len(row_labels) else row
-        parts.append(f'            <th style="padding:8px;font-weight:600;color:#444;font-size:13px;">{escape(str(row_display))}</th>')
+        parts.append(f'            <th style="padding:4px;font-weight:600;color:#444;font-size:11px;">{escape(str(row_display))}</th>')
         for col in col_list:
             entity = grid_map.get((row, col))
             if entity and display_field:
                 value = entity.get(display_field)
                 if value:
                     cell_content = escape(str(value))
-                    cell_style = "padding:12px;border:1px solid #ccc;background:#e8f4e8;min-width:50px;font-size:12px;"
+                    cell_style = "padding:6px;border:1px solid #ccc;background:#e8f4e8;min-width:24px;font-size:10px;"
                 else:
                     cell_content = ""
-                    cell_style = "padding:12px;border:1px solid #ddd;min-width:50px;"
+                    cell_style = "padding:6px;border:1px solid #ddd;min-width:24px;"
             else:
                 cell_content = ""
-                cell_style = "padding:12px;border:1px solid #ddd;min-width:50px;"
+                cell_style = "padding:6px;border:1px solid #ddd;min-width:24px;"
             parts.append(f'            <td style="{cell_style}">{cell_content}</td>')
         parts.append("          </tr>")
     parts.append("        </tbody>")
