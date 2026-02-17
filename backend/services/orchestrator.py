@@ -1,13 +1,17 @@
 """Main orchestrator — coordinates L2/L3, reducer, renderer, and persistence."""
 
+import time
 import uuid
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+from backend.config import settings
 from backend.models.conversation import Message
 from backend.repos.aide_repo import AideRepo
 from backend.repos.conversation_repo import ConversationRepo
+from backend.services.flight_recorder import FlightRecorder
+from backend.services.flight_recorder_uploader import flight_recorder_uploader
 from backend.services.grid_resolver import resolve_primitives
 from backend.services.l2_compiler import l2_compiler
 from backend.services.l3_synthesizer import l3_synthesizer
@@ -56,6 +60,7 @@ class Orchestrator:
 
         # Parse state JSON
         snapshot = self._parse_snapshot(aide.state)
+        snapshot_before = snapshot.to_dict()
 
         # Load or create conversation for this aide
         conversation = await self.conv_repo.get_for_aide(user_id, aide_id)
@@ -65,33 +70,91 @@ class Orchestrator:
         # Load recent events from conversation messages
         recent_events = self._load_recent_events(conversation.messages)
 
-        # 2. Route to L2 or L3
+        # 2. Set up flight recorder for this turn
+        turn_id = f"turn_{uuid.uuid4().hex[:12]}"
+        recorder = FlightRecorder()
+        recorder.start_turn(
+            turn_id=turn_id,
+            aide_id=str(aide_id),
+            user_id=str(user_id),
+            source=source,
+            user_message=message,
+            snapshot_before=snapshot_before,
+        )
+
+        # 3. Route to L2 or L3
         primitives: list[dict[str, Any]] = []
         response_text = ""
 
         try:
             # Check if image input or empty snapshot → route to L3
             if image_data or not snapshot.collections:
-                # Route to L3 (Sonnet)
+                # Route to L3 (production model)
                 print(f"Routing to L3 (image={bool(image_data)}, empty_snapshot={not snapshot.collections})")
-                l3_result = await l3_synthesizer.synthesize(message, snapshot, recent_events, image_data=image_data)
+                l3_result = await self._call_l3(
+                    recorder=recorder,
+                    message=message,
+                    snapshot=snapshot,
+                    recent_events=recent_events,
+                    image_data=image_data,
+                    shadow=False,
+                )
                 primitives = l3_result["primitives"]
                 response_text = l3_result["response"]
+
+                # Shadow L3 call (sequential, non-blocking to user)
+                await self._call_l3_shadow(
+                    recorder=recorder,
+                    message=message,
+                    snapshot=snapshot,
+                    recent_events=recent_events,
+                    image_data=image_data,
+                )
             else:
-                # Route to L2 (Haiku) first
+                # Route to L2 (production model) first
                 print("Routing to L2 first")
-                l2_result = await l2_compiler.compile(message, snapshot, recent_events)
+                l2_result = await self._call_l2(
+                    recorder=recorder,
+                    message=message,
+                    snapshot=snapshot,
+                    recent_events=recent_events,
+                    shadow=False,
+                )
 
                 if l2_result["escalate"]:
                     # L2 requested escalation → route to L3
                     print("L2 escalated to L3")
-                    l3_result = await l3_synthesizer.synthesize(message, snapshot, recent_events)
+                    l3_result = await self._call_l3(
+                        recorder=recorder,
+                        message=message,
+                        snapshot=snapshot,
+                        recent_events=recent_events,
+                        image_data=None,
+                        shadow=False,
+                    )
                     primitives = l3_result["primitives"]
                     response_text = l3_result["response"]
+
+                    # Shadow L3 call
+                    await self._call_l3_shadow(
+                        recorder=recorder,
+                        message=message,
+                        snapshot=snapshot,
+                        recent_events=recent_events,
+                        image_data=None,
+                    )
                 else:
                     print(f"L2 handled: {len(l2_result['primitives'])} primitives")
                     primitives = l2_result["primitives"]
                     response_text = l2_result["response"]
+
+                    # Shadow L2 call
+                    await self._call_l2_shadow(
+                        recorder=recorder,
+                        message=message,
+                        snapshot=snapshot,
+                        recent_events=recent_events,
+                    )
         except Exception as e:
             # AI call failed even after retries — return user-friendly error
             print(f"AI routing failed: {e}")
@@ -102,7 +165,7 @@ class Orchestrator:
                 "error": True,
             }
 
-        # 2.5. Resolve any grid cell references in primitives
+        # 3.5. Resolve any grid cell references in primitives
         snapshot_dict = snapshot.to_dict()
         resolve_result = resolve_primitives(primitives, snapshot_dict)
         if resolve_result.error:
@@ -118,7 +181,7 @@ class Orchestrator:
         if resolve_result.query_response:
             response_text = resolve_result.query_response
 
-        # 3. Apply primitives through reducer
+        # 4. Apply primitives through reducer
         print(f"Orchestrator: {len(primitives)} primitives from AI")
         for p in primitives:
             print(f"  - {p.get('type')}: {p.get('payload', {}).keys()}")
@@ -139,11 +202,11 @@ class Orchestrator:
 
         print(f"Orchestrator: {applied_count}/{len(events)} events applied successfully")
 
-        # 4. Render HTML
+        # 5. Render HTML
         blueprint = Blueprint(identity=aide.title if hasattr(aide, "title") else "AIde")
         html_content = render(new_snapshot, blueprint=blueprint, events=events)
 
-        # 5. Save state to DB
+        # 6. Save state to DB
         serialized_events = [
             {
                 "id": e.id,
@@ -162,14 +225,14 @@ class Orchestrator:
         new_title = new_snapshot.get("meta", {}).get("title")
         await self.aide_repo.update_state(user_id, aide_id, new_snapshot, updated_event_log, title=new_title)
 
-        # 6. Upload HTML to R2 (non-blocking — DB is source of truth)
+        # 7. Upload HTML to R2 (non-blocking — DB is source of truth)
         try:
             await r2_service.upload_html(str(aide_id), html_content)
         except Exception as e:
             # Log but don't fail — state is saved in DB, R2 is just a cache
             print(f"R2 upload failed (will retry on next message): {e}")
 
-        # 7. Save messages to conversation
+        # 8. Save messages to conversation
         user_message = Message(
             role="user",
             content=message,
@@ -186,11 +249,228 @@ class Orchestrator:
             )
             await self.conv_repo.append_message(user_id, conversation.id, assistant_message)
 
+        # 9. Finalize flight recorder and enqueue for upload
+        turn_record = recorder.end_turn(
+            snapshot_after=new_snapshot,
+            primitives_emitted=primitives,
+            primitives_applied=applied_count,
+            response_text=response_text,
+        )
+        flight_recorder_uploader.enqueue(turn_record)
+
         return {
             "response": response_text,
             "html_url": f"/api/aides/{aide_id}/preview",
             "primitives_count": len(primitives),
         }
+
+    async def _call_l2(
+        self,
+        recorder: FlightRecorder,
+        message: str,
+        snapshot: Snapshot,
+        recent_events: list[Event],
+        shadow: bool,
+    ) -> dict[str, Any]:
+        """
+        Call L2 (Haiku-class) and record result in flight recorder.
+
+        Uses production model (settings.L2_MODEL) when shadow=False,
+        shadow model (settings.L2_SHADOW_MODEL) when shadow=True.
+        """
+        model = settings.L2_SHADOW_MODEL if shadow else settings.L2_MODEL
+        start = time.monotonic()
+        error: str | None = None
+        result: dict[str, Any] = {"primitives": [], "response": "", "escalate": False}
+        usage: dict[str, int] = {"input_tokens": 0, "output_tokens": 0}
+
+        # Build the prompt (same format as l2_compiler internal)
+        prompt = l2_compiler._build_user_message(message, snapshot, recent_events)
+
+        try:
+            # Override model for shadow calls by calling ai_provider directly
+            if shadow:
+                from backend.services.ai_provider import ai_provider
+
+                raw = await ai_provider.call_claude(
+                    model=model,
+                    system=l2_compiler.system_prompt,
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=4096,
+                    temperature=1.0,
+                )
+                result = self._parse_l2_response(raw["content"])
+                usage = raw["usage"]
+            else:
+                result = await l2_compiler.compile(message, snapshot, recent_events)
+                # l2_compiler does not return token usage counts
+        except Exception as e:
+            error = str(e)
+            print(f"L2 {'shadow' if shadow else 'production'} call failed: {e}")
+
+        latency_ms = int((time.monotonic() - start) * 1000)
+        recorder.record_llm_call(
+            shadow=shadow,
+            model=model,
+            tier="L2",
+            prompt=prompt,
+            response=result.get("_raw_response", ""),
+            usage=usage,
+            latency_ms=latency_ms,
+            error=error,
+        )
+
+        return result
+
+    async def _call_l3(
+        self,
+        recorder: FlightRecorder,
+        message: str,
+        snapshot: Snapshot,
+        recent_events: list[Event],
+        image_data: bytes | None,
+        shadow: bool,
+    ) -> dict[str, Any]:
+        """
+        Call L3 (Sonnet-class) and record result in flight recorder.
+
+        Uses production model (settings.L3_MODEL) when shadow=False,
+        shadow model (settings.L3_SHADOW_MODEL) when shadow=True.
+        """
+        model = settings.L3_SHADOW_MODEL if shadow else settings.L3_MODEL
+        start = time.monotonic()
+        error: str | None = None
+        result: dict[str, Any] = {"primitives": [], "response": ""}
+        usage: dict[str, int] = {"input_tokens": 0, "output_tokens": 0}
+
+        prompt = l3_synthesizer._build_user_message(message, snapshot, recent_events)
+
+        try:
+            if shadow:
+                from backend.services.ai_provider import ai_provider
+
+                raw = await ai_provider.call_claude(
+                    model=model,
+                    system=l3_synthesizer.system_prompt,
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=16384,
+                    temperature=1.0,
+                )
+                result = self._parse_l3_response(raw["content"])
+                usage = raw["usage"]
+            else:
+                result = await l3_synthesizer.synthesize(message, snapshot, recent_events, image_data=image_data)
+                # l3_synthesizer does not return token usage counts
+        except Exception as e:
+            error = str(e)
+            print(f"L3 {'shadow' if shadow else 'production'} call failed: {e}")
+
+        latency_ms = int((time.monotonic() - start) * 1000)
+        recorder.record_llm_call(
+            shadow=shadow,
+            model=model,
+            tier="L3",
+            prompt=prompt,
+            response=result.get("_raw_response", ""),
+            usage=usage,
+            latency_ms=latency_ms,
+            error=error,
+        )
+
+        return result
+
+    async def _call_l2_shadow(
+        self,
+        recorder: FlightRecorder,
+        message: str,
+        snapshot: Snapshot,
+        recent_events: list[Event],
+    ) -> None:
+        """Run shadow L2 call. Never raises — failures are logged and recorded."""
+        try:
+            await self._call_l2(
+                recorder=recorder,
+                message=message,
+                snapshot=snapshot,
+                recent_events=recent_events,
+                shadow=True,
+            )
+        except Exception as e:
+            print(f"Shadow L2 call error (non-fatal): {e}")
+
+    async def _call_l3_shadow(
+        self,
+        recorder: FlightRecorder,
+        message: str,
+        snapshot: Snapshot,
+        recent_events: list[Event],
+        image_data: bytes | None,
+    ) -> None:
+        """Run shadow L3 call. Never raises — failures are logged and recorded."""
+        try:
+            await self._call_l3(
+                recorder=recorder,
+                message=message,
+                snapshot=snapshot,
+                recent_events=recent_events,
+                image_data=image_data,
+                shadow=True,
+            )
+        except Exception as e:
+            print(f"Shadow L3 call error (non-fatal): {e}")
+
+    def _parse_l2_response(self, content: str) -> dict[str, Any]:
+        """Parse L2 JSON response (same logic as l2_compiler)."""
+        import json
+
+        content = content.strip()
+        if "```json" in content:
+            start = content.find("```json") + 7
+            end = content.find("```", start)
+            if end > start:
+                content = content[start:end].strip()
+        elif "```" in content:
+            start = content.find("```") + 3
+            end = content.find("```", start)
+            if end > start:
+                content = content[start:end].strip()
+
+        try:
+            data = json.loads(content)
+            return {
+                "primitives": data.get("primitives", []),
+                "response": data.get("response", ""),
+                "escalate": data.get("escalate", False),
+                "_raw_response": content,
+            }
+        except json.JSONDecodeError:
+            return {"primitives": [], "response": "", "escalate": True, "_raw_response": content}
+
+    def _parse_l3_response(self, content: str) -> dict[str, Any]:
+        """Parse L3 JSON response (same logic as l3_synthesizer)."""
+        import json
+
+        content = content.strip()
+        if "```json" in content:
+            start = content.find("```json") + 7
+            end = content.find("```", start)
+            if end > start:
+                content = content[start:end].strip()
+        elif "```" in content:
+            start = content.find("```") + 3
+            end = content.find("```", start)
+            if end > start:
+                content = content[start:end].strip()
+
+        try:
+            data = json.loads(content)
+            return {
+                "primitives": data.get("primitives", []),
+                "response": data.get("response", ""),
+                "_raw_response": content,
+            }
+        except json.JSONDecodeError:
+            return {"primitives": [], "response": "", "_raw_response": content}
 
     def _parse_snapshot(self, state_json: dict[str, Any]) -> Snapshot:
         """Parse snapshot from DB JSON."""
