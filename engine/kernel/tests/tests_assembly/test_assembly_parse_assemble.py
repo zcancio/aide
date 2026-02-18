@@ -40,6 +40,7 @@ def make_blueprint():
 
 
 def make_events():
+    """v3 events for parse/assemble round-trip testing."""
     return [
         Event(
             id="evt_001",
@@ -47,8 +48,12 @@ def make_events():
             timestamp="2026-02-15T10:00:00Z",
             actor="user_test",
             source="test",
-            type="collection.create",
-            payload={"id": "items", "schema": {"name": "string"}},
+            type="schema.create",
+            payload={
+                "id": "item",
+                "interface": "interface Item { name: string; }",
+                "render_html": "<li>{{name}}</li>",
+            },
         ),
         Event(
             id="evt_002",
@@ -57,46 +62,34 @@ def make_events():
             actor="user_test",
             source="test",
             type="entity.create",
-            payload={"collection": "items", "id": "item_1", "fields": {"name": "First"}},
+            payload={"id": "item_1", "_schema": "item", "name": "First"},
         ),
     ]
 
 
 def make_populated_snapshot():
-    """Create a snapshot with collections, entities, blocks, and views."""
+    """Create a v3 snapshot with schemas, entities, blocks, and styles."""
     snapshot = empty_state()
     snapshot["meta"] = {"title": "Parse Test Aide", "identity": "Testing parser."}
     snapshot["styles"] = {"primary_color": "#3b82f6", "density": "comfortable"}
-    snapshot["collections"] = {
-        "tasks": {
-            "id": "tasks",
-            "name": "Tasks",
-            "schema": {"name": "string", "done": "bool", "priority": "int"},
-            "entities": {
-                "t1": {"name": "Write tests", "done": False, "priority": 1, "_removed": False},
-                "t2": {"name": "Review code", "done": True, "priority": 2, "_removed": False},
-            },
+    snapshot["schemas"] = {
+        "task": {
+            "id": "task",
+            "interface": "interface Task { name: string; done: boolean; priority: number; }",
+            "render_html": "<li>{{name}}</li>",
         },
     }
-    snapshot["views"] = {
-        "tasks_view": {
-            "id": "tasks_view",
-            "type": "list",
-            "source": "tasks",
-            "config": {"show_fields": ["name", "done"]},
-        },
+    snapshot["entities"] = {
+        "t1": {"_schema": "task", "name": "Write tests", "done": False, "priority": 1, "_removed": False},
+        "t2": {"_schema": "task", "name": "Review code", "done": True, "priority": 2, "_removed": False},
     }
     snapshot["blocks"] = {
-        "block_root": {"type": "root", "children": ["block_h1", "block_tasks"]},
+        "block_root": {"type": "root", "children": ["block_h1"]},
         "block_h1": {
             "type": "heading",
             "parent": "block_root",
-            "props": {"level": 1, "content": "Parse Test"},
-        },
-        "block_tasks": {
-            "type": "collection_view",
-            "parent": "block_root",
-            "props": {"source": "tasks", "view": "tasks_view"},
+            "level": 1,
+            "text": "Parse Test",
         },
     }
     return snapshot
@@ -135,7 +128,7 @@ class TestParseRenderedHTML:
 
         assert parsed.snapshot is not None
         assert parsed.snapshot["meta"]["title"] == "Parse Test Aide"
-        assert "tasks" in parsed.snapshot["collections"]
+        assert "task" in parsed.snapshot["schemas"]
 
     def test_parse_extracts_events(self):
         """Events are extracted correctly from rendered HTML."""
@@ -147,7 +140,7 @@ class TestParseRenderedHTML:
         parsed = parse_aide_html(html)
 
         assert len(parsed.events) == 2
-        assert parsed.events[0].type == "collection.create"
+        assert parsed.events[0].type == "schema.create"
         assert parsed.events[1].type == "entity.create"
         assert parsed.events[0].sequence == 1
         assert parsed.events[1].sequence == 2
@@ -236,28 +229,26 @@ class TestSnapshotRoundTrip:
         assert parsed.snapshot["styles"]["bg_color"] == "#fafafa"
         assert parsed.snapshot["styles"]["density"] == "compact"
 
-    def test_collections_preserved(self):
-        """Collections and their entities are preserved."""
+    def test_schemas_preserved(self):
+        """Schemas are preserved."""
         snapshot = make_populated_snapshot()
         html = render(snapshot, make_blueprint())
         parsed = parse_aide_html(html)
 
-        assert "tasks" in parsed.snapshot["collections"]
-        coll = parsed.snapshot["collections"]["tasks"]
-        assert coll["name"] == "Tasks"
-        assert "t1" in coll["entities"]
-        assert coll["entities"]["t1"]["name"] == "Write tests"
+        assert "task" in parsed.snapshot["schemas"]
+        schema = parsed.snapshot["schemas"]["task"]
+        assert schema["id"] == "task"
 
-    def test_views_preserved(self):
-        """Views and their config are preserved."""
+    def test_entities_preserved(self):
+        """Entities are preserved."""
         snapshot = make_populated_snapshot()
         html = render(snapshot, make_blueprint())
         parsed = parse_aide_html(html)
 
-        assert "tasks_view" in parsed.snapshot["views"]
-        view = parsed.snapshot["views"]["tasks_view"]
-        assert view["type"] == "list"
-        assert view["source"] == "tasks"
+        assert "t1" in parsed.snapshot["entities"]
+        assert parsed.snapshot["entities"]["t1"]["name"] == "Write tests"
+        assert "t2" in parsed.snapshot["entities"]
+        assert parsed.snapshot["entities"]["t2"]["name"] == "Review code"
 
     def test_blocks_preserved(self):
         """Block tree is preserved."""
@@ -267,7 +258,6 @@ class TestSnapshotRoundTrip:
 
         assert "block_root" in parsed.snapshot["blocks"]
         assert "block_h1" in parsed.snapshot["blocks"]
-        assert "block_tasks" in parsed.snapshot["blocks"]
 
 
 class TestEventsRoundTrip:
@@ -290,7 +280,7 @@ class TestEventsRoundTrip:
         html = render(empty_state(), make_blueprint(), events)
         parsed = parse_aide_html(html)
 
-        assert parsed.events[0].type == "collection.create"
+        assert parsed.events[0].type == "schema.create"
         assert parsed.events[1].type == "entity.create"
 
     def test_event_payloads_preserved(self):
@@ -299,8 +289,8 @@ class TestEventsRoundTrip:
         html = render(empty_state(), make_blueprint(), events)
         parsed = parse_aide_html(html)
 
-        assert parsed.events[0].payload["id"] == "items"
-        assert parsed.events[1].payload["fields"]["name"] == "First"
+        assert parsed.events[0].payload["id"] == "item"
+        assert parsed.events[1].payload["name"] == "First"
 
     def test_event_timestamps_preserved(self):
         """Event timestamps are preserved exactly."""
@@ -428,8 +418,12 @@ class TestAssemblyParsing:
                 timestamp=now_iso(),
                 actor="test",
                 source="test",
-                type="collection.create",
-                payload={"id": "stuff", "schema": {"name": "string"}},
+                type="schema.create",
+                payload={
+                    "id": "stuff",
+                    "interface": "interface Stuff { name: string; }",
+                    "render_html": "<li>{{name}}</li>",
+                },
             ),
         ]
         result = await assembly.apply(aide_file, events)
@@ -437,5 +431,5 @@ class TestAssemblyParsing:
 
         loaded = await assembly.load(aide_file.aide_id)
 
-        assert "stuff" in loaded.snapshot["collections"]
-        assert loaded.snapshot["collections"]["stuff"]["schema"]["name"] == "string"
+        assert "stuff" in loaded.snapshot["schemas"]
+        assert "interface" in loaded.snapshot["schemas"]["stuff"]

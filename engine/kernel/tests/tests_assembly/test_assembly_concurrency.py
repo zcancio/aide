@@ -38,8 +38,10 @@ def make_blueprint():
     )
 
 
-def make_update_event(ref: str, fields: dict, sequence: int = 0) -> Event:
-    """Create an entity update event."""
+def make_update_event(entity_id: str, fields: dict, sequence: int = 0) -> Event:
+    """Create a v3 entity.update event."""
+    payload = {"id": entity_id}
+    payload.update(fields)
     return Event(
         id=f"evt_{sequence:03d}" if sequence else "",
         sequence=sequence,
@@ -47,12 +49,12 @@ def make_update_event(ref: str, fields: dict, sequence: int = 0) -> Event:
         actor="user_test",
         source="test",
         type="entity.update",
-        payload={"ref": ref, "fields": fields},
+        payload=payload,
     )
 
 
 def make_setup_events() -> list[Event]:
-    """Create initial events to set up an aide with a counter collection."""
+    """Create initial events to set up an aide with a counter (v3 schema + entity)."""
     return [
         Event(
             id="evt_001",
@@ -60,8 +62,12 @@ def make_setup_events() -> list[Event]:
             timestamp=now_iso(),
             actor="user_test",
             source="test",
-            type="collection.create",
-            payload={"id": "counters", "schema": {"name": "string", "value": "int"}},
+            type="schema.create",
+            payload={
+                "id": "counter",
+                "interface": "interface Counter { name: string; value: number; }",
+                "render_html": "<div class=\"counter\">{{name}}: {{value}}</div>",
+            },
         ),
         Event(
             id="evt_002",
@@ -71,9 +77,10 @@ def make_setup_events() -> list[Event]:
             source="test",
             type="entity.create",
             payload={
-                "collection": "counters",
                 "id": "counter_1",
-                "fields": {"name": "Main counter", "value": 0},
+                "_schema": "counter",
+                "name": "Main counter",
+                "value": 1,
             },
         ),
     ]
@@ -118,22 +125,26 @@ class TestBasicApply:
         # Create events with sequence=0
         events = [
             Event(
-                id="",
+                id="evt_20260218_001",
                 sequence=0,
                 timestamp=now_iso(),
                 actor="user_test",
                 source="test",
-                type="collection.create",
-                payload={"id": "items", "schema": {"name": "string"}},
+                type="schema.create",
+                payload={
+                    "id": "item",
+                    "interface": "interface Item { name: string; }",
+                    "render_html": "<li>{{name}}</li>",
+                },
             ),
             Event(
-                id="",
+                id="evt_20260218_002",
                 sequence=0,
                 timestamp=now_iso(),
                 actor="user_test",
                 source="test",
                 type="entity.create",
-                payload={"collection": "items", "id": "item_1", "fields": {"name": "First"}},
+                payload={"id": "item_1", "_schema": "item", "name": "First"},
             ),
         ]
 
@@ -175,7 +186,7 @@ class TestConcurrentAppliesAsync:
         async def apply_update(value: int):
             """Load and apply an update."""
             loaded = await assembly.load(aide_file.aide_id)
-            event = make_update_event("counters/counter_1", {"value": value})
+            event = make_update_event("counter_1", {"value": value})
             result = await assembly.apply(loaded, [event])
             if result.applied:
                 await assembly.save(loaded)
@@ -204,8 +215,8 @@ class TestConcurrentAppliesAsync:
                 timestamp=now_iso(),
                 actor="test",
                 source="test",
-                type="collection.create",
-                payload={"id": "counters", "schema": {"name": "string", "value": "int"}},
+                type="schema.create",
+                payload={"id": "counter", "interface": "interface Counter { name: string; value: number; }", "render_html": "<div>{{name}}</div>"},
             ),
             Event(
                 id="",
@@ -214,14 +225,14 @@ class TestConcurrentAppliesAsync:
                 actor="test",
                 source="test",
                 type="entity.create",
-                payload={"collection": "counters", "id": "counter_1", "fields": {"name": "Main", "value": 0}},
+                payload={"id": "counter_1", "_schema": "counter", "name": "Main", "value": 1},
             ),
         ]
         await assembly.apply(aide_file, setup_events)
 
         # Apply multiple updates sequentially with auto-assigned sequences
         for i in range(5):
-            event = make_update_event("counters/counter_1", {"value": i * 10})
+            event = make_update_event("counter_1", {"value": i * 10})
             result = await assembly.apply(aide_file, [event])
             assert len(result.applied) == 1
 
@@ -261,11 +272,11 @@ class TestLockingSemantics:
                 timestamp=now_iso(),
                 actor="test",
                 source="test",
-                type="collection.create" if i == 0 else "entity.create",
+                type="schema.create" if i == 0 else "entity.create",
                 payload=(
-                    {"id": f"coll_{i}", "schema": {"name": "string"}}
+                    {"id": f"schema_{i}", "interface": "interface S { name: string; }", "render_html": "<li>{{name}}</li>"}
                     if i == 0
-                    else {"collection": "coll_0", "id": f"item_{i}", "fields": {"name": f"Item {i}"}}
+                    else {"id": f"item_{i}", "_schema": "schema_0", "name": f"Item {i}"}
                 ),
             )
             result = await assembly.apply(aide_file, [event])
@@ -285,8 +296,8 @@ class TestLockingSemantics:
                 timestamp=now_iso(),
                 actor="test",
                 source="test",
-                type="collection.create",
-                payload={"id": "items", "schema": {"name": "string"}},
+                type="schema.create",
+                payload={"id": "item", "interface": "interface Item { name: string; }", "render_html": "<li>{{name}}</li>"},
             ),
             Event(
                 id="",
@@ -295,7 +306,7 @@ class TestLockingSemantics:
                 actor="test",
                 source="test",
                 type="entity.create",
-                payload={"collection": "items", "id": "item_1", "fields": {"name": "A"}},
+                payload={"id": "item_1", "_schema": "item", "name": "A"},
             ),
             Event(
                 id="",
@@ -304,7 +315,7 @@ class TestLockingSemantics:
                 actor="test",
                 source="test",
                 type="entity.create",
-                payload={"collection": "items", "id": "item_2", "fields": {"name": "B"}},
+                payload={"id": "item_2", "_schema": "item", "name": "B"},
             ),
         ]
         result = await assembly.apply(aide_file, events)
@@ -353,7 +364,7 @@ class TestSequenceValidation:
             actor="test",
             source="test",
             type="entity.update",
-            payload={"ref": "counters/counter_1", "fields": {"value": 100}},
+            payload={"id": "counter_1", "value": 100},
         )
         result = await assembly.apply(aide_file, [bad_event])
 
@@ -381,7 +392,7 @@ class TestSequenceValidation:
             actor="a",
             source="test",
             type="entity.update",
-            payload={"ref": "counters/counter_1", "fields": {"value": 100}},
+            payload={"id": "counter_1", "value": 100},
         )
         event_b = Event(
             id="evt_b",
@@ -390,7 +401,7 @@ class TestSequenceValidation:
             actor="b",
             source="test",
             type="entity.update",
-            payload={"ref": "counters/counter_1", "fields": {"value": 200}},
+            payload={"id": "counter_1", "value": 200},
         )
 
         result_a = await assembly.apply(client_a, [event_a])

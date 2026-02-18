@@ -33,11 +33,11 @@ def make_blueprint():
 
 
 def make_twenty_events() -> list[Event]:
-    """Create 20 events that build a small aide."""
+    """Create 20 events that build a small aide (v3 primitives)."""
     events = []
     seq = 0
 
-    # 1. Create collection
+    # 1. Create schema
     seq += 1
     events.append(
         Event(
@@ -46,8 +46,12 @@ def make_twenty_events() -> list[Event]:
             timestamp=now_iso(),
             actor="user_test",
             source="test",
-            type="collection.create",
-            payload={"id": "players", "schema": {"name": "string", "wins": "int", "active": "bool"}},
+            type="schema.create",
+            payload={
+                "id": "player",
+                "interface": "interface Player { name: string; wins: number; active: boolean; }",
+                "render_html": "<li>{{name}}: {{wins}} wins</li>",
+            },
         )
     )
 
@@ -63,9 +67,11 @@ def make_twenty_events() -> list[Event]:
                 source="test",
                 type="entity.create",
                 payload={
-                    "collection": "players",
                     "id": f"player_{i + 1}",
-                    "fields": {"name": f"Player {i + 1}", "wins": i, "active": True},
+                    "_schema": "player",
+                    "name": f"Player {i + 1}",
+                    "wins": i,
+                    "active": True,
                 },
             )
         )
@@ -80,12 +86,10 @@ def make_twenty_events() -> list[Event]:
                 timestamp=now_iso(),
                 actor="user_test",
                 source="test",
-                type="field.update",
+                type="entity.update",
                 payload={
-                    "collection": "players",
-                    "entity": f"player_{i + 1}",
-                    "field": "wins",
-                    "value": (i + 1) * 10,
+                    "id": f"player_{i + 1}",
+                    "wins": (i + 1) * 10,
                 },
             )
         )
@@ -104,26 +108,7 @@ def make_twenty_events() -> list[Event]:
         )
     )
 
-    # 18. Create view
-    seq += 1
-    events.append(
-        Event(
-            id=f"evt_{seq:03d}",
-            sequence=seq,
-            timestamp=now_iso(),
-            actor="user_test",
-            source="test",
-            type="view.create",
-            payload={
-                "id": "players_view",
-                "type": "table",
-                "source": "players",
-                "config": {"show_fields": ["name", "wins", "active"]},
-            },
-        )
-    )
-
-    # 19. Create heading block
+    # 18. Create heading block
     seq += 1
     events.append(
         Event(
@@ -137,12 +122,13 @@ def make_twenty_events() -> list[Event]:
                 "id": "block_title",
                 "type": "heading",
                 "parent": "block_root",
-                "props": {"level": 1, "content": "Thursday Night Poker"},
+                "level": 1,
+                "text": "Thursday Night Poker",
             },
         )
     )
 
-    # 20. Create collection view block
+    # 19. Create entity_view block
     seq += 1
     events.append(
         Event(
@@ -154,10 +140,24 @@ def make_twenty_events() -> list[Event]:
             type="block.set",
             payload={
                 "id": "block_players",
-                "type": "collection_view",
+                "type": "entity_view",
                 "parent": "block_root",
-                "props": {"source": "players", "view": "players_view"},
+                "source": "player_1",
             },
+        )
+    )
+
+    # 20. Set a style
+    seq += 1
+    events.append(
+        Event(
+            id=f"evt_{seq:03d}",
+            sequence=seq,
+            timestamp=now_iso(),
+            actor="user_test",
+            source="test",
+            type="style.set",
+            payload={"primary_color": "#ff5500"},
         )
     )
 
@@ -249,8 +249,8 @@ class TestForkSnapshotPreservation:
         return AideAssembly(storage)
 
     @pytest.mark.asyncio
-    async def test_fork_preserves_collections(self, assembly, storage):
-        """Forked aide has same collections."""
+    async def test_fork_preserves_schemas(self, assembly, storage):
+        """Forked aide has same schemas."""
         original = await assembly.create(make_blueprint())
         events = make_twenty_events()
         await assembly.apply(original, events)
@@ -258,10 +258,7 @@ class TestForkSnapshotPreservation:
 
         forked = await assembly.fork(original.aide_id)
 
-        assert "players" in forked.snapshot["collections"]
-        assert (
-            forked.snapshot["collections"]["players"]["schema"] == original.snapshot["collections"]["players"]["schema"]
-        )
+        assert "player" in forked.snapshot["schemas"]
 
     @pytest.mark.asyncio
     async def test_fork_preserves_entities(self, assembly, storage):
@@ -273,27 +270,13 @@ class TestForkSnapshotPreservation:
 
         forked = await assembly.fork(original.aide_id)
 
-        orig_entities = original.snapshot["collections"]["players"]["entities"]
-        fork_entities = forked.snapshot["collections"]["players"]["entities"]
+        orig_entities = original.snapshot["entities"]
+        fork_entities = forked.snapshot["entities"]
 
         assert len(fork_entities) == len(orig_entities)
         for eid in orig_entities:
             assert eid in fork_entities
             assert fork_entities[eid]["name"] == orig_entities[eid]["name"]
-            assert fork_entities[eid]["wins"] == orig_entities[eid]["wins"]
-
-    @pytest.mark.asyncio
-    async def test_fork_preserves_views(self, assembly, storage):
-        """Forked aide has same views."""
-        original = await assembly.create(make_blueprint())
-        events = make_twenty_events()
-        await assembly.apply(original, events)
-        await assembly.save(original)
-
-        forked = await assembly.fork(original.aide_id)
-
-        assert "players_view" in forked.snapshot["views"]
-        assert forked.snapshot["views"]["players_view"]["type"] == "table"
 
     @pytest.mark.asyncio
     async def test_fork_preserves_blocks(self, assembly, storage):
@@ -313,20 +296,6 @@ class TestForkSnapshotPreservation:
         """Forked aide has same styles."""
         original = await assembly.create(make_blueprint())
         events = make_twenty_events()
-
-        # Add a style event (style.set takes key-value pairs directly)
-        events.append(
-            Event(
-                id="evt_021",
-                sequence=21,
-                timestamp=now_iso(),
-                actor="user_test",
-                source="test",
-                type="style.set",
-                payload={"primary_color": "#ff5500"},
-            )
-        )
-
         await assembly.apply(original, events)
         await assembly.save(original)
 
@@ -358,7 +327,7 @@ class TestForkCleanup:
 
         forked = await assembly.fork(original.aide_id)
 
-        for entity in forked.snapshot["collections"]["players"]["entities"].values():
+        for entity in forked.snapshot["entities"].values():
             assert "_created_seq" not in entity
             assert "_updated_seq" not in entity
             assert "_removed_seq" not in entity
@@ -468,13 +437,13 @@ class TestForkIndependence:
         forked = await assembly.fork(original.aide_id)
 
         # Mutate forked snapshot
-        forked.snapshot["collections"]["players"]["entities"]["player_1"]["wins"] = 9999
+        forked.snapshot["entities"]["player_1"]["wins"] = 9999
 
         # Reload original
         reloaded = await assembly.load(original.aide_id)
 
         # Original should be unchanged
-        assert reloaded.snapshot["collections"]["players"]["entities"]["player_1"]["wins"] != 9999
+        assert reloaded.snapshot["entities"]["player_1"]["wins"] != 9999
 
     @pytest.mark.asyncio
     async def test_fork_can_be_saved_independently(self, assembly, storage):

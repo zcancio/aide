@@ -37,7 +37,7 @@ def make_blueprint():
 
 
 def make_many_events(count: int) -> list[Event]:
-    """Generate a specified number of events."""
+    """Generate a specified number of v3 events."""
     events = [
         Event(
             id="evt_001",
@@ -45,8 +45,12 @@ def make_many_events(count: int) -> list[Event]:
             timestamp=now_iso(),
             actor="user_test",
             source="test",
-            type="collection.create",
-            payload={"id": "items", "schema": {"name": "string", "index": "int"}},
+            type="schema.create",
+            payload={
+                "id": "item",
+                "interface": "interface Item { name: string; index: number; }",
+                "render_html": "<li>{{name}}</li>",
+            },
         ),
     ]
 
@@ -60,9 +64,10 @@ def make_many_events(count: int) -> list[Event]:
                 source="test",
                 type="entity.create",
                 payload={
-                    "collection": "items",
                     "id": f"item_{i}",
-                    "fields": {"name": f"Item number {i}", "index": i},
+                    "_schema": "item",
+                    "name": f"Item number {i}",
+                    "index": i,
                 },
             )
         )
@@ -246,14 +251,14 @@ class TestCompactionEntityPreservation:
         events = make_many_events(600)  # Creates 599 entities
         await assembly.apply(aide_file, events)
 
-        entities_before = len(aide_file.snapshot["collections"]["items"]["entities"])
+        entities_before = len(aide_file.snapshot["entities"])
 
         await assembly.compact(aide_file, keep_recent=50)
 
-        entities_after = len(aide_file.snapshot["collections"]["items"]["entities"])
+        entities_after = len(aide_file.snapshot["entities"])
 
         assert entities_before == entities_after
-        assert entities_after == 599  # 600 events - 1 collection.create
+        assert entities_after == 599  # 600 events - 1 schema.create
 
     @pytest.mark.asyncio
     async def test_entity_data_unchanged(self, assembly):
@@ -263,11 +268,11 @@ class TestCompactionEntityPreservation:
         await assembly.apply(aide_file, events)
 
         # Get specific entity before
-        entity_50_before = aide_file.snapshot["collections"]["items"]["entities"]["item_50"].copy()
+        entity_50_before = aide_file.snapshot["entities"]["item_50"].copy()
 
         await assembly.compact(aide_file, keep_recent=10)
 
-        entity_50_after = aide_file.snapshot["collections"]["items"]["entities"]["item_50"]
+        entity_50_after = aide_file.snapshot["entities"]["item_50"]
 
         assert entity_50_after["name"] == entity_50_before["name"]
         assert entity_50_after["index"] == entity_50_before["index"]
@@ -333,7 +338,7 @@ class TestCompactionWithMixedEvents:
         """Compaction handles updates and removes correctly."""
         aide_file = await assembly.create(make_blueprint())
 
-        # Create collection and entities
+        # Create schema and entities (v3)
         events = [
             Event(
                 id="evt_001",
@@ -341,8 +346,8 @@ class TestCompactionWithMixedEvents:
                 timestamp=now_iso(),
                 actor="test",
                 source="test",
-                type="collection.create",
-                payload={"id": "items", "schema": {"name": "string"}},
+                type="schema.create",
+                payload={"id": "item", "interface": "interface Item { name: string; }", "render_html": "<li>{{name}}</li>"},
             ),
             Event(
                 id="evt_002",
@@ -351,7 +356,7 @@ class TestCompactionWithMixedEvents:
                 actor="test",
                 source="test",
                 type="entity.create",
-                payload={"collection": "items", "id": "item_1", "fields": {"name": "Original"}},
+                payload={"id": "item_1", "_schema": "item", "name": "Original"},
             ),
         ]
 
@@ -365,20 +370,20 @@ class TestCompactionWithMixedEvents:
                     actor="test",
                     source="test",
                     type="entity.update",
-                    payload={"ref": "items/item_1", "fields": {"name": f"Updated {i}"}},
+                    payload={"id": "item_1", "name": f"Updated {i}"},
                 )
             )
 
         await assembly.apply(aide_file, events)
 
         # Snapshot should have final update
-        assert aide_file.snapshot["collections"]["items"]["entities"]["item_1"]["name"] == "Updated 102"
+        assert aide_file.snapshot["entities"]["item_1"]["name"] == "Updated 102"
 
         # Compact
         await assembly.compact(aide_file, keep_recent=10)
 
         # Snapshot still has final update
-        assert aide_file.snapshot["collections"]["items"]["entities"]["item_1"]["name"] == "Updated 102"
+        assert aide_file.snapshot["entities"]["item_1"]["name"] == "Updated 102"
         assert len(aide_file.events) == 10
 
 
@@ -409,4 +414,4 @@ class TestCompactionRoundTrip:
 
         assert len(loaded.events) == 20
         # All entities still present
-        assert len(loaded.snapshot["collections"]["items"]["entities"]) == 99
+        assert len(loaded.snapshot["entities"]) == 99

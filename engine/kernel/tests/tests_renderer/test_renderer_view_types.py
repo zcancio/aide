@@ -1,37 +1,24 @@
 """
-AIde Renderer -- View Type Rendering Tests (Category 2)
+AIde Renderer -- View Type Rendering Tests (v3 Unified Entity Model)
 
-One test per view type × realistic data. Grocery list in list view,
-schedule in table view, squares in grid view.
+In v3, entities are rendered via Mustache templates in schemas.
+Child collections are rendered via {{>field_name}} partials.
+Grid layout uses _shape on a child collection dict.
 
-From the spec (aide_renderer_spec.md, "Testing Strategy"):
-  "2. View type rendering. One test per view type × realistic data.
-   Grocery list in list view, schedule in table view, squares in grid view."
+v3 replaces the v2 collection_view/list/table/grid with:
+  - entity_view block pointing to an entity
+  - Schema render_html template defines the output format
+  - {{>field}} partials render child sub-collections
+  - _shape: [rows, cols] triggers CSS grid layout
 
-View types (v1): list, table, grid.
-Unknown view types fall back to table.
-
-This matters because:
-  - Views are how structured data becomes visible HTML
-  - Each view type has distinct HTML structure (ul/li vs table/tr vs grid cells)
-  - Field visibility (show_fields, hide_fields) controls what the user sees
-  - Primary field styling, boolean rendering, field type CSS classes must be correct
-  - Grid view uses positional mapping (row/col labels → entity cells)
-  - Unknown view types must degrade gracefully to table
-
-Reference: aide_renderer_spec.md (View Rendering, Value Formatting, Sorting and Filtering)
+Reference: aide_renderer_spec.md, docs/eng_design/unified_entity_model.md
 """
 
 from engine.kernel.reducer import empty_state
-from engine.kernel.renderer import render_block
-
-# ============================================================================
-# Helpers
-# ============================================================================
+from engine.kernel.renderer import render, render_block, render_entity
 
 
 def assert_contains(html, *fragments):
-    """Assert that the HTML output contains all given fragments."""
     for fragment in fragments:
         assert fragment in html, (
             f"Expected to find {fragment!r} in rendered HTML.\nGot (first 2000 chars):\n{html[:2000]}"
@@ -39,1008 +26,386 @@ def assert_contains(html, *fragments):
 
 
 def assert_not_contains(html, *fragments):
-    """Assert that the HTML output does NOT contain any given fragments."""
     for fragment in fragments:
         assert fragment not in html, f"Did NOT expect to find {fragment!r} in rendered HTML."
 
 
-def build_view_snapshot(
-    collection_id,
-    collection_name,
-    schema,
-    entities,
-    view_id,
-    view_type,
-    view_config=None,
-):
-    """
-    Build a snapshot with a collection, entities, a view, and a
-    collection_view block wired together. Returns (snapshot, block_id).
-    """
-    snapshot = empty_state()
-
-    snapshot["collections"] = {
-        collection_id: {
-            "id": collection_id,
-            "name": collection_name,
-            "schema": schema,
-            "entities": entities,
-        },
-    }
-
-    snapshot["views"] = {
-        view_id: {
-            "id": view_id,
-            "type": view_type,
-            "source": collection_id,
-            "config": view_config or {},
-        },
-    }
-
-    block_id = f"block_{view_id}"
-    snapshot["blocks"][block_id] = {
-        "type": "collection_view",
-        "parent": "block_root",
-        "props": {"source": collection_id, "view": view_id},
-    }
-    snapshot["blocks"]["block_root"]["children"] = [block_id]
-
-    return snapshot, block_id
+def make_blueprint():
+    from engine.kernel.types import Blueprint
+    return Blueprint(identity="Test.", voice="No first person.", prompt="Test.")
 
 
 # ============================================================================
-# Realistic data fixtures
+# Grocery list: list-style rendering
 # ============================================================================
 
 
-def grocery_entities():
-    """Realistic grocery list: 5 items, mixed checked/unchecked, some with store."""
-    return {
-        "item_milk": {
-            "name": "Whole Milk",
-            "store": "Trader Joe's",
-            "category": "dairy",
-            "checked": False,
-            "_removed": False,
-        },
-        "item_eggs": {
-            "name": "Eggs (dozen)",
-            "store": "Trader Joe's",
-            "category": "dairy",
-            "checked": True,
-            "_removed": False,
-        },
-        "item_bread": {
-            "name": "Sourdough Bread",
-            "store": "Whole Foods",
-            "category": "bakery",
-            "checked": False,
-            "_removed": False,
-        },
-        "item_apples": {
-            "name": "Honeycrisp Apples",
-            "store": "Whole Foods",
-            "category": "produce",
-            "checked": False,
-            "_removed": False,
-        },
-        "item_chicken": {
-            "name": "Chicken Thighs",
-            "store": None,
-            "category": "meat",
-            "checked": True,
-            "_removed": False,
-        },
-    }
-
-
-GROCERY_SCHEMA = {
-    "name": "string",
-    "store": "string?",
-    "category": "enum",
-    "checked": "bool",
-}
-
-
-def schedule_entities():
-    """Realistic poker schedule: 4 games with dates, hosts, status."""
-    return {
-        "game_1": {
-            "date": "2026-02-13",
-            "hosted_by": "Mike",
-            "status": "completed",
-            "buy_in": 20,
-            "_removed": False,
-        },
-        "game_2": {
-            "date": "2026-02-27",
-            "hosted_by": "Dave",
-            "status": "upcoming",
-            "buy_in": 20,
-            "_removed": False,
-        },
-        "game_3": {
-            "date": "2026-03-13",
-            "hosted_by": "Sarah",
-            "status": "planned",
-            "buy_in": 25,
-            "_removed": False,
-        },
-        "game_4": {
-            "date": "2026-03-27",
-            "hosted_by": "Alex",
-            "status": "planned",
-            "buy_in": 25,
-            "_removed": False,
-        },
-    }
-
-
-SCHEDULE_SCHEMA = {
-    "date": "date",
-    "hosted_by": "string",
-    "status": "enum",
-    "buy_in": "int",
-}
-
-
-def squares_entities():
+class TestListStyleRendering:
     """
-    Super Bowl squares: a few claimed cells on a 10×10 grid.
-    Entities use a 'position' field to map to row/col.
-    """
-    return {
-        "sq_a3": {
-            "position": "A3",
-            "owner": "Mike",
-            "paid": True,
-            "_removed": False,
-        },
-        "sq_b7": {
-            "position": "B7",
-            "owner": "Sarah",
-            "paid": True,
-            "_removed": False,
-        },
-        "sq_c1": {
-            "position": "C1",
-            "owner": "Dave",
-            "paid": False,
-            "_removed": False,
-        },
-        "sq_e5": {
-            "position": "E5",
-            "owner": "Alex",
-            "paid": True,
-            "_removed": False,
-        },
-    }
-
-
-SQUARES_SCHEMA = {
-    "position": "string",
-    "owner": "string",
-    "paid": "bool",
-}
-
-
-# ============================================================================
-# List View — Grocery List
-# ============================================================================
-
-
-class TestListViewGroceryList:
-    """
-    List view: simple vertical list of entities as <ul>/<li>.
-    Realistic scenario: grocery list with name, store, category, checked.
+    Entities with a list-style template render as list items.
+    The schema render_html defines the output for each child.
     """
 
-    def test_list_view_renders_ul(self):
-        """List view produces a <ul class='aide-list'>."""
-        snapshot, block_id = build_view_snapshot(
-            "grocery_list",
-            "Grocery List",
-            GROCERY_SCHEMA,
-            grocery_entities(),
-            "grocery_view",
-            "list",
-        )
-        html = render_block(block_id, snapshot)
+    def _grocery_snapshot(self):
+        snapshot = empty_state()
+        snapshot["meta"] = {"title": "Grocery List"}
 
-        assert_contains(html, "<ul", "aide-list")
-
-    def test_list_view_renders_all_entities(self):
-        """All non-removed entities appear in the list."""
-        snapshot, block_id = build_view_snapshot(
-            "grocery_list",
-            "Grocery List",
-            GROCERY_SCHEMA,
-            grocery_entities(),
-            "grocery_view",
-            "list",
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_contains(html, "Whole Milk", "Eggs (dozen)", "Sourdough Bread")
-        assert_contains(html, "Honeycrisp Apples", "Chicken Thighs")
-
-    def test_list_view_items_are_li_elements(self):
-        """Each entity renders as an <li class='aide-list__item'>."""
-        snapshot, block_id = build_view_snapshot(
-            "grocery_list",
-            "Grocery List",
-            GROCERY_SCHEMA,
-            grocery_entities(),
-            "grocery_view",
-            "list",
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_contains(html, "<li", "aide-list__item")
-        # 5 entities → 5 list items
-        assert html.count("aide-list__item") >= 5
-
-    def test_list_view_primary_field_has_stronger_weight(self):
-        """
-        The first visible field renders with aide-list__field--primary.
-        Per spec: 'The first visible field renders with
-        .aide-list__field--primary (stronger weight).'
-        """
-        snapshot, block_id = build_view_snapshot(
-            "grocery_list",
-            "Grocery List",
-            GROCERY_SCHEMA,
-            grocery_entities(),
-            "grocery_view",
-            "list",
-            view_config={"show_fields": ["name", "store", "checked"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_contains(html, "aide-list__field--primary")
-
-    def test_list_view_show_fields_whitelist(self):
-        """
-        show_fields limits which fields appear.
-        Per spec: 'If show_fields is set, show only those fields in that order.'
-        """
-        snapshot, block_id = build_view_snapshot(
-            "grocery_list",
-            "Grocery List",
-            GROCERY_SCHEMA,
-            grocery_entities(),
-            "grocery_view",
-            "list",
-            view_config={"show_fields": ["name", "checked"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_contains(html, "Whole Milk")
-        # Store values should NOT appear since show_fields excludes them
-        assert_not_contains(html, "Trader Joe")
-        assert_not_contains(html, "Whole Foods")
-
-    def test_list_view_hide_fields_blacklist(self):
-        """
-        hide_fields excludes specific fields.
-        Per spec: 'If hide_fields is set, show all fields except those.'
-        """
-        snapshot, block_id = build_view_snapshot(
-            "grocery_list",
-            "Grocery List",
-            GROCERY_SCHEMA,
-            grocery_entities(),
-            "grocery_view",
-            "list",
-            view_config={"hide_fields": ["category"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        # Name and store should appear
-        assert_contains(html, "Whole Milk", "Trader Joe")
-        # Category values should NOT appear
-        assert_not_contains(html, "dairy")
-        assert_not_contains(html, "produce")
-
-    def test_list_view_skips_internal_fields(self):
-        """
-        Fields starting with _ are internal and not shown.
-        Per spec: 'If neither, show all non-internal fields
-        (skip fields starting with _).'
-        """
-        entities = grocery_entities()
-        # Add internal field to an entity
-        entities["item_milk"]["_internal_score"] = 42
-        entities["item_milk"]["_styles"] = {"highlight": True}
-
-        snapshot, block_id = build_view_snapshot(
-            "grocery_list",
-            "Grocery List",
-            {**GROCERY_SCHEMA, "_internal_score": "int"},
-            entities,
-            "grocery_view",
-            "list",
-        )
-        html = render_block(block_id, snapshot)
-
-        # Internal field value should not be rendered as a visible field
-        # (though _styles may affect CSS classes)
-        assert_not_contains(html, "_internal_score")
-
-    def test_list_view_boolean_rendering(self):
-        """
-        Boolean fields render with check/circle markers.
-        Per spec: true → ✓ (aide-list__field--bool),
-                  false → ○ (aide-list__field--bool-false)
-        """
-        snapshot, block_id = build_view_snapshot(
-            "grocery_list",
-            "Grocery List",
-            GROCERY_SCHEMA,
-            grocery_entities(),
-            "grocery_view",
-            "list",
-            view_config={"show_fields": ["name", "checked"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        # Should have both bool classes (some items checked, some not)
-        assert "aide-list__field--bool" in html
-
-
-# ============================================================================
-# Table View — Poker Schedule
-# ============================================================================
-
-
-class TestTableViewPokerSchedule:
-    """
-    Table view: tabular data with headers as <table>.
-    Realistic scenario: poker schedule with date, host, status, buy_in.
-    """
-
-    def test_table_view_renders_table_element(self):
-        """Table view produces <table class='aide-table'> inside a wrapper."""
-        snapshot, block_id = build_view_snapshot(
-            "schedule",
-            "Schedule",
-            SCHEDULE_SCHEMA,
-            schedule_entities(),
-            "schedule_view",
-            "table",
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_contains(html, "<table", "aide-table", "aide-table-wrap")
-
-    def test_table_view_renders_thead_with_headers(self):
-        """Table has <thead> with <th> for each visible field."""
-        snapshot, block_id = build_view_snapshot(
-            "schedule",
-            "Schedule",
-            SCHEDULE_SCHEMA,
-            schedule_entities(),
-            "schedule_view",
-            "table",
-            view_config={"show_fields": ["date", "hosted_by", "status", "buy_in"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_contains(html, "<thead", "<th", "aide-table__th")
-
-    def test_table_view_field_display_names_title_case(self):
-        """
-        Field names are converted from snake_case to Title Case.
-        Per spec: 'Convert snake_case to Title Case.
-        requested_by → "Requested By". checked → "Checked".'
-        """
-        snapshot, block_id = build_view_snapshot(
-            "schedule",
-            "Schedule",
-            SCHEDULE_SCHEMA,
-            schedule_entities(),
-            "schedule_view",
-            "table",
-            view_config={"show_fields": ["date", "hosted_by", "status", "buy_in"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_contains(html, "Hosted By")
-        assert_contains(html, "Buy In")
-        assert_contains(html, "Date")
-        assert_contains(html, "Status")
-
-    def test_table_view_renders_all_entities_as_rows(self):
-        """Each entity becomes a <tr> in <tbody>."""
-        snapshot, block_id = build_view_snapshot(
-            "schedule",
-            "Schedule",
-            SCHEDULE_SCHEMA,
-            schedule_entities(),
-            "schedule_view",
-            "table",
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_contains(html, "<tbody", "<tr", "aide-table__row")
-        assert_contains(html, "Mike", "Dave", "Sarah", "Alex")
-
-    def test_table_view_renders_field_type_css_classes(self):
-        """
-        Table cells have type-specific CSS classes.
-        Per spec: aide-table__td--bool, aide-table__td--int, aide-table__td--float
-        """
-        snapshot, block_id = build_view_snapshot(
-            "schedule",
-            "Schedule",
-            SCHEDULE_SCHEMA,
-            schedule_entities(),
-            "schedule_view",
-            "table",
-            view_config={"show_fields": ["date", "hosted_by", "buy_in"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        # buy_in is an int field
-        assert_contains(html, "aide-table__td--int")
-
-    def test_table_view_show_fields_controls_columns(self):
-        """show_fields limits which columns appear in the table."""
-        snapshot, block_id = build_view_snapshot(
-            "schedule",
-            "Schedule",
-            SCHEDULE_SCHEMA,
-            schedule_entities(),
-            "schedule_view",
-            "table",
-            view_config={"show_fields": ["date", "hosted_by"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        # Date and hosted_by should appear
-        assert_contains(html, "Date", "Hosted By")
-        # Buy-in values should NOT appear
-        assert_not_contains(html, "Buy In")
-
-    def test_table_view_date_formatting(self):
-        """
-        Date fields are formatted as short dates.
-        Per spec: "2026-02-27" → "Feb 27"
-        """
-        snapshot, block_id = build_view_snapshot(
-            "schedule",
-            "Schedule",
-            SCHEDULE_SCHEMA,
-            schedule_entities(),
-            "schedule_view",
-            "table",
-        )
-        html = render_block(block_id, snapshot)
-
-        # Raw ISO dates should not appear; formatted dates should
-        assert_not_contains(html, "2026-02-13")
-        assert_contains(html, "Feb 13")
-
-    def test_table_view_enum_title_case(self):
-        """
-        Enum values are rendered in Title Case.
-        Per spec: "produce" → "Produce"
-        """
-        snapshot, block_id = build_view_snapshot(
-            "schedule",
-            "Schedule",
-            SCHEDULE_SCHEMA,
-            schedule_entities(),
-            "schedule_view",
-            "table",
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_contains(html, "Completed")
-        assert_contains(html, "Upcoming")
-        assert_contains(html, "Planned")
-
-    def test_table_view_int_right_aligned(self):
-        """
-        Int and float cells use tabular-nums and right alignment via CSS class.
-        Per spec: aide-table__td--int, aide-table__td--float
-        """
-        snapshot, block_id = build_view_snapshot(
-            "schedule",
-            "Schedule",
-            SCHEDULE_SCHEMA,
-            schedule_entities(),
-            "schedule_view",
-            "table",
-            view_config={"show_fields": ["date", "buy_in"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_contains(html, "aide-table__td--int")
-
-
-# ============================================================================
-# Grid View — Super Bowl Squares
-# ============================================================================
-
-
-class TestGridViewSuperBowlSquares:
-    """
-    Grid view: structured grid with row/col labels for positional data.
-    Realistic scenario: Super Bowl squares board.
-    """
-
-    def _squares_snapshot(self, row_labels=None, col_labels=None):
-        """Build snapshot with squares grid."""
-        config = {
-            "row_labels": row_labels or ["A", "B", "C", "D", "E"],
-            "col_labels": col_labels or ["1", "2", "3", "4", "5", "6", "7"],
-            "show_fields": ["owner"],
+        snapshot["schemas"]["grocery_item"] = {
+            "interface": "interface GroceryItem { name: string; checked: boolean; }",
+            "render_html": "<li class=\"grocery-item\">{{name}}</li>",
+            "render_text": "- {{name}}",
         }
-        return build_view_snapshot(
-            "squares",
-            "Super Bowl Squares",
-            SQUARES_SCHEMA,
-            squares_entities(),
-            "squares_view",
-            "grid",
-            view_config=config,
-        )
 
-    def test_grid_view_renders_grid_table(self):
-        """Grid view produces a <table class='aide-grid'>."""
-        snapshot, block_id = self._squares_snapshot()
-        html = render_block(block_id, snapshot)
+        snapshot["schemas"]["grocery_list"] = {
+            "interface": "interface GroceryList { name: string; items: Record<string, GroceryItem>; }",
+            "render_html": "<ul class=\"grocery-list\">{{>items}}</ul>",
+        }
 
-        assert_contains(html, "<table", "aide-grid", "aide-grid-wrap")
-
-    def test_grid_view_renders_column_labels(self):
-        """Column labels appear in <thead>."""
-        snapshot, block_id = self._squares_snapshot()
-        html = render_block(block_id, snapshot)
-
-        assert_contains(html, "aide-grid__col-label")
-        for col in ["1", "2", "3", "4", "5", "6", "7"]:
-            assert_contains(html, col)
-
-    def test_grid_view_renders_row_labels(self):
-        """Row labels appear as <th> in each row."""
-        snapshot, block_id = self._squares_snapshot()
-        html = render_block(block_id, snapshot)
-
-        assert_contains(html, "aide-grid__row-label")
-        for row in ["A", "B", "C", "D", "E"]:
-            assert_contains(html, row)
-
-    def test_grid_view_filled_cells_have_entity_data(self):
-        """Cells with matching entities show the entity content."""
-        snapshot, block_id = self._squares_snapshot()
-        html = render_block(block_id, snapshot)
-
-        # These owners have positions on the grid
-        assert_contains(html, "Mike")  # position A3
-        assert_contains(html, "Sarah")  # position B7
-        assert_contains(html, "Dave")  # position C1
-        assert_contains(html, "Alex")  # position E5
-
-    def test_grid_view_filled_cells_have_filled_class(self):
-        """
-        Filled cells get aide-grid__cell--filled class.
-        Per spec: filled cells have background color and stronger text.
-        """
-        snapshot, block_id = self._squares_snapshot()
-        html = render_block(block_id, snapshot)
-
-        assert_contains(html, "aide-grid__cell--filled")
-
-    def test_grid_view_empty_cells_have_empty_class(self):
-        """
-        Empty cells (no entity at that position) get aide-grid__cell--empty.
-        With 5×7=35 cells and only 4 entities, most cells are empty.
-        """
-        snapshot, block_id = self._squares_snapshot()
-        html = render_block(block_id, snapshot)
-
-        assert_contains(html, "aide-grid__cell--empty")
-        # Should have significantly more empty cells than filled
-        empty_count = html.count("aide-grid__cell--empty")
-        filled_count = html.count("aide-grid__cell--filled")
-        assert empty_count > filled_count
-
-    def test_grid_view_correct_cell_count(self):
-        """Grid has rows × cols cells."""
-        snapshot, block_id = self._squares_snapshot()
-        html = render_block(block_id, snapshot)
-
-        # 5 rows × 7 cols = 35 cells
-        cell_count = html.count("aide-grid__cell")
-        assert cell_count >= 35
-
-    def test_grid_view_empty_corner_cell(self):
-        """
-        Top-left corner (where row and col headers intersect) is an empty <th>.
-        Per spec: first cell in thead row is empty.
-        """
-        snapshot, block_id = self._squares_snapshot()
-        html = render_block(block_id, snapshot)
-
-        # The thead row starts with an empty th
-        assert_contains(html, "<thead")
-        assert_contains(html, "<th></th>")
-
-
-# ============================================================================
-# Unknown View Type — Fallback to Table
-# ============================================================================
-
-
-class TestUnknownViewTypeFallback:
-    """
-    Unknown view types fall back to table rendering.
-    Per spec: 'For v1, unknown view types fall back to table.'
-    """
-
-    def test_unknown_view_type_renders_as_table(self):
-        """A view with type 'kanban' (not in v1) falls back to table."""
-        snapshot, block_id = build_view_snapshot(
-            "tasks",
-            "Tasks",
-            {"name": "string", "status": "enum"},
-            {
-                "task_1": {
-                    "name": "Fix bug",
-                    "status": "todo",
-                    "_removed": False,
-                },
-                "task_2": {
-                    "name": "Write docs",
-                    "status": "in_progress",
-                    "_removed": False,
-                },
-            },
-            "task_view",
-            "kanban",
-        )
-        html = render_block(block_id, snapshot)
-
-        # Should render as table (the fallback)
-        assert_contains(html, "<table", "aide-table")
-        assert_contains(html, "Fix bug", "Write docs")
-
-    def test_calendar_view_falls_back_to_table(self):
-        """Calendar view (not in v1) falls back to table."""
-        snapshot, block_id = build_view_snapshot(
-            "events",
-            "Events",
-            {"name": "string", "date": "date"},
-            {
-                "evt_1": {
-                    "name": "Kickoff",
-                    "date": "2026-03-01",
-                    "_removed": False,
-                },
-            },
-            "events_view",
-            "calendar",
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_contains(html, "<table", "aide-table")
-        assert_contains(html, "Kickoff")
-
-    def test_dashboard_view_falls_back_to_table(self):
-        """Dashboard view (not in v1) falls back to table."""
-        snapshot, block_id = build_view_snapshot(
-            "metrics",
-            "Metrics",
-            {"label": "string", "value": "float"},
-            {
-                "m_1": {
-                    "label": "Revenue",
-                    "value": 9999.50,
-                    "_removed": False,
-                },
-            },
-            "metrics_view",
-            "dashboard",
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_contains(html, "<table", "aide-table")
-        assert_contains(html, "Revenue")
-
-
-# ============================================================================
-# Field Visibility Rules (across view types)
-# ============================================================================
-
-
-class TestFieldVisibilityRules:
-    """
-    Field visibility applies to both list and table views:
-    - show_fields → whitelist, fields appear in that order
-    - hide_fields → blacklist, everything except these
-    - neither → all non-internal fields
-    """
-
-    def test_show_fields_order_in_list(self):
-        """
-        show_fields determines the order of field spans in list items.
-        First field in show_fields becomes the primary field.
-        """
-        snapshot, block_id = build_view_snapshot(
-            "grocery_list",
-            "Grocery List",
-            GROCERY_SCHEMA,
-            grocery_entities(),
-            "grocery_view",
-            "list",
-            view_config={"show_fields": ["store", "name"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        # Store should be the primary field (appears first)
-        assert_contains(html, "aide-list__field--primary")
-        # Both name and store should be present
-        assert_contains(html, "Trader Joe", "Whole Milk")
-
-    def test_show_fields_order_in_table_headers(self):
-        """
-        show_fields determines the order of <th> headers in table.
-        """
-        snapshot, block_id = build_view_snapshot(
-            "schedule",
-            "Schedule",
-            SCHEDULE_SCHEMA,
-            schedule_entities(),
-            "schedule_view",
-            "table",
-            view_config={"show_fields": ["status", "hosted_by", "date"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        # Headers should appear — verify they're present
-        assert_contains(html, "Status", "Hosted By", "Date")
-
-        # Status should appear before Hosted By in the HTML
-        status_pos = html.index("Status")
-        hosted_pos = html.index("Hosted By")
-        date_pos = html.index("Date")
-        assert status_pos < hosted_pos < date_pos
-
-    def test_no_field_config_shows_all_non_internal(self):
-        """With no show_fields or hide_fields, all non-_ fields appear."""
-        entities = {
-            "item_a": {
-                "name": "Alpha",
-                "score": 100,
-                "active": True,
-                "_styles": {"highlight": True},
-                "_removed": False,
+        snapshot["entities"]["groceries"] = {
+            "_schema": "grocery_list",
+            "name": "Groceries",
+            "items": {
+                "item_milk": {"name": "Milk", "checked": False, "_pos": 1.0},
+                "item_eggs": {"name": "Eggs", "checked": True, "_pos": 2.0},
+                "item_bread": {"name": "Bread", "checked": False, "_pos": 3.0},
             },
         }
-        snapshot, block_id = build_view_snapshot(
-            "items",
-            "Items",
-            {"name": "string", "score": "int", "active": "bool"},
-            entities,
-            "items_view",
-            "table",
-        )
-        html = render_block(block_id, snapshot)
 
-        assert_contains(html, "Alpha", "100")
-        assert_not_contains(html, "_styles")
+        snapshot["blocks"]["block_grocery"] = {
+            "type": "entity_view",
+            "source": "groceries",
+        }
+        snapshot["blocks"]["block_root"]["children"] = ["block_grocery"]
+
+        return snapshot
+
+    def test_list_renders_entity_names(self):
+        """List view renders all entity names."""
+        snapshot = self._grocery_snapshot()
+        html = render_block("block_grocery", snapshot)
+        assert_contains(html, "Milk", "Eggs", "Bread")
+
+    def test_list_uses_ul_element(self):
+        """List-style schema renders ul element."""
+        snapshot = self._grocery_snapshot()
+        html = render_block("block_grocery", snapshot)
+        assert_contains(html, "<ul", "grocery-list")
+
+    def test_list_items_use_li_element(self):
+        """Each item renders as li."""
+        snapshot = self._grocery_snapshot()
+        html = render_block("block_grocery", snapshot)
+        assert_contains(html, "<li", "grocery-item")
+
+    def test_list_skips_removed_entities(self):
+        """Removed child entities are not rendered."""
+        snapshot = self._grocery_snapshot()
+        snapshot["entities"]["groceries"]["items"]["item_bread"]["_removed"] = True
+        html = render_block("block_grocery", snapshot)
+        assert_contains(html, "Milk", "Eggs")
+        assert_not_contains(html, "Bread")
 
 
 # ============================================================================
-# Null / Missing Value Rendering in Views
+# Schedule: table-style rendering
 # ============================================================================
 
 
-class TestNullValuesInViews:
+class TestTableStyleRendering:
     """
-    Null values render as em dashes across all view types.
-    Per spec: null → "—" (em dash)
+    Entities with a table-style template render rows.
     """
 
-    def test_null_string_in_list_view(self):
-        """Null optional string renders as em dash in list view."""
-        entities = {
-            "item_1": {
-                "name": "Chicken Thighs",
-                "store": None,
-                "_removed": False,
+    def _schedule_snapshot(self):
+        snapshot = empty_state()
+        snapshot["meta"] = {"title": "Schedule"}
+
+        snapshot["schemas"]["game"] = {
+            "interface": "interface Game { date: string; opponent: string; location: string; }",
+            "render_html": "<tr><td>{{date}}</td><td>{{opponent}}</td><td>{{location}}</td></tr>",
+        }
+
+        snapshot["schemas"]["schedule"] = {
+            "interface": "interface Schedule { name: string; games: Record<string, Game>; }",
+            "render_html": "<table class=\"schedule-table\"><thead><tr><th>Date</th><th>Opponent</th><th>Location</th></tr></thead><tbody>{{>games}}</tbody></table>",
+        }
+
+        snapshot["entities"]["schedule"] = {
+            "_schema": "schedule",
+            "name": "2026 Schedule",
+            "games": {
+                "game_1": {"date": "Feb 27", "opponent": "Team A", "location": "Home", "_pos": 1.0},
+                "game_2": {"date": "Mar 6", "opponent": "Team B", "location": "Away", "_pos": 2.0},
             },
         }
-        snapshot, block_id = build_view_snapshot(
-            "grocery_list",
-            "Grocery List",
-            {"name": "string", "store": "string?"},
-            entities,
-            "grocery_view",
-            "list",
-        )
-        html = render_block(block_id, snapshot)
 
-        assert_contains(html, "Chicken Thighs")
-        # Null store should be rendered as em dash
-        assert_contains(html, "\u2014")  # em dash character
+        snapshot["blocks"]["block_schedule"] = {
+            "type": "entity_view",
+            "source": "schedule",
+        }
+        snapshot["blocks"]["block_root"]["children"] = ["block_schedule"]
 
-    def test_null_value_in_table_view(self):
-        """Null value renders as em dash in table cell."""
-        entities = {
-            "row_1": {
-                "name": "Item A",
-                "amount": None,
-                "_removed": False,
+        return snapshot
+
+    def test_table_renders_entity_data(self):
+        """Table-style view renders game data."""
+        snapshot = self._schedule_snapshot()
+        html = render_block("block_schedule", snapshot)
+        assert_contains(html, "Team A", "Team B", "Feb 27", "Mar 6")
+
+    def test_table_uses_table_element(self):
+        """Table-style schema renders <table>."""
+        snapshot = self._schedule_snapshot()
+        html = render_block("block_schedule", snapshot)
+        assert_contains(html, "<table", "schedule-table")
+
+    def test_table_has_headers_and_rows(self):
+        """Table has thead and tbody."""
+        snapshot = self._schedule_snapshot()
+        html = render_block("block_schedule", snapshot)
+        assert_contains(html, "<thead", "<tbody", "<th>", "<tr>", "<td>")
+
+
+# ============================================================================
+# Grid layout: _shape-based rendering
+# ============================================================================
+
+
+class TestGridRendering:
+    """
+    Grid layout is triggered by _shape: [rows, cols] on a child collection.
+    Renders as CSS grid with .aide-grid and .aide-grid-cell.
+    """
+
+    def _grid_snapshot(self):
+        snapshot = empty_state()
+        snapshot["meta"] = {"title": "Grid"}
+
+        snapshot["schemas"]["cell"] = {
+            "interface": "interface Cell { value: string; }",
+            "render_html": "{{value}}",
+        }
+
+        snapshot["schemas"]["grid_entity"] = {
+            "interface": "interface GridEntity { name: string; cells: Record<string, Cell>; }",
+            "render_html": "<div class=\"grid-wrapper\">{{>cells}}</div>",
+        }
+
+        snapshot["entities"]["my_grid"] = {
+            "_schema": "grid_entity",
+            "name": "My Grid",
+            "cells": {
+                "_shape": [2, 3],
+                "0_0": {"value": "A1", "_pos": 0.0},
+                "0_1": {"value": "B1", "_pos": 1.0},
+                "0_2": {"value": "C1", "_pos": 2.0},
+                "1_0": {"value": "A2", "_pos": 3.0},
+                "1_1": {"value": "B2", "_pos": 4.0},
+                "1_2": {"value": "C2", "_pos": 5.0},
             },
         }
-        snapshot, block_id = build_view_snapshot(
-            "items",
-            "Items",
-            {"name": "string", "amount": "int?"},
-            entities,
-            "items_view",
-            "table",
-        )
-        html = render_block(block_id, snapshot)
 
-        assert_contains(html, "\u2014")
-
-
-# ============================================================================
-# Removed Entities Excluded from Views
-# ============================================================================
-
-
-class TestRemovedEntitiesExcluded:
-    """
-    Entities with _removed=True must be excluded from all view types.
-    Per spec: 'Get non-removed entities' before rendering.
-    """
-
-    def test_removed_entities_excluded_from_list(self):
-        """Removed entities don't appear in list view."""
-        entities = grocery_entities()
-        entities["item_milk"]["_removed"] = True
-
-        snapshot, block_id = build_view_snapshot(
-            "grocery_list",
-            "Grocery List",
-            GROCERY_SCHEMA,
-            entities,
-            "grocery_view",
-            "list",
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_not_contains(html, "Whole Milk")
-        assert_contains(html, "Eggs (dozen)")
-
-    def test_removed_entities_excluded_from_table(self):
-        """Removed entities don't appear in table view."""
-        entities = schedule_entities()
-        entities["game_1"]["_removed"] = True
-
-        snapshot, block_id = build_view_snapshot(
-            "schedule",
-            "Schedule",
-            SCHEDULE_SCHEMA,
-            entities,
-            "schedule_view",
-            "table",
-        )
-        html = render_block(block_id, snapshot)
-
-        # game_1 (Mike, Feb 13) should not appear
-        assert_not_contains(html, "Mike")
-        assert_contains(html, "Dave", "Sarah", "Alex")
-
-    def test_removed_entities_excluded_from_grid(self):
-        """Removed entities don't fill grid cells."""
-        entities = squares_entities()
-        entities["sq_a3"]["_removed"] = True
-
-        config = {
-            "row_labels": ["A", "B", "C", "D", "E"],
-            "col_labels": ["1", "2", "3", "4", "5", "6", "7"],
-            "show_fields": ["owner"],
+        snapshot["blocks"]["block_grid"] = {
+            "type": "entity_view",
+            "source": "my_grid",
         }
-        snapshot, block_id = build_view_snapshot(
-            "squares",
-            "Squares",
-            SQUARES_SCHEMA,
-            entities,
-            "squares_view",
-            "grid",
-            view_config=config,
-        )
-        html = render_block(block_id, snapshot)
+        snapshot["blocks"]["block_root"]["children"] = ["block_grid"]
 
-        # Mike (position A3) was removed, should not appear as owner
-        assert_not_contains(html, "Mike")
-        assert_contains(html, "Sarah", "Dave", "Alex")
+        return snapshot
+
+    def test_grid_renders_css_grid(self):
+        """Grid with _shape renders using CSS grid."""
+        snapshot = self._grid_snapshot()
+        html = render_block("block_grid", snapshot)
+        assert_contains(html, "aide-grid")
+
+    def test_grid_cells_rendered(self):
+        """Grid cells are rendered with their values."""
+        snapshot = self._grid_snapshot()
+        html = render_block("block_grid", snapshot)
+        assert_contains(html, "A1", "B1", "C1", "A2", "B2", "C2")
+
+    def test_grid_has_correct_column_count(self):
+        """Grid template has correct number of columns."""
+        snapshot = self._grid_snapshot()
+        html = render_block("block_grid", snapshot)
+        # 3 columns → "auto auto auto" in grid-template-columns
+        assert "auto" in html
 
 
 # ============================================================================
-# Empty Collection in Different View Types
+# entity_view in full render
+# ============================================================================
+
+
+class TestEntityViewInFullRender:
+    """entity_view blocks render correctly in the full HTML document."""
+
+    def test_entity_view_in_full_html(self):
+        """Entity content appears in the full render output."""
+        snapshot = empty_state()
+        snapshot["meta"] = {"title": "Test"}
+        snapshot["schemas"]["player"] = {
+            "interface": "interface Player { name: string; score: number; }",
+            "render_html": "<div class=\"player\"><b>{{name}}</b>: {{score}}</div>",
+        }
+        snapshot["entities"]["player_1"] = {
+            "_schema": "player",
+            "name": "Alice",
+            "score": 1500,
+        }
+        snapshot["blocks"]["block_player"] = {
+            "type": "entity_view",
+            "source": "player_1",
+        }
+        snapshot["blocks"]["block_root"]["children"] = ["block_player"]
+
+        html = render(snapshot, make_blueprint())
+
+        assert_contains(html, "Alice", "1500", "class=\"player\"")
+        assert_contains(html, "<!DOCTYPE html>", "<main class=\"aide-page\"")
+
+
+# ============================================================================
+# Auto-render (no explicit blocks)
+# ============================================================================
+
+
+class TestAutoRenderEntities:
+    """When no blocks are set, entities are auto-rendered."""
+
+    def test_entities_auto_render(self):
+        """Entities auto-render using their schema templates."""
+        snapshot = empty_state()
+        snapshot["meta"] = {"title": "Auto"}
+        snapshot["schemas"]["item"] = {
+            "interface": "interface Item { name: string; }",
+            "render_html": "<p class=\"item\">{{name}}</p>",
+        }
+        snapshot["entities"]["item_a"] = {"_schema": "item", "name": "Alpha"}
+        snapshot["entities"]["item_b"] = {"_schema": "item", "name": "Beta"}
+        # No blocks added to block_root
+
+        html = render(snapshot, make_blueprint())
+
+        assert_contains(html, "Alpha", "Beta")
+
+    def test_only_non_removed_entities_auto_render(self):
+        """Removed entities are excluded from auto-render."""
+        snapshot = empty_state()
+        snapshot["meta"] = {"title": "Auto"}
+        snapshot["schemas"]["item"] = {
+            "interface": "interface Item { name: string; }",
+            "render_html": "<p class=\"item\">{{name}}</p>",
+        }
+        snapshot["entities"]["item_a"] = {"_schema": "item", "name": "Visible"}
+        snapshot["entities"]["item_b"] = {"_schema": "item", "name": "Hidden", "_removed": True}
+
+        import re
+        html = render(snapshot, make_blueprint())
+        m = re.search(r"<main[^>]*>(.*?)</main>", html, re.DOTALL)
+        main = m.group(1) if m else ""
+
+        assert "Visible" in main
+        assert "Hidden" not in main
+
+
+# ============================================================================
+# Empty entity collection views
 # ============================================================================
 
 
 class TestEmptyCollectionViews:
     """
-    Empty collections show the empty state message.
-    Per spec: <p class="aide-collection-empty">No items yet.</p>
+    In v3, empty child collections produce no child output.
+    Missing or removed entities produce empty string.
     """
 
-    def test_empty_list_view(self):
-        """Empty collection in list view shows empty state."""
-        snapshot, block_id = build_view_snapshot(
-            "items",
-            "Items",
-            {"name": "string"},
-            {},
-            "items_view",
-            "list",
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_contains(html, "aide-collection-empty")
-
-    def test_empty_table_view(self):
-        """Empty collection in table view shows empty state."""
-        snapshot, block_id = build_view_snapshot(
-            "items",
-            "Items",
-            {"name": "string"},
-            {},
-            "items_view",
-            "table",
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_contains(html, "aide-collection-empty")
-
-    def test_empty_grid_view(self):
-        """
-        Empty grid still renders the grid structure (labels) but no filled cells.
-        """
-        config = {
-            "row_labels": ["A", "B"],
-            "col_labels": ["1", "2"],
+    def test_empty_child_collection_renders_nothing_in_partial(self):
+        """Empty child collection renders parent template without child items."""
+        snapshot = empty_state()
+        snapshot["schemas"]["list_schema"] = {
+            "interface": "interface ListSchema { name: string; }",
+            "render_html": "<ul class=\"my-list\">{{>items}}</ul>",
         }
-        snapshot, block_id = build_view_snapshot(
-            "board",
-            "Board",
-            {"position": "string", "owner": "string"},
-            {},
-            "board_view",
-            "grid",
-            view_config=config,
-        )
-        html = render_block(block_id, snapshot)
-
-        # Empty collection shows empty message (same as list/table)
-        assert_contains(html, "aide-collection-empty")
-
-    def test_all_removed_equals_empty(self):
-        """Collection with all entities removed is effectively empty."""
-        entities = {
-            "item_1": {
-                "name": "Gone",
-                "_removed": True,
-            },
+        snapshot["entities"]["empty_list"] = {
+            "_schema": "list_schema",
+            "name": "Empty List",
+            "items": {},
         }
-        snapshot, block_id = build_view_snapshot(
-            "items",
-            "Items",
-            {"name": "string"},
-            entities,
-            "items_view",
-            "list",
-        )
-        html = render_block(block_id, snapshot)
+        html = render_entity("empty_list", snapshot, channel="html")
 
-        assert_contains(html, "aide-collection-empty")
-        assert_not_contains(html, "Gone")
+        assert_contains(html, "class=\"my-list\"")
+        assert_not_contains(html, "<li")
+
+    def test_removed_entity_view_renders_empty(self):
+        """entity_view pointing to removed entity renders empty string."""
+        snapshot = empty_state()
+        snapshot["entities"]["removed"] = {"name": "Gone", "_removed": True}
+        snapshot["blocks"]["block_v"] = {
+            "type": "entity_view",
+            "source": "removed",
+        }
+        snapshot["blocks"]["block_root"]["children"] = ["block_v"]
+
+        html = render_block("block_v", snapshot)
+        assert html == ""
+
+    def test_missing_entity_view_renders_empty(self):
+        """entity_view pointing to nonexistent entity renders empty string."""
+        snapshot = empty_state()
+        snapshot["blocks"]["block_v"] = {
+            "type": "entity_view",
+            "source": "nonexistent",
+        }
+        snapshot["blocks"]["block_root"]["children"] = ["block_v"]
+
+        html = render_block("block_v", snapshot)
+        assert html == ""
+
+
+# ============================================================================
+# Text channel
+# ============================================================================
+
+
+class TestTextChannelRendering:
+    """render with channel='text' uses render_text templates."""
+
+    def test_text_channel_uses_render_text(self):
+        """Text channel uses schema render_text template."""
+        from engine.kernel.types import RenderOptions
+
+        snapshot = empty_state()
+        snapshot["meta"] = {"title": "Text Test"}
+        snapshot["schemas"]["item"] = {
+            "interface": "interface Item { name: string; }",
+            "render_html": "<li>{{name}}</li>",
+            "render_text": "- {{name}}",
+        }
+        snapshot["entities"]["item_1"] = {"_schema": "item", "name": "Alpha"}
+
+        opts = RenderOptions(channel="text")
+        text = render(snapshot, make_blueprint(), options=opts)
+
+        assert "Text Test" in text
+        assert "Alpha" in text
+
+    def test_render_entity_text_channel(self):
+        """render_entity with text channel uses render_text."""
+        snapshot = empty_state()
+        snapshot["schemas"]["player"] = {
+            "interface": "interface Player { name: string; score: number; }",
+            "render_html": "<div>{{name}}: {{score}}</div>",
+            "render_text": "{{name}} scored {{score}}",
+        }
+        snapshot["entities"]["p1"] = {
+            "_schema": "player",
+            "name": "Mike",
+            "score": 1200,
+        }
+
+        text = render_entity("p1", snapshot, channel="text")
+
+        assert "Mike" in text
+        assert "1200" in text

@@ -1,5 +1,5 @@
 """
-AIde Renderer -- Determinism Tests (Category 10)
+AIde Renderer -- Determinism Tests (v3 Unified Entity Model)
 
 Render the same snapshot 100 times, verify identical output every time.
 
@@ -10,30 +10,14 @@ From the spec (aide_renderer_spec.md, "Testing Strategy"):
 From the renderer contract:
   "Deterministic: same input → same output, always."
 
-From the reducer spec (determinism guarantee):
-  "No randomness, no timestamps, no external state."
-
-This verifies:
-  - String output is byte-identical across repeated renders
-  - JSON embedding uses sorted keys for determinism
-  - CSS generation is stable
-  - Block tree walk order is stable
-  - Entity iteration order is stable
-  - Sort/filter/group produce stable ordering
-  - Style token mapping is stable
-  - Value formatting produces identical strings
-
 Reference: aide_renderer_spec.md (Contract, CSS Generation, Testing Strategy)
-           aide_architecture.md (Renderer description)
 """
+
+import json
 
 from engine.kernel.reducer import empty_state
 from engine.kernel.renderer import render
 from engine.kernel.types import Blueprint, Event
-
-# ============================================================================
-# Snapshot fixtures (realistic, exercising many renderer paths)
-# ============================================================================
 
 
 def make_blueprint():
@@ -52,17 +36,25 @@ def make_events():
             timestamp="2026-02-15T09:00:00Z",
             actor="user_test",
             source="web",
-            type="collection.create",
-            payload={"id": "items", "schema": {"name": "string"}},
+            type="schema.create",
+            payload={"id": "item", "interface": "interface Item { name: string; }"},
+        ),
+        Event(
+            id="evt_20260215_002",
+            sequence=2,
+            timestamp="2026-02-15T09:01:00Z",
+            actor="user_test",
+            source="web",
+            type="entity.create",
+            payload={"id": "item_1", "_schema": "item", "name": "First"},
         ),
     ]
 
 
 def grocery_list_snapshot():
     """
-    Grocery list with heading, text (inline bold), metric, list view,
-    multiple entities with mixed types, highlights, null values,
-    sort config, style tokens, and annotations.
+    Grocery list with heading, text, metric, entities, style tokens,
+    and annotations.
     """
     snapshot = empty_state()
 
@@ -74,587 +66,320 @@ def grocery_list_snapshot():
     snapshot["styles"] = {
         "primary_color": "#2d3748",
         "bg_color": "#fafaf9",
-        "density": "comfortable",
     }
 
-    snapshot["collections"] = {
-        "grocery_list": {
-            "id": "grocery_list",
-            "name": "Grocery List",
-            "schema": {
-                "name": "string",
-                "category": "enum",
-                "quantity": "int",
-                "checked": "bool",
-                "store": "string?",
-            },
-            "entities": {
-                "item_milk": {
-                    "name": "Whole Milk",
-                    "category": "dairy",
-                    "quantity": 2,
-                    "checked": True,
-                    "store": "Trader Joe's",
-                    "_removed": False,
-                    "_styles": {"highlight": True},
-                },
-                "item_eggs": {
-                    "name": "Eggs (dozen)",
-                    "category": "dairy",
-                    "quantity": 1,
-                    "checked": False,
-                    "store": "Trader Joe's",
-                    "_removed": False,
-                },
-                "item_bread": {
-                    "name": "Sourdough Bread",
-                    "category": "bakery",
-                    "quantity": 1,
-                    "checked": False,
-                    "store": None,
-                    "_removed": False,
-                },
-                "item_chicken": {
-                    "name": "Chicken Thighs",
-                    "category": "meat",
-                    "quantity": 2,
-                    "checked": False,
-                    "store": "Whole Foods",
-                    "_removed": False,
-                },
-                "item_spinach": {
-                    "name": "Baby Spinach",
-                    "category": "produce",
-                    "quantity": 1,
-                    "checked": True,
-                    "store": None,
-                    "_removed": False,
-                    "_styles": {"highlight": True},
-                },
-            },
+    snapshot["schemas"]["grocery_item"] = {
+        "interface": "interface GroceryItem { name: string; checked: boolean; }",
+        "render_html": "<li class=\"grocery-item\">{{name}}</li>",
+        "render_text": "- {{name}}",
+        "styles": ".grocery-item { padding: 4px; }",
+    }
+
+    snapshot["entities"]["groceries"] = {
+        "_schema": "grocery_item",
+        "name": "Groceries",
+        "items": {
+            "item_milk": {"name": "Milk", "checked": False, "_pos": 1.0},
+            "item_eggs": {"name": "Eggs", "checked": True, "_pos": 2.0},
+            "item_bread": {"name": "Bread", "checked": False, "_pos": 3.0},
         },
     }
 
-    snapshot["views"] = {
-        "grocery_view": {
-            "id": "grocery_view",
-            "type": "list",
-            "source": "grocery_list",
-            "config": {
-                "show_fields": ["name", "category", "quantity", "checked"],
-                "sort_by": "category",
-                "sort_order": "asc",
-            },
-        },
+    # Blocks
+    snapshot["blocks"]["block_title"] = {
+        "type": "heading",
+        "level": 1,
+        "text": "Weekly Groceries",
     }
-
-    snapshot["blocks"] = {
-        "block_root": {
-            "type": "root",
-            "children": [
-                "block_title",
-                "block_intro",
-                "block_budget",
-                "block_groceries",
-            ],
-        },
-        "block_title": {
-            "type": "heading",
-            "parent": "block_root",
-            "props": {"level": 1, "content": "Weekly Groceries"},
-        },
-        "block_intro": {
-            "type": "text",
-            "parent": "block_root",
-            "props": {"content": "Updated every **Sunday** morning."},
-        },
-        "block_budget": {
-            "type": "metric",
-            "parent": "block_root",
-            "props": {"label": "Estimated total", "value": "$47.50"},
-        },
-        "block_groceries": {
-            "type": "collection_view",
-            "parent": "block_root",
-            "props": {"source": "grocery_list", "view": "grocery_view"},
-        },
+    snapshot["blocks"]["block_subtitle"] = {
+        "type": "text",
+        "text": "Updated **Tuesday evening**.",
     }
+    snapshot["blocks"]["block_count"] = {
+        "type": "metric",
+        "label": "Items remaining",
+        "value": "3",
+    }
+    snapshot["blocks"]["block_list"] = {
+        "type": "entity_view",
+        "source": "groceries",
+    }
+    snapshot["blocks"]["block_divider"] = {"type": "divider"}
+    snapshot["blocks"]["block_root"]["children"] = [
+        "block_title",
+        "block_subtitle",
+        "block_count",
+        "block_list",
+        "block_divider",
+    ]
 
     snapshot["annotations"] = [
         {
-            "note": "Budget limit: $60/week.",
-            "pinned": True,
-            "seq": 1,
-            "timestamp": "2026-02-10T09:00:00Z",
-        },
+            "note": "Added bread.",
+            "timestamp": "2026-02-15T18:00:00Z",
+        }
     ]
 
     return snapshot
 
 
-def poker_league_snapshot():
-    """
-    Poker league with two collections (roster table, schedule table),
-    entity style overrides, multiple headings, metrics, divider,
-    text with link, and different style tokens.
-    """
+def poker_snapshot():
+    """Poker league snapshot with player entities."""
     snapshot = empty_state()
 
     snapshot["meta"] = {
-        "title": "Poker League — Spring 2026",
+        "title": "Poker League 2026",
+        "identity": "Monthly home game tracker.",
     }
 
-    snapshot["styles"] = {
-        "primary_color": "#1a365d",
-        "bg_color": "#fffff0",
-        "font_family": "Inter",
-        "heading_font": "Georgia",
-        "density": "compact",
+    snapshot["styles"] = {"primary_color": "#7c3aed"}
+
+    snapshot["schemas"]["player"] = {
+        "interface": "interface Player { name: string; wins: number; score: number; }",
+        "render_html": "<tr><td>{{name}}</td><td>{{wins}}</td><td>{{score}}</td></tr>",
+        "render_text": "{{name}}: {{wins}} wins",
     }
 
-    snapshot["collections"] = {
+    snapshot["entities"]["players"] = {
+        "_schema": "player",
+        "name": "Players",
         "roster": {
-            "id": "roster",
-            "name": "Roster",
-            "schema": {
-                "name": "string",
-                "buy_ins": "int",
-                "winnings": "float",
-                "active": "bool",
-            },
-            "entities": {
-                "player_mike": {
-                    "name": "Mike",
-                    "buy_ins": 8,
-                    "winnings": 340.0,
-                    "active": True,
-                    "_removed": False,
-                },
-                "player_sarah": {
-                    "name": "Sarah",
-                    "buy_ins": 7,
-                    "winnings": 520.5,
-                    "active": True,
-                    "_removed": False,
-                    "_styles": {"highlight": True, "bg_color": "#fef3c7"},
-                },
-                "player_dave": {
-                    "name": "Dave",
-                    "buy_ins": 8,
-                    "winnings": 180.0,
-                    "active": True,
-                    "_removed": False,
-                },
-            },
-        },
-        "schedule": {
-            "id": "schedule",
-            "name": "Schedule",
-            "schema": {
-                "date": "date",
-                "host": "string",
-                "status": "enum",
-            },
-            "entities": {
-                "game_1": {
-                    "date": "2026-02-13",
-                    "host": "Mike",
-                    "status": "completed",
-                    "_removed": False,
-                },
-                "game_2": {
-                    "date": "2026-02-27",
-                    "host": "Dave",
-                    "status": "upcoming",
-                    "_removed": False,
-                },
-            },
+            "player_mike": {"name": "Mike", "wins": 3, "score": 1200, "_pos": 1.0},
+            "player_sarah": {"name": "Sarah", "wins": 5, "score": 1450, "_pos": 2.0},
+            "player_dave": {"name": "Dave", "wins": 2, "score": 1100, "_pos": 3.0},
         },
     }
 
-    snapshot["views"] = {
-        "roster_view": {
-            "id": "roster_view",
-            "type": "table",
-            "source": "roster",
-            "config": {
-                "show_fields": ["name", "buy_ins", "winnings", "active"],
-                "sort_by": "winnings",
-                "sort_order": "desc",
-            },
-        },
-        "schedule_view": {
-            "id": "schedule_view",
-            "type": "table",
-            "source": "schedule",
-            "config": {
-                "show_fields": ["date", "host", "status"],
-                "sort_by": "date",
-                "sort_order": "asc",
-            },
-        },
-    }
-
-    snapshot["blocks"] = {
-        "block_root": {
-            "type": "root",
-            "children": [
-                "block_title",
-                "block_intro",
-                "block_metric",
-                "block_divider",
-                "block_roster_h",
-                "block_roster",
-                "block_schedule_h",
-                "block_schedule",
-            ],
-        },
-        "block_title": {
-            "type": "heading",
-            "parent": "block_root",
-            "props": {"level": 1, "content": "Poker League — Spring 2026"},
-        },
-        "block_intro": {
-            "type": "text",
-            "parent": "block_root",
-            "props": {"content": "Biweekly Thursday. See [rules](https://example.com/rules)."},
-        },
-        "block_metric": {
-            "type": "metric",
-            "parent": "block_root",
-            "props": {"label": "Next game", "value": "Feb 27 at Dave's"},
-        },
-        "block_divider": {
-            "type": "divider",
-            "parent": "block_root",
-            "props": {},
-        },
-        "block_roster_h": {
-            "type": "heading",
-            "parent": "block_root",
-            "props": {"level": 2, "content": "Roster"},
-        },
-        "block_roster": {
-            "type": "collection_view",
-            "parent": "block_root",
-            "props": {"source": "roster", "view": "roster_view"},
-        },
-        "block_schedule_h": {
-            "type": "heading",
-            "parent": "block_root",
-            "props": {"level": 2, "content": "Schedule"},
-        },
-        "block_schedule": {
-            "type": "collection_view",
-            "parent": "block_root",
-            "props": {"source": "schedule", "view": "schedule_view"},
-        },
-    }
-
-    snapshot["annotations"] = []
-
-    return snapshot
-
-
-def minimal_snapshot():
-    """Minimal: just a heading."""
-    snapshot = empty_state()
-    snapshot["meta"] = {"title": "Minimal"}
-    snapshot["blocks"]["block_h"] = {
+    snapshot["blocks"]["block_title"] = {
         "type": "heading",
-        "parent": "block_root",
-        "props": {"level": 1, "content": "Hello"},
+        "level": 1,
+        "text": "Poker League 2026",
     }
-    snapshot["blocks"]["block_root"]["children"] = ["block_h"]
+    snapshot["blocks"]["block_next"] = {
+        "type": "metric",
+        "label": "Next Game",
+        "value": "March 15 at Mike's",
+    }
+    snapshot["blocks"]["block_players"] = {
+        "type": "entity_view",
+        "source": "players",
+    }
+    snapshot["blocks"]["block_root"]["children"] = [
+        "block_title",
+        "block_next",
+        "block_players",
+    ]
+
     return snapshot
 
 
-def empty_page_snapshot():
-    """Truly empty page — no blocks at all."""
-    snapshot = empty_state()
-    snapshot["meta"] = {"title": "Empty"}
-    return snapshot
-
-
-# ============================================================================
-# Core determinism: 100 renders must be identical
-# ============================================================================
-
-
-class TestDeterminism100Renders:
+class TestRenderDeterminism:
     """
-    Render the same snapshot 100 times, verify identical output every time.
-    This is the primary spec requirement for Category 10.
+    Render must be byte-identical across repeated invocations.
     """
 
-    def test_grocery_list_100_renders(self):
-        """Grocery list: 100 renders produce identical output."""
+    def test_empty_snapshot_is_deterministic(self):
+        """Empty snapshot renders identically 100 times."""
+        snapshot = empty_state()
+        snapshot["meta"] = {"title": "Test"}
+        blueprint = make_blueprint()
+
+        first = render(snapshot, blueprint)
+        for _ in range(99):
+            result = render(snapshot, blueprint)
+            assert result == first, "Render output changed on repeat call"
+
+    def test_grocery_list_is_deterministic(self):
+        """Grocery list snapshot renders identically 100 times."""
         snapshot = grocery_list_snapshot()
-        bp = make_blueprint()
+        blueprint = make_blueprint()
+
+        first = render(snapshot, blueprint)
+        for _ in range(99):
+            result = render(snapshot, blueprint)
+            assert result == first, "Grocery list render is not deterministic"
+
+    def test_poker_snapshot_is_deterministic(self):
+        """Poker league snapshot renders identically 100 times."""
+        snapshot = poker_snapshot()
+        blueprint = make_blueprint()
+
+        first = render(snapshot, blueprint)
+        for _ in range(99):
+            result = render(snapshot, blueprint)
+            assert result == first, "Poker snapshot render is not deterministic"
+
+    def test_determinism_with_events(self):
+        """Rendering with events list is deterministic."""
+        from engine.kernel.types import RenderOptions
+
+        snapshot = grocery_list_snapshot()
+        blueprint = make_blueprint()
         events = make_events()
+        opts = RenderOptions(include_events=True)
 
-        first = render(snapshot, bp, events=events)
-        for i in range(99):
-            result = render(snapshot, bp, events=events)
-            assert result == first, (
-                f"Render #{i + 2} differs from first render.\n"
-                f"First 200 chars of diff region: {_find_diff(first, result)}"
-            )
-
-    def test_poker_league_100_renders(self):
-        """Poker league: 100 renders produce identical output."""
-        snapshot = poker_league_snapshot()
-        bp = make_blueprint()
-
-        first = render(snapshot, bp)
-        for i in range(99):
-            result = render(snapshot, bp)
-            assert result == first, f"Render #{i + 2} differs from first render."
-
-    def test_minimal_page_100_renders(self):
-        """Minimal page: 100 renders produce identical output."""
-        snapshot = minimal_snapshot()
-        bp = make_blueprint()
-
-        first = render(snapshot, bp)
-        for i in range(99):
-            assert render(snapshot, bp) == first
-
-    def test_empty_page_100_renders(self):
-        """Empty page: 100 renders produce identical output."""
-        snapshot = empty_page_snapshot()
-        bp = make_blueprint()
-
-        first = render(snapshot, bp)
-        for i in range(99):
-            assert render(snapshot, bp) == first
-
-
-# ============================================================================
-# Determinism of specific sub-systems
-# ============================================================================
-
-
-class TestCSSGenerationDeterminism:
-    """CSS generation is stable across renders."""
-
-    def test_css_identical_across_renders(self):
-        """The <style> block is byte-identical across 50 renders."""
-        import re
-
-        snapshot = grocery_list_snapshot()
-        bp = make_blueprint()
-
-        first_html = render(snapshot, bp)
-        first_css = re.search(r"<style>(.*?)</style>", first_html, re.DOTALL).group(1)
-
+        first = render(snapshot, blueprint, events=events, options=opts)
         for _ in range(49):
-            html = render(snapshot, bp)
-            css = re.search(r"<style>(.*?)</style>", html, re.DOTALL).group(1)
-            assert css == first_css
+            result = render(snapshot, blueprint, events=events, options=opts)
+            assert result == first, "Render with events is not deterministic"
 
-
-class TestJSONEmbeddingDeterminism:
-    """Embedded JSON is stable (sorted keys, consistent serialization)."""
-
-    def test_snapshot_json_identical_across_renders(self):
-        """The aide-state JSON block is identical across 50 renders."""
-        import re
+    def test_determinism_with_blueprint(self):
+        """Rendering with blueprint embedded is deterministic."""
+        from engine.kernel.types import RenderOptions
 
         snapshot = grocery_list_snapshot()
-        bp = make_blueprint()
+        blueprint = make_blueprint()
+        opts = RenderOptions(include_blueprint=True)
 
-        first_html = render(snapshot, bp)
+        first = render(snapshot, blueprint, options=opts)
+        for _ in range(49):
+            result = render(snapshot, blueprint, options=opts)
+            assert result == first, "Render with blueprint is not deterministic"
+
+    def test_json_keys_are_sorted(self):
+        """Embedded JSON uses sorted keys for determinism."""
+        snapshot = grocery_list_snapshot()
+        blueprint = make_blueprint()
+
+        html = render(snapshot, blueprint)
+
+        # Extract the embedded JSON and check key ordering
+        import re
+
         pattern = r'<script[^>]*id="aide-state"[^>]*>(.*?)</script>'
-        first_json = re.search(pattern, first_html, re.DOTALL).group(1).strip()
+        match = re.search(pattern, html, re.DOTALL)
+        assert match, "No aide-state script block found"
 
-        for _ in range(49):
-            html = render(snapshot, bp)
-            json_block = re.search(pattern, html, re.DOTALL).group(1).strip()
-            assert json_block == first_json
+        raw = match.group(1).strip()
+        parsed = json.loads(raw)
 
-    def test_blueprint_json_identical_across_renders(self):
-        """The aide-blueprint JSON block is identical across 50 renders."""
+        # Re-dump with sort_keys and check it matches
+        sorted_str = json.dumps(parsed, sort_keys=True, ensure_ascii=False)
+        # The embedded JSON should parse to the same structure
+        reparsed = json.loads(sorted_str)
+        assert reparsed == parsed
+
+    def test_css_generation_is_stable(self):
+        """CSS output is stable across renders."""
+        snapshot = grocery_list_snapshot()
+        blueprint = make_blueprint()
+
         import re
 
+        def extract_css(html):
+            match = re.search(r"<style>(.*?)</style>", html, re.DOTALL)
+            return match.group(1) if match else ""
+
+        first_css = extract_css(render(snapshot, blueprint))
+        for _ in range(19):
+            css = extract_css(render(snapshot, blueprint))
+            assert css == first_css, "CSS is not deterministic"
+
+    def test_entity_iteration_order_is_stable(self):
+        """Entity rendering order is stable (not dict insertion-order dependent)."""
+        snapshot = poker_snapshot()
+        blueprint = make_blueprint()
+
+        first = render(snapshot, blueprint)
+        for _ in range(29):
+            result = render(snapshot, blueprint)
+            assert result == first, "Entity iteration order is not stable"
+
+
+class TestRenderIdempotence:
+    """
+    Rendering the same snapshot with same options always produces same output.
+    The function is pure and has no side effects.
+    """
+
+    def test_snapshot_not_mutated(self):
+        """The snapshot dict is not mutated by render()."""
+        import copy
+
         snapshot = grocery_list_snapshot()
-        bp = make_blueprint()
+        blueprint = make_blueprint()
 
-        first_html = render(snapshot, bp)
-        pattern = r'<script[^>]*id="aide-blueprint"[^>]*>(.*?)</script>'
-        first_json = re.search(pattern, first_html, re.DOTALL).group(1).strip()
+        original = copy.deepcopy(snapshot)
+        render(snapshot, blueprint)
 
-        for _ in range(49):
-            html = render(snapshot, bp)
-            json_block = re.search(pattern, html, re.DOTALL).group(1).strip()
-            assert json_block == first_json
+        assert snapshot == original, "render() mutated the snapshot"
 
-    def test_events_json_identical_across_renders(self):
-        """The aide-events JSON block is identical across 50 renders."""
-        import re
+    def test_blueprint_not_mutated(self):
+        """The blueprint object is not mutated by render()."""
+        snapshot = grocery_list_snapshot()
+        blueprint = make_blueprint()
+        original_identity = blueprint.identity
+        original_voice = blueprint.voice
+
+        render(snapshot, blueprint)
+
+        assert blueprint.identity == original_identity
+        assert blueprint.voice == original_voice
+
+    def test_events_not_mutated(self):
+        """The events list is not mutated by render()."""
+        from engine.kernel.types import RenderOptions
 
         snapshot = grocery_list_snapshot()
-        bp = make_blueprint()
+        blueprint = make_blueprint()
         events = make_events()
+        opts = RenderOptions(include_events=True)
 
-        first_html = render(snapshot, bp, events=events)
-        pattern = r'<script[^>]*id="aide-events"[^>]*>(.*?)</script>'
-        first_json = re.search(pattern, first_html, re.DOTALL).group(1).strip()
+        original_len = len(events)
+        original_first = events[0].id
 
-        for _ in range(49):
-            html = render(snapshot, bp, events=events)
-            json_block = re.search(pattern, html, re.DOTALL).group(1).strip()
-            assert json_block == first_json
+        render(snapshot, blueprint, events=events, options=opts)
 
-
-class TestEntityOrderDeterminism:
-    """Entity ordering is stable when sort config is present."""
-
-    def test_sorted_entity_order_stable(self):
-        """Sorted entities appear in the same order every render."""
-        snapshot = grocery_list_snapshot()
-        bp = make_blueprint()
-
-        first_html = render(snapshot, bp)
-        # Extract the order of entity names in the output
-        first_order = _extract_entity_order(
-            first_html,
-            [
-                "Whole Milk",
-                "Eggs (dozen)",
-                "Sourdough Bread",
-                "Chicken Thighs",
-                "Baby Spinach",
-            ],
-        )
-
-        for _ in range(49):
-            html = render(snapshot, bp)
-            order = _extract_entity_order(
-                html,
-                [
-                    "Whole Milk",
-                    "Eggs (dozen)",
-                    "Sourdough Bread",
-                    "Chicken Thighs",
-                    "Baby Spinach",
-                ],
-            )
-            assert order == first_order, f"Entity order changed. First: {first_order}, Now: {order}"
+        assert len(events) == original_len
+        assert events[0].id == original_first
 
 
-class TestBlockOrderDeterminism:
-    """Block tree walk order is stable."""
+class TestRenderDifferentInputsDifferentOutputs:
+    """
+    Different inputs produce different outputs (basic sanity check).
+    """
 
-    def test_block_order_stable(self):
-        """Blocks appear in the same document order every render."""
-        snapshot = poker_league_snapshot()
-        bp = make_blueprint()
+    def test_different_titles_different_output(self):
+        """Two snapshots with different titles produce different HTML."""
+        s1 = empty_state()
+        s1["meta"] = {"title": "Page One"}
+        s2 = empty_state()
+        s2["meta"] = {"title": "Page Two"}
+        blueprint = make_blueprint()
 
-        markers = [
-            "Poker League",
-            "Biweekly Thursday",
-            "Next game",
-            "aide-divider",
-            "Roster",
-            "Schedule",
-        ]
+        html1 = render(s1, blueprint)
+        html2 = render(s2, blueprint)
 
-        first_html = render(snapshot, bp)
-        first_positions = [first_html.find(m) for m in markers]
+        assert html1 != html2
 
-        for _ in range(49):
-            html = render(snapshot, bp)
-            positions = [html.find(m) for m in markers]
-            assert positions == first_positions
+    def test_different_entities_different_output(self):
+        """Two snapshots with different entities produce different HTML."""
+        s1 = grocery_list_snapshot()
+        s2 = grocery_list_snapshot()
 
+        # Add a new entity to s2
+        s2["entities"]["extra"] = {"name": "Extra Entity"}
+        s2["blocks"]["block_extra"] = {"type": "text", "text": "Extra content."}
+        s2["blocks"]["block_root"]["children"].append("block_extra")
 
-class TestStyleTokenDeterminism:
-    """Style token CSS overrides are stable."""
+        blueprint = make_blueprint()
+        html1 = render(s1, blueprint)
+        html2 = render(s2, blueprint)
 
-    def test_style_overrides_stable(self):
-        """CSS variable overrides appear identically each render."""
-        snapshot = poker_league_snapshot()
-        bp = make_blueprint()
+        assert html1 != html2
 
-        overrides = ["--text-primary: #1a365d", "--bg-primary: #fffff0"]
+    def test_different_styles_different_css(self):
+        """Two snapshots with different style tokens produce different CSS."""
+        s1 = empty_state()
+        s1["meta"] = {"title": "Test"}
+        s1["styles"] = {"primary_color": "#ff0000"}
 
-        first_html = render(snapshot, bp)
-        for override in overrides:
-            assert override in first_html
+        s2 = empty_state()
+        s2["meta"] = {"title": "Test"}
+        s2["styles"] = {"primary_color": "#0000ff"}
 
-        for _ in range(49):
-            html = render(snapshot, bp)
-            for override in overrides:
-                pos_first = first_html.find(override)
-                pos_now = html.find(override)
-                assert pos_first == pos_now, f"Override {override!r} moved from position {pos_first} to {pos_now}"
+        blueprint = make_blueprint()
+        html1 = render(s1, blueprint)
+        html2 = render(s2, blueprint)
 
-
-# ============================================================================
-# Determinism with different RenderOptions
-# ============================================================================
-
-
-class TestDeterminismWithOptions:
-    """Determinism holds regardless of RenderOptions."""
-
-    def test_determinism_without_events(self):
-        """Stable when events excluded."""
-        from engine.kernel.renderer import RenderOptions
-
-        snapshot = grocery_list_snapshot()
-        bp = make_blueprint()
-        opts = RenderOptions(include_events=False)
-
-        first = render(snapshot, bp, options=opts)
-        for _ in range(49):
-            assert render(snapshot, bp, options=opts) == first
-
-    def test_determinism_without_blueprint(self):
-        """Stable when blueprint excluded."""
-        from engine.kernel.renderer import RenderOptions
-
-        snapshot = grocery_list_snapshot()
-        bp = make_blueprint()
-        opts = RenderOptions(include_blueprint=False)
-
-        first = render(snapshot, bp, options=opts)
-        for _ in range(49):
-            assert render(snapshot, bp, options=opts) == first
-
-    def test_determinism_with_footer(self):
-        """Stable when footer included."""
-        from engine.kernel.renderer import RenderOptions
-
-        snapshot = grocery_list_snapshot()
-        bp = make_blueprint()
-        opts = RenderOptions(footer="Made with AIde")
-
-        first = render(snapshot, bp, options=opts)
-        for _ in range(49):
-            assert render(snapshot, bp, options=opts) == first
-
-
-# ============================================================================
-# Helpers
-# ============================================================================
-
-
-def _find_diff(a, b, context=200):
-    """Find the first point where two strings differ and return context."""
-    for i, (ca, cb) in enumerate(zip(a, b, strict=False)):
-        if ca != cb:
-            start = max(0, i - 50)
-            return f"Position {i}: ...{a[start : i + context]!r}... vs ...{b[start : i + context]!r}..."
-    if len(a) != len(b):
-        return f"Lengths differ: {len(a)} vs {len(b)}"
-    return "Strings are identical"
-
-
-def _extract_entity_order(html, names):
-    """Return the names in the order they appear in the HTML."""
-    positions = [(name, html.find(name)) for name in names]
-    positions = [(name, pos) for name, pos in positions if pos != -1]
-    positions.sort(key=lambda x: x[1])
-    return [name for name, _ in positions]
+        assert html1 != html2

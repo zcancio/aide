@@ -1,26 +1,29 @@
 """
-AIde Kernel — Renderer
+AIde Kernel — Renderer (v3 Unified Entity Model)
 
-Pure function: (snapshot, blueprint, events?, options?) → HTML string
+Pure function: (snapshot, blueprint, events?, options?) → HTML string (or text string)
 No AI. No IO. Deterministic: same input → same output, always.
 
-Produces a complete, self-contained HTML file with:
-- Embedded blueprint, snapshot, and event log as JSON
-- CSS from design system + style token overrides
-- Block tree rendered depth-first as HTML
-- OG meta tags for link previews
+v3 key changes:
+- Multi-channel: render_html for web, render_text for SMS/terminal/Slack
+- Mustache templates in schemas with {{>fieldname}} for child collections
+- Schema styles collected into CSS
+- Grid rendering via _shape detection and CSS grid layout
+- Entities rendered using their schema's render_html/render_text template
 
-Reference: aide_renderer_spec.md
+Reference: docs/eng_design/unified_entity_model.md, aide_renderer_spec.md
 """
 
 from __future__ import annotations
 
 import json
 import re
-from datetime import datetime
 from html import escape as _html_escape
 from typing import Any
 
+import chevron
+
+from engine.kernel.ts_parser import parse_interface_cached
 from engine.kernel.types import (
     Blueprint,
     Event,
@@ -30,15 +33,6 @@ from engine.kernel.types import (
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
-
-
-def render_block(block_id: str, snapshot: dict[str, Any]) -> str:
-    """
-    Render a single block and its children recursively.
-    Returns an HTML fragment string.
-    Pure function. No side effects. No IO.
-    """
-    return _render_block(block_id, snapshot)
 
 
 def render(
@@ -55,9 +49,122 @@ def render(
     opts = options or RenderOptions()
     events = events or []
 
+    if opts.channel == "text":
+        return _render_text(snapshot, blueprint, opts)
+
+    return _render_html(snapshot, blueprint, events, opts)
+
+
+def render_block(block_id: str, snapshot: dict[str, Any]) -> str:
+    """
+    Render a single block and its children recursively.
+    Returns an HTML fragment string.
+    Pure function. No side effects. No IO.
+    """
+    return _render_block(block_id, snapshot)
+
+
+def render_entity(
+    entity_id: str,
+    snapshot: dict[str, Any],
+    channel: str = "html",
+) -> str:
+    """
+    Render a single top-level entity using its schema template.
+    Returns an HTML or text fragment.
+    Pure function. No side effects. No IO.
+    """
+    entity = snapshot.get("entities", {}).get(entity_id)
+    if entity is None or entity.get("_removed"):
+        return ""
+
+    schema_id = entity.get("_schema", "")
+    schema = snapshot.get("schemas", {}).get(schema_id, {})
+
+    if channel == "text":
+        template = schema.get("render_text", "")
+    else:
+        template = schema.get("render_html", "")
+
+    if not template:
+        return _default_entity_html(entity_id, entity, snapshot, channel)
+
+    return _render_entity_with_template(entity_id, entity, template, snapshot, channel, schema_id)
+
+
+# ---------------------------------------------------------------------------
+# HTML rendering (primary channel)
+# ---------------------------------------------------------------------------
+
+BASE_CSS = """
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+.aide-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+@media (max-width: 640px) {
+  .aide-page { padding: 20px 16px; }
+}
+h1, h2, h3 {
+  font-family: var(--font-heading);
+  font-weight: 500;
+  line-height: 1.2;
+  margin-bottom: 8px;
+}
+h1 { font-size: 2rem; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.2rem; }
+p { margin-bottom: 8px; }
+.aide-empty { color: #888; font-style: italic; }
+.aide-footer {
+  margin-top: 48px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: #aaa;
+  text-align: center;
+}
+.aide-annotations { margin-top: 32px; }
+.aide-annotation {
+  padding: 12px;
+  border-left: 3px solid var(--accent);
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+.aide-annotation-time { font-size: 11px; color: #888; margin-top: 4px; }
+/* Grid layout for _shape-based collections */
+.aide-grid {
+  display: grid;
+  gap: 2px;
+}
+.aide-grid-cell {
+  border: 1px solid var(--border);
+  padding: 4px;
+  text-align: center;
+  font-size: 13px;
+}
+.aide-grid-header {
+  font-weight: 600;
+  background: var(--bg-secondary, #f0f0f0);
+}
+"""
+
+
+def _render_html(
+    snapshot: dict[str, Any],
+    blueprint: Blueprint,
+    events: list[Event],
+    opts: RenderOptions,
+) -> str:
     parts: list[str] = []
 
-    # DOCTYPE and opening
     parts.append("<!DOCTYPE html>")
     parts.append('<html lang="en">')
     parts.append("<head>")
@@ -69,7 +176,7 @@ def render(
     parts.append(f"  <title>{title}</title>")
 
     # OG tags
-    parts.append(_render_og_tags(snapshot))
+    parts.append(_render_og_tags(snapshot, opts))
 
     # Blueprint JSON
     if opts.include_blueprint:
@@ -110,20 +217,15 @@ def render(
     parts.append("<body>")
     parts.append('  <main class="aide-page">')
 
-    # Block tree
-    body_html = _render_block_tree(snapshot)
+    # Content
+    body_html = _render_content_html(snapshot)
     if body_html:
         parts.append(body_html)
     else:
-        # No explicit blocks — auto-render collections if they exist
-        auto_html = _auto_render_collections(snapshot)
-        if auto_html:
-            parts.append(auto_html)
-        else:
-            parts.append('    <p class="aide-empty">This page is empty.</p>')
+        parts.append('    <p class="aide-empty">This page is empty.</p>')
 
     # Annotations
-    annotations_html = _render_annotations(snapshot)
+    annotations_html = _render_annotations_html(snapshot)
     if annotations_html:
         parts.append(annotations_html)
 
@@ -131,7 +233,7 @@ def render(
 
     # Footer
     if opts.footer:
-        parts.append(_render_footer(opts.footer))
+        parts.append(f'  <footer class="aide-footer">{escape(opts.footer)}</footer>')
 
     parts.append("</body>")
     parts.append("</html>")
@@ -139,739 +241,488 @@ def render(
     return "\n".join(parts)
 
 
-# ---------------------------------------------------------------------------
-# HTML escaping
-# ---------------------------------------------------------------------------
-
-
-def escape(text: str) -> str:
-    """HTML-escape user content."""
-    return _html_escape(text, quote=True)
-
-
-# ---------------------------------------------------------------------------
-# OG tags
-# ---------------------------------------------------------------------------
-
-
-def _render_og_tags(snapshot: dict) -> str:
-    title = escape(snapshot.get("meta", {}).get("title", "AIde"))
-    description = escape(_derive_description(snapshot))
-
-    return (
-        f'  <meta property="og:title" content="{title}">\n'
-        f'  <meta property="og:type" content="website">\n'
-        f'  <meta property="og:description" content="{description}">\n'
-        f'  <meta name="description" content="{description}">'
-    )
-
-
-def _derive_description(snapshot: dict) -> str:
-    """Derive a description for OG tags from snapshot content."""
-    blocks = snapshot.get("blocks", {})
-    root = blocks.get("block_root", {})
-
-    # Strategy 1: first text block
-    for block_id in root.get("children", []):
-        block = blocks.get(block_id, {})
-        if block.get("type") == "text":
-            content = block.get("props", {}).get("content", "")
-            return content[:160]
-
-    # Strategy 2: collection summary
-    for coll in snapshot.get("collections", {}).values():
-        if coll.get("_removed"):
-            continue
-        count = sum(1 for e in coll.get("entities", {}).values() if not e.get("_removed"))
-        name = coll.get("name", coll.get("id", "Items"))
-        return f"{name}: {count} items"
-
-    # Strategy 3: title
-    return snapshot.get("meta", {}).get("title", "A living page")
-
-
-# ---------------------------------------------------------------------------
-# CSS generation
-# ---------------------------------------------------------------------------
-
-
-def _render_css(snapshot: dict) -> str:
-    """Generate the full CSS block: base + style token overrides."""
+def _render_css(snapshot: dict[str, Any]) -> str:
+    """Generate CSS from style tokens + schema styles."""
     styles = snapshot.get("styles", {})
-    parts: list[str] = []
 
-    # CSS custom properties (defaults + overrides)
-    parts.append(":root {")
-    parts.append("  /* Design system defaults */")
-    parts.append("  --font-serif: 'Cormorant Garamond', Georgia, serif;")
-    parts.append("  --font-sans: 'IBM Plex Sans', -apple-system, sans-serif;")
-    parts.append("  --text-primary: #1a1a1a;")
-    parts.append("  --text-secondary: #4a4a4a;")
-    parts.append("  --text-tertiary: #8a8a8a;")
-    parts.append("  --text-slate: #374151;")
-    parts.append("  --bg-primary: #fafaf9;")
-    parts.append("  --bg-cream: #f5f1eb;")
-    parts.append("  --accent-navy: #1f2a44;")
-    parts.append("  --accent-steel: #5a6e8a;")
-    parts.append("  --accent-forest: #2d5a3d;")
-    parts.append("  --border: #d4d0c8;")
-    parts.append("  --border-light: #e8e4dc;")
-    parts.append("  --radius-sm: 4px;")
-    parts.append("  --radius-md: 8px;")
-    # Spacing scale
-    for i, px in enumerate([0, 4, 8, 12, 16, 20, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160]):
-        parts.append(f"  --space-{i}: {px}px;")
+    # Map style tokens to CSS custom properties
+    primary_color = styles.get("primary_color", "#2d3748")
+    bg_color = styles.get("bg_color", "#fafaf9")
+    text_color = styles.get("text_color", "#1a1a1a")
+    font_family = styles.get("font_family", "IBM Plex Sans, sans-serif")
+    heading_font = styles.get("heading_font", "Cormorant Garamond, serif")
 
-    # Style token overrides
-    if styles.get("primary_color"):
-        parts.append(f"  --text-primary: {styles['primary_color']};")
-    if styles.get("bg_color"):
-        parts.append(f"  --bg-primary: {styles['bg_color']};")
-    if styles.get("text_color"):
-        parts.append(f"  --text-slate: {styles['text_color']};")
-    if styles.get("font_family"):
-        parts.append(f"  --font-sans: '{styles['font_family']}', -apple-system, sans-serif;")
-    if styles.get("heading_font"):
-        parts.append(f"  --font-serif: '{styles['heading_font']}', Georgia, serif;")
+    css_vars = f"""
+:root {{
+  --font-body: {font_family};
+  --font-heading: {heading_font};
+  --text-primary: {text_color};
+  --bg-primary: {bg_color};
+  --accent: {primary_color};
+  --border: rgba(0,0,0,0.1);
+}}
+""".strip()
 
-    parts.append("}")
-
-    # Base styles
-    parts.append(BASE_CSS)
-
-    # Block type styles
-    parts.append(BLOCK_CSS)
-
-    # View type styles
-    parts.append(VIEW_CSS)
-
-    return "\n".join(parts)
-
-
-# ---------------------------------------------------------------------------
-# Block tree rendering
-# ---------------------------------------------------------------------------
-
-
-def _auto_render_collections(snapshot: dict) -> str:
-    """
-    Auto-render all collections when no explicit blocks exist.
-    Creates a heading + appropriate view for each non-removed collection.
-    Detects grid patterns (row/col fields) and renders as grid.
-    """
-    collections = snapshot.get("collections", {})
-    parts: list[str] = []
-
-    for coll_id, coll in collections.items():
-        if coll.get("_removed"):
+    schema_css_parts = []
+    for schema in snapshot.get("schemas", {}).values():
+        if schema.get("_removed"):
             continue
+        schema_styles = schema.get("styles", "")
+        if schema_styles:
+            schema_css_parts.append(schema_styles)
 
-        # Collection heading
-        name = coll.get("name", coll_id)
-        parts.append(f'    <h2 class="aide-heading aide-heading--2">{escape(name)}</h2>')
+    schema_css = "\n".join(schema_css_parts)
 
-        # Get non-removed entities
-        entities = [
-            {**e, "_id": eid}
-            for eid, e in coll.get("entities", {}).items()
-            if not e.get("_removed")
-        ]
-
-        if not entities:
-            parts.append('    <p class="aide-collection-empty">No items yet.</p>')
-            continue
-
-        schema = coll.get("schema", {})
-
-        # Detect grid pattern: has row and col integer fields
-        has_row = schema.get("row") in ("int", "int?")
-        has_col = schema.get("col") in ("int", "int?")
-
-        if has_row and has_col:
-            # Render as grid (pass meta for team names)
-            meta = snapshot.get("meta", {})
-            parts.append(_render_auto_grid(entities, schema, meta))
-        else:
-            # Render as table view
-            parts.append(_render_table_view(entities, schema, {}, {}))
-
-    return "\n".join(parts)
+    return "\n".join([css_vars, BASE_CSS, schema_css])
 
 
-def _render_auto_grid(entities: list[dict], schema: dict, meta: dict | None = None) -> str:
-    """
-    Render entities with row/col fields as a visual grid.
-    Used for Super Bowl squares, bingo cards, seating charts, etc.
-    """
-    meta = meta or {}
-
-    # Find grid dimensions
-    rows = set()
-    cols = set()
-    grid_map: dict[tuple[int, int], dict] = {}
-
-    for entity in entities:
-        row = entity.get("row")
-        col = entity.get("col")
-        if row is not None and col is not None:
-            rows.add(row)
-            cols.add(col)
-            grid_map[(row, col)] = entity
-
-    if not rows or not cols:
-        return '    <p class="aide-collection-empty">No grid data.</p>'
-
-    row_list = sorted(rows)
-    col_list = sorted(cols)
-
-    # Determine what to show in each cell (first non-row/col field, or owner)
-    display_field = None
-    for field in schema:
-        if field not in ("row", "col") and not field.startswith("_"):
-            display_field = field
-            break
-
-    # Get axis labels from meta (for Super Bowl squares, seating charts, etc.)
-    # row_label/col_label: single string label for the axis (e.g., team name)
-    # row_labels/col_labels: array of labels to replace numeric indices
-    row_label = meta.get("row_label", "")
-    col_label = meta.get("col_label", "")
-    row_labels = meta.get("row_labels", [])  # e.g., ["A", "B", "C", ...]
-    col_labels = meta.get("col_labels", [])  # e.g., ["1", "2", "3", ...]
-
-    parts = ['    <div class="aide-grid-wrap" style="display:flex;justify-content:center;padding:16px;overflow-x:auto;">']
-    parts.append('      <table class="aide-grid" style="border-collapse:collapse;text-align:center;width:100%;min-width:288px;max-width:500px;table-layout:fixed;">')
-
-    parts.append("        <thead>")
-
-    # Column label header (if set)
-    if col_label:
-        parts.append("          <tr>")
-        # Empty corner cells: 1 for row numbers, plus 1 if row_label exists
-        if row_label:
-            parts.append('            <th style="padding:4px;"></th>')  # Row label column
-        parts.append('            <th style="padding:4px;"></th>')  # Row numbers column
-        parts.append(f'            <th colspan="{len(col_list)}" style="padding:6px 4px;font-weight:700;color:#222;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #333;">{escape(col_label)}</th>')
-        parts.append("          </tr>")
-
-    # Header row with column numbers/labels
-    parts.append("          <tr>")
-    # Empty cells: 1 for row numbers, plus 1 if row_label exists
-    if row_label:
-        parts.append('            <th style="padding:4px;"></th>')  # Row label column
-    parts.append('            <th style="padding:4px;"></th>')  # Row numbers column
-    for idx, col in enumerate(col_list):
-        # Use custom col_labels if provided, otherwise use numeric index
-        col_display = col_labels[idx] if idx < len(col_labels) else col
-        parts.append(f'            <th style="padding:4px;font-weight:600;color:#444;font-size:11px;">{escape(str(col_display))}</th>')
-    parts.append("          </tr>")
-    parts.append("        </thead>")
-
-    # Grid rows - with row label spanning all rows on the left
-    parts.append("        <tbody>")
-    for i, row in enumerate(row_list):
-        parts.append("          <tr>")
-        # Add vertical row label on first row, spanning all rows
-        if i == 0 and row_label:
-            parts.append(f'            <th rowspan="{len(row_list)}" style="padding:6px 4px;font-weight:700;color:#222;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;writing-mode:vertical-lr;transform:rotate(180deg);border-right:2px solid #333;text-align:center;">{escape(row_label)}</th>')
-        # Note: when row_label exists and i > 0, we skip because rowspan covers it
-        # Row number/label - use custom row_labels if provided
-        row_display = row_labels[i] if i < len(row_labels) else row
-        parts.append(f'            <th style="padding:4px;font-weight:600;color:#444;font-size:11px;">{escape(str(row_display))}</th>')
-        for col in col_list:
-            entity = grid_map.get((row, col))
-            if entity and display_field:
-                value = entity.get(display_field)
-                if value:
-                    cell_content = escape(str(value))
-                    cell_bg = "background:#e8f4e8;"
-                else:
-                    cell_content = ""
-                    cell_bg = ""
-            else:
-                cell_content = ""
-                cell_bg = ""
-            # Use inner div with aspect-ratio since it doesn't work on td elements
-            # Wrap text in span for ellipsis (doesn't work directly on flex container)
-            td_style = "padding:0;border:1px solid #ddd;vertical-align:middle;"
-            div_style = f"aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:11px;padding:2px;{cell_bg}"
-            span_style = "overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;"
-            if cell_content:
-                parts.append(f'            <td style="{td_style}"><div style="{div_style}"><span style="{span_style}">{cell_content}</span></div></td>')
-            else:
-                parts.append(f'            <td style="{td_style}"><div style="{div_style}"></div></td>')
-        parts.append("          </tr>")
-    parts.append("        </tbody>")
-    parts.append("      </table>")
-    parts.append("    </div>")
-
-    return "\n".join(parts)
-
-
-def _render_block_tree(snapshot: dict) -> str:
-    """Walk the block tree depth-first from block_root, emit HTML."""
+def _render_content_html(snapshot: dict[str, Any]) -> str:
+    """Render main content from blocks or auto-render entities."""
     blocks = snapshot.get("blocks", {})
     root = blocks.get("block_root", {})
     children = root.get("children", [])
 
-    if not children:
+    if children:
+        return _render_block_tree(snapshot)
+
+    # No explicit blocks — auto-render top-level entities
+    entities = snapshot.get("entities", {})
+    active_entities = [(eid, e) for eid, e in entities.items() if not e.get("_removed")]
+    if not active_entities:
         return ""
 
-    parts: list[str] = []
-    for child_id in children:
-        html = _render_block(child_id, snapshot)
+    parts = []
+    for entity_id, _entity in active_entities:
+        html = render_entity(entity_id, snapshot, channel="html")
         if html:
             parts.append(html)
 
     return "\n".join(parts)
 
 
-def _render_block(block_id: str, snapshot: dict) -> str:
+def _render_block_tree(snapshot: dict[str, Any]) -> str:
+    """Render the full block tree starting from block_root."""
+    blocks = snapshot.get("blocks", {})
+    root = blocks.get("block_root", {})
+    parts = []
+    for child_id in root.get("children", []):
+        parts.append(_render_block(child_id, snapshot))
+    return "\n".join(parts)
+
+
+def _render_block(block_id: str, snapshot: dict[str, Any]) -> str:
     """Render a single block and its children recursively."""
     blocks = snapshot.get("blocks", {})
     block = blocks.get(block_id)
-    if block is None or block.get("_removed"):
+    if block is None:
         return ""
 
     block_type = block.get("type", "")
-    renderer = _BLOCK_RENDERERS.get(block_type)
-    if renderer is None:
+
+    if block_type == "root":
+        parts = [_render_block(c, snapshot) for c in block.get("children", [])]
+        return "\n".join(parts)
+
+    if block_type == "heading":
+        level = block.get("level", 2)
+        text = escape(block.get("text", ""))
+        return f"<h{level}>{text}</h{level}>"
+
+    if block_type == "text":
+        content = _render_inline(block.get("text", ""))
+        return f"<p>{content}</p>"
+
+    if block_type == "metric":
+        label = escape(block.get("label", ""))
+        value = escape(str(block.get("value", "")))
+        return (
+            f'<div class="aide-metric">'
+            f'<span class="aide-metric-label">{label}</span>'
+            f'<span class="aide-metric-value">{value}</span>'
+            f"</div>"
+        )
+
+    if block_type == "entity_view":
+        source = block.get("source", "")
+        if source:
+            return render_entity(source, snapshot, channel="html")
         return ""
 
-    html = renderer(block, snapshot)
+    if block_type == "divider":
+        return "<hr>"
 
-    # Render children recursively (for container blocks)
-    children = block.get("children", [])
-    if children and block_type in ("column_list", "column", "root"):
-        child_parts: list[str] = []
-        for child_id in children:
-            child_html = _render_block(child_id, snapshot)
-            if child_html:
-                child_parts.append(child_html)
-        if child_parts:
-            html = html.replace("<!--children-->", "\n".join(child_parts))
+    if block_type == "image":
+        src = escape(block.get("src", ""))
+        alt = escape(block.get("alt", ""))
+        caption = block.get("caption", "")
+        img = f'<img src="{src}" alt="{alt}" loading="lazy">'
+        if caption:
+            return f"<figure>{img}<figcaption>{escape(caption)}</figcaption></figure>"
+        return f"<figure>{img}</figure>"
+
+    if block_type == "callout":
+        icon = escape(block.get("icon", "ℹ️"))
+        content = _render_inline(block.get("text", ""))
+        return (
+            f'<div class="aide-callout">'
+            f'<span class="aide-callout-icon">{icon}</span>'
+            f'<div class="aide-callout-content">{content}</div>'
+            f"</div>"
+        )
+
+    if block_type == "column_list":
+        children = block.get("children", [])
+        cols = [f'<div class="aide-column">{_render_block(c, snapshot)}</div>' for c in children]
+        return f'<div class="aide-columns">{" ".join(cols)}</div>'
+
+    if block_type == "column":
+        parts = [_render_block(c, snapshot) for c in block.get("children", [])]
+        return "\n".join(parts)
+
+    # Unknown block type — render children
+    parts = [_render_block(c, snapshot) for c in block.get("children", [])]
+    return "\n".join(parts)
+
+
+# ---------------------------------------------------------------------------
+# Entity template rendering
+# ---------------------------------------------------------------------------
+
+
+def _render_entity_with_template(
+    entity_id: str,
+    entity: dict[str, Any],
+    template: str,
+    snapshot: dict[str, Any],
+    channel: str,
+    parent_schema_id: str | None = None,
+    field_name: str | None = None,
+) -> str:
+    """Render entity using Mustache template, resolving {{>field}} child partials."""
+    # Build the data context for the entity
+    context = _build_entity_context(entity_id, entity, snapshot, channel)
+
+    # Handle {{>fieldname}} partials by pre-rendering child collections
+    # chevron doesn't natively handle dict-of-dicts as sections for us,
+    # so we resolve child collection partials before passing to chevron
+    schema_id = entity.get("_schema") or parent_schema_id
+    resolved = _resolve_child_partials(template, entity, snapshot, channel, schema_id)
+
+    try:
+        rendered = chevron.render(resolved, context)
+    except Exception:
+        rendered = _default_entity_html(entity_id, entity, snapshot, channel)
+
+    return rendered
+
+
+def _build_entity_context(
+    entity_id: str,
+    entity: dict[str, Any],
+    snapshot: dict[str, Any],
+    channel: str,
+) -> dict[str, Any]:
+    """Build Mustache context dict from entity fields."""
+    context: dict[str, Any] = {"_id": entity_id}
+
+    for key, value in entity.items():
+        if key.startswith("_"):
+            continue
+        if isinstance(value, dict):
+            # Child collection — will be handled by partials, skip here
+            pass
         else:
-            html = html.replace("<!--children-->", "")
+            context[key] = value
 
-    return html
-
-
-# ---------------------------------------------------------------------------
-# Block type renderers
-# ---------------------------------------------------------------------------
+    return context
 
 
-def _render_heading(block: dict, snapshot: dict) -> str:
-    props = block.get("props", {})
-    level = props.get("level", 1)
-    level = max(1, min(3, level))
-    content = escape(props.get("content", ""))
-    return f'    <h{level} class="aide-heading aide-heading--{level}">{content}</h{level}>'
+def _resolve_child_partials(
+    template: str,
+    entity: dict[str, Any],
+    snapshot: dict[str, Any],
+    channel: str,
+    entity_schema_id: str | None = None,
+) -> str:
+    """
+    Replace {{>fieldname}} with pre-rendered child collection HTML/text.
+    This pre-processes partials before passing to chevron.
+    """
+    # Find all {{>fieldname}} references
+    partial_pattern = re.compile(r"\{\{>\s*(\w+)\s*\}\}")
+
+    def replace_partial(m: re.Match) -> str:
+        field_name = m.group(1)
+        child_collection = entity.get(field_name)
+        if not isinstance(child_collection, dict):
+            return ""
+        # Determine child schema from parent's interface if available
+        child_schema_id = _lookup_child_schema_id(entity_schema_id, field_name, snapshot)
+        return _render_child_collection(child_collection, field_name, snapshot, channel, child_schema_id)
+
+    return partial_pattern.sub(replace_partial, template)
 
 
-def _render_text(block: dict, snapshot: dict) -> str:
-    props = block.get("props", {})
-    content = props.get("content", "")
-    html_content = _format_inline(content)
-    return f'    <p class="aide-text">{html_content}</p>'
+def _lookup_child_schema_id(
+    parent_schema_id: str | None,
+    field_name: str,
+    snapshot: dict[str, Any],
+) -> str | None:
+    """
+    Look up the child schema ID for a Record field from the parent's TypeScript interface.
+
+    For `interface GroceryList { items: Record<string, GroceryItem>; }`,
+    `_lookup_child_schema_id("grocery_list", "items", snap)` returns "grocery_item".
+
+    The schema IDs in the snapshot use snake_case (e.g. "grocery_item") but the interface
+    uses PascalCase (e.g. "GroceryItem"). We find the match by checking all schemas whose
+    interface name matches the Record's item type.
+    """
+    if not parent_schema_id:
+        return None
+
+    parent_schema = snapshot.get("schemas", {}).get(parent_schema_id, {})
+    interface_src = parent_schema.get("interface", "")
+    if not interface_src:
+        return None
+
+    iface = parse_interface_cached(interface_src)
+    if iface is None:
+        return None
+
+    field_def = iface.fields.get(field_name)
+    if field_def is None or field_def.kind != "record":
+        return None
+
+    # record_item_type is the PascalCase type name (e.g. "GroceryItem")
+    item_type_name = field_def.record_item_type
+    if not item_type_name:
+        return None
+
+    # Find a schema whose interface name matches item_type_name
+    for schema_id, schema_def in snapshot.get("schemas", {}).items():
+        if schema_def.get("_removed"):
+            continue
+        child_iface_src = schema_def.get("interface", "")
+        if not child_iface_src:
+            continue
+        child_iface = parse_interface_cached(child_iface_src)
+        if child_iface and child_iface.name == item_type_name:
+            return schema_id
+
+    return None
 
 
-def _render_metric(block: dict, snapshot: dict) -> str:
-    props = block.get("props", {})
-    label = escape(props.get("label", ""))
-    value = escape(str(props.get("value", "")))
-    return (
-        f'    <div class="aide-metric">\n'
-        f'      <span class="aide-metric__label">{label}</span>\n'
-        f'      <span class="aide-metric__value">{value}</span>\n'
-        f"    </div>"
-    )
+def _render_child_collection(
+    collection: dict[str, Any],
+    field_name: str,
+    snapshot: dict[str, Any],
+    channel: str,
+    inferred_schema_id: str | None = None,
+) -> str:
+    """Render all children in a Record collection, sorted by _pos."""
+    # Get shape for grid layout
+    shape = collection.get("_shape")
 
+    # Get active children (exclude _shape and _removed)
+    children = [
+        (cid, child)
+        for cid, child in collection.items()
+        if not cid.startswith("_") and isinstance(child, dict) and not child.get("_removed")
+    ]
 
-def _render_collection_view_block(block: dict, snapshot: dict) -> str:
-    props = block.get("props", {})
-    view_id = props.get("view")
-    source_id = props.get("source")
+    if shape and isinstance(shape, list):
+        return _render_grid_collection(collection, shape, snapshot, channel, inferred_schema_id)
 
-    views = snapshot.get("views", {})
-    collections = snapshot.get("collections", {})
+    # Sort by _pos, then by insertion order
+    children.sort(key=lambda x: (x[1].get("_pos", 999999), x[0]))
 
-    view = views.get(view_id) if view_id else None
-    collection = collections.get(source_id) if source_id else None
-
-    if collection is None or collection.get("_removed"):
+    if not children:
         return ""
 
-    # Get non-removed entities
-    entities = [{**e, "_id": eid} for eid, e in collection.get("entities", {}).items() if not e.get("_removed")]
+    parts = []
+    for child_id, child in children:
+        # Child's own _schema takes precedence, then inferred from parent interface
+        child_schema_id = child.get("_schema") or inferred_schema_id or ""
+        child_schema = snapshot.get("schemas", {}).get(child_schema_id, {})
 
-    if not entities:
-        return '    <p class="aide-collection-empty">No items yet.</p>'
+        if channel == "text":
+            child_template = child_schema.get("render_text", "")
+        else:
+            child_template = child_schema.get("render_html", "")
 
-    schema = collection.get("schema", {})
-    config = view.get("config", {}) if view else {}
-    view_type = view.get("type", "table") if view else "table"
+        if child_template:
+            resolved = _resolve_child_partials(child_template, child, snapshot, channel, child_schema_id)
+            child_context = _build_entity_context(child_id, child, snapshot, channel)
+            try:
+                rendered = chevron.render(resolved, child_context)
+            except Exception:
+                rendered = _default_entity_html(child_id, child, snapshot, channel)
+        else:
+            rendered = _default_entity_html(child_id, child, snapshot, channel)
 
-    # Apply sort, filter, group
-    entities = _apply_sort(entities, config)
-    entities = _apply_filter(entities, config)
+        parts.append(rendered)
 
-    # Check empty after filtering
-    if not entities:
-        return '    <p class="aide-collection-empty">No items match the filter.</p>'
-
-    # Delegate to view renderer
-    view_renderer = _VIEW_RENDERERS.get(view_type, _render_table_view)
-    return view_renderer(entities, schema, config, snapshot.get("styles", {}))
-
-
-def _render_divider(block: dict, snapshot: dict) -> str:
-    return '    <hr class="aide-divider">'
-
-
-def _render_image(block: dict, snapshot: dict) -> str:
-    props = block.get("props", {})
-    src = escape(props.get("src", ""))
-    alt = escape(props.get("alt", ""))
-    caption = props.get("caption")
-
-    parts = ['    <figure class="aide-image">']
-    parts.append(f'      <img src="{src}" alt="{alt}" loading="lazy">')
-    if caption:
-        parts.append(f'      <figcaption class="aide-image__caption">{escape(caption)}</figcaption>')
-    parts.append("    </figure>")
     return "\n".join(parts)
 
 
-def _render_callout(block: dict, snapshot: dict) -> str:
-    props = block.get("props", {})
-    content = escape(props.get("content", ""))
-    icon = props.get("icon")
+def _render_grid_collection(
+    collection: dict[str, Any],
+    shape: list[int],
+    snapshot: dict[str, Any],
+    channel: str,
+    inferred_schema_id: str | None = None,
+) -> str:
+    """Render a grid collection using _shape for dimensions."""
+    if channel == "text":
+        return _render_grid_text(collection, shape, snapshot, inferred_schema_id)
 
-    parts = ['    <div class="aide-callout">']
-    if icon:
-        parts.append(f'      <span class="aide-callout__icon">{escape(icon)}</span>')
-    parts.append(f'      <span class="aide-callout__content">{content}</span>')
-    parts.append("    </div>")
-    return "\n".join(parts)
+    if len(shape) != 2:
+        # Only 2D grids supported for HTML rendering
+        return _render_child_collection_no_shape(collection, snapshot, channel)
 
+    rows, cols = shape[0], shape[1]
+    collection.get("col_labels", [str(i) for i in range(cols)])
+    collection.get("row_labels", [str(i) for i in range(rows)])
 
-def _render_column_list(block: dict, snapshot: dict) -> str:
-    return '    <div class="aide-columns">\n<!--children-->\n    </div>'
+    css_cols = " ".join(["auto"] * cols)
 
+    parts = [f'<div class="aide-grid" style="grid-template-columns: {css_cols};">']
 
-def _render_column(block: dict, snapshot: dict) -> str:
-    props = block.get("props", {})
-    width = props.get("width")
-    if width and "%" in str(width):
-        style = f"flex: 0 0 {width}"
-    else:
-        style = "flex: 1"
-    return f'    <div class="aide-column" style="{style}">\n<!--children-->\n    </div>'
-
-
-def _render_root(block: dict, snapshot: dict) -> str:
-    """Root block - container for all children."""
-    return "<!--children-->"
-
-
-_BLOCK_RENDERERS = {
-    "root": _render_root,
-    "heading": _render_heading,
-    "text": _render_text,
-    "metric": _render_metric,
-    "collection_view": _render_collection_view_block,
-    "divider": _render_divider,
-    "image": _render_image,
-    "callout": _render_callout,
-    "column_list": _render_column_list,
-    "column": _render_column,
-}
-
-
-# ---------------------------------------------------------------------------
-# View renderers
-# ---------------------------------------------------------------------------
-
-
-def _render_list_view(entities: list[dict], schema: dict, config: dict, styles: dict) -> str:
-    show_fields = _visible_fields(schema, config)
-    if not show_fields:
-        return '    <p class="aide-collection-empty">No fields to display.</p>'
-
-    parts = ['    <ul class="aide-list">']
-    for entity in entities:
-        entity_class = _entity_css_class(entity)
-        entity_style = _entity_inline_style(entity)
-        style_attr = f' style="{entity_style}"' if entity_style else ""
-
-        parts.append(f'      <li class="aide-list__item {entity_class}"{style_attr}>')
-        for i, field_name in enumerate(show_fields):
-            value = entity.get(field_name)
-            field_type = schema.get(field_name, "string")
-            formatted = _format_value(value, field_type)
-            cls = "aide-list__field--primary" if i == 0 else "aide-list__field"
-            bool_cls = _bool_class(value, field_type)
-            parts.append(f'        <span class="{cls} {bool_cls}">{formatted}</span>')
-        parts.append("      </li>")
-    parts.append("    </ul>")
-    return "\n".join(parts)
-
-
-def _render_table_view(entities: list[dict], schema: dict, config: dict, styles: dict) -> str:
-    show_fields = _visible_fields(schema, config)
-    if not show_fields:
-        return '    <p class="aide-collection-empty">No fields to display.</p>'
-
-    parts = ['    <div class="aide-table-wrap">']
-    parts.append('      <table class="aide-table">')
-    parts.append("        <thead>")
-    parts.append("          <tr>")
-    for field_name in show_fields:
-        display_name = escape(_field_display_name(field_name))
-        parts.append(f'            <th class="aide-table__th">{display_name}</th>')
-    parts.append("          </tr>")
-    parts.append("        </thead>")
-    parts.append("        <tbody>")
-
-    for entity in entities:
-        entity_class = _entity_css_class(entity)
-        entity_style = _entity_inline_style(entity)
-        style_attr = f' style="{entity_style}"' if entity_style else ""
-        parts.append(f'          <tr class="aide-table__row {entity_class}"{style_attr}>')
-        for field_name in show_fields:
-            value = entity.get(field_name)
-            field_type = schema.get(field_name, "string")
-            bt = _base_type_str(field_type)
-            formatted = _format_value(value, field_type)
-            parts.append(f'            <td class="aide-table__td aide-table__td--{bt}">{formatted}</td>')
-        parts.append("          </tr>")
-
-    parts.append("        </tbody>")
-    parts.append("      </table>")
-    parts.append("    </div>")
-    return "\n".join(parts)
-
-
-def _render_grid_view(entities: list[dict], schema: dict, config: dict, styles: dict) -> str:
-    row_labels = config.get("row_labels", [])
-    col_labels = config.get("col_labels", [])
-    show_fields = _visible_fields(schema, config)
-
-    # Build position map
-    pos_map: dict[str, dict] = {}
-    for entity in entities:
-        pos = entity.get("position", "")
-        if pos:
-            pos_map[pos] = entity
-
-    parts = ['    <div class="aide-grid-wrap">']
-    parts.append('      <table class="aide-grid">')
-    parts.append("        <thead>")
-    parts.append("          <tr>")
-    parts.append("            <th></th>")
-    for col in col_labels:
-        parts.append(f'            <th class="aide-grid__col-label">{escape(str(col))}</th>')
-    parts.append("          </tr>")
-    parts.append("        </thead>")
-    parts.append("        <tbody>")
-
-    for row in row_labels:
-        parts.append("          <tr>")
-        parts.append(f'            <th class="aide-grid__row-label">{escape(str(row))}</th>')
-        for col in col_labels:
-            cell_key = f"{row}{col}"
-            entity = pos_map.get(cell_key)
-            if entity:
-                cell_content = ", ".join(
-                    _format_value(entity.get(f), schema.get(f, "string"))
-                    for f in show_fields
-                    if entity.get(f) is not None
-                ) or escape(str(entity.get("_id", "")))
-                parts.append(f'            <td class="aide-grid__cell aide-grid__cell--filled">{cell_content}</td>')
+    for row in range(rows):
+        for col in range(cols):
+            key = f"{row}_{col}"
+            cell = collection.get(key)
+            if cell and not cell.get("_removed"):
+                cell_schema_id = cell.get("_schema") or inferred_schema_id or ""
+                cell_schema = snapshot.get("schemas", {}).get(cell_schema_id, {})
+                cell_template = cell_schema.get("render_html", "")
+                if cell_template:
+                    resolved = _resolve_child_partials(cell_template, cell, snapshot, channel, cell_schema_id)
+                    cell_context = _build_entity_context(key, cell, snapshot, channel)
+                    try:
+                        content = chevron.render(resolved, cell_context)
+                    except Exception:
+                        content = escape(str(next(iter(v for k, v in cell.items() if not k.startswith("_")), "")))
+                else:
+                    # First non-system field as content
+                    first_val = next((v for k, v in cell.items() if not k.startswith("_")), "")
+                    content = escape(str(first_val)) if first_val else ""
             else:
-                parts.append('            <td class="aide-grid__cell aide-grid__cell--empty"></td>')
-        parts.append("          </tr>")
+                content = ""
 
-    parts.append("        </tbody>")
-    parts.append("      </table>")
-    parts.append("    </div>")
+            parts.append(f'<div class="aide-grid-cell">{content}</div>')
+
+    parts.append("</div>")
     return "\n".join(parts)
 
 
-_VIEW_RENDERERS = {
-    "list": _render_list_view,
-    "table": _render_table_view,
-    "grid": _render_grid_view,
-}
-
-
-# ---------------------------------------------------------------------------
-# Sort / Filter / Group
-# ---------------------------------------------------------------------------
-
-
-def _apply_sort(entities: list[dict], config: dict) -> list[dict]:
-    sort_by = config.get("sort_by")
-    if not sort_by:
-        return entities
-    order = config.get("sort_order", "asc")
-    reverse = order == "desc"
-
-    # Separate entities with values from those with null
-    with_value = [e for e in entities if e.get(sort_by) is not None]
-    with_null = [e for e in entities if e.get(sort_by) is None]
-
-    # Sort only the non-null entities
-    with_value.sort(key=lambda e: _sort_key(e.get(sort_by)), reverse=reverse)
-
-    # Nulls always sort last
-    return with_value + with_null
-
-
-def _sort_key(value: Any) -> tuple:
-    # Value is guaranteed non-None at this point
-    if isinstance(value, bool):
-        return (0, int(value))
-    return (0, value)
-
-
-def _apply_filter(entities: list[dict], config: dict) -> list[dict]:
-    filt = config.get("filter")
-    if not filt:
-        return entities
-    return [e for e in entities if all(e.get(k) == v for k, v in filt.items())]
-
-
-# ---------------------------------------------------------------------------
-# Value formatting
-# ---------------------------------------------------------------------------
-
-
-def _format_value(value: Any, field_type: str | dict) -> str:
-    """Format a field value for display."""
-    if value is None:
-        return "\u2014"  # em dash
-
-    bt = _base_type_str(field_type)
-
-    if bt == "bool":
-        return "\u2713" if value else "\u25cb"
-    if bt == "date" and isinstance(value, str):
-        return _format_date(value)
-    if bt == "datetime" and isinstance(value, str):
-        return _format_datetime(value)
-    if bt == "enum":
-        return escape(str(value).replace("_", " ").title())
-    if bt == "list" and isinstance(value, list):
-        if not value:
-            return "\u2014"  # em dash for empty list
-        return escape(", ".join(str(v) for v in value))
-
-    return escape(str(value))
-
-
-def _format_date(iso_str: str) -> str:
-    """Format ISO date to short form: Feb 27."""
-    try:
-        dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
-        return dt.strftime("%b %d").replace(" 0", " ")
-    except (ValueError, AttributeError):
-        return escape(iso_str)
-
-
-def _format_datetime(iso_str: str) -> str:
-    """Format ISO datetime to: Feb 27, 7:00 PM."""
-    try:
-        dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
-        date_part = dt.strftime("%b %d").replace(" 0", " ")
-        time_part = dt.strftime("%-I:%M %p") if hasattr(dt, "strftime") else dt.strftime("%I:%M %p").lstrip("0")
-        return f"{date_part}, {time_part}"
-    except (ValueError, AttributeError):
-        return escape(iso_str)
-
-
-def _format_inline(text: str) -> str:
-    """
-    Parse minimal inline formatting in text blocks.
-    Supports: **bold** → <strong>, *italic* → <em>, [text](url) → <a>
-    """
-    # Escape first, then apply formatting
-    text = escape(text)
-
-    # Links: [text](url) — must be http/https
-    text = re.sub(
-        r"\[([^\]]+)\]\((https?://[^)]+)\)",
-        r'<a href="\2">\1</a>',
-        text,
-    )
-
-    # Bold: **text**
-    text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
-
-    # Italic: *text*
-    text = re.sub(r"\*(.+?)\*", r"<em>\1</em>", text)
-
-    return text
-
-
-# ---------------------------------------------------------------------------
-# Field helpers
-# ---------------------------------------------------------------------------
-
-
-def _visible_fields(schema: dict, config: dict) -> list[str]:
-    """Determine which fields to show and in what order."""
-    show = config.get("show_fields")
-    hide = config.get("hide_fields", [])
-
-    if show:
-        return [f for f in show if f in schema]
-
-    # Default: all non-internal fields minus hidden
-    return [f for f in schema if not f.startswith("_") and f not in hide]
-
-
-def _field_display_name(field_name: str) -> str:
-    """Convert snake_case to Title Case."""
-    return field_name.replace("_", " ").title()
-
-
-def _base_type_str(field_type: str | dict) -> str:
-    """Get base type as string for CSS classes."""
-    if isinstance(field_type, str):
-        return field_type.rstrip("?")
-    if isinstance(field_type, dict):
-        if "enum" in field_type:
-            return "enum"
-        if "list" in field_type:
-            return "list"
-    return "string"
-
-
-def _bool_class(value: Any, field_type: str | dict) -> str:
-    bt = _base_type_str(field_type)
-    if bt != "bool":
+def _render_grid_text(
+    collection: dict[str, Any],
+    shape: list[int],
+    snapshot: dict[str, Any],
+    inferred_schema_id: str | None = None,
+) -> str:
+    """Render a 2D grid as ASCII text."""
+    if len(shape) != 2:
         return ""
-    return "aide-list__field--bool" if value else "aide-list__field--bool-false"
+
+    rows, cols = shape[0], shape[1]
+    lines = []
+    for row in range(rows):
+        row_cells = []
+        for col in range(cols):
+            key = f"{row}_{col}"
+            cell = collection.get(key)
+            if cell and not cell.get("_removed"):
+                cell_schema_id = cell.get("_schema") or inferred_schema_id or ""
+                cell_schema = snapshot.get("schemas", {}).get(cell_schema_id, {})
+                cell_template = cell_schema.get("render_text", "")
+                if cell_template:
+                    resolved = _resolve_child_partials(cell_template, cell, snapshot, "text", cell_schema_id)
+                    cell_context = _build_entity_context(key, cell, snapshot, "text")
+                    try:
+                        content = chevron.render(resolved, cell_context).strip()
+                    except Exception:
+                        content = "?"
+                else:
+                    first_val = next((v for k, v in cell.items() if not k.startswith("_")), "")
+                    content = str(first_val) if first_val else "."
+            else:
+                content = "."
+            row_cells.append(content[:2].ljust(2))
+        lines.append(" ".join(row_cells))
+
+    return "\n".join(lines)
 
 
-def _entity_css_class(entity: dict) -> str:
-    classes: list[str] = []
-    styles = entity.get("_styles", {})
-    if styles.get("highlight"):
-        classes.append("aide-highlight")
-    return " ".join(classes)
+def _render_child_collection_no_shape(
+    collection: dict[str, Any],
+    snapshot: dict[str, Any],
+    channel: str,
+) -> str:
+    """Render a collection without _shape (fallback)."""
+    children = [
+        (cid, child)
+        for cid, child in collection.items()
+        if not cid.startswith("_") and isinstance(child, dict) and not child.get("_removed")
+    ]
+    children.sort(key=lambda x: (x[1].get("_pos", 999999), x[0]))
+    parts = []
+    for child_id, child in children:
+        parts.append(_default_entity_html(child_id, child, snapshot, channel))
+    return "\n".join(parts)
 
 
-def _entity_inline_style(entity: dict) -> str:
-    styles = entity.get("_styles", {})
+def _default_entity_html(
+    entity_id: str,
+    entity: dict[str, Any],
+    snapshot: dict[str, Any],
+    channel: str,
+) -> str:
+    """Fallback rendering when no schema template is available."""
+    if channel == "text":
+        fields = [f"{k}: {v}" for k, v in entity.items() if not k.startswith("_") and not isinstance(v, dict)]
+        return " | ".join(fields) if fields else entity_id
+
+    # HTML fallback: render as a definition list
+    fields = [(k, v) for k, v in entity.items() if not k.startswith("_") and not isinstance(v, dict)]
+    if not fields:
+        return f'<div class="aide-entity" id="{escape(entity_id)}"></div>'
+
+    items = "".join(f"<dt>{escape(k)}</dt><dd>{escape(str(v))}</dd>" for k, v in fields)
+    return f'<div class="aide-entity" id="{escape(entity_id)}"><dl>{items}</dl></div>'
+
+
+# ---------------------------------------------------------------------------
+# Text rendering (secondary channel)
+# ---------------------------------------------------------------------------
+
+
+def _render_text(
+    snapshot: dict[str, Any],
+    blueprint: Blueprint,
+    opts: RenderOptions,
+) -> str:
+    """Render aide as plain text (for SMS, terminal, Slack)."""
     parts: list[str] = []
-    if "bg_color" in styles:
-        parts.append(f"background-color: {styles['bg_color']}")
-    if "text_color" in styles:
-        parts.append(f"color: {styles['text_color']}")
-    return "; ".join(parts)
+
+    title = snapshot.get("meta", {}).get("title", "")
+    if title:
+        parts.append(title)
+        parts.append("=" * len(title))
+        parts.append("")
+
+    entities = snapshot.get("entities", {})
+    for entity_id, entity in entities.items():
+        if entity.get("_removed"):
+            continue
+        text = render_entity(entity_id, snapshot, channel="text")
+        if text:
+            parts.append(text)
+            parts.append("")
+
+    return "\n".join(parts).rstrip()
 
 
 # ---------------------------------------------------------------------------
@@ -879,347 +730,60 @@ def _entity_inline_style(entity: dict) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _render_annotations(snapshot: dict) -> str:
+def _render_annotations_html(snapshot: dict[str, Any]) -> str:
     annotations = snapshot.get("annotations", [])
     if not annotations:
         return ""
 
-    # Pinned first, then most recent
-    pinned = [a for a in annotations if a.get("pinned")]
-    unpinned = sorted(
-        [a for a in annotations if not a.get("pinned")],
-        key=lambda a: a.get("seq", 0),
-        reverse=True,
-    )
-    ordered = pinned + unpinned
-
-    parts = ['    <section class="aide-annotations">']
-    parts.append('      <h3 class="aide-heading aide-heading--3">Notes</h3>')
-
-    for ann in ordered:
-        pinned_cls = " aide-annotation--pinned" if ann.get("pinned") else ""
+    items = []
+    for ann in annotations:
         note = escape(ann.get("note", ""))
-        ts = ann.get("timestamp", "")
-        formatted_ts = _format_datetime(ts) if ts else ""
+        ts = escape(ann.get("timestamp", ""))
+        items.append(f'<div class="aide-annotation">{note}<div class="aide-annotation-time">{ts}</div></div>')
 
-        parts.append(f'      <div class="aide-annotation{pinned_cls}">')
-        parts.append(f'        <span class="aide-annotation__text">{note}</span>')
-        if formatted_ts:
-            parts.append(f'        <span class="aide-annotation__meta">{formatted_ts}</span>')
-        parts.append("      </div>")
-
-    parts.append("    </section>")
-    return "\n".join(parts)
+    return f'<div class="aide-annotations">\n{"  ".join(items)}\n</div>'
 
 
 # ---------------------------------------------------------------------------
-# Footer
+# OG tags
 # ---------------------------------------------------------------------------
 
 
-def _render_footer(text: str) -> str:
-    return (
-        '  <footer class="aide-footer">\n'
-        f'    <a href="https://toaide.com" class="aide-footer__link">{escape(text)}</a>\n'
-        "  </footer>"
-    )
+def _render_og_tags(snapshot: dict[str, Any], opts: RenderOptions) -> str:
+    meta = snapshot.get("meta", {})
+    title = escape(meta.get("title", "AIde"))
+    identity = escape(meta.get("identity", ""))
+    base_url = opts.base_url if opts else "https://toaide.com"
+
+    lines = [
+        f'  <meta property="og:title" content="{title}">',
+        '  <meta property="og:type" content="website">',
+    ]
+    if identity:
+        lines.append(f'  <meta property="og:description" content="{identity}">')
+    lines.append(f'  <meta property="og:url" content="{base_url}">')
+
+    return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
-# CSS constants
+# Inline formatting helpers
 # ---------------------------------------------------------------------------
 
-BASE_CSS = """
-/* ── Base ── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+_LINK_RE = re.compile(r"\[([^\]]+)\]\((https?://[^\)]+)\)")
+_BOLD_RE = re.compile(r"\*\*([^*]+)\*\*")
+_ITALIC_RE = re.compile(r"\*([^*]+)\*")
 
-body {
-  font-family: var(--font-sans);
-  font-size: 16px;
-  font-weight: 300;
-  line-height: 1.65;
-  color: var(--text-primary);
-  background: var(--bg-primary);
-  -webkit-font-smoothing: antialiased;
-}
 
-.aide-page {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: var(--space-12) var(--space-8);
-}
+def escape(text: str) -> str:
+    """HTML-escape user content."""
+    return _html_escape(str(text), quote=True)
 
-@media (max-width: 640px) {
-  .aide-page {
-    padding: var(--space-8) var(--space-5);
-  }
-}
 
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-"""
-
-BLOCK_CSS = """
-/* ── Headings ── */
-.aide-heading { margin-bottom: var(--space-4); }
-.aide-heading--1 {
-  font-family: var(--font-serif);
-  font-size: clamp(32px, 4.5vw, 42px);
-  font-weight: 400;
-  line-height: 1.2;
-  color: var(--text-primary);
-}
-.aide-heading--2 {
-  font-family: var(--font-serif);
-  font-size: clamp(24px, 3.5vw, 32px);
-  font-weight: 400;
-  line-height: 1.25;
-  color: var(--text-primary);
-}
-.aide-heading--3 {
-  font-family: var(--font-sans);
-  font-size: 18px;
-  font-weight: 500;
-  line-height: 1.4;
-  color: var(--text-primary);
-}
-
-/* ── Text ── */
-.aide-text {
-  font-family: var(--font-sans);
-  font-size: 16px;
-  font-weight: 300;
-  line-height: 1.65;
-  color: var(--text-secondary);
-  margin-bottom: var(--space-4);
-}
-.aide-text a {
-  color: var(--accent-steel);
-  text-decoration: underline;
-  text-decoration-color: var(--border);
-  text-underline-offset: 2px;
-}
-.aide-text a:hover {
-  text-decoration-color: var(--accent-steel);
-}
-
-/* ── Metric ── */
-.aide-metric {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-  padding: var(--space-3) 0;
-}
-.aide-metric__label {
-  font-family: var(--font-sans);
-  font-size: 15px;
-  font-weight: 400;
-  color: var(--text-secondary);
-}
-.aide-metric__label::after { content: ':'; }
-.aide-metric__value {
-  font-family: var(--font-sans);
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-/* ── Divider ── */
-.aide-divider {
-  border: none;
-  border-top: 1px solid var(--border-light);
-  margin: var(--space-6) 0;
-}
-
-/* ── Image ── */
-.aide-image { margin: var(--space-6) 0; }
-.aide-image img { max-width: 100%; height: auto; border-radius: var(--radius-sm); }
-.aide-image__caption {
-  font-size: 13px;
-  color: var(--text-tertiary);
-  margin-top: var(--space-2);
-}
-
-/* ── Callout ── */
-.aide-callout {
-  background: var(--bg-cream);
-  border-left: 3px solid var(--border);
-  padding: var(--space-4) var(--space-5);
-  margin: var(--space-4) 0;
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  font-size: 15px;
-  line-height: 1.55;
-  color: var(--text-slate);
-}
-
-/* ── Columns ── */
-.aide-columns {
-  display: flex;
-  gap: var(--space-6);
-}
-@media (max-width: 640px) {
-  .aide-columns {
-    flex-direction: column;
-  }
-}
-
-/* ── Empty states ── */
-.aide-empty {
-  color: var(--text-tertiary);
-  font-size: 15px;
-  padding: var(--space-16) 0;
-  text-align: center;
-}
-.aide-collection-empty {
-  color: var(--text-tertiary);
-  font-size: 14px;
-  padding: var(--space-4) 0;
-}
-
-/* ── Highlight ── */
-.aide-highlight {
-  background-color: rgba(31, 42, 68, 0.04);
-}
-"""
-
-VIEW_CSS = """
-/* ── List view ── */
-.aide-list {
-  list-style: none;
-  padding: 0;
-}
-.aide-list__item {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--border-light);
-  font-size: 15px;
-  line-height: 1.5;
-}
-.aide-list__item:last-child { border-bottom: none; }
-.aide-list__field--primary {
-  font-weight: 500;
-  color: var(--text-primary);
-}
-.aide-list__field {
-  color: var(--text-secondary);
-}
-
-/* ── Table view ── */
-.aide-table-wrap {
-  overflow-x: auto;
-  margin: var(--space-4) 0;
-}
-.aide-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 15px;
-}
-.aide-table__th {
-  font-family: var(--font-sans);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-  text-align: left;
-  padding: var(--space-2) var(--space-3);
-  border-bottom: 2px solid var(--border);
-}
-.aide-table__td {
-  padding: var(--space-3);
-  border-bottom: 1px solid var(--border-light);
-  color: var(--text-slate);
-  vertical-align: top;
-}
-.aide-table__td--bool { text-align: center; }
-.aide-table__td--int,
-.aide-table__td--float { text-align: right; font-variant-numeric: tabular-nums; }
-
-/* ── Grid view ── */
-.aide-grid {
-  border-collapse: collapse;
-  font-size: 13px;
-}
-.aide-grid__col-label,
-.aide-grid__row-label {
-  font-weight: 500;
-  color: var(--text-tertiary);
-  padding: var(--space-2);
-  text-align: center;
-}
-.aide-grid__cell {
-  border: 1px solid var(--border-light);
-  padding: var(--space-2);
-  text-align: center;
-  min-width: 48px;
-  min-height: 48px;
-  vertical-align: middle;
-}
-.aide-grid__cell--filled {
-  background: var(--bg-cream);
-  color: var(--text-primary);
-  font-weight: 500;
-}
-.aide-grid__cell--empty {
-  color: var(--text-tertiary);
-}
-
-/* ── Group headers ── */
-.aide-group { margin-bottom: var(--space-6); }
-.aide-group__header {
-  font-family: var(--font-sans);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-  margin-bottom: var(--space-3);
-  padding-bottom: var(--space-2);
-  border-bottom: 1px solid var(--border-light);
-}
-
-/* ── Annotations ── */
-.aide-annotations { margin-top: var(--space-10); }
-.aide-annotation {
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--border-light);
-}
-.aide-annotation:last-child { border-bottom: none; }
-.aide-annotation__text {
-  font-size: 15px;
-  color: var(--text-slate);
-  line-height: 1.5;
-}
-.aide-annotation__meta {
-  font-size: 12px;
-  color: var(--text-tertiary);
-  margin-left: var(--space-3);
-}
-.aide-annotation--pinned {
-  border-left: 3px solid var(--accent-navy);
-  padding-left: var(--space-4);
-}
-
-/* ── Footer ── */
-.aide-footer {
-  margin-top: var(--space-16);
-  padding-top: var(--space-6);
-  border-top: 1px solid var(--border-light);
-  font-size: 12px;
-  color: var(--text-tertiary);
-  text-align: center;
-}
-.aide-footer__link {
-  color: var(--text-tertiary);
-  text-decoration: none;
-}
-.aide-footer__link:hover {
-  color: var(--text-secondary);
-}
-"""
+def _render_inline(text: str) -> str:
+    """Apply inline markdown formatting to text."""
+    text = escape(text)
+    text = _LINK_RE.sub(r'<a href="\2">\1</a>', text)
+    text = _BOLD_RE.sub(r"<strong>\1</strong>", text)
+    text = _ITALIC_RE.sub(r"<em>\1</em>", text)
+    return text

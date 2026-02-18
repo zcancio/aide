@@ -1,454 +1,296 @@
 """
-AIde Kernel — Primitive Validation
+AIde Kernel — Primitive Validators (v3 Unified Entity Model)
 
-Validates primitive payloads before they reach the reducer.
-Every state change goes through one of 22 primitive types.
-Validation is structural (well-formed?) not semantic (will it apply?).
-The reducer handles semantic checks (does the collection exist? etc.).
+Structural validation of primitive payloads before reduction.
+Returns a list of error strings — empty means valid.
 
-Reference: aide_primitive_schemas.md
+v3 primitives:
+  schema.create, schema.update, schema.remove
+  entity.create, entity.update, entity.remove
+  block.set, block.remove, block.reorder
+  style.set
+  meta.update, meta.annotate
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from engine.kernel.types import (
-    BLOCK_TYPES,
-    CONSTRAINT_RULES,
-    PRIMITIVE_TYPES,
-    VIEW_TYPES,
-    is_valid_field_type,
-    is_valid_id,
-    is_valid_ref,
-)
+from engine.kernel.ts_parser import parse_interface
+from engine.kernel.types import PRIMITIVE_TYPES, is_valid_id, parse_entity_path
 
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
 
-def validate_primitive(type: str, payload: dict[str, Any]) -> list[str]:
+def validate_primitive(primitive_type: str, payload: dict[str, Any]) -> list[str]:
     """
-    Validate a primitive's type and payload structure.
-    Returns a list of error strings. Empty list = valid.
+    Validate the structural correctness of a primitive payload.
 
-    This checks structural validity only:
-    - Is the type recognized?
-    - Is the payload a dict?
-    - Are required fields present?
-    - Are IDs well-formed?
-    - Are refs well-formed?
-
-    It does NOT check whether referenced entities/collections exist.
-    That's the reducer's job.
+    Returns an empty list if valid, or a list of error messages if invalid.
+    Only structural checks — semantic checks (entity existence, schema consistency)
+    happen in the reducer.
     """
+    if primitive_type not in PRIMITIVE_TYPES:
+        return [f"Unknown primitive type: {primitive_type!r}"]
+
+    validator = _VALIDATORS.get(primitive_type)
+    if validator is None:
+        return []  # No validator defined — pass through
+
+    return validator(payload)
+
+
+# ---------------------------------------------------------------------------
+# schema.* validators
+# ---------------------------------------------------------------------------
+
+
+def _validate_schema_create(p: dict[str, Any]) -> list[str]:
     errors: list[str] = []
 
-    # Universal: type must be known
-    if type not in PRIMITIVE_TYPES:
-        errors.append(f"Unknown primitive type: {type}")
-        return errors  # can't validate payload for unknown type
+    schema_id = p.get("id")
+    if not schema_id:
+        errors.append("Missing required field: 'id'")
+    elif not isinstance(schema_id, str) or not is_valid_id(schema_id):
+        errors.append(f"'id' must be a valid snake_case identifier, got {schema_id!r}")
 
-    # Universal: payload must be a dict
-    if not isinstance(payload, dict):
-        errors.append("Payload must be a non-null object")
-        return errors
+    interface_src = p.get("interface")
+    if not interface_src:
+        errors.append("Missing required field: 'interface'")
+    elif not isinstance(interface_src, str):
+        errors.append("'interface' must be a string (TypeScript interface source)")
+    else:
+        iface = parse_interface(interface_src)
+        if iface is None:
+            errors.append(f"'interface' could not be parsed as a TypeScript interface: {interface_src!r}")
 
-    # Dispatch to type-specific validator
-    validator = _VALIDATORS.get(type)
-    if validator:
-        errors.extend(validator(payload))
+    if "render_html" in p and not isinstance(p["render_html"], str):
+        errors.append("'render_html' must be a string (Mustache template)")
+
+    if "render_text" in p and not isinstance(p["render_text"], str):
+        errors.append("'render_text' must be a string (Mustache template)")
+
+    if "styles" in p and not isinstance(p["styles"], str):
+        errors.append("'styles' must be a string (CSS)")
+
+    return errors
+
+
+def _validate_schema_update(p: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+
+    schema_id = p.get("id")
+    if not schema_id:
+        errors.append("Missing required field: 'id'")
+    elif not isinstance(schema_id, str):
+        errors.append("'id' must be a string")
+
+    if "interface" in p:
+        interface_src = p["interface"]
+        if not isinstance(interface_src, str):
+            errors.append("'interface' must be a string (TypeScript interface source)")
+        else:
+            iface = parse_interface(interface_src)
+            if iface is None:
+                errors.append("'interface' could not be parsed as a TypeScript interface")
+
+    if "render_html" in p and not isinstance(p["render_html"], str):
+        errors.append("'render_html' must be a string")
+    if "render_text" in p and not isinstance(p["render_text"], str):
+        errors.append("'render_text' must be a string")
+    if "styles" in p and not isinstance(p["styles"], str):
+        errors.append("'styles' must be a string")
+
+    return errors
+
+
+def _validate_schema_remove(p: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+    schema_id = p.get("id")
+    if not schema_id:
+        errors.append("Missing required field: 'id'")
+    elif not isinstance(schema_id, str):
+        errors.append("'id' must be a string")
+    return errors
+
+
+# ---------------------------------------------------------------------------
+# entity.* validators
+# ---------------------------------------------------------------------------
+
+
+def _validate_entity_create(p: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+
+    entity_path = p.get("id")
+    if not entity_path:
+        errors.append("Missing required field: 'id'")
+    elif not isinstance(entity_path, str):
+        errors.append("'id' must be a string (entity path)")
+    else:
+        segments = parse_entity_path(entity_path)
+        if not segments:
+            errors.append(f"'id' is not a valid entity path: {entity_path!r}")
+
+    if "_schema" in p and not isinstance(p["_schema"], str):
+        errors.append("'_schema' must be a string (schema ID)")
+
+    if "_pos" in p and not isinstance(p["_pos"], int | float):
+        errors.append("'_pos' must be a number (fractional index)")
+
+    return errors
+
+
+def _validate_entity_update(p: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+
+    entity_path = p.get("id")
+    if not entity_path:
+        errors.append("Missing required field: 'id'")
+    elif not isinstance(entity_path, str):
+        errors.append("'id' must be a string (entity path)")
+    else:
+        segments = parse_entity_path(entity_path)
+        if not segments:
+            errors.append(f"'id' is not a valid entity path: {entity_path!r}")
+
+    if "_pos" in p and not isinstance(p["_pos"], int | float):
+        errors.append("'_pos' must be a number")
+
+    return errors
+
+
+def _validate_entity_remove(p: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+
+    entity_path = p.get("id")
+    if not entity_path:
+        errors.append("Missing required field: 'id'")
+    elif not isinstance(entity_path, str):
+        errors.append("'id' must be a string (entity path)")
+    else:
+        segments = parse_entity_path(entity_path)
+        if not segments:
+            errors.append(f"'id' is not a valid entity path: {entity_path!r}")
 
     return errors
 
 
 # ---------------------------------------------------------------------------
-# Per-primitive validators
+# block.* validators
+# ---------------------------------------------------------------------------
+
+_VALID_BLOCK_TYPES = {
+    "root",
+    "heading",
+    "text",
+    "metric",
+    "entity_view",
+    "divider",
+    "image",
+    "callout",
+    "column_list",
+    "column",
+}
+
+
+def _validate_block_set(p: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+
+    block_id = p.get("id")
+    if not block_id:
+        errors.append("Missing required field: 'id'")
+    elif not isinstance(block_id, str) or not is_valid_id(block_id):
+        errors.append(f"'id' must be a valid identifier, got {block_id!r}")
+
+    block_type = p.get("type")
+    if not block_type:
+        errors.append("Missing required field: 'type'")
+    elif block_type not in _VALID_BLOCK_TYPES:
+        errors.append(f"'type' must be one of {sorted(_VALID_BLOCK_TYPES)}, got {block_type!r}")
+
+    if "parent" in p and not isinstance(p["parent"], str):
+        errors.append("'parent' must be a string (block ID)")
+
+    return errors
+
+
+def _validate_block_remove(p: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+    block_id = p.get("id")
+    if not block_id:
+        errors.append("Missing required field: 'id'")
+    elif not isinstance(block_id, str):
+        errors.append("'id' must be a string")
+    return errors
+
+
+def _validate_block_reorder(p: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+
+    order = p.get("order")
+    if order is None:
+        errors.append("Missing required field: 'order'")
+    elif not isinstance(order, list):
+        errors.append("'order' must be a list of block IDs")
+    elif not all(isinstance(x, str) for x in order):
+        errors.append("'order' must contain string block IDs")
+
+    return errors
+
+
+# ---------------------------------------------------------------------------
+# style.* validators
 # ---------------------------------------------------------------------------
 
 
-def _validate_entity_create(p: dict) -> list[str]:
+def _validate_style_set(p: dict[str, Any]) -> list[str]:
     errors: list[str] = []
-    if "collection" not in p:
-        errors.append("entity.create requires 'collection'")
-    elif not is_valid_id(p["collection"]):
-        errors.append(f"Invalid collection ID: {p['collection']}")
-
-    if "id" in p and p["id"] is not None and not is_valid_id(p["id"]):
-        errors.append(f"Invalid entity ID: {p['id']}")
-
-    if "fields" not in p:
-        errors.append("entity.create requires 'fields'")
-    elif not isinstance(p["fields"], dict):
-        errors.append("'fields' must be an object")
-
+    if not p:
+        errors.append("style.set requires at least one style token")
+    if not isinstance(p, dict):
+        errors.append("style.set payload must be a dict of style tokens")
     return errors
 
 
-def _validate_entity_update(p: dict) -> list[str]:
+# ---------------------------------------------------------------------------
+# meta.* validators
+# ---------------------------------------------------------------------------
+
+
+def _validate_meta_update(p: dict[str, Any]) -> list[str]:
     errors: list[str] = []
-    has_ref = "ref" in p
-    has_filter = "filter" in p
-    has_cell_ref = "cell_ref" in p  # Grid cell reference (resolved by backend)
-
-    if not has_ref and not has_filter and not has_cell_ref:
-        errors.append("entity.update requires 'ref', 'filter', or 'cell_ref'")
-    elif sum([has_ref, has_filter, has_cell_ref]) > 1:
-        errors.append("entity.update: provide only one of 'ref', 'filter', or 'cell_ref'")
-
-    if has_ref and not is_valid_ref(p["ref"]):
-        errors.append(f"Invalid ref: {p['ref']}")
-
-    if has_filter:
-        f = p["filter"]
-        if not isinstance(f, dict):
-            errors.append("'filter' must be an object")
-        elif "collection" not in f:
-            errors.append("filter requires 'collection'")
-
-    if has_cell_ref:
-        if not isinstance(p["cell_ref"], str):
-            errors.append("'cell_ref' must be a string")
-        if "collection" not in p:
-            errors.append("cell_ref requires 'collection'")
-
-    if "fields" not in p:
-        errors.append("entity.update requires 'fields'")
-    elif not isinstance(p["fields"], dict):
-        errors.append("'fields' must be an object")
-
+    if not p:
+        errors.append("meta.update requires at least one field")
     return errors
 
 
-def _validate_entity_remove(p: dict) -> list[str]:
+def _validate_meta_annotate(p: dict[str, Any]) -> list[str]:
     errors: list[str] = []
-    if "ref" not in p:
-        errors.append("entity.remove requires 'ref'")
-    elif not is_valid_ref(p["ref"]):
-        errors.append(f"Invalid ref: {p['ref']}")
-    return errors
-
-
-def _validate_collection_create(p: dict) -> list[str]:
-    errors: list[str] = []
-    if "id" not in p:
-        errors.append("collection.create requires 'id'")
-    elif not is_valid_id(p["id"]):
-        errors.append(f"Invalid collection ID: {p['id']}")
-
-    if "schema" not in p:
-        errors.append("collection.create requires 'schema'")
-    elif not isinstance(p["schema"], dict):
-        errors.append("'schema' must be an object")
-    else:
-        for field_name, field_type in p["schema"].items():
-            if not is_valid_id(field_name):
-                errors.append(f"Invalid field name in schema: {field_name}")
-            if not is_valid_field_type(field_type):
-                errors.append(f"Invalid field type for '{field_name}': {field_type}")
-
-    return errors
-
-
-def _validate_collection_update(p: dict) -> list[str]:
-    errors: list[str] = []
-    if "id" not in p:
-        errors.append("collection.update requires 'id'")
-    elif not is_valid_id(p["id"]):
-        errors.append(f"Invalid collection ID: {p['id']}")
-    return errors
-
-
-def _validate_collection_remove(p: dict) -> list[str]:
-    errors: list[str] = []
-    if "id" not in p:
-        errors.append("collection.remove requires 'id'")
-    elif not is_valid_id(p["id"]):
-        errors.append(f"Invalid collection ID: {p['id']}")
-    return errors
-
-
-def _validate_grid_create(p: dict) -> list[str]:
-    """Validate grid.create primitive for batch entity creation."""
-    errors: list[str] = []
-    if "collection" not in p:
-        errors.append("grid.create requires 'collection'")
-    elif not is_valid_id(p["collection"]):
-        errors.append(f"Invalid collection ID: {p['collection']}")
-
-    if "rows" not in p:
-        errors.append("grid.create requires 'rows'")
-    elif not isinstance(p["rows"], int) or p["rows"] < 1:
-        errors.append("'rows' must be a positive integer")
-
-    if "cols" not in p:
-        errors.append("grid.create requires 'cols'")
-    elif not isinstance(p["cols"], int) or p["cols"] < 1:
-        errors.append("'cols' must be a positive integer")
-
-    return errors
-
-
-def _validate_grid_query(p: dict) -> list[str]:
-    """Validate grid.query primitive for cell lookups."""
-    errors: list[str] = []
-    if "cell_ref" not in p:
-        errors.append("grid.query requires 'cell_ref'")
-    elif not isinstance(p["cell_ref"], str):
-        errors.append("'cell_ref' must be a string")
-
-    if "collection" not in p:
-        errors.append("grid.query requires 'collection'")
-    elif not is_valid_id(p["collection"]):
-        errors.append(f"Invalid collection ID: {p['collection']}")
-
-    return errors
-
-
-def _validate_field_add(p: dict) -> list[str]:
-    errors: list[str] = []
-    if "collection" not in p:
-        errors.append("field.add requires 'collection'")
-    elif not is_valid_id(p["collection"]):
-        errors.append(f"Invalid collection ID: {p['collection']}")
-
-    if "name" not in p:
-        errors.append("field.add requires 'name'")
-    elif not is_valid_id(p["name"]):
-        errors.append(f"Invalid field name: {p['name']}")
-
-    if "type" not in p:
-        errors.append("field.add requires 'type'")
-    elif not is_valid_field_type(p["type"]):
-        errors.append(f"Invalid field type: {p['type']}")
-
-    return errors
-
-
-def _validate_field_update(p: dict) -> list[str]:
-    errors: list[str] = []
-    if "collection" not in p:
-        errors.append("field.update requires 'collection'")
-    elif not is_valid_id(p["collection"]):
-        errors.append(f"Invalid collection ID: {p['collection']}")
-
-    if "name" not in p:
-        errors.append("field.update requires 'name'")
-    elif not is_valid_id(p["name"]):
-        errors.append(f"Invalid field name: {p['name']}")
-
-    return errors
-
-
-def _validate_field_remove(p: dict) -> list[str]:
-    errors: list[str] = []
-    if "collection" not in p:
-        errors.append("field.remove requires 'collection'")
-    elif not is_valid_id(p["collection"]):
-        errors.append(f"Invalid collection ID: {p['collection']}")
-
-    if "name" not in p:
-        errors.append("field.remove requires 'name'")
-    elif not is_valid_id(p["name"]):
-        errors.append(f"Invalid field name: {p['name']}")
-
-    return errors
-
-
-def _validate_relationship_set(p: dict) -> list[str]:
-    errors: list[str] = []
-    for key in ("from", "to", "type"):
-        if key not in p:
-            errors.append(f"relationship.set requires '{key}'")
-
-    if "from" in p and not is_valid_ref(p["from"]):
-        errors.append(f"Invalid 'from' ref: {p['from']}")
-    if "to" in p and not is_valid_ref(p["to"]):
-        errors.append(f"Invalid 'to' ref: {p['to']}")
-    if "type" in p and not is_valid_id(p["type"]):
-        errors.append(f"Invalid relationship type: {p['type']}")
-
-    return errors
-
-
-def _validate_relationship_constrain(p: dict) -> list[str]:
-    errors: list[str] = []
-    if "id" not in p:
-        errors.append("relationship.constrain requires 'id'")
-    elif not is_valid_id(p["id"]):
-        errors.append(f"Invalid constraint ID: {p['id']}")
-
-    if "rule" not in p:
-        errors.append("relationship.constrain requires 'rule'")
-    elif p["rule"] not in CONSTRAINT_RULES:
-        errors.append(f"Unknown constraint rule: {p['rule']}")
-
-    return errors
-
-
-def _validate_block_set(p: dict) -> list[str]:
-    errors: list[str] = []
-    if "id" not in p:
-        errors.append("block.set requires 'id'")
-    elif not is_valid_id(p["id"]):
-        errors.append(f"Invalid block ID: {p['id']}")
-
-    # type is required for creation, optional for update — reducer decides
-    if "type" in p and p["type"] not in BLOCK_TYPES:
-        errors.append(f"Unknown block type: {p['type']}")
-
-    if "parent" in p and not is_valid_id(p["parent"]):
-        errors.append(f"Invalid parent block ID: {p['parent']}")
-
-    return errors
-
-
-def _validate_block_remove(p: dict) -> list[str]:
-    errors: list[str] = []
-    if "id" not in p:
-        errors.append("block.remove requires 'id'")
-    elif not is_valid_id(p["id"]):
-        errors.append(f"Invalid block ID: {p['id']}")
-    return errors
-
-
-def _validate_block_reorder(p: dict) -> list[str]:
-    errors: list[str] = []
-    if "parent" not in p:
-        errors.append("block.reorder requires 'parent'")
-    elif not is_valid_id(p["parent"]):
-        errors.append(f"Invalid parent block ID: {p['parent']}")
-
-    if "children" not in p:
-        errors.append("block.reorder requires 'children'")
-    elif not isinstance(p["children"], list):
-        errors.append("'children' must be a list")
-    else:
-        for child_id in p["children"]:
-            if not isinstance(child_id, str) or not is_valid_id(child_id):
-                errors.append(f"Invalid child block ID: {child_id}")
-    return errors
-
-
-def _validate_view_create(p: dict) -> list[str]:
-    errors: list[str] = []
-    if "id" not in p:
-        errors.append("view.create requires 'id'")
-    elif not is_valid_id(p["id"]):
-        errors.append(f"Invalid view ID: {p['id']}")
-
-    if "type" not in p:
-        errors.append("view.create requires 'type'")
-    elif p["type"] not in VIEW_TYPES:
-        errors.append(f"Unknown view type: {p['type']}. Known: {VIEW_TYPES}")
-
-    if "source" not in p:
-        errors.append("view.create requires 'source'")
-    elif not is_valid_id(p["source"]):
-        errors.append(f"Invalid source collection ID: {p['source']}")
-
-    return errors
-
-
-def _validate_view_update(p: dict) -> list[str]:
-    errors: list[str] = []
-    if "id" not in p:
-        errors.append("view.update requires 'id'")
-    elif not is_valid_id(p["id"]):
-        errors.append(f"Invalid view ID: {p['id']}")
-
-    if "type" in p and p["type"] not in VIEW_TYPES:
-        errors.append(f"Unknown view type: {p['type']}")
-
-    return errors
-
-
-def _validate_view_remove(p: dict) -> list[str]:
-    errors: list[str] = []
-    if "id" not in p:
-        errors.append("view.remove requires 'id'")
-    elif not is_valid_id(p["id"]):
-        errors.append(f"Invalid view ID: {p['id']}")
-    return errors
-
-
-def _validate_style_set(p: dict) -> list[str]:
-    # All keys accepted — unknown tokens stored for forward compatibility
-    return []
-
-
-def _validate_style_set_entity(p: dict) -> list[str]:
-    errors: list[str] = []
-    if "ref" not in p:
-        errors.append("style.set_entity requires 'ref'")
-    elif not is_valid_ref(p["ref"]):
-        errors.append(f"Invalid ref: {p['ref']}")
-
-    if "styles" not in p:
-        errors.append("style.set_entity requires 'styles'")
-    elif not isinstance(p["styles"], dict):
-        errors.append("'styles' must be an object")
-
-    return errors
-
-
-def _validate_meta_update(p: dict) -> list[str]:
-    # All keys accepted — unknown properties stored
-    return []
-
-
-def _validate_meta_annotate(p: dict) -> list[str]:
-    errors: list[str] = []
-    if "note" not in p:
+    if not p.get("note"):
         errors.append("meta.annotate requires 'note'")
     elif not isinstance(p["note"], str):
         errors.append("'note' must be a string")
     return errors
 
 
-def _validate_meta_constrain(p: dict) -> list[str]:
-    errors: list[str] = []
-    if "id" not in p:
-        errors.append("meta.constrain requires 'id'")
-    elif not is_valid_id(p["id"]):
-        errors.append(f"Invalid constraint ID: {p['id']}")
-
-    if "rule" not in p:
-        errors.append("meta.constrain requires 'rule'")
-    elif p["rule"] not in CONSTRAINT_RULES:
-        errors.append(f"Unknown constraint rule: {p['rule']}")
-
-    return errors
-
-
 # ---------------------------------------------------------------------------
-# Dispatcher
+# Dispatch table
 # ---------------------------------------------------------------------------
 
 _VALIDATORS: dict[str, Any] = {
+    "schema.create": _validate_schema_create,
+    "schema.update": _validate_schema_update,
+    "schema.remove": _validate_schema_remove,
     "entity.create": _validate_entity_create,
     "entity.update": _validate_entity_update,
     "entity.remove": _validate_entity_remove,
-    "collection.create": _validate_collection_create,
-    "collection.update": _validate_collection_update,
-    "collection.remove": _validate_collection_remove,
-    "grid.create": _validate_grid_create,
-    "grid.query": _validate_grid_query,
-    "field.add": _validate_field_add,
-    "field.update": _validate_field_update,
-    "field.remove": _validate_field_remove,
-    "relationship.set": _validate_relationship_set,
-    "relationship.constrain": _validate_relationship_constrain,
     "block.set": _validate_block_set,
     "block.remove": _validate_block_remove,
     "block.reorder": _validate_block_reorder,
-    "view.create": _validate_view_create,
-    "view.update": _validate_view_update,
-    "view.remove": _validate_view_remove,
     "style.set": _validate_style_set,
-    "style.set_entity": _validate_style_set_entity,
     "meta.update": _validate_meta_update,
     "meta.annotate": _validate_meta_annotate,
-    "meta.constrain": _validate_meta_constrain,
 }

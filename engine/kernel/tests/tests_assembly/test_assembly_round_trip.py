@@ -35,19 +35,27 @@ def make_blueprint():
     )
 
 
-def make_collection_create_event(seq: int, coll_id: str, schema: dict) -> Event:
+def make_schema_create_event(seq: int) -> Event:
+    """v3: schema.create for grocery items."""
     return Event(
         id=f"evt_{seq:03d}",
         sequence=seq,
         timestamp=now_iso(),
         actor="user_test",
         source="test",
-        type="collection.create",
-        payload={"id": coll_id, "schema": schema},
+        type="schema.create",
+        payload={
+            "id": "grocery",
+            "interface": "interface Grocery { name: string; quantity: number; urgent: boolean; }",
+            "render_html": "<li>{{name}} (qty: {{quantity}})</li>",
+        },
     )
 
 
-def make_entity_create_event(seq: int, coll_id: str, entity_id: str, fields: dict) -> Event:
+def make_entity_create_event(seq: int, entity_id: str, fields: dict) -> Event:
+    """v3: entity.create with path-based id."""
+    payload = {"id": entity_id, "_schema": "grocery"}
+    payload.update(fields)
     return Event(
         id=f"evt_{seq:03d}",
         sequence=seq,
@@ -55,7 +63,7 @@ def make_entity_create_event(seq: int, coll_id: str, entity_id: str, fields: dic
         actor="user_test",
         source="test",
         type="entity.create",
-        payload={"collection": coll_id, "id": entity_id, "fields": fields},
+        payload=payload,
     )
 
 
@@ -67,32 +75,24 @@ def make_meta_update_event(seq: int, field: str, value: str) -> Event:
         actor="user_test",
         source="test",
         type="meta.update",
-        payload={field: value},  # meta.update takes key-value pairs directly
+        payload={field: value},
     )
 
 
 def make_ten_events() -> list[Event]:
-    """Create 10 events that build a simple grocery list."""
+    """Create 10 events that build a simple grocery list (v3 primitives)."""
     return [
-        # 1. Create collection
-        make_collection_create_event(
-            1,
-            "groceries",
-            {
-                "name": "string",
-                "quantity": "int",
-                "urgent": "bool",
-            },
-        ),
+        # 1. Create schema
+        make_schema_create_event(1),
         # 2-9. Add 8 items
-        make_entity_create_event(2, "groceries", "item_1", {"name": "Milk", "quantity": 2, "urgent": False}),
-        make_entity_create_event(3, "groceries", "item_2", {"name": "Eggs", "quantity": 12, "urgent": True}),
-        make_entity_create_event(4, "groceries", "item_3", {"name": "Bread", "quantity": 1, "urgent": False}),
-        make_entity_create_event(5, "groceries", "item_4", {"name": "Butter", "quantity": 1, "urgent": False}),
-        make_entity_create_event(6, "groceries", "item_5", {"name": "Cheese", "quantity": 1, "urgent": True}),
-        make_entity_create_event(7, "groceries", "item_6", {"name": "Apples", "quantity": 6, "urgent": False}),
-        make_entity_create_event(8, "groceries", "item_7", {"name": "Bananas", "quantity": 4, "urgent": False}),
-        make_entity_create_event(9, "groceries", "item_8", {"name": "Chicken", "quantity": 2, "urgent": True}),
+        make_entity_create_event(2, "item_1", {"name": "Milk", "quantity": 2, "urgent": False}),
+        make_entity_create_event(3, "item_2", {"name": "Eggs", "quantity": 12, "urgent": True}),
+        make_entity_create_event(4, "item_3", {"name": "Bread", "quantity": 1, "urgent": False}),
+        make_entity_create_event(5, "item_4", {"name": "Butter", "quantity": 1, "urgent": False}),
+        make_entity_create_event(6, "item_5", {"name": "Cheese", "quantity": 1, "urgent": True}),
+        make_entity_create_event(7, "item_6", {"name": "Apples", "quantity": 6, "urgent": False}),
+        make_entity_create_event(8, "item_7", {"name": "Bananas", "quantity": 4, "urgent": False}),
+        make_entity_create_event(9, "item_8", {"name": "Chicken", "quantity": 2, "urgent": True}),
         # 10. Update title
         make_meta_update_event(10, "title", "Family Grocery List"),
     ]
@@ -210,8 +210,8 @@ class TestSnapshotIntegrity:
         return AideAssembly(storage)
 
     @pytest.mark.asyncio
-    async def test_collections_preserved(self, assembly, storage):
-        """Collections are identical before and after round trip."""
+    async def test_schemas_preserved(self, assembly, storage):
+        """Schemas are identical before and after round trip."""
         aide_file = await assembly.create(make_blueprint())
         events = make_ten_events()
         await assembly.apply(aide_file, events)
@@ -219,12 +219,7 @@ class TestSnapshotIntegrity:
 
         loaded = await assembly.load(aide_file.aide_id)
 
-        assert "groceries" in loaded.snapshot["collections"]
-        coll = loaded.snapshot["collections"]["groceries"]
-        assert coll["id"] == "groceries"
-        assert "name" in coll["schema"]
-        assert "quantity" in coll["schema"]
-        assert "urgent" in coll["schema"]
+        assert "grocery" in loaded.snapshot["schemas"]
 
     @pytest.mark.asyncio
     async def test_entities_preserved(self, assembly, storage):
@@ -236,7 +231,7 @@ class TestSnapshotIntegrity:
 
         loaded = await assembly.load(aide_file.aide_id)
 
-        entities = loaded.snapshot["collections"]["groceries"]["entities"]
+        entities = loaded.snapshot["entities"]
         assert len(entities) == 8
 
         # Check specific entity
@@ -294,7 +289,7 @@ class TestMultipleRoundTrips:
         """Apply events in batches with save/load between each."""
         aide_file = await assembly.create(make_blueprint())
 
-        # First batch: create collection + 2 entities
+        # First batch: create schema + 2 entities
         batch1 = make_ten_events()[:3]
         await assembly.apply(aide_file, batch1)
         await assembly.save(aide_file)
@@ -318,7 +313,7 @@ class TestMultipleRoundTrips:
 
         # Final load and verify
         final = await assembly.load(aide_file.aide_id)
-        entities = final.snapshot["collections"]["groceries"]["entities"]
+        entities = final.snapshot["entities"]
         assert len(entities) == 8
         assert final.snapshot["meta"]["title"] == "Family Grocery List"
 
@@ -360,8 +355,12 @@ class TestLastSequenceTracking:
                 timestamp=now_iso(),
                 actor="test",
                 source="test",
-                type="collection.create",
-                payload={"id": "items", "schema": {"name": "string"}},
+                type="schema.create",
+                payload={
+                    "id": "grocery",
+                    "interface": "interface Grocery { name: string; }",
+                    "render_html": "<li>{{name}}</li>",
+                },
             ),
         ]
         for i in range(9):
@@ -373,7 +372,7 @@ class TestLastSequenceTracking:
                     actor="test",
                     source="test",
                     type="entity.create",
-                    payload={"collection": "items", "id": f"item_{i}", "fields": {"name": f"Item {i}"}},
+                    payload={"id": f"item_{i}", "_schema": "grocery", "name": f"Item {i}"},
                 )
             )
 
@@ -411,11 +410,7 @@ class TestLastSequenceTracking:
                 actor="user_test",
                 source="test",
                 type="entity.create",
-                payload={
-                    "collection": "groceries",
-                    "id": "item_new",
-                    "fields": {"name": "Orange Juice", "quantity": 1, "urgent": False},
-                },
+                payload={"id": "item_new", "_schema": "grocery", "name": "Orange Juice", "quantity": 1, "urgent": False},
             ),
         ]
         result = await assembly.apply(loaded, more_events)

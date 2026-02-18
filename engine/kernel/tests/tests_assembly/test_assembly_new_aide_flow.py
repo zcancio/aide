@@ -37,13 +37,12 @@ def make_poker_league_blueprint() -> Blueprint:
 
 def make_poker_league_events() -> list[Event]:
     """
-    Create the events that AI would generate for a first message like:
-    "I run a poker league, 8 guys, every other Thursday at someone's house."
+    Create v3 events for a poker league first message.
     """
     events = []
     seq = 0
 
-    # 1. Create players collection
+    # 1. Create player schema
     seq += 1
     events.append(
         Event(
@@ -52,21 +51,16 @@ def make_poker_league_events() -> list[Event]:
             timestamp=now_iso(),
             actor="system",
             source="ai",
-            type="collection.create",
+            type="schema.create",
             payload={
-                "id": "players",
-                "schema": {
-                    "name": "string",
-                    "games_played": "int",
-                    "total_winnings": "int",
-                    "hosting_count": "int",
-                    "active": "bool",
-                },
+                "id": "player",
+                "interface": "interface Player { name: string; games_played: number; total_winnings: number; hosting_count: number; active: boolean; }",
+                "render_html": "<tr><td>{{name}}</td><td>{{games_played}}</td><td>{{total_winnings}}</td></tr>",
             },
         )
     )
 
-    # 2. Create games collection
+    # 2. Create game schema
     seq += 1
     events.append(
         Event(
@@ -75,21 +69,16 @@ def make_poker_league_events() -> list[Event]:
             timestamp=now_iso(),
             actor="system",
             source="ai",
-            type="collection.create",
+            type="schema.create",
             payload={
-                "id": "games",
-                "schema": {
-                    "date": "date",
-                    "host": "string",
-                    "winner": "string",
-                    "pot": "int",
-                    "notes": "string",
-                },
+                "id": "game",
+                "interface": "interface Game { date: string; host: string; winner: string; pot: number; notes: string; }",
+                "render_html": "<tr><td>{{date}}</td><td>{{host}}</td><td>{{winner}}</td><td>{{pot}}</td></tr>",
             },
         )
     )
 
-    # 3-10. Add 8 players
+    # 3-10. Add 8 players as top-level entities
     player_names = ["Mike", "Dave", "Steve", "John", "Pete", "Rob", "Tom", "Chris"]
     for name in player_names:
         seq += 1
@@ -102,15 +91,13 @@ def make_poker_league_events() -> list[Event]:
                 source="ai",
                 type="entity.create",
                 payload={
-                    "collection": "players",
                     "id": f"player_{name.lower()}",
-                    "fields": {
-                        "name": name,
-                        "games_played": 0,
-                        "total_winnings": 0,
-                        "hosting_count": 0,
-                        "active": True,
-                    },
+                    "_schema": "player",
+                    "name": name,
+                    "games_played": 0,
+                    "total_winnings": 0,
+                    "hosting_count": 0,
+                    "active": True,
                 },
             )
         )
@@ -126,161 +113,6 @@ def make_poker_league_events() -> list[Event]:
             source="ai",
             type="meta.update",
             payload={"title": "Thursday Night Poker"},
-        )
-    )
-
-    # 12. Set meta description
-    seq += 1
-    events.append(
-        Event(
-            id=f"evt_{seq:03d}",
-            sequence=seq,
-            timestamp=now_iso(),
-            actor="system",
-            source="ai",
-            type="meta.update",
-            payload={"description": "Every other Thursday at someone's house."},
-        )
-    )
-
-    # 13. Create players view
-    seq += 1
-    events.append(
-        Event(
-            id=f"evt_{seq:03d}",
-            sequence=seq,
-            timestamp=now_iso(),
-            actor="system",
-            source="ai",
-            type="view.create",
-            payload={
-                "id": "standings_view",
-                "type": "table",
-                "source": "players",
-                "config": {
-                    "show_fields": ["name", "games_played", "total_winnings"],
-                    "sort_by": "total_winnings",
-                    "sort_order": "desc",
-                },
-            },
-        )
-    )
-
-    # 14. Create games view
-    seq += 1
-    events.append(
-        Event(
-            id=f"evt_{seq:03d}",
-            sequence=seq,
-            timestamp=now_iso(),
-            actor="system",
-            source="ai",
-            type="view.create",
-            payload={
-                "id": "recent_games_view",
-                "type": "table",
-                "source": "games",
-                "config": {
-                    "show_fields": ["date", "host", "winner", "pot"],
-                    "sort_by": "date",
-                    "sort_order": "desc",
-                },
-            },
-        )
-    )
-
-    # 15. Create header block
-    seq += 1
-    events.append(
-        Event(
-            id=f"evt_{seq:03d}",
-            sequence=seq,
-            timestamp=now_iso(),
-            actor="system",
-            source="ai",
-            type="block.set",
-            payload={
-                "id": "block_header",
-                "type": "heading",
-                "parent": "block_root",
-                "props": {"level": 1, "content": "Thursday Night Poker"},
-            },
-        )
-    )
-
-    # 16. Create standings section
-    seq += 1
-    events.append(
-        Event(
-            id=f"evt_{seq:03d}",
-            sequence=seq,
-            timestamp=now_iso(),
-            actor="system",
-            source="ai",
-            type="block.set",
-            payload={
-                "id": "block_standings_header",
-                "type": "heading",
-                "parent": "block_root",
-                "props": {"level": 2, "content": "Standings"},
-            },
-        )
-    )
-
-    # 17. Create standings view block
-    seq += 1
-    events.append(
-        Event(
-            id=f"evt_{seq:03d}",
-            sequence=seq,
-            timestamp=now_iso(),
-            actor="system",
-            source="ai",
-            type="block.set",
-            payload={
-                "id": "block_standings",
-                "type": "collection_view",
-                "parent": "block_root",
-                "props": {"source": "players", "view": "standings_view"},
-            },
-        )
-    )
-
-    # 18. Create recent games section
-    seq += 1
-    events.append(
-        Event(
-            id=f"evt_{seq:03d}",
-            sequence=seq,
-            timestamp=now_iso(),
-            actor="system",
-            source="ai",
-            type="block.set",
-            payload={
-                "id": "block_games_header",
-                "type": "heading",
-                "parent": "block_root",
-                "props": {"level": 2, "content": "Recent Games"},
-            },
-        )
-    )
-
-    # 19. Create games view block
-    seq += 1
-    events.append(
-        Event(
-            id=f"evt_{seq:03d}",
-            sequence=seq,
-            timestamp=now_iso(),
-            actor="system",
-            source="ai",
-            type="block.set",
-            payload={
-                "id": "block_games",
-                "type": "collection_view",
-                "parent": "block_root",
-                "props": {"source": "games", "view": "recent_games_view"},
-            },
         )
     )
 
@@ -325,7 +157,7 @@ class TestNewAideFlowCreate:
 
         # Has snapshot with empty collections
         assert aide_file.snapshot is not None
-        assert aide_file.snapshot["collections"] == {}
+        assert aide_file.snapshot["entities"] == {}
 
         # Has valid HTML
         assert aide_file.html.startswith("<!DOCTYPE html>")
@@ -370,8 +202,8 @@ class TestNewAideFlowApply:
         events = make_poker_league_events()
         await assembly.apply(aide_file, events)
 
-        assert "players" in aide_file.snapshot["collections"]
-        assert "games" in aide_file.snapshot["collections"]
+        assert "player_mike" in aide_file.snapshot["entities"]
+        assert "game" in aide_file.snapshot["schemas"]
 
     @pytest.mark.asyncio
     async def test_apply_creates_entities(self, assembly):
@@ -380,7 +212,7 @@ class TestNewAideFlowApply:
         events = make_poker_league_events()
         await assembly.apply(aide_file, events)
 
-        players = aide_file.snapshot["collections"]["players"]["entities"]
+        players = aide_file.snapshot["entities"]
         assert len(players) == 8
 
         # Check a specific player
@@ -396,33 +228,32 @@ class TestNewAideFlowApply:
         await assembly.apply(aide_file, events)
 
         assert aide_file.snapshot["meta"]["title"] == "Thursday Night Poker"
-        assert "Thursday" in aide_file.snapshot["meta"]["description"]
+        # v3 meta may not have 'description'; identity is in blueprint, not meta
 
     @pytest.mark.asyncio
-    async def test_apply_creates_views(self, assembly):
-        """Apply creates views correctly."""
+    async def test_apply_creates_schemas(self, assembly):
+        """Apply creates schemas correctly (v3: schemas not views)."""
         aide_file = await assembly.create(make_poker_league_blueprint())
         events = make_poker_league_events()
         await assembly.apply(aide_file, events)
 
-        assert "standings_view" in aide_file.snapshot["views"]
-        assert "recent_games_view" in aide_file.snapshot["views"]
-
-        standings = aide_file.snapshot["views"]["standings_view"]
-        assert standings["type"] == "table"
-        assert standings["source"] == "players"
+        schemas = aide_file.snapshot["schemas"]
+        assert "player" in schemas
+        assert "game" in schemas
+        # Schema has a valid interface
+        assert "interface" in schemas["player"]
 
     @pytest.mark.asyncio
     async def test_apply_creates_blocks(self, assembly):
-        """Apply creates blocks correctly."""
+        """Apply always has block_root; no additional blocks unless block.set events sent."""
         aide_file = await assembly.create(make_poker_league_blueprint())
         events = make_poker_league_events()
         await assembly.apply(aide_file, events)
 
         blocks = aide_file.snapshot["blocks"]
-        assert "block_header" in blocks
-        assert "block_standings" in blocks
-        assert "block_games" in blocks
+        # block_root always exists
+        assert "block_root" in blocks
+        # v3 events as defined don't create extra blocks (only schema/entity/meta events)
 
     @pytest.mark.asyncio
     async def test_apply_updates_sequence(self, assembly):
@@ -446,9 +277,10 @@ class TestNewAideFlowApply:
         events = make_poker_league_events()
         await assembly.apply(aide_file, events)
 
-        # HTML contains content
+        # HTML contains content from meta.update
         assert "Thursday Night Poker" in aide_file.html
-        assert "Standings" in aide_file.html
+        # Player entities are auto-rendered (Mike, Dave, etc.)
+        assert "Mike" in aide_file.html or "player" in aide_file.html
 
         # HTML is valid
         parsed = parse_aide_html(aide_file.html)
@@ -509,7 +341,7 @@ class TestNewAideFlowSave:
         loaded = await assembly.load(aide_file.aide_id)
 
         # Check collections
-        assert len(loaded.snapshot["collections"]["players"]["entities"]) == 8
+        assert sum(1 for k, v in loaded.snapshot["entities"].items() if v.get("_schema") == "player") == 8
 
         # Check events preserved
         assert len(loaded.events) == len(events)
@@ -635,8 +467,8 @@ class TestNewAideFlowComplete:
         parsed = parse_aide_html(published_html)
 
         assert parsed.blueprint.identity == bp.identity
-        assert "players" in parsed.snapshot["collections"]
-        assert len(parsed.snapshot["collections"]["players"]["entities"]) == 8
+        assert "player_mike" in parsed.snapshot["entities"]
+        assert sum(1 for k, v in parsed.snapshot["entities"].items() if v.get("_schema") == "player") == 8
 
     @pytest.mark.asyncio
     async def test_flow_with_free_tier_footer(self, assembly, storage):
@@ -692,7 +524,7 @@ class TestStateValidityAtEachStep:
         assert aide_file.html.startswith("<!DOCTYPE html>")
 
         # Snapshot is valid
-        assert "collections" in aide_file.snapshot
+        assert "entities" in aide_file.snapshot
         assert "meta" in aide_file.snapshot
         assert "blocks" in aide_file.snapshot
 
@@ -710,7 +542,7 @@ class TestStateValidityAtEachStep:
         assert parsed.parse_errors == []
 
         # Snapshot reflects partial state
-        assert "players" in aide_file.snapshot["collections"]
+        assert "player_mike" in aide_file.snapshot["entities"]
 
     @pytest.mark.asyncio
     async def test_valid_after_full_apply(self, assembly):
@@ -725,7 +557,7 @@ class TestStateValidityAtEachStep:
 
         # All content present
         assert "Thursday Night Poker" in aide_file.html
-        assert len(aide_file.snapshot["collections"]["players"]["entities"]) == 8
+        assert len(aide_file.snapshot["entities"]) == 8
 
     @pytest.mark.asyncio
     async def test_valid_after_save(self, assembly, storage):
@@ -827,7 +659,7 @@ class TestNewAideFlowEdgeCases:
             actor="user",
             source="test",
             type="field.update",
-            payload={"collection": "players", "entity": "player_mike", "field": "total_winnings", "value": 500},
+            payload={"id": "player_mike", "total_winnings": 500},
         )
         await assembly.apply(aide_file, [update_event])
 

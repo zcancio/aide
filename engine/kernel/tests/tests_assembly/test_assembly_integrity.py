@@ -42,8 +42,8 @@ def make_events() -> list[Event]:
             timestamp="2026-02-15T10:00:00Z",
             actor="user_test",
             source="test",
-            type="collection.create",
-            payload={"id": "tasks", "schema": {"name": "string", "done": "bool", "priority": "int"}},
+            type="schema.create",
+            payload={"id": "task", "interface": "interface Task { name: string; priority: number; done: boolean; }", "render_html": "<li>{{name}}</li>"},
         ),
         Event(
             id="evt_002",
@@ -53,9 +53,7 @@ def make_events() -> list[Event]:
             source="test",
             type="entity.create",
             payload={
-                "collection": "tasks",
-                "id": "task_1",
-                "fields": {"name": "First task", "done": False, "priority": 1},
+                "id": "task_1", "_schema": "task", "name": "First task", "done": False, "priority": 1,
             },
         ),
         Event(
@@ -66,9 +64,7 @@ def make_events() -> list[Event]:
             source="test",
             type="entity.create",
             payload={
-                "collection": "tasks",
-                "id": "task_2",
-                "fields": {"name": "Second task", "done": True, "priority": 2},
+                "id": "task_2", "_schema": "task", "name": "Second task", "done": True, "priority": 2,
             },
         ),
         Event(
@@ -78,7 +74,7 @@ def make_events() -> list[Event]:
             actor="user_test",
             source="test",
             type="entity.update",
-            payload={"ref": "tasks/task_1", "fields": {"done": True}},
+            payload={"id": "task_1", "done": True},
         ),
         Event(
             id="evt_005",
@@ -179,7 +175,7 @@ class TestIntegrityCheckCorrupted:
         await assembly.apply(aide_file, events)
 
         # Corrupt: change a field value
-        aide_file.snapshot["collections"]["tasks"]["entities"]["task_1"]["priority"] = 999
+        aide_file.snapshot["entities"]["task_1"]["priority"] = 999
 
         is_valid, issues = await assembly.integrity_check(aide_file)
 
@@ -194,7 +190,7 @@ class TestIntegrityCheckCorrupted:
         await assembly.apply(aide_file, events)
 
         # Corrupt: change entity name
-        aide_file.snapshot["collections"]["tasks"]["entities"]["task_1"]["name"] = "Corrupted"
+        aide_file.snapshot["entities"]["task_1"]["name"] = "Corrupted"
 
         is_valid, issues = await assembly.integrity_check(aide_file)
 
@@ -222,7 +218,7 @@ class TestIntegrityCheckCorrupted:
         await assembly.apply(aide_file, events)
 
         # Corrupt: add entity that shouldn't exist
-        aide_file.snapshot["collections"]["tasks"]["entities"]["phantom"] = {
+        aide_file.snapshot["entities"]["phantom"] = {
             "name": "Ghost task",
             "done": False,
             "priority": 0,
@@ -241,7 +237,7 @@ class TestIntegrityCheckCorrupted:
         await assembly.apply(aide_file, events)
 
         # Corrupt: remove entity that should exist
-        del aide_file.snapshot["collections"]["tasks"]["entities"]["task_2"]
+        del aide_file.snapshot["entities"]["task_2"]
 
         is_valid, issues = await assembly.integrity_check(aide_file)
 
@@ -274,13 +270,13 @@ class TestRepair:
         await assembly.apply(aide_file, events)
 
         # Corrupt
-        aide_file.snapshot["collections"]["tasks"]["entities"]["task_1"]["priority"] = 999
+        aide_file.snapshot["entities"]["task_1"]["priority"] = 999
 
         # Repair
         repaired = await assembly.repair(aide_file)
 
         # Check fixed
-        assert repaired.snapshot["collections"]["tasks"]["entities"]["task_1"]["priority"] == 1
+        assert repaired.snapshot["entities"]["task_1"]["priority"] == 1
 
         # Passes integrity now
         is_valid, _ = await assembly.integrity_check(repaired)
@@ -294,14 +290,14 @@ class TestRepair:
         await assembly.apply(aide_file, events)
 
         # Corrupt: remove entity
-        del aide_file.snapshot["collections"]["tasks"]["entities"]["task_2"]
+        del aide_file.snapshot["entities"]["task_2"]
 
         # Repair
         repaired = await assembly.repair(aide_file)
 
         # Entity restored
-        assert "task_2" in repaired.snapshot["collections"]["tasks"]["entities"]
-        assert repaired.snapshot["collections"]["tasks"]["entities"]["task_2"]["name"] == "Second task"
+        assert "task_2" in repaired.snapshot["entities"]
+        assert repaired.snapshot["entities"]["task_2"]["name"] == "Second task"
 
     @pytest.mark.asyncio
     async def test_repair_removes_phantom_entity(self, assembly):
@@ -311,7 +307,7 @@ class TestRepair:
         await assembly.apply(aide_file, events)
 
         # Corrupt: add phantom
-        aide_file.snapshot["collections"]["tasks"]["entities"]["phantom"] = {
+        aide_file.snapshot["entities"]["phantom"] = {
             "name": "Ghost",
             "done": False,
             "priority": 0,
@@ -322,7 +318,7 @@ class TestRepair:
         repaired = await assembly.repair(aide_file)
 
         # Phantom removed
-        assert "phantom" not in repaired.snapshot["collections"]["tasks"]["entities"]
+        assert "phantom" not in repaired.snapshot["entities"]
 
     @pytest.mark.asyncio
     async def test_repair_updates_html(self, assembly):
@@ -351,7 +347,7 @@ class TestRepair:
         events_before = [e.id for e in aide_file.events]
 
         # Corrupt and repair
-        aide_file.snapshot["collections"]["tasks"]["entities"]["task_1"]["priority"] = 999
+        aide_file.snapshot["entities"]["task_1"]["priority"] = 999
         repaired = await assembly.repair(aide_file)
 
         events_after = [e.id for e in repaired.events]
@@ -379,7 +375,7 @@ class TestRepairRoundTrip:
         await assembly.apply(aide_file, events)
 
         # Corrupt
-        aide_file.snapshot["collections"]["tasks"]["entities"]["task_1"]["done"] = "corrupted"
+        aide_file.snapshot["entities"]["task_1"]["done"] = "corrupted"
 
         # Repair
         repaired = await assembly.repair(aide_file)
@@ -395,7 +391,7 @@ class TestRepairRoundTrip:
         assert is_valid is True
 
         # Correct value
-        assert loaded.snapshot["collections"]["tasks"]["entities"]["task_1"]["done"] is True
+        assert loaded.snapshot["entities"]["task_1"]["done"] is True
 
 
 class TestIntegrityAfterOperations:
@@ -455,8 +451,8 @@ class TestIntegrityAfterOperations:
                 timestamp=now_iso(),
                 actor="test",
                 source="test",
-                type="collection.create",
-                payload={"id": "items", "schema": {"name": "string"}},
+                type="schema.create",
+            payload={"id": "item", "interface": "interface Item { name: string; count: number; }", "render_html": "<li>{{name}}</li>"},
             ),
         ]
         for i in range(2, 102):

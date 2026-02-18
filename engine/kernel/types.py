@@ -1,8 +1,16 @@
 """
-AIde Kernel — Shared Types
+AIde Kernel — Shared Types (v3 Unified Entity Model)
 
 Data classes used across primitives, reducer, renderer, and assembly.
 These are the contracts that bind the kernel together.
+
+v3 key changes:
+- `schemas` container replaces `collections` — stores TypeScript interfaces + render templates
+- `entities` are top-level with `_schema` reference (not nested in collections)
+- `Record<string, T>` for typed child collections (nested entities)
+- `_pos` for fractional indexing (ordering)
+- `_shape` for grid layout (e.g., [8, 8] for chessboard, [10, 10] for football squares)
+- Primitives: schema.create/update/remove, entity.create/update/remove
 """
 
 from __future__ import annotations
@@ -13,11 +21,12 @@ from datetime import UTC, datetime
 from typing import Any
 
 # ---------------------------------------------------------------------------
-# Regex patterns (from aide_primitive_schemas.md)
+# Regex patterns
 # ---------------------------------------------------------------------------
 
 ID_PATTERN = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
-REF_PATTERN = re.compile(r"^[a-z][a-z0-9_]{0,63}/[a-z][a-z0-9_]{0,63}$")
+# v3: entity paths use slash-separated segments, each a valid ID
+PATH_SEGMENT_PATTERN = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 
 
 # ---------------------------------------------------------------------------
@@ -25,39 +34,23 @@ REF_PATTERN = re.compile(r"^[a-z][a-z0-9_]{0,63}/[a-z][a-z0-9_]{0,63}$")
 # ---------------------------------------------------------------------------
 
 PRIMITIVE_TYPES: set[str] = {
-    # Entity (1-3)
+    # Schema (v3)
+    "schema.create",
+    "schema.update",
+    "schema.remove",
+    # Entity (v3)
     "entity.create",
     "entity.update",
     "entity.remove",
-    # Collection (4-6)
-    "collection.create",
-    "collection.update",
-    "collection.remove",
-    # Grid (batch entity creation, query)
-    "grid.create",
-    "grid.query",
-    # Field (7-9)
-    "field.add",
-    "field.update",
-    "field.remove",
-    # Relationship (10-11)
-    "relationship.set",
-    "relationship.constrain",
-    # Block (12-14)
+    # Block (layout)
     "block.set",
     "block.remove",
     "block.reorder",
-    # View (15-17)
-    "view.create",
-    "view.update",
-    "view.remove",
-    # Style (18-19)
+    # Style
     "style.set",
-    "style.set_entity",
-    # Meta (20-22)
+    # Meta
     "meta.update",
     "meta.annotate",
-    "meta.constrain",
 }
 
 BLOCK_TYPES: set[str] = {
@@ -65,33 +58,12 @@ BLOCK_TYPES: set[str] = {
     "heading",
     "text",
     "metric",
-    "collection_view",
+    "entity_view",
     "divider",
     "image",
     "callout",
     "column_list",
     "column",
-}
-
-VIEW_TYPES: set[str] = {
-    "list",
-    "table",
-    "grid",
-}
-
-# Field types — simple string types and their nullable variants
-SIMPLE_FIELD_TYPES: set[str] = {
-    "string",
-    "string?",
-    "int",
-    "int?",
-    "float",
-    "float?",
-    "bool",
-    "date",
-    "date?",
-    "datetime",
-    "datetime?",
 }
 
 # Known style tokens and their defaults
@@ -108,18 +80,6 @@ DENSITY_VALUES: set[str] = {"compact", "comfortable", "spacious"}
 
 # Known meta properties
 KNOWN_META_PROPERTIES: set[str] = {"title", "identity", "visibility", "archived"}
-
-# Constraint rule types
-CONSTRAINT_RULES: set[str] = {
-    "exclude_pair",
-    "require_same",
-    "max_per_target",
-    "min_per_target",
-    "collection_max_entities",
-    "collection_min_entities",
-    "unique_field",
-    "required_fields",
-}
 
 # Escalation reasons
 ESCALATION_REASONS: set[str] = {
@@ -141,20 +101,22 @@ ESCALATION_REASONS: set[str] = {
 @dataclass
 class Snapshot:
     """
-    The aide's current state — matches the reducer's expected structure.
+    The aide's current state — v3 Unified Entity Model.
 
-    Note: Entities are stored INSIDE each collection as collection["entities"],
-    not at the top level. This matches how the reducer processes state.
+    v3 structure:
+    - schemas: dict[schema_id, schema_def] — TypeScript interfaces + render templates
+    - entities: dict[entity_id, entity_data] — top-level entities with _schema references
+    - blocks: dict[block_id, block_def] — layout blocks
+    - styles: dict — global style tokens
+    - meta: dict — metadata (title, identity, visibility)
+    - annotations: list — pinned notes
     """
 
-    version: int = 1
+    version: int = 3
     meta: dict[str, Any] = field(default_factory=dict)
-    collections: dict[str, Any] = field(default_factory=dict)  # Each collection has "entities" inside
-    relationships: list[dict[str, Any]] = field(default_factory=list)
-    relationship_types: dict[str, Any] = field(default_factory=dict)
-    constraints: list[dict[str, Any]] = field(default_factory=list)
+    schemas: dict[str, Any] = field(default_factory=dict)
+    entities: dict[str, Any] = field(default_factory=dict)
     blocks: dict[str, Any] = field(default_factory=lambda: {"block_root": {"type": "root", "children": []}})
-    views: dict[str, Any] = field(default_factory=dict)
     styles: dict[str, Any] = field(default_factory=dict)
     annotations: list[dict[str, Any]] = field(default_factory=list)
 
@@ -162,12 +124,9 @@ class Snapshot:
         return {
             "version": self.version,
             "meta": self.meta,
-            "collections": self.collections,
-            "relationships": self.relationships,
-            "relationship_types": self.relationship_types,
-            "constraints": self.constraints,
+            "schemas": self.schemas,
+            "entities": self.entities,
             "blocks": self.blocks,
-            "views": self.views,
             "styles": self.styles,
             "annotations": self.annotations,
         }
@@ -175,14 +134,11 @@ class Snapshot:
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> Snapshot:
         return cls(
-            version=d.get("version", 1),
+            version=d.get("version", 3),
             meta=d.get("meta", {}),
-            collections=d.get("collections", {}),
-            relationships=d.get("relationships", []),
-            relationship_types=d.get("relationship_types", {}),
-            constraints=d.get("constraints", []),
+            schemas=d.get("schemas", {}),
+            entities=d.get("entities", {}),
             blocks=d.get("blocks", {"block_root": {"type": "root", "children": []}}),
-            views=d.get("views", {}),
             styles=d.get("styles", {}),
             annotations=d.get("annotations", []),
         )
@@ -298,6 +254,7 @@ class RenderOptions:
     include_fonts: bool = True
     footer: str | None = None  # "Made with AIde" for free tier
     base_url: str = "https://toaide.com"
+    channel: str = "html"  # "html" or "text"
 
 
 @dataclass
@@ -358,56 +315,32 @@ class Escalation:
 # ---------------------------------------------------------------------------
 
 
-def parse_ref(ref: str) -> tuple[str, str]:
-    """Parse 'collection_id/entity_id' into (collection_id, entity_id)."""
-    parts = ref.split("/", 1)
-    if len(parts) != 2:
-        raise ValueError(f"Invalid ref format: {ref}")
-    return parts[0], parts[1]
-
-
 def is_valid_id(value: str) -> bool:
     """Check if a string is a valid AIde ID (snake_case, max 64 chars)."""
     return bool(ID_PATTERN.match(value))
 
 
-def is_valid_ref(value: str) -> bool:
-    """Check if a string is a valid entity ref (collection_id/entity_id)."""
-    return bool(REF_PATTERN.match(value))
+def parse_entity_path(path: str) -> list[str]:
+    """
+    Parse an entity path into segments.
+
+    Examples:
+      "grocery_list"                   → ["grocery_list"]
+      "grocery_list/items/item_milk"  → ["grocery_list", "items", "item_milk"]
+      "poker_league/players/player_mike" → ["poker_league", "players", "player_mike"]
+
+    Returns empty list if path is invalid.
+    """
+    segments = path.split("/")
+    for seg in segments:
+        if not PATH_SEGMENT_PATTERN.match(seg):
+            return []
+    return segments
 
 
-def is_nullable_type(field_type: str | dict) -> bool:
-    """Check if a field type is nullable (ends with ?)."""
-    if isinstance(field_type, str):
-        return field_type.endswith("?")
-    # Complex types (enum, list) are not nullable
-    return False
-
-
-def base_type(field_type: str | dict) -> str:
-    """Get the base type name without nullable suffix."""
-    if isinstance(field_type, str):
-        return field_type.rstrip("?")
-    if isinstance(field_type, dict):
-        if "enum" in field_type:
-            return "enum"
-        if "list" in field_type:
-            return "list"
-    return "unknown"
-
-
-def is_valid_field_type(field_type: str | dict) -> bool:
-    """Check if a field type definition is valid."""
-    if isinstance(field_type, str):
-        return field_type in SIMPLE_FIELD_TYPES
-    if isinstance(field_type, dict):
-        if "enum" in field_type:
-            vals = field_type["enum"]
-            return isinstance(vals, list) and len(vals) > 0 and all(isinstance(v, str) for v in vals)
-        if "list" in field_type:
-            inner = field_type["list"]
-            return isinstance(inner, str) and inner in {"string", "int", "float"}
-    return False
+def is_valid_entity_path(path: str) -> bool:
+    """Return True if path is a valid entity path (1+ slash-separated IDs)."""
+    return len(parse_entity_path(path)) > 0
 
 
 def now_iso() -> str:

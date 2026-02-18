@@ -151,16 +151,25 @@ class TestCreateSnapshot:
         aide_file = await assembly.create(bp)
 
         assert "version" in aide_file.snapshot
-        assert aide_file.snapshot["version"] == 1
+        assert aide_file.snapshot["version"] == 3
 
     @pytest.mark.asyncio
-    async def test_snapshot_has_empty_collections(self, assembly):
-        """Created snapshot has empty collections dict."""
+    async def test_snapshot_has_empty_schemas(self, assembly):
+        """Created snapshot has empty schemas dict."""
         bp = Blueprint(identity="Test")
         aide_file = await assembly.create(bp)
 
-        assert "collections" in aide_file.snapshot
-        assert aide_file.snapshot["collections"] == {}
+        assert "schemas" in aide_file.snapshot
+        assert aide_file.snapshot["schemas"] == {}
+
+    @pytest.mark.asyncio
+    async def test_snapshot_has_empty_entities(self, assembly):
+        """Created snapshot has empty entities dict."""
+        bp = Blueprint(identity="Test")
+        aide_file = await assembly.create(bp)
+
+        assert "entities" in aide_file.snapshot
+        assert aide_file.snapshot["entities"] == {}
 
     @pytest.mark.asyncio
     async def test_snapshot_has_empty_blocks(self, assembly):
@@ -173,22 +182,13 @@ class TestCreateSnapshot:
         assert aide_file.snapshot["blocks"]["block_root"]["children"] == []
 
     @pytest.mark.asyncio
-    async def test_snapshot_has_empty_views(self, assembly):
-        """Created snapshot has empty views dict."""
-        bp = Blueprint(identity="Test")
-        aide_file = await assembly.create(bp)
-
-        assert "views" in aide_file.snapshot
-        assert aide_file.snapshot["views"] == {}
-
-    @pytest.mark.asyncio
     async def test_snapshot_matches_empty_state(self, assembly):
         """Created snapshot structure matches empty_state() from reducer."""
         bp = Blueprint(identity="Test")
         aide_file = await assembly.create(bp)
 
         expected = empty_state()
-        # Title may be set from identity, so compare structure
+        # Title may be set from identity, so compare structure only
         assert set(aide_file.snapshot.keys()) == set(expected.keys())
 
 
@@ -333,7 +333,8 @@ class TestCreateEmptyPage:
     @pytest.mark.asyncio
     async def test_empty_page_message(self, assembly):
         """Empty aide shows 'This page is empty.' message."""
-        bp = Blueprint(identity="Test")
+        # Use empty identity to avoid title being set which might affect rendering
+        bp = Blueprint(identity="", voice="Test.")
         aide_file = await assembly.create(bp)
 
         assert "aide-empty" in aide_file.html

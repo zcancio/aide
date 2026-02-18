@@ -1,42 +1,21 @@
 """
-AIde Renderer -- Sort / Filter / Group Tests (Category 5)
+AIde Renderer -- Sort / Filter / Group Tests (v3 Unified Entity Model)
 
-Create a collection with 10 entities, apply various view configs,
-verify entity order in output.
+In v3, child entities within a parent's sub-collection are sorted by _pos.
+There are no view configs with sort_by/filter — ordering is done via _pos.
 
-From the spec (aide_renderer_spec.md, "Testing Strategy"):
-  "5. Sort/filter/group. Create a collection with 10 entities, apply
-   various view configs, verify entity order in output."
-
-Sort behavior:
-  - sort_by: field name to sort on
-  - sort_order: "asc" (default) or "desc"
-  - Nulls sort last regardless of direction
-  - Booleans sort as int(value): false=0, true=1
-  - No sort_by → preserve insertion order
-
-Filter behavior:
-  - filter: { field: value } conditions — all must match (AND)
-  - No filter → return all entities
-
-Group behavior:
-  - group_by: field name to group on
-  - Each group renders with <div class="aide-group"> and <h4> header
-  - Null group key → "_none" group
-  - No group_by → no group wrappers
+Tests verify:
+  - Child entities render in _pos order
+  - Removed children are excluded
+  - Multiple children render correctly
+  - Grid children use row/col key ordering
 
 Reference: aide_renderer_spec.md (Sorting and Filtering)
-           aide_primitive_schemas.md (view.create config options)
 """
 
-import pytest
 
 from engine.kernel.reducer import empty_state
 from engine.kernel.renderer import render_block
-
-# ============================================================================
-# Helpers
-# ============================================================================
 
 
 def assert_contains(html, *fragments):
@@ -60,48 +39,44 @@ def assert_order(html, *names):
         positions.append((name, pos))
     for i in range(len(positions) - 1):
         assert positions[i][1] < positions[i + 1][1], (
-            f"Expected {positions[i][0]!r} before {positions[i + 1][0]!r}, "
-            f"but positions are {positions[i][1]} and {positions[i + 1][1]}"
+            f"Expected {positions[i][0]!r} before {positions[i + 1][0]!r}"
         )
 
 
-def build_snapshot(entities, view_type="list", view_config=None):
+def make_player_snapshot(players_with_pos, view_type="list"):
     """
-    Build a snapshot with a 'players' collection, 10 player entities,
-    a view, and a collection_view block. Returns (snapshot, block_id).
+    Build a snapshot with a players collection using _pos for ordering.
+    players_with_pos: list of (name, wins, _pos) tuples.
     """
     snapshot = empty_state()
+    snapshot["meta"] = {"title": "Players"}
 
-    snapshot["collections"] = {
-        "players": {
-            "id": "players",
-            "name": "Players",
-            "schema": {
-                "name": "string",
-                "rating": "int",
-                "status": "enum",
-                "active": "bool",
-                "joined": "date",
-                "wins": "int",
-            },
-            "entities": entities,
-        },
+    snapshot["schemas"]["player"] = {
+        "interface": "interface Player { name: string; wins: number; }",
+        "render_html": "<li class=\"player\">{{name}} ({{wins}})</li>",
+        "render_text": "{{name}}: {{wins}}",
     }
 
-    snapshot["views"] = {
-        "players_view": {
-            "id": "players_view",
-            "type": view_type,
-            "source": "players",
-            "config": view_config or {},
-        },
+    snapshot["schemas"]["player_list"] = {
+        "interface": "interface PlayerList { name: string; roster: Record<string, Player>; }",
+        "render_html": "<ul class=\"player-list\">{{>roster}}</ul>",
     }
 
-    block_id = "block_players"
+    roster = {}
+    for name, wins, pos in players_with_pos:
+        pid = f"player_{name.lower()}"
+        roster[pid] = {"name": name, "wins": wins, "_pos": pos}
+
+    snapshot["entities"]["league"] = {
+        "_schema": "player_list",
+        "name": "League",
+        "roster": roster,
+    }
+
+    block_id = "block_league"
     snapshot["blocks"][block_id] = {
-        "type": "collection_view",
-        "parent": "block_root",
-        "props": {"source": "players", "view": "players_view"},
+        "type": "entity_view",
+        "source": "league",
     }
     snapshot["blocks"]["block_root"]["children"] = [block_id]
 
@@ -109,802 +84,316 @@ def build_snapshot(entities, view_type="list", view_config=None):
 
 
 # ============================================================================
-# 10-player fixture
+# Sort by _pos
 # ============================================================================
 
 
-def ten_players():
+class TestSortByPos:
     """
-    10 players with varied ratings, statuses, active flags, join dates,
-    and wins for thorough sort/filter/group testing.
+    Child entities sort by _pos (ascending, nulls last).
     """
-    return {
-        "p_alice": {
-            "name": "Alice",
-            "rating": 1400,
-            "status": "active",
-            "active": True,
-            "joined": "2025-01-15",
-            "wins": 12,
-            "_removed": False,
-        },
-        "p_bob": {
-            "name": "Bob",
-            "rating": 1200,
-            "status": "active",
-            "active": True,
-            "joined": "2025-03-01",
-            "wins": 8,
-            "_removed": False,
-        },
-        "p_carol": {
-            "name": "Carol",
-            "rating": 1550,
-            "status": "active",
-            "active": True,
-            "joined": "2024-11-20",
-            "wins": 15,
-            "_removed": False,
-        },
-        "p_dave": {
-            "name": "Dave",
-            "rating": 1100,
-            "status": "inactive",
-            "active": False,
-            "joined": "2025-02-10",
-            "wins": 3,
-            "_removed": False,
-        },
-        "p_eve": {
-            "name": "Eve",
-            "rating": 1350,
-            "status": "active",
-            "active": True,
-            "joined": "2025-04-05",
-            "wins": 10,
-            "_removed": False,
-        },
-        "p_frank": {
-            "name": "Frank",
-            "rating": 1000,
-            "status": "inactive",
-            "active": False,
-            "joined": "2024-12-01",
-            "wins": 1,
-            "_removed": False,
-        },
-        "p_grace": {
-            "name": "Grace",
-            "rating": 1600,
-            "status": "active",
-            "active": True,
-            "joined": "2024-10-15",
-            "wins": 18,
-            "_removed": False,
-        },
-        "p_hank": {
-            "name": "Hank",
-            "rating": None,
-            "status": "pending",
-            "active": False,
-            "joined": "2025-05-01",
-            "wins": 0,
-            "_removed": False,
-        },
-        "p_iris": {
-            "name": "Iris",
-            "rating": 1450,
-            "status": "active",
-            "active": True,
-            "joined": "2025-01-25",
-            "wins": 11,
-            "_removed": False,
-        },
-        "p_jack": {
-            "name": "Jack",
-            "rating": None,
-            "status": "pending",
-            "active": False,
-            "joined": None,
-            "wins": 0,
-            "_removed": False,
-        },
-    }
+
+    def test_ascending_pos_order(self):
+        """Children with explicit _pos render in ascending order."""
+        players = [
+            ("Charlie", 3, 3.0),
+            ("Alice", 7, 1.0),
+            ("Bob", 5, 2.0),
+        ]
+        snapshot, bid = make_player_snapshot(players)
+        html = render_block(bid, snapshot)
+
+        assert_order(html, "Alice", "Bob", "Charlie")
+
+    def test_reverse_insertion_with_pos(self):
+        """Even if entities added in reverse order, _pos determines order."""
+        players = [
+            ("Third", 1, 3.0),
+            ("Second", 2, 2.0),
+            ("First", 5, 1.0),
+        ]
+        snapshot, bid = make_player_snapshot(players)
+        html = render_block(bid, snapshot)
+
+        assert_order(html, "First", "Second", "Third")
+
+    def test_fractional_pos(self):
+        """Fractional _pos values sort correctly."""
+        players = [
+            ("B", 2, 1.5),
+            ("A", 1, 0.5),
+            ("C", 3, 2.5),
+        ]
+        snapshot, bid = make_player_snapshot(players)
+        html = render_block(bid, snapshot)
+
+        assert_order(html, "A", "B", "C")
+
+    def test_all_entities_present(self):
+        """All non-removed entities appear."""
+        players = [
+            ("Alice", 7, 1.0),
+            ("Bob", 5, 2.0),
+            ("Charlie", 3, 3.0),
+            ("Dave", 9, 4.0),
+            ("Eve", 1, 5.0),
+        ]
+        snapshot, bid = make_player_snapshot(players)
+        html = render_block(bid, snapshot)
+
+        assert_contains(html, "Alice", "Bob", "Charlie", "Dave", "Eve")
+
+    def test_ten_entities_in_pos_order(self):
+        """Ten entities render in _pos order."""
+        players = [(f"Player{i:02d}", i, float(i)) for i in range(10, 0, -1)]
+        snapshot, bid = make_player_snapshot(players)
+        html = render_block(bid, snapshot)
+
+        names_in_order = [f"Player{i:02d}" for i in range(1, 11)]
+        assert_order(html, *names_in_order)
 
 
 # ============================================================================
-# Sort — ascending
+# Filtering via _removed
 # ============================================================================
 
 
-class TestSortAscending:
+class TestFilterRemoved:
     """
-    sort_by + sort_order="asc" (or default) sorts entities ascending.
-    """
-
-    def test_sort_by_name_asc(self):
-        """Sort by name ascending: Alice, Bob, Carol, ..., Jack."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"sort_by": "name", "sort_order": "asc", "show_fields": ["name", "rating"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_order(
-            html,
-            "Alice",
-            "Bob",
-            "Carol",
-            "Dave",
-            "Eve",
-            "Frank",
-            "Grace",
-            "Hank",
-            "Iris",
-            "Jack",
-        )
-
-    def test_sort_by_rating_asc(self):
-        """Sort by rating ascending: Frank(1000), Dave(1100), Bob(1200), ...
-        Nulls (Hank, Jack) sort last."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"sort_by": "rating", "sort_order": "asc", "show_fields": ["name", "rating"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        # Non-null ratings in ascending order
-        assert_order(html, "Frank", "Dave", "Bob", "Eve", "Alice", "Iris", "Carol", "Grace")
-        # Hank and Jack (null rating) should appear after Grace
-        grace_pos = html.find("Grace")
-        hank_pos = html.find("Hank")
-        jack_pos = html.find("Jack")
-        assert hank_pos > grace_pos, "Null-rated Hank should sort after Grace"
-        assert jack_pos > grace_pos, "Null-rated Jack should sort after Grace"
-
-    def test_sort_by_wins_asc(self):
-        """Sort by wins ascending: Jack(0), Hank(0), Frank(1), Dave(3), ..."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"sort_by": "wins", "sort_order": "asc", "show_fields": ["name", "wins"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        # Lowest wins first
-        assert_order(html, "Frank", "Dave", "Bob", "Eve")
-
-    def test_default_sort_order_is_asc(self):
-        """
-        Omitting sort_order defaults to ascending.
-        Per spec: order = config.get("sort_order", "asc")
-        """
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"sort_by": "name", "show_fields": ["name"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_order(html, "Alice", "Bob", "Carol", "Dave")
-
-
-# ============================================================================
-# Sort — descending
-# ============================================================================
-
-
-class TestSortDescending:
-    """
-    sort_order="desc" reverses the sort.
+    Removed entities (children with _removed=True) are excluded from output.
     """
 
-    def test_sort_by_name_desc(self):
-        """Sort by name descending: Jack, Iris, ..., Alice."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"sort_by": "name", "sort_order": "desc", "show_fields": ["name"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_order(html, "Jack", "Iris", "Hank", "Grace", "Frank")
-
-    def test_sort_by_rating_desc(self):
-        """Sort by rating descending: Grace(1600), Carol(1550), ...
-        Nulls still sort last even in descending order."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"sort_by": "rating", "sort_order": "desc", "show_fields": ["name", "rating"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        # Highest non-null ratings first
-        assert_order(html, "Grace", "Carol", "Iris", "Alice", "Eve", "Bob", "Dave", "Frank")
-        # Nulls still last
-        frank_pos = html.find("Frank")
-        hank_pos = html.find("Hank")
-        jack_pos = html.find("Jack")
-        assert hank_pos > frank_pos, "Null-rated Hank should sort after Frank (last non-null)"
-        assert jack_pos > frank_pos, "Null-rated Jack should sort after Frank"
-
-    def test_sort_by_wins_desc(self):
-        """Sort by wins descending: Grace(18), Carol(15), Alice(12), ..."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"sort_by": "wins", "sort_order": "desc", "show_fields": ["name", "wins"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_order(html, "Grace", "Carol", "Alice", "Iris", "Eve", "Bob")
-
-
-# ============================================================================
-# Sort — nulls sort last
-# ============================================================================
-
-
-class TestSortNullsLast:
-    """
-    Null values sort last regardless of sort direction.
-    Per spec: sort_key(None) returns (1, "") — always after non-null (0, value).
-    """
-
-    def test_nulls_last_ascending(self):
-        """Null ratings appear after all non-null in ascending sort."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"sort_by": "rating", "sort_order": "asc", "show_fields": ["name", "rating"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        # Frank is lowest non-null (1000), Grace is highest (1600)
-        # Hank and Jack have null ratings — must be after Grace
-        grace_pos = html.find("Grace")
-        hank_pos = html.find("Hank")
-        jack_pos = html.find("Jack")
-        assert hank_pos > grace_pos
-        assert jack_pos > grace_pos
-
-    def test_nulls_last_descending(self):
-        """Null ratings appear after all non-null in descending sort."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"sort_by": "rating", "sort_order": "desc", "show_fields": ["name", "rating"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        frank_pos = html.find("Frank")  # lowest non-null, last in desc
-        hank_pos = html.find("Hank")
-        jack_pos = html.find("Jack")
-        assert hank_pos > frank_pos
-        assert jack_pos > frank_pos
-
-    def test_null_date_sorts_last(self):
-        """Null join date (Jack) sorts last."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"sort_by": "joined", "sort_order": "asc", "show_fields": ["name", "joined"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        # Jack has null joined — should be last
-        iris_pos = html.find("Iris")  # some non-null
-        jack_pos = html.find("Jack")
-        assert jack_pos > iris_pos
-
-
-# ============================================================================
-# Sort — booleans
-# ============================================================================
-
-
-class TestSortBooleans:
-    """
-    Booleans sort as int(value): false=0, true=1.
-    Per spec: sort_key for bool returns (0, int(value)).
-    Ascending: false first, then true. Descending: true first, then false.
-    """
-
-    def test_sort_by_active_asc(self):
-        """Sort by active ascending: inactive (false=0) before active (true=1)."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"sort_by": "active", "sort_order": "asc", "show_fields": ["name", "active"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        # Inactive players (Dave, Frank, Hank, Jack) should come first
-        # Active players (Alice, Bob, Carol, Eve, Grace, Iris) should follow
-        # Pick one from each group to verify ordering
-        dave_pos = html.find("Dave")
-        alice_pos = html.find("Alice")
-        assert dave_pos < alice_pos, "Inactive (false) should sort before active (true) in asc"
-
-    def test_sort_by_active_desc(self):
-        """Sort by active descending: active (true=1) before inactive (false=0)."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"sort_by": "active", "sort_order": "desc", "show_fields": ["name", "active"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        alice_pos = html.find("Alice")
-        dave_pos = html.find("Dave")
-        assert alice_pos < dave_pos, "Active (true) should sort before inactive (false) in desc"
-
-
-# ============================================================================
-# Sort — no sort preserves insertion order
-# ============================================================================
-
-
-class TestNoSortPreservesOrder:
-    """
-    No sort_by → entities render in insertion order (dict iteration order).
-    Per spec: 'if not sort_by: return entities  # preserve insertion order'
-    """
-
-    def test_no_sort_config(self):
-        """Without sort_by, entities appear in their natural dict order."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"show_fields": ["name"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        # All 10 entities should be present
-        for name in ["Alice", "Bob", "Carol", "Dave", "Eve", "Frank", "Grace", "Hank", "Iris", "Jack"]:
-            assert_contains(html, name)
-
-
-# ============================================================================
-# Filter — single condition
-# ============================================================================
-
-
-class TestFilterSingleCondition:
-    """
-    filter: { field: value } retains only entities where field == value.
-    """
-
-    def test_filter_by_status_active(self):
-        """Filter status=active shows only active players."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"filter": {"status": "active"}, "show_fields": ["name", "status"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        # Active: Alice, Bob, Carol, Eve, Grace, Iris
-        assert_contains(html, "Alice", "Bob", "Carol", "Eve", "Grace", "Iris")
-        # Not active: Dave, Frank, Hank, Jack
-        assert_not_contains(html, "Dave", "Frank", "Hank", "Jack")
-
-    def test_filter_by_status_inactive(self):
-        """Filter status=inactive shows only inactive players."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"filter": {"status": "inactive"}, "show_fields": ["name", "status"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_contains(html, "Dave", "Frank")
-        assert_not_contains(html, "Alice", "Carol", "Grace")
-
-    def test_filter_by_status_pending(self):
-        """Filter status=pending shows only pending players."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"filter": {"status": "pending"}, "show_fields": ["name", "status"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_contains(html, "Hank", "Jack")
-        assert_not_contains(html, "Alice", "Dave")
-
-    def test_filter_by_boolean_true(self):
-        """Filter active=true shows only active players."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"filter": {"active": True}, "show_fields": ["name", "active"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_contains(html, "Alice", "Bob", "Carol", "Eve", "Grace", "Iris")
-        assert_not_contains(html, "Dave", "Frank", "Hank", "Jack")
-
-    def test_filter_by_boolean_false(self):
-        """Filter active=false shows only inactive players."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"filter": {"active": False}, "show_fields": ["name", "active"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_contains(html, "Dave", "Frank", "Hank", "Jack")
-        assert_not_contains(html, "Alice", "Bob", "Carol")
-
-
-# ============================================================================
-# Filter — multiple conditions (AND)
-# ============================================================================
-
-
-class TestFilterMultipleConditions:
-    """
-    Multiple filter conditions are AND-ed: all must match.
-    Per spec: all(e.get(field) == value for field, value in filt.items())
-    """
-
-    def test_filter_active_and_status(self):
-        """Filter active=true AND status=active narrows to active players."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"filter": {"active": True, "status": "active"}, "show_fields": ["name"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_contains(html, "Alice", "Bob", "Carol", "Eve", "Grace", "Iris")
-        assert_not_contains(html, "Dave", "Frank", "Hank", "Jack")
-
-    def test_filter_no_match(self):
-        """Filter with impossible combination shows empty state."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"filter": {"status": "active", "active": False}, "show_fields": ["name"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        # No entity is active-status but active=false
-        assert_contains(html, "aide-collection-empty")
-
-
-# ============================================================================
-# Filter — no filter shows all
-# ============================================================================
-
-
-class TestNoFilter:
-    """
-    No filter config → all entities returned.
-    """
-
-    def test_no_filter_shows_all(self):
-        """Without filter, all 10 entities appear."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"show_fields": ["name"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        for name in ["Alice", "Bob", "Carol", "Dave", "Eve", "Frank", "Grace", "Hank", "Iris", "Jack"]:
-            assert_contains(html, name)
-
-
-# ============================================================================
-# Sort + Filter combined
-# ============================================================================
-
-
-class TestSortAndFilterCombined:
-    """
-    Sort and filter work together: filter first reduces the set,
-    sort then orders the remaining.
-    """
-
-    def test_filter_active_then_sort_by_rating_desc(self):
-        """Filter to active players, then sort by rating descending."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {
-                "filter": {"status": "active"},
-                "sort_by": "rating",
-                "sort_order": "desc",
-                "show_fields": ["name", "rating"],
+    def test_single_removed_entity(self):
+        """One removed entity is excluded, others render."""
+        snapshot = empty_state()
+        snapshot["schemas"]["item"] = {
+            "interface": "interface Item { name: string; }",
+            "render_html": "<li>{{name}}</li>",
+        }
+        snapshot["schemas"]["list_s"] = {
+            "interface": "interface ListS { name: string; items: Record<string, Item>; }",
+            "render_html": "<ul>{{>items}}</ul>",
+        }
+        snapshot["entities"]["mylist"] = {
+            "_schema": "list_s",
+            "name": "My List",
+            "items": {
+                "item_1": {"name": "Visible", "_pos": 1.0},
+                "item_2": {"name": "Removed", "_pos": 2.0, "_removed": True},
+                "item_3": {"name": "Also Visible", "_pos": 3.0},
             },
-        )
-        html = render_block(block_id, snapshot)
-
-        # Active players sorted by rating desc:
-        # Grace(1600), Carol(1550), Iris(1450), Alice(1400), Eve(1350), Bob(1200)
-        assert_order(html, "Grace", "Carol", "Iris", "Alice", "Eve", "Bob")
-        # Inactive should not appear
-        assert_not_contains(html, "Dave", "Frank", "Hank", "Jack")
-
-    def test_filter_inactive_then_sort_by_name(self):
-        """Filter to inactive, sort by name ascending."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"filter": {"status": "inactive"}, "sort_by": "name", "sort_order": "asc", "show_fields": ["name"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_order(html, "Dave", "Frank")
-        assert_not_contains(html, "Alice", "Grace")
-
-
-# ============================================================================
-# Group By
-# ============================================================================
-
-
-class TestGroupBy:
-    """
-    group_by splits entities into groups, each with a header.
-    Per spec: each group renders as <div class="aide-group">
-    with <h4 class="aide-group__header">{group name}</h4>.
-    """
-
-    @pytest.mark.skip(reason="group_by rendering not yet implemented")
-    def test_group_by_status(self):
-        """Group by status produces group headers for each status value."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"group_by": "status", "show_fields": ["name", "status"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_contains(html, "aide-group")
-        assert_contains(html, "aide-group__header")
-        # Should have headers for active, inactive, pending
-        # (Enum values are title-cased in headers)
-        assert_contains(html, "Active")
-        assert_contains(html, "Inactive")
-        assert_contains(html, "Pending")
-
-    @pytest.mark.skip(reason="group_by rendering not yet implemented")
-    def test_group_by_active(self):
-        """Group by boolean 'active' field."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"group_by": "active", "show_fields": ["name", "active"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_contains(html, "aide-group")
-        # Should have groups for true and false
-
-    def test_group_entities_in_correct_groups(self):
-        """Entities appear under their correct group header."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"group_by": "status", "show_fields": ["name"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        # All active players should be present
-        assert_contains(html, "Alice", "Bob", "Carol", "Eve", "Grace", "Iris")
-        # All inactive players should be present
-        assert_contains(html, "Dave", "Frank")
-        # All pending players should be present
-        assert_contains(html, "Hank", "Jack")
-
-    def test_group_null_values_go_to_none_group(self):
-        """
-        Entities with null group-by field go to the '_none' group.
-        Per spec: key = entity.get(group_by) or "_none"
-        """
-        # Add an entity with null status
-        entities = ten_players()
-        entities["p_mystery"] = {
-            "name": "Mystery",
-            "rating": 999,
-            "status": None,
-            "active": True,
-            "joined": "2025-06-01",
-            "wins": 0,
-            "_removed": False,
         }
-        snapshot, block_id = build_snapshot(
-            entities,
-            "list",
-            {"group_by": "status", "show_fields": ["name"]},
-        )
-        html = render_block(block_id, snapshot)
+        snapshot["blocks"]["b"] = {"type": "entity_view", "source": "mylist"}
+        snapshot["blocks"]["block_root"]["children"] = ["b"]
 
-        # Mystery should still appear in the output
-        assert_contains(html, "Mystery")
+        html = render_block("b", snapshot)
 
-    def test_no_group_by_produces_no_group_wrappers(self):
-        """Without group_by, no aide-group divs appear."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"show_fields": ["name"]},
-        )
-        html = render_block(block_id, snapshot)
+        assert_contains(html, "Visible", "Also Visible")
+        assert_not_contains(html, "Removed")
 
-        assert_not_contains(html, "aide-group__header")
-
-
-# ============================================================================
-# Group By + Sort
-# ============================================================================
-
-
-class TestGroupByWithSort:
-    """
-    Group by and sort can be combined: entities are sorted within groups.
-    """
-
-    def test_group_by_status_sort_by_rating_desc(self):
-        """Group by status, sort by rating descending within each group."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"group_by": "status", "sort_by": "rating", "sort_order": "desc", "show_fields": ["name", "rating"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        # Within the active group: Grace(1600), Carol(1550), Iris(1450),
-        # Alice(1400), Eve(1350), Bob(1200)
-        # We can at least verify Grace before Bob within the same output
-        assert_contains(html, "Grace", "Bob")
-        grace_pos = html.find("Grace")
-        bob_pos = html.find("Bob")
-        assert grace_pos < bob_pos
-
-
-# ============================================================================
-# Group By + Filter
-# ============================================================================
-
-
-class TestGroupByWithFilter:
-    """
-    Group by and filter combined: filter reduces, then group.
-    """
-
-    def test_filter_then_group(self):
-        """Filter to active, then group by... well, all are 'active'."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"filter": {"active": True}, "group_by": "status", "show_fields": ["name"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        # Only active=true entities pass filter
-        assert_contains(html, "Alice", "Bob", "Carol", "Eve", "Grace", "Iris")
-        assert_not_contains(html, "Dave", "Frank", "Hank", "Jack")
-
-
-# ============================================================================
-# Sort/filter in table view
-# ============================================================================
-
-
-class TestSortFilterInTableView:
-    """
-    Sort and filter work the same way in table views — the entity
-    ordering in <tbody> follows the view config.
-    """
-
-    def test_table_sort_by_rating_desc(self):
-        """Table rows appear in rating descending order."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "table",
-            {"sort_by": "rating", "sort_order": "desc", "show_fields": ["name", "rating"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_order(html, "Grace", "Carol", "Iris", "Alice", "Eve", "Bob", "Dave", "Frank")
-
-    def test_table_filter_active(self):
-        """Table shows only active players when filtered."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "table",
-            {"filter": {"status": "active"}, "show_fields": ["name", "status"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_contains(html, "Alice", "Bob", "Carol", "Eve", "Grace", "Iris")
-        assert_not_contains(html, "Dave", "Frank", "Hank", "Jack")
-
-    def test_table_sort_and_filter_combined(self):
-        """Table: filter to active, sort by name ascending."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "table",
-            {"filter": {"status": "active"}, "sort_by": "name", "sort_order": "asc", "show_fields": ["name"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_order(html, "Alice", "Bob", "Carol", "Eve", "Grace", "Iris")
-
-
-# ============================================================================
-# Edge cases
-# ============================================================================
-
-
-class TestSortFilterEdgeCases:
-    """
-    Edge cases for sort/filter behavior.
-    """
-
-    def test_sort_by_nonexistent_field(self):
-        """Sorting by a field that doesn't exist should not crash."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"sort_by": "nonexistent", "show_fields": ["name"]},
-        )
-        # Should not raise — all entities have None for missing field
-        html = render_block(block_id, snapshot)
-        # All entities should still appear
-        assert_contains(html, "Alice", "Jack")
-
-    def test_filter_by_nonexistent_field(self):
-        """Filtering by a field no entity has should return empty."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"filter": {"nonexistent": "value"}, "show_fields": ["name"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        # No entity has this field → none match → empty
-        assert_contains(html, "aide-collection-empty")
-
-    def test_filter_empty_dict(self):
-        """Empty filter dict shows all entities."""
-        snapshot, block_id = build_snapshot(
-            ten_players(),
-            "list",
-            {"filter": {}, "show_fields": ["name"]},
-        )
-        html = render_block(block_id, snapshot)
-
-        assert_contains(html, "Alice", "Jack")
-
-    def test_sort_all_same_value(self):
-        """Sorting when all entities have the same value for the field."""
-        entities = {
-            f"p_{i}": {
-                "name": f"Player {i}",
-                "rating": 1000,
-                "status": "active",
-                "active": True,
-                "joined": "2025-01-01",
-                "wins": 5,
-                "_removed": False,
-            }
-            for i in range(5)
+    def test_all_removed_renders_empty_list(self):
+        """All children removed → empty parent wrapper."""
+        snapshot = empty_state()
+        snapshot["schemas"]["item"] = {
+            "interface": "interface Item { name: string; }",
+            "render_html": "<li>{{name}}</li>",
         }
-        snapshot, block_id = build_snapshot(
-            entities,
-            "list",
-            {"sort_by": "rating", "show_fields": ["name"]},
-        )
-        html = render_block(block_id, snapshot)
+        snapshot["schemas"]["list_s"] = {
+            "interface": "interface ListS { name: string; items: Record<string, Item>; }",
+            "render_html": "<ul class=\"empty-list\">{{>items}}</ul>",
+        }
+        snapshot["entities"]["mylist"] = {
+            "_schema": "list_s",
+            "name": "My List",
+            "items": {
+                "item_1": {"name": "Gone1", "_pos": 1.0, "_removed": True},
+                "item_2": {"name": "Gone2", "_pos": 2.0, "_removed": True},
+            },
+        }
+        snapshot["blocks"]["b"] = {"type": "entity_view", "source": "mylist"}
+        snapshot["blocks"]["block_root"]["children"] = ["b"]
 
-        # All 5 should appear (stable sort, no crash)
-        for i in range(5):
-            assert_contains(html, f"Player {i}")
+        html = render_block("b", snapshot)
+
+        # Wrapper still there, but no items
+        assert_contains(html, "empty-list")
+        assert_not_contains(html, "Gone1", "Gone2")
+
+    def test_no_removed_shows_all(self):
+        """Without any _removed, all entities show."""
+        players = [(f"P{i}", i, float(i)) for i in range(1, 6)]
+        snapshot, bid = make_player_snapshot(players)
+        html = render_block(bid, snapshot)
+
+        for i in range(1, 6):
+            assert_contains(html, f"P{i}")
+
+
+# ============================================================================
+# Multiple entities with same content
+# ============================================================================
+
+
+class TestMultipleEntities:
+    """
+    Multiple entities in a collection render independently.
+    """
+
+    def test_five_entities_all_rendered(self):
+        """Five entities are all rendered."""
+        names = ["Alpha", "Beta", "Gamma", "Delta", "Epsilon"]
+        players = [(n, i, float(i)) for i, n in enumerate(names, 1)]
+        snapshot, bid = make_player_snapshot(players)
+        html = render_block(bid, snapshot)
+
+        for name in names:
+            assert_contains(html, name)
+
+    def test_entities_with_same_field_values(self):
+        """Entities with same field values both appear (entity ID differs)."""
+        snapshot = empty_state()
+        snapshot["schemas"]["item"] = {
+            "interface": "interface Item { category: string; }",
+            "render_html": "<div class=\"item\">{{category}}</div>",
+        }
+        snapshot["schemas"]["list_s"] = {
+            "interface": "interface ListS { name: string; items: Record<string, Item>; }",
+            "render_html": "<div class=\"list\">{{>items}}</div>",
+        }
+        snapshot["entities"]["mylist"] = {
+            "_schema": "list_s",
+            "name": "Items",
+            "items": {
+                "item_a": {"category": "Red", "_pos": 1.0},
+                "item_b": {"category": "Red", "_pos": 2.0},  # Same value
+            },
+        }
+        snapshot["blocks"]["b"] = {"type": "entity_view", "source": "mylist"}
+        snapshot["blocks"]["block_root"]["children"] = ["b"]
+
+        html = render_block("b", snapshot)
+
+        # Both should appear (two occurrences of "Red")
+        assert html.count("Red") >= 2
+
+
+# ============================================================================
+# Grid: row/col ordering
+# ============================================================================
+
+
+class TestGridOrdering:
+    """
+    Grid cells (using _shape) render row by row, column by column.
+    """
+
+    def _grid_snapshot(self, rows, cols, cells):
+        """Build a grid snapshot."""
+        snapshot = empty_state()
+        snapshot["schemas"]["cell"] = {
+            "interface": "interface Cell { val: string; }",
+            "render_html": "{{val}}",
+        }
+        snapshot["schemas"]["grid_schema"] = {
+            "interface": "interface GridSchema { name: string; cells: Record<string, Cell>; }",
+            "render_html": "<div class=\"grid\">{{>cells}}</div>",
+        }
+        snapshot["entities"]["my_grid"] = {
+            "_schema": "grid_schema",
+            "name": "Grid",
+            "cells": {"_shape": [rows, cols], **cells},
+        }
+        snapshot["blocks"]["b"] = {"type": "entity_view", "source": "my_grid"}
+        snapshot["blocks"]["block_root"]["children"] = ["b"]
+        return snapshot
+
+    def test_2x2_grid_renders_all_cells(self):
+        """2×2 grid renders all 4 cells."""
+        cells = {
+            "0_0": {"val": "A1"},
+            "0_1": {"val": "B1"},
+            "1_0": {"val": "A2"},
+            "1_1": {"val": "B2"},
+        }
+        snapshot = self._grid_snapshot(2, 2, cells)
+        html = render_block("b", snapshot)
+
+        assert_contains(html, "A1", "B1", "A2", "B2")
+
+    def test_grid_row_order(self):
+        """Grid renders row 0 before row 1."""
+        cells = {
+            "0_0": {"val": "Row0"},
+            "1_0": {"val": "Row1"},
+        }
+        snapshot = self._grid_snapshot(2, 1, cells)
+        html = render_block("b", snapshot)
+
+        assert_order(html, "Row0", "Row1")
+
+    def test_grid_col_order(self):
+        """Grid renders col 0 before col 1 within same row."""
+        cells = {
+            "0_0": {"val": "Col0"},
+            "0_1": {"val": "Col1"},
+        }
+        snapshot = self._grid_snapshot(1, 2, cells)
+        html = render_block("b", snapshot)
+
+        assert_order(html, "Col0", "Col1")
+
+    def test_grid_uses_aide_grid_class(self):
+        """Grid container uses aide-grid CSS class."""
+        cells = {"0_0": {"val": "X"}}
+        snapshot = self._grid_snapshot(1, 1, cells)
+        html = render_block("b", snapshot)
+
+        assert_contains(html, "aide-grid")
+
+    def test_grid_empty_cell_renders(self):
+        """Missing grid cell renders as empty cell, not an error."""
+        cells = {
+            "0_0": {"val": "A"},
+            # 0_1 is missing
+        }
+        snapshot = self._grid_snapshot(1, 2, cells)
+        html = render_block("b", snapshot)
+
+        # Should render A and an empty cell, no crash
+        assert_contains(html, "A")
+        assert "aide-grid-cell" in html
+
+
+# ============================================================================
+# Ordering stability
+# ============================================================================
+
+
+class TestOrderingStability:
+    """
+    Rendering order must be stable across multiple calls with the same snapshot.
+    """
+
+    def test_same_pos_stable_fallback_to_key(self):
+        """When _pos values differ, order is by _pos then by key."""
+        players = [
+            ("B_player", 2, 2.0),
+            ("A_player", 1, 1.0),
+            ("C_player", 3, 3.0),
+        ]
+        snapshot, bid = make_player_snapshot(players)
+
+        html1 = render_block(bid, snapshot)
+        html2 = render_block(bid, snapshot)
+
+        assert html1 == html2, "Rendering order is not stable"
+
+    def test_repeated_renders_identical(self):
+        """Same snapshot renders identically multiple times."""
+        players = [(f"P{i}", i, float(i)) for i in range(1, 8)]
+        snapshot, bid = make_player_snapshot(players)
+
+        results = [render_block(bid, snapshot) for _ in range(5)]
+
+        for r in results[1:]:
+            assert r == results[0], "Rendering is not deterministic"

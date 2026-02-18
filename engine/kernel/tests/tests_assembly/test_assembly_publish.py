@@ -34,7 +34,7 @@ def make_blueprint():
 
 
 def make_events(count: int) -> list[Event]:
-    """Generate a specified number of entity create events."""
+    """Generate a specified number of entity create events (v3 primitives)."""
     events = [
         Event(
             id="evt_001",
@@ -42,8 +42,12 @@ def make_events(count: int) -> list[Event]:
             timestamp=now_iso(),
             actor="user_test",
             source="test",
-            type="collection.create",
-            payload={"id": "items", "schema": {"name": "string"}},
+            type="schema.create",
+            payload={
+                "id": "item",
+                "interface": "interface Item { name: string; }",
+                "render_html": "<li>{{name}}</li>",
+            },
         ),
     ]
 
@@ -56,7 +60,7 @@ def make_events(count: int) -> list[Event]:
                 actor="user_test",
                 source="test",
                 type="entity.create",
-                payload={"collection": "items", "id": f"item_{i}", "fields": {"name": f"Item {i}"}},
+                payload={"id": f"item_{i}", "_schema": "item", "name": f"Item {i}"},
             )
         )
 
@@ -250,9 +254,9 @@ class TestPublishEventStripping:
         published_html = storage.published["snapshot-test"]
         parsed = parse_aide_html(published_html)
 
-        # Snapshot should have all 500 entities
-        entities = parsed.snapshot["collections"]["items"]["entities"]
-        assert len(entities) == 500  # 501 events - 1 collection.create = 500 entities
+        # Snapshot should have all 500 entities (501 events - 1 schema.create = 500)
+        entities = parsed.snapshot["entities"]
+        assert len(entities) == 500
 
 
 class TestPublishPreservesBlueprint:

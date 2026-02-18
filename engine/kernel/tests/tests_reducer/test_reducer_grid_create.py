@@ -1,363 +1,304 @@
 """
-AIde Reducer — grid.create Tests
+AIde Reducer -- Grid Create Tests (v3 Unified Entity Model)
 
-Tests for the grid.create primitive which batch-creates rows × cols entities.
-Used for Super Bowl squares, bingo cards, seating charts, etc.
+In v3, grids are expressed through the `_shape` field on entity child
+collections. A grid is a collection of cells where `_shape` describes
+the layout dimensions (e.g., [8, 8] for a chessboard, [10, 10] for
+football squares, [5, 7] for a custom grid).
+
+There is no separate grid.create primitive — grids are just entities
+with a `_shape` annotation on their child collections.
+
+Covers:
+  - entity.create with _shape in a nested collection
+  - _shape is preserved through round-trip
+  - Grid cells can be addressed by row/col identifier
+  - Grid entity can be updated (add cells)
+  - Multiple grids in the same snapshot
+  - _shape on child collection vs _shape on the entity itself
+  - Grid cell path addressing works
 """
+
+import json
 
 import pytest
 
 from engine.kernel.events import make_event
 from engine.kernel.reducer import empty_state, reduce
 
+# ============================================================================
+# Helpers
+# ============================================================================
+
+
+def snap_json(snap):
+    return json.dumps(snap, sort_keys=True)
+
+
+CHESSBOARD_INTERFACE = (
+    "interface ChessCell { piece?: string; color: string; occupied: boolean; }"
+)
+
 
 # ============================================================================
-# Fixtures
+# 1. entity.create with _shape in child collection
 # ============================================================================
 
+class TestGridCreateWithShape:
+    def test_create_entity_with_shape_annotation(self):
+        snap = empty_state()
+        result = reduce(snap, make_event(seq=1, type="entity.create", payload={
+            "id": "chessboard",
+            "name": "Chess Board",
+            "cells": {
+                "_shape": [8, 8],
+            },
+        }))
+        assert result.applied
+        entity = result.snapshot["entities"]["chessboard"]
+        assert entity["cells"]["_shape"] == [8, 8]
 
-@pytest.fixture
-def empty():
-    """Fresh empty state."""
-    return empty_state()
+    def test_create_grid_with_initial_cells(self):
+        snap = empty_state()
+        result = reduce(snap, make_event(seq=1, type="entity.create", payload={
+            "id": "ttt_board",
+            "name": "Tic-Tac-Toe",
+            "cells": {
+                "_shape": [3, 3],
+                "r0_c0": {"value": "X", "row": 0, "col": 0},
+                "r0_c1": {"value": "", "row": 0, "col": 1},
+                "r0_c2": {"value": "O", "row": 0, "col": 2},
+            },
+        }))
+        assert result.applied
+        cells = result.snapshot["entities"]["ttt_board"]["cells"]
+        assert cells["_shape"] == [3, 3]
+        assert cells["r0_c0"]["value"] == "X"
+        assert cells["r0_c2"]["value"] == "O"
+
+    def test_shape_survives_json_round_trip(self):
+        snap = empty_state()
+        result = reduce(snap, make_event(seq=1, type="entity.create", payload={
+            "id": "football_squares",
+            "name": "Super Bowl Squares",
+            "cells": {
+                "_shape": [10, 10],
+            },
+        }))
+        assert result.applied
+        rt = json.loads(json.dumps(result.snapshot, sort_keys=True))
+        assert rt["entities"]["football_squares"]["cells"]["_shape"] == [10, 10]
+
+    def test_custom_grid_shape(self):
+        snap = empty_state()
+        result = reduce(snap, make_event(seq=1, type="entity.create", payload={
+            "id": "bingo_card",
+            "name": "Bingo Card",
+            "cells": {
+                "_shape": [5, 5],
+            },
+        }))
+        assert result.applied
+        assert result.snapshot["entities"]["bingo_card"]["cells"]["_shape"] == [5, 5]
 
 
-@pytest.fixture
-def state_with_grid_collection(empty):
-    """State with a squares collection that has row/col fields."""
-    result = reduce(
-        empty,
-        make_event(
-            seq=1,
-            type="collection.create",
-            payload={
-                "id": "squares",
-                "name": "Super Bowl Squares",
-                "schema": {
-                    "row": "int",
-                    "col": "int",
-                    "owner": "string?",
+# ============================================================================
+# 2. Grid cells addressed by row/col identifier
+# ============================================================================
+
+class TestGridCellAddressing:
+    @pytest.fixture
+    def state_with_grid(self):
+        snap = empty_state()
+        r = reduce(snap, make_event(seq=1, type="entity.create", payload={
+            "id": "grid",
+            "name": "My Grid",
+            "cells": {
+                "_shape": [3, 3],
+            },
+        }))
+        assert r.applied
+        return r.snapshot
+
+    def test_update_grid_to_add_cells(self, state_with_grid):
+        result = reduce(state_with_grid, make_event(seq=2, type="entity.update", payload={
+            "id": "grid",
+            "cells": {
+                "r0_c0": {"value": "A", "row": 0, "col": 0},
+                "r1_c1": {"value": "B", "row": 1, "col": 1},
+                "r2_c2": {"value": "C", "row": 2, "col": 2},
+            },
+        }))
+        assert result.applied
+        cells = result.snapshot["entities"]["grid"]["cells"]
+        assert cells["r0_c0"]["value"] == "A"
+        assert cells["r1_c1"]["value"] == "B"
+        assert cells["r2_c2"]["value"] == "C"
+        # Shape preserved
+        assert cells["_shape"] == [3, 3]
+
+    def test_overwrite_cell_value(self, state_with_grid):
+        r1 = reduce(state_with_grid, make_event(seq=2, type="entity.update", payload={
+            "id": "grid",
+            "cells": {
+                "r0_c0": {"value": "X"},
+            },
+        }))
+        r2 = reduce(r1.snapshot, make_event(seq=3, type="entity.update", payload={
+            "id": "grid",
+            "cells": {
+                "r0_c0": {"value": "O"},
+            },
+        }))
+        assert r2.applied
+        assert r2.snapshot["entities"]["grid"]["cells"]["r0_c0"]["value"] == "O"
+
+    def test_path_based_child_create_in_grid(self, state_with_grid):
+        """Create a grid cell via path addressing."""
+        result = reduce(state_with_grid, make_event(seq=2, type="entity.create", payload={
+            "id": "grid/cells/r0_c0",
+            "value": "X",
+            "row": 0,
+            "col": 0,
+        }))
+        assert result.applied
+        cells = result.snapshot["entities"]["grid"]["cells"]
+        assert cells["r0_c0"]["value"] == "X"
+
+
+# ============================================================================
+# 3. Multiple grids in same snapshot
+# ============================================================================
+
+class TestMultipleGrids:
+    def test_two_grids_independent(self):
+        snap = empty_state()
+        r1 = reduce(snap, make_event(seq=1, type="entity.create", payload={
+            "id": "grid_8x8",
+            "name": "Chessboard",
+            "cells": {"_shape": [8, 8]},
+        }))
+        r2 = reduce(r1.snapshot, make_event(seq=2, type="entity.create", payload={
+            "id": "grid_10x10",
+            "name": "Football Squares",
+            "cells": {"_shape": [10, 10]},
+        }))
+        assert r2.applied
+
+        entities = r2.snapshot["entities"]
+        assert entities["grid_8x8"]["cells"]["_shape"] == [8, 8]
+        assert entities["grid_10x10"]["cells"]["_shape"] == [10, 10]
+
+    def test_update_one_grid_does_not_affect_other(self):
+        snap = empty_state()
+        r1 = reduce(snap, make_event(seq=1, type="entity.create", payload={
+            "id": "grid_a",
+            "name": "Grid A",
+            "cells": {"_shape": [3, 3]},
+        }))
+        r2 = reduce(r1.snapshot, make_event(seq=2, type="entity.create", payload={
+            "id": "grid_b",
+            "name": "Grid B",
+            "cells": {"_shape": [4, 4]},
+        }))
+        r3 = reduce(r2.snapshot, make_event(seq=3, type="entity.update", payload={
+            "id": "grid_a",
+            "cells": {"r0_c0": {"value": "X"}},
+        }))
+        assert r3.applied
+
+        # grid_b is unaffected
+        assert r3.snapshot["entities"]["grid_b"]["cells"]["_shape"] == [4, 4]
+        assert "r0_c0" not in r3.snapshot["entities"]["grid_b"]["cells"]
+
+
+# ============================================================================
+# 4. Schema-backed grid
+# ============================================================================
+
+class TestSchemaBackedGrid:
+    def test_grid_with_schema(self):
+        snap = empty_state()
+        r1 = reduce(snap, make_event(seq=1, type="schema.create", payload={
+            "id": "chess_cell",
+            "interface": CHESSBOARD_INTERFACE,
+            "render_html": "<div class='cell {{color}}'>{{piece}}</div>",
+            "render_text": "{{piece}}",
+        }))
+        assert r1.applied
+
+        r2 = reduce(r1.snapshot, make_event(seq=2, type="entity.create", payload={
+            "id": "board",
+            "name": "Chess Board",
+            "cells": {
+                "_shape": [8, 8],
+                "r0_c0": {
+                    "_schema": "chess_cell",
+                    "piece": "rook",
+                    "color": "dark",
+                    "occupied": True,
                 },
             },
-        ),
-    )
-    assert result.applied
-    return result.snapshot
+        }))
+        assert r2.applied
+
+        cell = r2.snapshot["entities"]["board"]["cells"]["r0_c0"]
+        assert cell["piece"] == "rook"
+        assert cell["color"] == "dark"
+        assert cell["occupied"] is True
+        assert r2.snapshot["entities"]["board"]["cells"]["_shape"] == [8, 8]
 
 
-@pytest.fixture
-def state_with_collection_missing_row_col(empty):
-    """State with a collection that lacks row/col fields."""
-    result = reduce(
-        empty,
-        make_event(
-            seq=1,
-            type="collection.create",
-            payload={
-                "id": "items",
-                "name": "Items",
-                "schema": {
-                    "name": "string",
-                    "price": "float?",
-                },
+# ============================================================================
+# 5. Grid entity removal
+# ============================================================================
+
+class TestGridEntityRemoval:
+    def test_removing_grid_entity_marks_removed(self):
+        snap = empty_state()
+        r1 = reduce(snap, make_event(seq=1, type="entity.create", payload={
+            "id": "my_grid",
+            "name": "My Grid",
+            "cells": {
+                "_shape": [5, 5],
+                "r0_c0": {"value": "A"},
             },
-        ),
-    )
-    assert result.applied
-    return result.snapshot
+        }))
+        r2 = reduce(r1.snapshot, make_event(seq=2, type="entity.remove", payload={"id": "my_grid"}))
+        assert r2.applied
+        assert r2.snapshot["entities"]["my_grid"]["_removed"] is True
 
 
 # ============================================================================
-# Happy Path Tests
+# 6. _shape on top-level entity vs on child collection
 # ============================================================================
 
+class TestShapeOnEntity:
+    def test_shape_on_entity_via_update(self):
+        """_shape can be set via entity.update on the entity itself."""
+        snap = empty_state()
+        r1 = reduce(snap, make_event(seq=1, type="entity.create", payload={
+            "id": "layout_grid",
+            "name": "Layout Grid",
+        }))
+        assert r1.applied
 
-class TestGridCreateHappyPath:
-    def test_creates_correct_number_of_entities(self, state_with_grid_collection):
-        """grid.create should create rows × cols entities."""
-        result = reduce(
-            state_with_grid_collection,
-            make_event(
-                seq=2,
-                type="grid.create",
-                payload={
-                    "collection": "squares",
-                    "rows": 10,
-                    "cols": 10,
-                },
-            ),
-        )
+        r2 = reduce(r1.snapshot, make_event(seq=2, type="entity.update", payload={
+            "id": "layout_grid",
+            "_shape": [4, 6],
+        }))
+        assert r2.applied
+        assert r2.snapshot["entities"]["layout_grid"]["_shape"] == [4, 6]
 
-        assert result.applied
-        assert result.error is None
-
-        entities = result.snapshot["collections"]["squares"]["entities"]
-        # Filter out _removed entities
-        active_entities = [e for e in entities.values() if not e.get("_removed")]
-        assert len(active_entities) == 100
-
-    def test_entities_have_correct_row_col_values(self, state_with_grid_collection):
-        """Each entity should have correct row and col field values."""
-        result = reduce(
-            state_with_grid_collection,
-            make_event(
-                seq=2,
-                type="grid.create",
-                payload={
-                    "collection": "squares",
-                    "rows": 3,
-                    "cols": 3,
-                },
-            ),
-        )
-
-        assert result.applied
-        entities = result.snapshot["collections"]["squares"]["entities"]
-
-        # Check specific cells
-        assert entities["cell_0_0"]["row"] == 0
-        assert entities["cell_0_0"]["col"] == 0
-        assert entities["cell_1_2"]["row"] == 1
-        assert entities["cell_1_2"]["col"] == 2
-        assert entities["cell_2_2"]["row"] == 2
-        assert entities["cell_2_2"]["col"] == 2
-
-    def test_nullable_fields_default_to_null(self, state_with_grid_collection):
-        """Nullable fields (like owner) should default to null."""
-        result = reduce(
-            state_with_grid_collection,
-            make_event(
-                seq=2,
-                type="grid.create",
-                payload={
-                    "collection": "squares",
-                    "rows": 2,
-                    "cols": 2,
-                },
-            ),
-        )
-
-        assert result.applied
-        entities = result.snapshot["collections"]["squares"]["entities"]
-
-        for entity in entities.values():
-            assert entity["owner"] is None
-
-    def test_entities_have_system_fields(self, state_with_grid_collection):
-        """Entities should have _removed and _created_seq fields."""
-        result = reduce(
-            state_with_grid_collection,
-            make_event(
-                seq=2,
-                type="grid.create",
-                payload={
-                    "collection": "squares",
-                    "rows": 2,
-                    "cols": 2,
-                },
-            ),
-        )
-
-        assert result.applied
-        entities = result.snapshot["collections"]["squares"]["entities"]
-
-        for entity in entities.values():
-            assert entity["_removed"] is False
-            assert entity["_created_seq"] == 2
-
-    def test_small_grid(self, state_with_grid_collection):
-        """Test a small 2x3 grid."""
-        result = reduce(
-            state_with_grid_collection,
-            make_event(
-                seq=2,
-                type="grid.create",
-                payload={
-                    "collection": "squares",
-                    "rows": 2,
-                    "cols": 3,
-                },
-            ),
-        )
-
-        assert result.applied
-        entities = result.snapshot["collections"]["squares"]["entities"]
-        assert len(entities) == 6
-
-        # Verify all expected cells exist
-        expected_ids = [
-            "cell_0_0", "cell_0_1", "cell_0_2",
-            "cell_1_0", "cell_1_1", "cell_1_2",
-        ]
-        for cell_id in expected_ids:
-            assert cell_id in entities
-
-    def test_with_defaults(self, state_with_grid_collection):
-        """Test grid.create with default values for optional fields."""
-        result = reduce(
-            state_with_grid_collection,
-            make_event(
-                seq=2,
-                type="grid.create",
-                payload={
-                    "collection": "squares",
-                    "rows": 2,
-                    "cols": 2,
-                    "defaults": {"owner": "Unclaimed"},
-                },
-            ),
-        )
-
-        assert result.applied
-        entities = result.snapshot["collections"]["squares"]["entities"]
-
-        for entity in entities.values():
-            assert entity["owner"] == "Unclaimed"
-
-
-# ============================================================================
-# Rejection Tests
-# ============================================================================
-
-
-class TestGridCreateRejections:
-    def test_rejects_nonexistent_collection(self, empty):
-        """grid.create should reject when collection doesn't exist."""
-        result = reduce(
-            empty,
-            make_event(
-                seq=1,
-                type="grid.create",
-                payload={
-                    "collection": "nonexistent",
-                    "rows": 10,
-                    "cols": 10,
-                },
-            ),
-        )
-
-        assert not result.applied
-        assert "COLLECTION_NOT_FOUND" in result.error
-
-    def test_rejects_collection_without_row_field(self, state_with_collection_missing_row_col):
-        """grid.create should reject when collection lacks row field."""
-        result = reduce(
-            state_with_collection_missing_row_col,
-            make_event(
-                seq=2,
-                type="grid.create",
-                payload={
-                    "collection": "items",
-                    "rows": 10,
-                    "cols": 10,
-                },
-            ),
-        )
-
-        assert not result.applied
-        assert "SCHEMA_MISMATCH" in result.error
-
-    def test_rejects_removed_collection(self, state_with_grid_collection):
-        """grid.create should reject when collection is removed."""
-        # First remove the collection
-        result = reduce(
-            state_with_grid_collection,
-            make_event(
-                seq=2,
-                type="collection.remove",
-                payload={"id": "squares"},
-            ),
-        )
-        snapshot = result.snapshot
-
-        # Try to create grid in removed collection
-        result = reduce(
-            snapshot,
-            make_event(
-                seq=3,
-                type="grid.create",
-                payload={
-                    "collection": "squares",
-                    "rows": 10,
-                    "cols": 10,
-                },
-            ),
-        )
-
-        assert not result.applied
-        assert "COLLECTION_NOT_FOUND" in result.error or "COLLECTION_REMOVED" in result.error
-
-
-# ============================================================================
-# Edge Cases
-# ============================================================================
-
-
-class TestGridCreateEdgeCases:
-    def test_single_cell_grid(self, state_with_grid_collection):
-        """1x1 grid should create exactly one entity."""
-        result = reduce(
-            state_with_grid_collection,
-            make_event(
-                seq=2,
-                type="grid.create",
-                payload={
-                    "collection": "squares",
-                    "rows": 1,
-                    "cols": 1,
-                },
-            ),
-        )
-
-        assert result.applied
-        entities = result.snapshot["collections"]["squares"]["entities"]
-        assert len(entities) == 1
-        assert "cell_0_0" in entities
-        assert entities["cell_0_0"]["row"] == 0
-        assert entities["cell_0_0"]["col"] == 0
-
-    def test_single_row_grid(self, state_with_grid_collection):
-        """1xN grid (single row)."""
-        result = reduce(
-            state_with_grid_collection,
-            make_event(
-                seq=2,
-                type="grid.create",
-                payload={
-                    "collection": "squares",
-                    "rows": 1,
-                    "cols": 5,
-                },
-            ),
-        )
-
-        assert result.applied
-        entities = result.snapshot["collections"]["squares"]["entities"]
-        assert len(entities) == 5
-
-        for col in range(5):
-            assert entities[f"cell_0_{col}"]["row"] == 0
-            assert entities[f"cell_0_{col}"]["col"] == col
-
-    def test_single_column_grid(self, state_with_grid_collection):
-        """Nx1 grid (single column)."""
-        result = reduce(
-            state_with_grid_collection,
-            make_event(
-                seq=2,
-                type="grid.create",
-                payload={
-                    "collection": "squares",
-                    "rows": 5,
-                    "cols": 1,
-                },
-            ),
-        )
-
-        assert result.applied
-        entities = result.snapshot["collections"]["squares"]["entities"]
-        assert len(entities) == 5
-
-        for row in range(5):
-            assert entities[f"cell_{row}_0"]["row"] == row
-            assert entities[f"cell_{row}_0"]["col"] == 0
+    def test_shape_on_entity_update(self):
+        snap = empty_state()
+        r1 = reduce(snap, make_event(seq=1, type="entity.create", payload={
+            "id": "layout_grid",
+            "name": "Layout Grid",
+        }))
+        r2 = reduce(r1.snapshot, make_event(seq=2, type="entity.update", payload={
+            "id": "layout_grid",
+            "_shape": [3, 3],
+        }))
+        assert r2.applied
+        assert r2.snapshot["entities"]["layout_grid"]["_shape"] == [3, 3]

@@ -207,7 +207,7 @@ class AideAssembly:
         blueprint = parsed.blueprint or Blueprint(identity="")
 
         version = snapshot.get("version", 1)
-        if version > 1:
+        if version > 3:
             raise VersionNotSupported(f"Snapshot version {version} not supported")
 
         last_seq = max((e.sequence for e in events), default=0)
@@ -417,7 +417,6 @@ class AideAssembly:
         from engine.kernel.reducer import replay
 
         aide_file.snapshot = replay(aide_file.events)
-        aide_file.snapshot["version"] = 1
         aide_file.html = render(aide_file.snapshot, aide_file.blueprint, aide_file.events)
         aide_file.size_bytes = len(aide_file.html.encode("utf-8"))
         return aide_file
