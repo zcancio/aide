@@ -229,8 +229,9 @@ class TestGridRendering:
         """Grid template has correct number of columns."""
         snapshot = self._grid_snapshot()
         html = render_block("block_grid", snapshot)
-        # 3 columns → "auto auto auto" in grid-template-columns
-        assert "auto" in html
+        # 3 columns → when child schema has template, uses "repeat(3, 1fr)"
+        # otherwise uses "auto auto auto"
+        assert "repeat(3, 1fr)" in html or "auto auto auto" in html
 
 
 # ============================================================================

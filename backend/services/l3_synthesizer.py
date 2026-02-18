@@ -45,8 +45,10 @@ class L3Synthesizer:
         # Call Sonnet
         messages = [{"role": "user", "content": user_content}]
 
+        from backend.config import settings
+
         result = await ai_provider.call_claude(
-            model="claude-sonnet-4-20250514",
+            model=settings.L3_MODEL,
             system=self.system_prompt,
             messages=messages,
             max_tokens=16384,  # Increased for large entity batches (grids, etc.)

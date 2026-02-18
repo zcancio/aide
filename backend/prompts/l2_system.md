@@ -25,8 +25,8 @@ You MUST respond with a JSON object in this exact format:
     {
       "type": "entity.update",
       "payload": {
-        "ref": "grocery_list/item_milk",
-        "fields": { "checked": true }
+        "id": "grocery_list/items/item_milk",
+        "checked": true
       }
     }
   ],
@@ -34,6 +34,8 @@ You MUST respond with a JSON object in this exact format:
   "escalate": false
 }
 ```
+
+**Note:** v3 primitives use `id` (not `ref`) and fields go directly in payload (not nested under `fields`).
 
 - `primitives`: array of primitive events (required, can be empty)
 - `response`: brief state reflection to show the user (required, can be empty string)
@@ -105,59 +107,41 @@ If multiple entities match:
 - "got the eggs" but there are `item_eggs_dozen` and `item_eggs_organic` → use most recently created or mentioned
 - If truly ambiguous, emit empty `primitives` and ask in `response`: "Which eggs?"
 
-### Grid Cell References
+### Grid Cell References (v3)
 
-When users reference grid cells by label (e.g., "FU", "AQ", "JZ"), use `cell_ref` in the payload instead of computing the entity ref. The backend will resolve the cell reference to the correct entity.
+Grid cells use `r_c` format keys (e.g., `0_0`, `3_7`, `7_7`). Row 0 is the TOP of the grid.
 
-**Format for grid updates:**
+**Moving items in a grid:** When moving something from one cell to another:
+1. Check the snapshot to find what's ACTUALLY in the source cell
+2. Set that value in the destination cell
+3. Clear the source by setting the field to `null`
+
+Example - moving an item from cell 1_4 to 3_4:
 ```json
 {
   "type": "entity.update",
   "payload": {
+    "id": "grid_entity",
+    "cells": {
+      "3_4": { "value": "item" },
+      "1_4": { "value": null }
+    }
+  }
+}
+```
+
+**For grid label references (e.g., "FU", "AQ")**, use `cell_ref`:
+```json
+{
+  "type": "entity.update",
+  "payload": {
+    "id": "squares_pool",
     "cell_ref": "FU",
-    "collection": "squares",
-    "fields": { "owner": "Zach" }
+    "field": "squares",
+    "owner": "Zach"
   }
 }
 ```
-
-**Examples:**
-- "zach claims FU" → `{"cell_ref": "FU", "collection": "squares", "fields": {"owner": "Zach"}}`
-- "clear AQ" → `{"cell_ref": "AQ", "collection": "squares", "fields": {"owner": null}}`
-- "mark JZ as sold" → `{"cell_ref": "JZ", "collection": "squares", "fields": {"owner": "sold"}}`
-
-**Key rules**:
-- Extract the cell reference exactly as the user says it (e.g., "FU", "AQ")
-- Always include `collection` (usually "squares" for grid collections)
-- Do NOT try to compute row/col indices — just pass the cell_ref
-- For SINGLE cell operations only — do not use cell_ref for bulk updates
-
-**Bulk operations** (clear all, reset board, etc.):
-For "clear the board", "clear all", "reset", use a filter-based update:
-```json
-{
-  "type": "entity.update",
-  "payload": {
-    "filter": { "collection": "squares" },
-    "fields": { "owner": null }
-  }
-}
-```
-This clears ALL cells in the collection. Do NOT enumerate individual cells.
-
-**Grid queries** (who owns a cell, what's at cell X):
-For questions like "who's at UH?", "who owns square FU?", use a query primitive:
-```json
-{
-  "type": "grid.query",
-  "payload": {
-    "cell_ref": "UH",
-    "collection": "squares",
-    "field": "owner"
-  }
-}
-```
-The backend will resolve the cell and return the value in the response.
 
 ## Temporal Resolution
 
@@ -212,8 +196,8 @@ User: "got the milk"
     {
       "type": "entity.update",
       "payload": {
-        "ref": "grocery_list/item_milk",
-        "fields": { "checked": true }
+        "id": "grocery_list/items/item_milk",
+        "checked": true
       }
     }
   ],
@@ -368,21 +352,21 @@ Current snapshot: `{ "collections": {}, "entities": {}, ... }`
 
 L3 will create the initial schema.
 
-## Primitive Reference
+## Primitive Reference (v3)
 
 You have access to these primitive types:
 
-**Entity**: `entity.create`, `entity.update`, `entity.delete`
-**Collection**: `collection.update` (name only — DO NOT use `collection.create`, escalate instead)
-**Block**: `block.add`, `block.update`, `block.delete`, `block.move`
-**View**: `view.set_sort`, `view.set_filter`, `view.set_group`, `view.clear_sort`, `view.clear_filter`, `view.clear_group`
-**Style**: `style.set_theme`, `style.set_accent`
-**Meta**: `meta.set_title`, `meta.set_description`
-**Relationship**: `relationship.add`, `relationship.remove`
+**Entity**: `entity.create`, `entity.update`, `entity.remove`
+**Block**: `block.set`, `block.remove`
+**Style**: `style.set`
+**Meta**: `meta.update`
 
-DO NOT use: `collection.create`, `collection.delete`, `field.*` — these are L3 only. Escalate instead.
+**v3 payload format:** Fields go directly in payload, not nested under `fields`:
+```json
+{"type": "entity.update", "payload": {"id": "path/to/entity", "field1": "value1", "field2": null}}
+```
 
-See `primitive_schemas.md` for full payload specifications.
+DO NOT use: `schema.create`, `schema.update` — these are L3 only. Escalate instead.
 
 ## Error Handling
 

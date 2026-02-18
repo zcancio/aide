@@ -65,19 +65,45 @@ def render_block(block_id: str, snapshot: dict[str, Any]) -> str:
 
 
 def render_entity(
-    entity_id: str,
+    entity_path: str,
     snapshot: dict[str, Any],
     channel: str = "html",
 ) -> str:
     """
-    Render a single top-level entity using its schema template.
+    Render an entity or nested field using its schema template.
+    Supports paths like "chessboard" (top-level) or "chessboard/squares" (nested field).
     Returns an HTML or text fragment.
     Pure function. No side effects. No IO.
     """
+    # Parse path: entity_id or entity_id/field_name
+    parts = entity_path.split("/")
+    entity_id = parts[0]
+
     entity = snapshot.get("entities", {}).get(entity_id)
     if entity is None or entity.get("_removed"):
         return ""
 
+    # If path has more parts, navigate to the nested field
+    if len(parts) > 1:
+        field_name = parts[1]
+        field_value = entity.get(field_name)
+        if field_value is None:
+            return ""
+
+        # Try to infer child schema from parent's schema interface
+        # e.g., "squares: Record<string, Square>" -> child schema is "square"
+        parent_schema_id = entity.get("_schema", "")
+        child_schema_id = _infer_child_schema(parent_schema_id, field_name, snapshot)
+
+        # If field is a Record with _shape, render as grid
+        if isinstance(field_value, dict) and "_shape" in field_value:
+            return _render_grid_collection(field_value, field_value["_shape"], snapshot, channel, child_schema_id)
+        # Otherwise render as child collection
+        if isinstance(field_value, dict):
+            return _render_child_collection(field_value, field_name, snapshot, channel, child_schema_id)
+        return ""
+
+    # Top-level entity rendering
     schema_id = entity.get("_schema", "")
     schema = snapshot.get("schemas", {}).get(schema_id, {})
 
@@ -90,6 +116,53 @@ def render_entity(
         return _default_entity_html(entity_id, entity, snapshot, channel)
 
     return _render_entity_with_template(entity_id, entity, template, snapshot, channel, schema_id)
+
+
+def _infer_child_schema(parent_schema_id: str, field_name: str, snapshot: dict[str, Any]) -> str | None:
+    """
+    Infer the child schema ID from a parent schema's interface.
+
+    Given a parent schema with interface like:
+        interface Chessboard { squares: Record<string, Square>; }
+
+    And field_name "squares", returns "square" (lowercase of "Square").
+
+    Returns None if unable to infer.
+    """
+    if not parent_schema_id:
+        return None
+
+    parent_schema = snapshot.get("schemas", {}).get(parent_schema_id, {})
+    interface_src = parent_schema.get("interface", "")
+    if not interface_src:
+        return None
+
+    # Parse interface to get field types
+    iface = parse_interface_cached(interface_src)
+    if iface is None:
+        return None
+
+    field_info = iface.fields.get(field_name)
+    if not field_info:
+        return None
+
+    # field_info.ts_type might be "Record<string, Square>" or similar
+    # Extract the value type from Record<K, V>
+    type_str = field_info.ts_type
+    match = re.search(r"Record<[^,]+,\s*(\w+)>", type_str)
+    if match:
+        child_type = match.group(1)
+        # Convert to snake_case and check if schema exists
+        child_schema_id = child_type.lower()
+        if child_schema_id in snapshot.get("schemas", {}):
+            return child_schema_id
+        # Try snake_case conversion for PascalCase
+        # e.g., GroceryItem -> grocery_item
+        snake_case_id = re.sub(r"(?<!^)(?=[A-Z])", "_", child_type).lower()
+        if snake_case_id in snapshot.get("schemas", {}):
+            return snake_case_id
+
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -343,7 +416,9 @@ def _render_block(block_id: str, snapshot: dict[str, Any]) -> str:
         )
 
     if block_type == "entity_view":
-        source = block.get("source", "")
+        # source can be in props (v3) or directly on block (legacy)
+        props = block.get("props", {})
+        source = props.get("source", "") or block.get("source", "")
         if source:
             return render_entity(source, snapshot, channel="html")
         return ""
@@ -582,12 +657,22 @@ def _render_grid_collection(
         return _render_child_collection_no_shape(collection, snapshot, channel)
 
     rows, cols = shape[0], shape[1]
-    collection.get("col_labels", [str(i) for i in range(cols)])
-    collection.get("row_labels", [str(i) for i in range(rows)])
 
-    css_cols = " ".join(["auto"] * cols)
+    # Check if child schema provides its own template - if so, render without wrapper divs
+    child_schema = snapshot.get("schemas", {}).get(inferred_schema_id or "", {})
+    has_schema_template = bool(child_schema.get("render_html", ""))
 
-    parts = [f'<div class="aide-grid" style="grid-template-columns: {css_cols};">']
+    # Use minimal grid wrapper if schema provides template (cells handle their own styling)
+    # Otherwise use aide-grid with auto columns for generic rendering
+    if has_schema_template:
+        # Use fixed cell size for proper grid rendering (50px default, scales to ~400px for 8x8)
+        cell_size = max(30, min(60, 400 // max(rows, cols)))
+        grid_width = cell_size * cols
+        grid_height = cell_size * rows
+        parts = [f'<div class="aide-grid" style="display: grid; grid-template-columns: repeat({cols}, {cell_size}px); grid-template-rows: repeat({rows}, {cell_size}px); width: {grid_width}px; height: {grid_height}px; gap: 0;">']
+    else:
+        css_cols = " ".join(["auto"] * cols)
+        parts = [f'<div class="aide-grid" style="grid-template-columns: {css_cols};">']
 
     for row in range(rows):
         for col in range(cols):
@@ -604,14 +689,28 @@ def _render_grid_collection(
                         content = chevron.render(resolved, cell_context)
                     except Exception:
                         content = escape(str(next(iter(v for k, v in cell.items() if not k.startswith("_")), "")))
+                    # Output template directly without wrapper when schema provides template
+                    parts.append(content)
                 else:
-                    # First non-system field as content
+                    # First non-system field as content - use wrapper for generic cells
                     first_val = next((v for k, v in cell.items() if not k.startswith("_")), "")
                     content = escape(str(first_val)) if first_val else ""
+                    parts.append(f'<div class="aide-grid-cell">{content}</div>')
             else:
-                content = ""
-
-            parts.append(f'<div class="aide-grid-cell">{content}</div>')
+                # Empty cell - render as schema template with no data or plain wrapper
+                if has_schema_template:
+                    cell_template = child_schema.get("render_html", "")
+                    if cell_template:
+                        cell_context = _build_entity_context(key, {}, snapshot, channel)
+                        try:
+                            content = chevron.render(cell_template, cell_context)
+                        except Exception:
+                            content = ""
+                        parts.append(content)
+                    else:
+                        parts.append('<div class="aide-grid-cell"></div>')
+                else:
+                    parts.append('<div class="aide-grid-cell"></div>')
 
     parts.append("</div>")
     return "\n".join(parts)

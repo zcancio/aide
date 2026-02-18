@@ -44,8 +44,10 @@ class L2Compiler:
         # Call Haiku
         messages = [{"role": "user", "content": user_content}]
 
+        from backend.config import settings
+
         result = await ai_provider.call_claude(
-            model="claude-3-5-haiku-20241022",
+            model=settings.L2_MODEL,
             system=self.system_prompt,
             messages=messages,
             max_tokens=4096,

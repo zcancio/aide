@@ -88,9 +88,9 @@ class Orchestrator:
 
         try:
             # Check if image input or empty snapshot → route to L3
-            if image_data or not snapshot.collections:
+            if image_data or not snapshot.schemas:
                 # Route to L3 (production model)
-                print(f"Routing to L3 (image={bool(image_data)}, empty_snapshot={not snapshot.collections})")
+                print(f"Routing to L3 (image={bool(image_data)}, empty_snapshot={not snapshot.schemas})")
                 l3_result = await self._call_l3(
                     recorder=recorder,
                     message=message,
@@ -623,7 +623,7 @@ class Orchestrator:
         escalated = False
 
         try:
-            if not snapshot.collections:
+            if not snapshot.schemas:
                 # Route to L3
                 route = "L3"
                 l3_result = await self._call_l3(
