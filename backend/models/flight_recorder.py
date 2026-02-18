@@ -15,6 +15,9 @@ class LLMCallSummary(BaseModel):
     model: str
     tier: str  # "L2" or "L3"
     latency_ms: int
+    prompt: str
+    response: str
+    usage: dict[str, int]
     error: str | None = None
 
 
@@ -31,6 +34,7 @@ class TurnSummary(BaseModel):
     primitives_emitted: list[dict[str, Any]]
     primitives_applied: int
     total_latency_ms: int
+    error: str | None = None  # Turn-level error if failed
 
 
 class FlightRecorderListResponse(BaseModel):

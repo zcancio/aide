@@ -120,19 +120,31 @@
     }
 
     function FlightRecorderApp() {
+      // Get aide_id from URL and initial turn from hash (must be before state declarations)
+      const params = new URLSearchParams(window.location.search);
+      const aideId = params.get('aide_id');
+      const getInitialTurn = () => {
+        const hash = window.location.hash;
+        if (hash && hash.startsWith('#turn=')) {
+          const turnNum = parseInt(hash.slice(6), 10);
+          return isNaN(turnNum) ? 0 : Math.max(0, turnNum - 1); // Convert 1-based to 0-based
+        }
+        return 0;
+      };
+
       const [loading, setLoading] = useState(true);
       const [error, setError] = useState(null);
       const [recording, setRecording] = useState(null);
-      const [currentTurn, setCurrentTurn] = useState(0);
+      const [currentTurn, setCurrentTurn] = useState(getInitialTurn);
       const [isPlaying, setIsPlaying] = useState(false);
       const [playSpeed, setPlaySpeed] = useState(2000);
+      const [expandedCall, setExpandedCall] = useState(null);
+      const [copyStatus, setCopyStatus] = useState(null);
+      const [isReplaying, setIsReplaying] = useState(false);
+      const [replayResult, setReplayResult] = useState(null);
       const iframeRef = useRef(null);
       const chatEndRef = useRef(null);
       const intervalRef = useRef(null);
-
-      // Get aide_id from URL
-      const params = new URLSearchParams(window.location.search);
-      const aideId = params.get('aide_id');
 
       // Fetch data on mount
       useEffect(() => {
@@ -178,14 +190,28 @@
       // Update iframe when turn changes
       useEffect(() => {
         if (iframeRef.current && recording && recording.turns.length > 0) {
-          iframeRef.current.src = `/api/flight-recorder/${aideId}/render?turn_index=${currentTurn}`;
+          const safeIndex = Math.min(currentTurn, recording.turns.length - 1);
+          iframeRef.current.src = `/api/flight-recorder/${aideId}/render?turn_index=${safeIndex}`;
         }
       }, [currentTurn, recording, aideId]);
 
-      // Scroll chat
+      // Scroll chat, reset expanded call, and update URL hash
       useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        setExpandedCall(null);
+        // Update hash with 1-based turn number
+        window.history.replaceState(null, '', `#turn=${currentTurn + 1}`);
       }, [currentTurn]);
+
+      // Cap turn to valid range once data loads
+      useEffect(() => {
+        if (recording && recording.turns.length > 0) {
+          const maxTurn = recording.turns.length - 1;
+          if (currentTurn > maxTurn) {
+            setCurrentTurn(maxTurn);
+          }
+        }
+      }, [recording, currentTurn]);
 
       // Playback
       useEffect(() => {
@@ -265,9 +291,10 @@
         );
       }
 
-      const turn = recording.turns[currentTurn];
       const totalTurns = recording.turns.length;
-      const progress = ((currentTurn) / (totalTurns - 1)) * 100;
+      const safeTurnIndex = Math.min(currentTurn, totalTurns - 1);
+      const turn = recording.turns[safeTurnIndex];
+      const progress = ((safeTurnIndex) / (totalTurns - 1)) * 100;
 
       const formatTime = (ts) => {
         const d = new Date(ts);
@@ -326,7 +353,7 @@
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 16, fontSize: 12, color: "#64748b" }}>
               <span>
-                Turn {currentTurn + 1} / {totalTurns}
+                Turn {safeTurnIndex + 1} / {totalTurns}
               </span>
               <span>{formatTime(turn.timestamp)}</span>
               <span
@@ -344,6 +371,91 @@
               <span style={{ color: "#64748b", fontFamily: "monospace" }}>
                 {turn.total_latency_ms}ms
               </span>
+              <button
+                onClick={async () => {
+                  setCopyStatus('copying');
+                  try {
+                    const res = await fetch(`/api/flight-recorder/${aideId}/export?turn_index=${safeTurnIndex}`, { credentials: 'include' });
+                    const data = await res.json();
+                    await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+                    setCopyStatus('copied');
+                    setTimeout(() => setCopyStatus(null), 2000);
+                  } catch (e) {
+                    setCopyStatus('error');
+                    setTimeout(() => setCopyStatus(null), 2000);
+                  }
+                }}
+                style={{
+                  background: copyStatus === 'copied' ? "#166534" : copyStatus === 'error' ? "#991b1b" : "#1e293b",
+                  border: copyStatus === 'copied' ? "1px solid #22c55e" : copyStatus === 'error' ? "1px solid #ef4444" : "1px solid #334155",
+                  color: copyStatus === 'copied' ? "#86efac" : copyStatus === 'error' ? "#fca5a5" : "#94a3b8",
+                  cursor: "pointer",
+                  fontSize: 11,
+                  padding: "4px 10px",
+                  borderRadius: 4,
+                  transition: "all 0.15s ease",
+                  minWidth: 60,
+                }}
+                title="Copy turn JSON to clipboard"
+              >
+                {copyStatus === 'copying' ? '...' : copyStatus === 'copied' ? 'Copied!' : copyStatus === 'error' ? 'Error' : 'Copy'}
+              </button>
+              <button
+                onClick={async () => {
+                  const res = await fetch(`/api/flight-recorder/${aideId}/export?turn_index=${safeTurnIndex}`, { credentials: 'include' });
+                  const data = await res.json();
+                  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `turn_${safeTurnIndex + 1}.json`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+                style={{
+                  background: "#1e293b",
+                  border: "1px solid #334155",
+                  color: "#94a3b8",
+                  cursor: "pointer",
+                  fontSize: 11,
+                  padding: "4px 10px",
+                  borderRadius: 4,
+                }}
+                title="Download turn as JSON file"
+              >
+                Export
+              </button>
+              <button
+                onClick={async () => {
+                  setIsReplaying(true);
+                  setReplayResult(null);
+                  try {
+                    const res = await fetch(`/api/flight-recorder/${aideId}/replay?turn_index=${safeTurnIndex}`, {
+                      method: 'POST',
+                      credentials: 'include'
+                    });
+                    const data = await res.json();
+                    setReplayResult(data);
+                  } catch (e) {
+                    setReplayResult({ error: e.message });
+                  }
+                  setIsReplaying(false);
+                }}
+                disabled={isReplaying}
+                style={{
+                  background: isReplaying ? "#0f172a" : "#1e40af",
+                  border: "1px solid #3b82f6",
+                  color: isReplaying ? "#64748b" : "#93c5fd",
+                  cursor: isReplaying ? "wait" : "pointer",
+                  fontSize: 11,
+                  padding: "4px 10px",
+                  borderRadius: 4,
+                  fontWeight: 600,
+                }}
+                title="Replay turn with current models (dry run)"
+              >
+                {isReplaying ? 'Replaying...' : 'Replay'}
+              </button>
             </div>
           </div>
 
@@ -370,17 +482,17 @@
                 <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "1.5px", color: "#475569", marginBottom: 16, fontWeight: 600 }}>
                   Conversation
                 </div>
-                {recording.turns.slice(0, currentTurn + 1).map((t, i) => (
+                {recording.turns.slice(0, safeTurnIndex + 1).map((t, i) => (
                   <div key={i} style={{ marginBottom: 12 }}>
                     <ChatBubble
                       text={t.user_message}
                       isUser={true}
-                      isActive={i === currentTurn}
+                      isActive={i === safeTurnIndex}
                     />
                     <ChatBubble
                       text={t.response_text}
                       isUser={false}
-                      isActive={i === currentTurn}
+                      isActive={i === safeTurnIndex}
                     />
                   </div>
                 ))}
@@ -392,19 +504,157 @@
                 style={{
                   borderTop: "1px solid #1e1e2e",
                   padding: "12px 14px",
-                  maxHeight: 220,
+                  maxHeight: 140,
                   overflowY: "auto",
                   background: "#0a0a12",
                 }}
               >
                 <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "1.5px", color: "#475569", marginBottom: 10, fontWeight: 600 }}>
-                  Events emitted - Turn {currentTurn + 1}
+                  Events emitted
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {turn.primitives_emitted.map((evt, i) => (
                     <EventPill key={i} event={evt} />
                   ))}
                 </div>
+              </div>
+
+              {/* LLM Calls for current turn */}
+              <div
+                style={{
+                  borderTop: "1px solid #1e1e2e",
+                  padding: "12px 14px",
+                  flex: expandedCall !== null ? 1 : "none",
+                  maxHeight: expandedCall !== null ? "none" : 180,
+                  overflowY: "auto",
+                  background: "#080810",
+                }}
+              >
+                <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "1.5px", color: "#475569", marginBottom: 10, fontWeight: 600 }}>
+                  LLM Calls
+                </div>
+                {turn.llm_calls.length === 0 ? (
+                  <div style={{ fontSize: 12, color: "#64748b", fontStyle: "italic" }}>No LLM calls recorded</div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {turn.llm_calls.map((call, i) => {
+                      const isExpanded = expandedCall === call.call_id;
+                      return (
+                        <div
+                          key={i}
+                          style={{
+                            padding: "8px 10px",
+                            borderRadius: 4,
+                            background: call.shadow ? "#1a1a2e" : "#0f2a1f",
+                            border: call.shadow ? "1px solid #334155" : "1px solid #22543d",
+                            fontSize: 11,
+                            cursor: "pointer",
+                          }}
+                          onClick={() => setExpandedCall(isExpanded ? null : call.call_id)}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                            <span style={{ color: "#64748b", fontSize: 10 }}>
+                              {isExpanded ? "▼" : "▶"}
+                            </span>
+                            <span
+                              style={{
+                                padding: "2px 6px",
+                                borderRadius: 3,
+                                background: call.shadow ? "#475569" : "#22543d",
+                                color: call.shadow ? "#94a3b8" : "#86efac",
+                                fontWeight: 600,
+                                fontSize: 9,
+                                textTransform: "uppercase",
+                              }}
+                            >
+                              {call.shadow ? "Shadow" : "Production"}
+                            </span>
+                            <span
+                              style={{
+                                padding: "2px 6px",
+                                borderRadius: 3,
+                                background: call.tier === "L3" ? "#4c1d95" : "#1e293b",
+                                color: call.tier === "L3" ? "#c4b5fd" : "#94a3b8",
+                                fontWeight: 600,
+                                fontSize: 9,
+                              }}
+                            >
+                              {call.tier}
+                            </span>
+                            <span style={{ color: "#64748b", fontFamily: "monospace" }}>
+                              {call.latency_ms}ms
+                            </span>
+                            {call.usage && call.usage.input_tokens && (
+                              <span style={{ color: "#64748b", fontFamily: "monospace", fontSize: 9 }}>
+                                {call.usage.input_tokens}→{call.usage.output_tokens} tok
+                              </span>
+                            )}
+                            {call.error && (
+                              <span style={{ color: "#f87171", fontSize: 10 }}>
+                                Error
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ color: "#cbd5e1", fontFamily: "monospace", fontSize: 10 }}>
+                            {call.model}
+                          </div>
+                          {isExpanded && (
+                            <div style={{ marginTop: 12 }}>
+                              {/* Prompt */}
+                              <div style={{ marginBottom: 12 }}>
+                                <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "1px", color: "#64748b", marginBottom: 6, fontWeight: 600 }}>
+                                  Prompt
+                                </div>
+                                <pre
+                                  style={{
+                                    background: "#0a0a12",
+                                    border: "1px solid #1e1e2e",
+                                    borderRadius: 4,
+                                    padding: 10,
+                                    fontSize: 10,
+                                    color: "#94a3b8",
+                                    whiteSpace: "pre-wrap",
+                                    wordBreak: "break-word",
+                                    maxHeight: 200,
+                                    overflowY: "auto",
+                                    margin: 0,
+                                    fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
+                                  }}
+                                >
+                                  {call.prompt || "(no prompt recorded)"}
+                                </pre>
+                              </div>
+                              {/* Response */}
+                              <div>
+                                <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "1px", color: "#64748b", marginBottom: 6, fontWeight: 600 }}>
+                                  Response
+                                </div>
+                                <pre
+                                  style={{
+                                    background: "#0a0a12",
+                                    border: "1px solid #1e1e2e",
+                                    borderRadius: 4,
+                                    padding: 10,
+                                    fontSize: 10,
+                                    color: call.error ? "#f87171" : "#86efac",
+                                    whiteSpace: "pre-wrap",
+                                    wordBreak: "break-word",
+                                    maxHeight: 200,
+                                    overflowY: "auto",
+                                    margin: 0,
+                                    fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
+                                  }}
+                                >
+                                  {call.error || call.response || "(no response recorded)"}
+                                </pre>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -447,6 +697,418 @@
             </div>
           </div>
 
+          {/* Replay comparison modal */}
+          {replayResult && (
+            <div
+              style={{
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: "rgba(0,0,0,0.85)",
+                zIndex: 1000,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 20,
+              }}
+              onClick={() => setReplayResult(null)}
+            >
+              <div
+                style={{
+                  background: "#0f0f17",
+                  border: "1px solid #1e1e2e",
+                  borderRadius: 8,
+                  width: "95%",
+                  maxWidth: 1400,
+                  maxHeight: "90vh",
+                  overflow: "hidden",
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Modal header */}
+                <div
+                  style={{
+                    padding: "12px 20px",
+                    borderBottom: "1px solid #1e1e2e",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    flexShrink: 0,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: "#e2e8f0" }}>
+                      Replay Comparison
+                    </span>
+                    <span style={{ fontSize: 12, color: "#64748b" }}>
+                      Turn {safeTurnIndex + 1}: "{turn.user_message.slice(0, 50)}{turn.user_message.length > 50 ? '...' : ''}"
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setReplayResult(null)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#64748b",
+                      fontSize: 20,
+                      cursor: "pointer",
+                      padding: "4px 8px",
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+
+                {/* Modal content */}
+                <div
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    overflow: "hidden",
+                  }}
+                >
+                  {/* Original column */}
+                  <div
+                    style={{
+                      flex: 1,
+                      borderRight: "1px solid #1e1e2e",
+                      display: "flex",
+                      flexDirection: "column",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        padding: "10px 16px",
+                        borderBottom: "1px solid #1e1e2e",
+                        background: "#0a0a12",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        textTransform: "uppercase",
+                        letterSpacing: "1px",
+                        color: "#64748b",
+                        flexShrink: 0,
+                      }}
+                    >
+                      Original (recorded)
+                    </div>
+                    <div style={{ flex: 1, padding: 16, overflowY: "auto" }}>
+                      {/* Response */}
+                      <div style={{ marginBottom: 16 }}>
+                        <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", color: "#64748b", marginBottom: 6, fontWeight: 600 }}>
+                          Response
+                        </div>
+                        <div
+                          style={{
+                            background: "#1e1e2e",
+                            borderRadius: 4,
+                            padding: 12,
+                            fontSize: 13,
+                            color: "#e2e8f0",
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          {turn.response_text || "(empty response)"}
+                        </div>
+                      </div>
+
+                      {/* Primitives */}
+                      <div style={{ marginBottom: 16 }}>
+                        <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", color: "#64748b", marginBottom: 6, fontWeight: 600 }}>
+                          Primitives ({turn.primitives_emitted.length})
+                        </div>
+                        <pre
+                          style={{
+                            background: "#1e1e2e",
+                            borderRadius: 4,
+                            padding: 12,
+                            fontSize: 10,
+                            color: "#94a3b8",
+                            whiteSpace: "pre-wrap",
+                            wordBreak: "break-word",
+                            maxHeight: 200,
+                            overflowY: "auto",
+                            margin: 0,
+                            fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
+                          }}
+                        >
+                          {JSON.stringify(turn.primitives_emitted, null, 2)}
+                        </pre>
+                      </div>
+
+                      {/* LLM Calls */}
+                      <div>
+                        <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", color: "#64748b", marginBottom: 6, fontWeight: 600 }}>
+                          LLM Calls
+                        </div>
+                        {turn.llm_calls.map((call, i) => (
+                          <div
+                            key={i}
+                            style={{
+                              background: call.shadow ? "#1a1a2e" : "#0f2a1f",
+                              border: call.shadow ? "1px solid #334155" : "1px solid #22543d",
+                              borderRadius: 4,
+                              padding: 10,
+                              marginBottom: 8,
+                              fontSize: 11,
+                            }}
+                          >
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                              <span
+                                style={{
+                                  padding: "2px 6px",
+                                  borderRadius: 3,
+                                  background: call.shadow ? "#475569" : "#22543d",
+                                  color: call.shadow ? "#94a3b8" : "#86efac",
+                                  fontWeight: 600,
+                                  fontSize: 9,
+                                  textTransform: "uppercase",
+                                }}
+                              >
+                                {call.shadow ? "Shadow" : "Production"}
+                              </span>
+                              <span style={{ color: "#94a3b8", fontFamily: "monospace", fontSize: 10 }}>
+                                {call.model}
+                              </span>
+                            </div>
+                            <pre
+                              style={{
+                                background: "#0a0a12",
+                                borderRadius: 4,
+                                padding: 8,
+                                fontSize: 9,
+                                color: "#86efac",
+                                whiteSpace: "pre-wrap",
+                                wordBreak: "break-word",
+                                maxHeight: 150,
+                                overflowY: "auto",
+                                margin: 0,
+                                fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
+                              }}
+                            >
+                              {call.response || "(no response)"}
+                            </pre>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Replay column */}
+                  <div
+                    style={{
+                      flex: 1,
+                      display: "flex",
+                      flexDirection: "column",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        padding: "10px 16px",
+                        borderBottom: "1px solid #1e1e2e",
+                        background: "#0f1a0f",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        textTransform: "uppercase",
+                        letterSpacing: "1px",
+                        color: "#4ade80",
+                        flexShrink: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                    >
+                      Replay (current models)
+                      {replayResult.error && (
+                        <span style={{ color: "#f87171", fontWeight: 400 }}>
+                          - Error: {replayResult.error}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ flex: 1, padding: 16, overflowY: "auto" }}>
+                      {replayResult.error ? (
+                        <div style={{ color: "#f87171" }}>{replayResult.error}</div>
+                      ) : (
+                        <>
+                          {/* Response */}
+                          <div style={{ marginBottom: 16 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                              <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", color: "#64748b", fontWeight: 600 }}>
+                                Response
+                              </span>
+                              {replayResult.response !== turn.response_text && (
+                                <span style={{ fontSize: 9, padding: "2px 6px", background: "#7c2d12", color: "#fdba74", borderRadius: 3 }}>
+                                  DIFFERENT
+                                </span>
+                              )}
+                            </div>
+                            <div
+                              style={{
+                                background: replayResult.response !== turn.response_text ? "#1a1a1a" : "#1e1e2e",
+                                border: replayResult.response !== turn.response_text ? "1px solid #f59e0b" : "none",
+                                borderRadius: 4,
+                                padding: 12,
+                                fontSize: 13,
+                                color: "#e2e8f0",
+                                lineHeight: 1.5,
+                              }}
+                            >
+                              {replayResult.response || "(empty response)"}
+                            </div>
+                          </div>
+
+                          {/* Primitives (raw from LLM) */}
+                          <div style={{ marginBottom: 16 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                              <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", color: "#64748b", fontWeight: 600 }}>
+                                Primitives (raw) ({replayResult.primitives_raw?.length || 0})
+                              </span>
+                            </div>
+                            <pre
+                              style={{
+                                background: "#1e1e2e",
+                                borderRadius: 4,
+                                padding: 12,
+                                fontSize: 10,
+                                color: "#94a3b8",
+                                whiteSpace: "pre-wrap",
+                                wordBreak: "break-word",
+                                maxHeight: 150,
+                                overflowY: "auto",
+                                margin: 0,
+                                fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
+                              }}
+                            >
+                              {JSON.stringify(replayResult.primitives_raw || [], null, 2)}
+                            </pre>
+                          </div>
+
+                          {/* Grid Resolution */}
+                          {replayResult.grid_resolution_error ? (
+                            <div style={{ marginBottom: 16 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                                <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", color: "#f87171", fontWeight: 600 }}>
+                                  Grid Resolution Error
+                                </span>
+                              </div>
+                              <div
+                                style={{
+                                  background: "#1a0a0a",
+                                  border: "1px solid #991b1b",
+                                  borderRadius: 4,
+                                  padding: 12,
+                                  fontSize: 12,
+                                  color: "#fca5a5",
+                                }}
+                              >
+                                {replayResult.grid_resolution_error}
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ marginBottom: 16 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                                <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", color: "#64748b", fontWeight: 600 }}>
+                                  Resolved Primitives ({replayResult.primitives?.length || 0})
+                                </span>
+                                {JSON.stringify(replayResult.primitives) !== JSON.stringify(turn.primitives_emitted) && (
+                                  <span style={{ fontSize: 9, padding: "2px 6px", background: "#7c2d12", color: "#fdba74", borderRadius: 3 }}>
+                                    DIFFERENT
+                                  </span>
+                                )}
+                              </div>
+                              <pre
+                                style={{
+                                  background: JSON.stringify(replayResult.primitives) !== JSON.stringify(turn.primitives_emitted) ? "#1a1a1a" : "#1e1e2e",
+                                  border: JSON.stringify(replayResult.primitives) !== JSON.stringify(turn.primitives_emitted) ? "1px solid #f59e0b" : "none",
+                                  borderRadius: 4,
+                                  padding: 12,
+                                  fontSize: 10,
+                                  color: "#94a3b8",
+                                  whiteSpace: "pre-wrap",
+                                  wordBreak: "break-word",
+                                  maxHeight: 150,
+                                  overflowY: "auto",
+                                  margin: 0,
+                                  fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
+                                }}
+                              >
+                                {JSON.stringify(replayResult.primitives || [], null, 2)}
+                              </pre>
+                            </div>
+                          )}
+
+                          {/* LLM Calls */}
+                          <div>
+                            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", color: "#64748b", marginBottom: 6, fontWeight: 600 }}>
+                              LLM Calls ({replayResult.route}{replayResult.escalated ? ' → L3 escalated' : ''})
+                            </div>
+                            {(replayResult.llm_calls || []).map((call, i) => (
+                              <div
+                                key={i}
+                                style={{
+                                  background: call.shadow ? "#1a1a2e" : "#0f2a1f",
+                                  border: call.shadow ? "1px solid #334155" : "1px solid #22543d",
+                                  borderRadius: 4,
+                                  padding: 10,
+                                  marginBottom: 8,
+                                  fontSize: 11,
+                                }}
+                              >
+                                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                                  <span
+                                    style={{
+                                      padding: "2px 6px",
+                                      borderRadius: 3,
+                                      background: call.shadow ? "#475569" : "#22543d",
+                                      color: call.shadow ? "#94a3b8" : "#86efac",
+                                      fontWeight: 600,
+                                      fontSize: 9,
+                                      textTransform: "uppercase",
+                                    }}
+                                  >
+                                    {call.shadow ? "Shadow" : "Production"}
+                                  </span>
+                                  <span style={{ color: "#94a3b8", fontFamily: "monospace", fontSize: 10 }}>
+                                    {call.model}
+                                  </span>
+                                  <span style={{ color: "#64748b", fontFamily: "monospace", fontSize: 9 }}>
+                                    {call.latency_ms}ms
+                                  </span>
+                                </div>
+                                <pre
+                                  style={{
+                                    background: "#0a0a12",
+                                    borderRadius: 4,
+                                    padding: 8,
+                                    fontSize: 9,
+                                    color: call.error ? "#f87171" : "#86efac",
+                                    whiteSpace: "pre-wrap",
+                                    wordBreak: "break-word",
+                                    maxHeight: 150,
+                                    overflowY: "auto",
+                                    margin: 0,
+                                    fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
+                                  }}
+                                >
+                                  {call.error || call.response || "(no response)"}
+                                </pre>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Timeline / scrub bar */}
           <div
             style={{
@@ -474,7 +1136,7 @@
                 }}
                 title="Rewind (Home)"
               >
-                &#x23EE;
+                ⏮
               </button>
 
               {/* Prev */}
@@ -491,7 +1153,7 @@
                 }}
                 title="Previous (Left Arrow)"
               >
-                &#x25C2;
+                ◂
               </button>
 
               {/* Play/Pause */}
@@ -514,7 +1176,7 @@
                 }}
                 title="Play/Pause (Space)"
               >
-                {isPlaying ? "&#x23F8;" : "&#x25B6;"}
+                {isPlaying ? "⏸" : "▶"}
               </button>
 
               {/* Next */}
@@ -531,7 +1193,7 @@
                 }}
                 title="Next (Right Arrow)"
               >
-                &#x25B8;
+                ▸
               </button>
 
               {/* Speed */}
@@ -571,10 +1233,10 @@
               style={{
                 position: "relative",
                 height: 40,
+                marginTop: 24,
                 cursor: "pointer",
                 borderRadius: 6,
                 background: "#1e1e2e",
-                overflow: "hidden",
               }}
             >
               {/* Progress fill */}
@@ -594,7 +1256,7 @@
               {/* Turn markers */}
               {recording.turns.map((t, i) => {
                 const x = (i / (totalTurns - 1)) * 100;
-                const isActive = i === currentTurn;
+                const isActive = i === safeTurnIndex;
                 const isL3 = getTier(t) === "L3";
                 return (
                   <div

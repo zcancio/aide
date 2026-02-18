@@ -67,17 +67,22 @@ class L2Compiler:
             if end > start:
                 content = content[start:end].strip()
 
+        raw_response = result["content"]
+        usage = result.get("usage", {"input_tokens": 0, "output_tokens": 0})
+
         try:
             response_data = json.loads(content)
         except json.JSONDecodeError as e:
             # L2 failed to return valid JSON — escalate to L3
             print(f"L2 invalid JSON, escalating: {e}")
-            print(f"L2 raw content (first 500): {result['content'][:500]}")
+            print(f"L2 raw content (first 500): {raw_response[:500]}")
             return {
                 "primitives": [],
                 "response": "",
                 "escalate": True,
                 "error": f"L2 returned invalid JSON: {e}",
+                "_raw_response": raw_response,
+                "usage": usage,
             }
 
         primitives_count = len(response_data.get("primitives", []))
@@ -91,6 +96,8 @@ class L2Compiler:
                 "primitives": [],
                 "response": "",
                 "escalate": True,
+                "_raw_response": raw_response,
+                "usage": usage,
             }
 
         # Validate primitives
@@ -106,6 +113,8 @@ class L2Compiler:
                     "primitives": [],
                     "response": "",
                     "escalate": True,
+                    "_raw_response": raw_response,
+                    "usage": usage,
                 }
             validated_primitives.append(primitive)
 
@@ -113,6 +122,8 @@ class L2Compiler:
             "primitives": validated_primitives,
             "response": response_data.get("response", ""),
             "escalate": False,
+            "_raw_response": raw_response,
+            "usage": usage,
         }
 
     def _build_user_message(self, message: str, snapshot: Snapshot, recent_events: list[Event]) -> str:

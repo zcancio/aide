@@ -156,10 +156,31 @@ class Orchestrator:
                         recent_events=recent_events,
                     )
         except Exception as e:
-            # AI call failed even after retries — return user-friendly error
+            # AI call failed even after retries — record failed turn and return error
             print(f"AI routing failed: {e}")
+            error_response = "Something went wrong processing that message. Please try again."
+
+            # Save messages to conversation even on failure
+            user_msg = Message(role="user", content=message, timestamp=datetime.now(UTC))
+            await self.conv_repo.append_message(user_id, conversation.id, user_msg)
+            assistant_msg = Message(
+                role="assistant",
+                content=error_response,
+                timestamp=datetime.now(UTC),
+                metadata={"error": str(e)},
+            )
+            await self.conv_repo.append_message(user_id, conversation.id, assistant_msg)
+
+            turn_record = recorder.end_turn(
+                snapshot_after=snapshot_before,  # No change on failure
+                primitives_emitted=[],
+                primitives_applied=0,
+                response_text=error_response,
+                error=str(e),
+            )
+            flight_recorder_uploader.enqueue(turn_record)
             return {
-                "response": "Something went wrong processing that message. Please try again.",
+                "response": error_response,
                 "html_url": f"/api/aides/{aide_id}/preview",
                 "primitives_count": 0,
                 "error": True,
@@ -169,8 +190,28 @@ class Orchestrator:
         snapshot_dict = snapshot.to_dict()
         resolve_result = resolve_primitives(primitives, snapshot_dict)
         if resolve_result.error:
-            # Grid resolution failed — return error to user
+            # Grid resolution failed — record failed turn and return error
             print(f"Grid resolution error: {resolve_result.error}")
+
+            # Save messages to conversation even on failure
+            user_msg = Message(role="user", content=message, timestamp=datetime.now(UTC))
+            await self.conv_repo.append_message(user_id, conversation.id, user_msg)
+            assistant_msg = Message(
+                role="assistant",
+                content=resolve_result.error,
+                timestamp=datetime.now(UTC),
+                metadata={"error": resolve_result.error, "primitives": primitives},
+            )
+            await self.conv_repo.append_message(user_id, conversation.id, assistant_msg)
+
+            turn_record = recorder.end_turn(
+                snapshot_after=snapshot_before,  # No change on failure
+                primitives_emitted=primitives,
+                primitives_applied=0,
+                response_text=resolve_result.error,
+                error=f"Grid resolution error: {resolve_result.error}",
+            )
+            flight_recorder_uploader.enqueue(turn_record)
             return {
                 "response": resolve_result.error,
                 "html_url": f"/api/aides/{aide_id}/preview",
@@ -303,7 +344,7 @@ class Orchestrator:
                 usage = raw["usage"]
             else:
                 result = await l2_compiler.compile(message, snapshot, recent_events)
-                # l2_compiler does not return token usage counts
+                usage = result.get("usage", {"input_tokens": 0, "output_tokens": 0})
         except Exception as e:
             error = str(e)
             print(f"L2 {'shadow' if shadow else 'production'} call failed: {e}")
@@ -360,7 +401,7 @@ class Orchestrator:
                 usage = raw["usage"]
             else:
                 result = await l3_synthesizer.synthesize(message, snapshot, recent_events, image_data=image_data)
-                # l3_synthesizer does not return token usage counts
+                usage = result.get("usage", {"input_tokens": 0, "output_tokens": 0})
         except Exception as e:
             error = str(e)
             print(f"L3 {'shadow' if shadow else 'production'} call failed: {e}")
@@ -529,6 +570,175 @@ class Orchestrator:
             )
 
         return events
+
+    async def replay_turn(
+        self,
+        turn_data: dict[str, Any],
+    ) -> dict[str, Any]:
+        """
+        Replay a turn from flight recorder data (dry run - no persistence).
+
+        Uses the snapshot_before and user_message from the recorded turn,
+        re-runs the AI calls with current models/prompts, and returns what
+        would have happened without saving anything.
+
+        Args:
+            turn_data: The recorded turn data from flight recorder
+
+        Returns:
+            Dict with:
+            - llm_calls: list of LLM call results (production + shadow)
+            - primitives: list of primitives that would be emitted
+            - response: response text that would be shown
+            - route: which tier handled it (L2 or L3)
+            - escalated: whether L2 escalated to L3
+        """
+        # Extract original context from turn data
+        snapshot_before = turn_data.get("snapshot_before", {})
+        user_message = turn_data.get("user_message", "")
+        source = turn_data.get("source", "web")
+
+        # Parse snapshot
+        snapshot = Snapshot.from_dict(snapshot_before)
+
+        # Build empty recent events (replay in isolation)
+        recent_events: list[Event] = []
+
+        # Set up a recorder to capture LLM calls (but we won't persist it)
+        turn_id = f"replay_{uuid.uuid4().hex[:12]}"
+        recorder = FlightRecorder()
+        recorder.start_turn(
+            turn_id=turn_id,
+            aide_id=turn_data.get("aide_id", ""),
+            user_id="replay",
+            source=source,
+            user_message=user_message,
+            snapshot_before=snapshot_before,
+        )
+
+        # Route and call models (same logic as process_message)
+        primitives: list[dict[str, Any]] = []
+        response_text = ""
+        route = "L2"
+        escalated = False
+
+        try:
+            if not snapshot.collections:
+                # Route to L3
+                route = "L3"
+                l3_result = await self._call_l3(
+                    recorder=recorder,
+                    message=user_message,
+                    snapshot=snapshot,
+                    recent_events=recent_events,
+                    image_data=None,
+                    shadow=False,
+                )
+                primitives = l3_result["primitives"]
+                response_text = l3_result["response"]
+
+                # Shadow L3
+                await self._call_l3_shadow(
+                    recorder=recorder,
+                    message=user_message,
+                    snapshot=snapshot,
+                    recent_events=recent_events,
+                    image_data=None,
+                )
+            else:
+                # Route to L2 first
+                l2_result = await self._call_l2(
+                    recorder=recorder,
+                    message=user_message,
+                    snapshot=snapshot,
+                    recent_events=recent_events,
+                    shadow=False,
+                )
+
+                if l2_result["escalate"]:
+                    escalated = True
+                    route = "L3"
+                    l3_result = await self._call_l3(
+                        recorder=recorder,
+                        message=user_message,
+                        snapshot=snapshot,
+                        recent_events=recent_events,
+                        image_data=None,
+                        shadow=False,
+                    )
+                    primitives = l3_result["primitives"]
+                    response_text = l3_result["response"]
+
+                    await self._call_l3_shadow(
+                        recorder=recorder,
+                        message=user_message,
+                        snapshot=snapshot,
+                        recent_events=recent_events,
+                        image_data=None,
+                    )
+                else:
+                    primitives = l2_result["primitives"]
+                    response_text = l2_result["response"]
+
+                    await self._call_l2_shadow(
+                        recorder=recorder,
+                        message=user_message,
+                        snapshot=snapshot,
+                        recent_events=recent_events,
+                    )
+        except Exception as e:
+            return {
+                "error": str(e),
+                "llm_calls": self._serialize_llm_calls(recorder._llm_calls),
+                "primitives": [],
+                "primitives_raw": [],
+                "response": "",
+                "route": route,
+                "escalated": escalated,
+                "grid_resolution_error": None,
+            }
+
+        # Run grid resolution (same as process_message)
+        primitives_raw = primitives  # Keep original for comparison
+        grid_resolution_error = None
+        resolve_result = resolve_primitives(primitives, snapshot_before)
+
+        if resolve_result.error:
+            grid_resolution_error = resolve_result.error
+            primitives = []
+        else:
+            primitives = resolve_result.primitives
+            # If there was a grid query, use that as the response
+            if resolve_result.query_response:
+                response_text = resolve_result.query_response
+
+        # Return the replay results (no persistence)
+        return {
+            "llm_calls": self._serialize_llm_calls(recorder._llm_calls),
+            "primitives": primitives,
+            "primitives_raw": primitives_raw,
+            "response": response_text,
+            "route": route,
+            "escalated": escalated,
+            "grid_resolution_error": grid_resolution_error,
+        }
+
+    def _serialize_llm_calls(self, llm_calls: list) -> list[dict[str, Any]]:
+        """Convert LLMCallRecord dataclasses to dicts for JSON serialization."""
+        return [
+            {
+                "call_id": c.call_id,
+                "shadow": c.shadow,
+                "model": c.model,
+                "tier": c.tier,
+                "prompt": c.prompt,
+                "response": c.response,
+                "usage": c.usage,
+                "latency_ms": c.latency_ms,
+                "error": c.error,
+            }
+            for c in llm_calls
+        ]
 
 
 # Singleton instance

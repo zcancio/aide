@@ -41,6 +41,7 @@ class TurnRecord:
     primitives_applied: int
     response_text: str
     total_latency_ms: int
+    error: str | None = None  # Turn-level error (AI failure, grid resolution, etc.)
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dict for JSONL storage."""
@@ -71,6 +72,7 @@ class TurnRecord:
             "primitives_applied": self.primitives_applied,
             "response_text": self.response_text,
             "total_latency_ms": self.total_latency_ms,
+            "error": self.error,
         }
 
 
@@ -171,6 +173,7 @@ class FlightRecorder:
         primitives_emitted: list[dict[str, Any]],
         primitives_applied: int,
         response_text: str,
+        error: str | None = None,
     ) -> TurnRecord:
         """
         Finalize the turn and produce a TurnRecord.
@@ -180,6 +183,7 @@ class FlightRecorder:
             primitives_emitted: All primitives returned by LLM
             primitives_applied: Count of primitives that passed reducer
             response_text: Response text shown to user
+            error: Turn-level error message if the turn failed
 
         Returns:
             Complete TurnRecord ready for upload
@@ -200,4 +204,5 @@ class FlightRecorder:
             primitives_applied=primitives_applied,
             response_text=response_text,
             total_latency_ms=total_latency_ms,
+            error=error,
         )

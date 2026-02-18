@@ -19,28 +19,64 @@ def resolve_grid_cell(
     snapshot: dict[str, Any],
 ) -> GridResolution:
     """
-    Resolve a grid cell reference (e.g., "FU") to an entity ref (e.g., "squares/cell_4_5").
+    Resolve a grid cell reference to an entity ref (e.g., "squares/cell_4_5").
+
+    Supports multiple formats:
+    - Numeric comma-separated: "0,0", "3,5", "9,9"
+    - Numeric dash-separated: "0-0", "3-5"
+    - Letter-based (when labels configured): "FU", "AQ"
 
     Args:
-        cell_ref: User's cell reference like "FU", "AQ", "JZ"
+        cell_ref: User's cell reference
         collection: Collection ID (e.g., "squares")
-        snapshot: Current aide snapshot with meta.col_labels and meta.row_labels
+        snapshot: Current aide snapshot with optional meta.col_labels and meta.row_labels
 
     Returns:
         GridResolution with entity_ref on success, error message on failure
     """
+    cell_ref = cell_ref.strip()
+
+    # Get grid dimensions from snapshot
+    collections = snapshot.get("collections", {})
+    coll = collections.get(collection, {})
+    grid_config = coll.get("grid", {})
+    rows = grid_config.get("rows", 10)
+    cols = grid_config.get("cols", 10)
+
     meta = snapshot.get("meta", {})
     col_labels = meta.get("col_labels", [])
     row_labels = meta.get("row_labels", [])
 
+    # Try numeric format first: "row,col" or "row-col" or "row_col"
+    if "," in cell_ref or "-" in cell_ref or "_" in cell_ref:
+        separator = "," if "," in cell_ref else ("-" if "-" in cell_ref else "_")
+        parts = cell_ref.split(separator)
+        if len(parts) == 2:
+            try:
+                row_index = int(parts[0].strip())
+                col_index = int(parts[1].strip())
+
+                # Validate bounds
+                if 0 <= row_index < rows and 0 <= col_index < cols:
+                    entity_ref = f"{collection}/cell_{row_index}_{col_index}"
+                    return GridResolution(success=True, entity_ref=entity_ref)
+                else:
+                    return GridResolution(
+                        success=False,
+                        error=f"Cell {cell_ref} out of bounds. Grid is {rows}x{cols} (0-{rows - 1}, 0-{cols - 1}).",
+                    )
+            except ValueError:
+                pass  # Not numeric, try label-based below
+
+    # If no custom labels configured, require explicit row,col format
     if not col_labels or not row_labels:
         return GridResolution(
             success=False,
-            error="Grid labels not configured.",
+            error=f"Invalid cell reference: {cell_ref}. Use row,col format (e.g., 0,0 or 3,5).",
         )
 
-    # Normalize to uppercase
-    cell_ref = cell_ref.upper().strip()
+    # Label-based resolution
+    cell_ref = cell_ref.upper()
 
     if len(cell_ref) < 2:
         return GridResolution(
@@ -58,34 +94,30 @@ def resolve_grid_cell(
     for char in cell_ref:
         if char in col_labels:
             if col_index is not None:
-                # Already found a column char - invalid
                 return GridResolution(
                     success=False,
-                    error=f"No square {cell_ref}. Grid is {col_range} × {row_range}.",
+                    error=f"No square {cell_ref}. Grid is {col_range} x {row_range}.",
                 )
             col_index = col_labels.index(char)
         elif char in row_labels:
             if row_index is not None:
-                # Already found a row char - invalid
                 return GridResolution(
                     success=False,
-                    error=f"No square {cell_ref}. Grid is {col_range} × {row_range}.",
+                    error=f"No square {cell_ref}. Grid is {col_range} x {row_range}.",
                 )
             row_index = row_labels.index(char)
         else:
-            # Character not in either axis
             return GridResolution(
                 success=False,
-                error=f"No square {cell_ref}. Grid is {col_range} × {row_range}.",
+                error=f"No square {cell_ref}. Grid is {col_range} x {row_range}.",
             )
 
     if col_index is None or row_index is None:
         return GridResolution(
             success=False,
-            error=f"No square {cell_ref}. Grid is {col_range} × {row_range}.",
+            error=f"No square {cell_ref}. Grid is {col_range} x {row_range}.",
         )
 
-    # Build entity ref: collection/cell_{row}_{col}
     entity_ref = f"{collection}/cell_{row_index}_{col_index}"
 
     return GridResolution(
