@@ -12,7 +12,7 @@
     "meta.update",
     "meta.annotate"
   ],
-  "notes": "Uses _shape: [8, 8] with r_c keys. Row 0 = rank 1 (white back), Row 7 = rank 8 (black back). Col 0 = file a, Col 7 = file h.",
+  "notes": "Uses _shape: [8, 8] with r_c keys. file_labels (a-h) for columns, rank_labels (1-8) for rows. e4 = file e (col 4), rank 4 (row 3) = key 3_4.",
   "turns": [
     {
       "turn": 1,
@@ -22,7 +22,7 @@
           "type": "schema.create",
           "payload": {
             "id": "ChessGame",
-            "interface": "interface ChessGame { white_player: string; black_player: string; status: \"in_progress\" | \"white_wins\" | \"black_wins\" | \"draw\"; current_turn: \"white\" | \"black\"; squares: Record<string, Square>; moves: Record<string, Move>; }",
+            "interface": "interface ChessGame { white_player: string; black_player: string; status: \"in_progress\" | \"white_wins\" | \"black_wins\" | \"draw\"; current_turn: \"white\" | \"black\"; file_labels: string[]; rank_labels: string[]; squares: Record<string, Square>; moves: Record<string, Move>; }",
             "render_html": "<div class=\"chess-game\"><div class=\"players\">{{white_player}} vs {{black_player}}</div><div class=\"status\">{{status}} - {{current_turn}}'s turn</div></div>",
             "render_text": "{{white_player}} (White) vs {{black_player}} (Black)\nStatus: {{status}} | Turn: {{current_turn}}"
           }
@@ -56,6 +56,8 @@
             "black_player": "Player 2",
             "status": "in_progress",
             "current_turn": "white",
+            "file_labels": ["a", "b", "c", "d", "e", "f", "g", "h"],
+            "rank_labels": ["1", "2", "3", "4", "5", "6", "7", "8"],
             "squares": {
               "_shape": [8, 8],
               "0_0": { "piece": "♖", "color": "light" },
@@ -92,7 +94,8 @@
               "7_7": { "piece": "♜", "color": "light" }
             },
             "moves": {}
-          }
+          },
+          "notes": "Standard chess labels: files a-h (cols 0-7), ranks 1-8 (rows 0-7). a1=0_0, e4=3_4, h8=7_7."
         }
       ],
       "expected_blocks": [
@@ -150,7 +153,7 @@
     {
       "turn": 2,
       "user_message": "e4",
-      "notes": "e4 = col 4, rank 4 = key 3_4. Pawn moves from 1_4 to 3_4.",
+      "notes": "e4: file e (col 4), rank 4 (row 3). Pawn moves from e2 (1_4) to e4 (3_4).",
       "expected_entities": [
         {
           "type": "entity.update",
@@ -164,8 +167,8 @@
             "moves": {
               "move_1": {
                 "notation": "e4",
-                "from": "1_4",
-                "to": "3_4",
+                "from": "e2",
+                "to": "e4",
                 "piece": "♙",
                 "captured": null,
                 "_pos": 1.0
@@ -178,7 +181,7 @@
     {
       "turn": 3,
       "user_message": "e5",
-      "notes": "e5 = col 4, rank 5 = key 4_4. Black pawn moves from 6_4 to 4_4.",
+      "notes": "e5: file e (col 4), rank 5 (row 4). Black pawn moves from e7 (6_4) to e5 (4_4).",
       "expected_entities": [
         {
           "type": "entity.update",
@@ -192,8 +195,8 @@
             "moves": {
               "move_2": {
                 "notation": "e5",
-                "from": "6_4",
-                "to": "4_4",
+                "from": "e7",
+                "to": "e5",
                 "piece": "♟",
                 "captured": null,
                 "_pos": 2.0
@@ -206,7 +209,7 @@
     {
       "turn": 4,
       "user_message": "Nf3",
-      "notes": "Knight from g1 (0_6) to f3 (2_5).",
+      "notes": "Nf3: Knight to f3. From g1 (0_6) to f3 (2_5).",
       "expected_entities": [
         {
           "type": "entity.update",
@@ -220,8 +223,8 @@
             "moves": {
               "move_3": {
                 "notation": "Nf3",
-                "from": "0_6",
-                "to": "2_5",
+                "from": "g1",
+                "to": "f3",
                 "piece": "♘",
                 "captured": null,
                 "_pos": 3.0
@@ -234,7 +237,7 @@
     {
       "turn": 5,
       "user_message": "Nc6",
-      "notes": "Black knight from b8 (7_1) to c6 (5_2).",
+      "notes": "Nc6: Black knight to c6. From b8 (7_1) to c6 (5_2).",
       "expected_entities": [
         {
           "type": "entity.update",
@@ -248,8 +251,8 @@
             "moves": {
               "move_4": {
                 "notation": "Nc6",
-                "from": "7_1",
-                "to": "5_2",
+                "from": "b8",
+                "to": "c6",
                 "piece": "♞",
                 "captured": null,
                 "_pos": 4.0
@@ -262,7 +265,7 @@
     {
       "turn": 6,
       "user_message": "Bb5 - the Ruy Lopez!",
-      "notes": "Bishop from f1 (0_5) to b5 (4_1).",
+      "notes": "Bb5: Bishop to b5. From f1 (0_5) to b5 (4_1).",
       "expected_entities": [
         {
           "type": "entity.update",
@@ -276,8 +279,8 @@
             "moves": {
               "move_5": {
                 "notation": "Bb5",
-                "from": "0_5",
-                "to": "4_1",
+                "from": "f1",
+                "to": "b5",
                 "piece": "♗",
                 "captured": null,
                 "_pos": 5.0
@@ -355,7 +358,7 @@
       "expected_response": {
         "type": "text",
         "content": "1. e4 e5\n2. Nf3 Nc6\n3. Bb5\n\nThis is the Ruy Lopez (Spanish Game) opening.",
-        "notes": "Query about move history, formatted in standard chess notation."
+        "notes": "Query uses algebraic notation labels."
       }
     },
     {
@@ -366,7 +369,7 @@
       "expected_response": {
         "type": "text",
         "content": "White's bishop (♗) is on b5.",
-        "notes": "Query about specific square. b5 = 4_1."
+        "notes": "Query about specific square using algebraic notation."
       }
     },
     {

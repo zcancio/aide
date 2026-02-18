@@ -12,7 +12,7 @@
     "meta.update",
     "meta.constrain"
   ],
-  "notes": "Uses _shape: [10, 10] with r_c keys. Position derived from key, no redundant row/col fields.",
+  "notes": "Uses _shape: [10, 10] with r_c keys. Adds row_labels/col_labels for user-friendly addressing (Q-A instead of 0_0).",
   "turns": [
     {
       "turn": 1,
@@ -22,7 +22,7 @@
           "type": "schema.create",
           "payload": {
             "id": "SquaresPool",
-            "interface": "interface SquaresPool { afc_team: string; nfc_team: string; price_per_square: number; afc_digits: number[] | null; nfc_digits: number[] | null; squares: Record<string, Square>; winners: Record<string, Winner>; }",
+            "interface": "interface SquaresPool { afc_team: string; nfc_team: string; price_per_square: number; row_labels: string[] | null; col_labels: string[] | null; afc_digits: number[] | null; nfc_digits: number[] | null; squares: Record<string, Square>; winners: Record<string, Winner>; }",
             "render_html": "<div class=\"squares-pool\"><h2>{{afc_team}} vs {{nfc_team}}</h2><p>${{price_per_square}} per square</p></div>",
             "render_text": "{{afc_team}} vs {{nfc_team}}\n${{price_per_square}}/square"
           }
@@ -55,24 +55,16 @@
             "afc_team": "Chiefs",
             "nfc_team": "Eagles",
             "price_per_square": 10,
+            "row_labels": null,
+            "col_labels": null,
             "afc_digits": null,
             "nfc_digits": null,
             "squares": {
-              "_shape": [10, 10],
-              "0_0": { "owner": null },
-              "0_1": { "owner": null },
-              "0_2": { "owner": null },
-              "0_3": { "owner": null },
-              "0_4": { "owner": null },
-              "0_5": { "owner": null },
-              "0_6": { "owner": null },
-              "0_7": { "owner": null },
-              "0_8": { "owner": null },
-              "0_9": { "owner": null }
+              "_shape": [10, 10]
             },
             "winners": {}
           },
-          "notes": "Full grid would have 100 squares (0_0 through 9_9). Abbreviated for eval."
+          "notes": "Squares collection uses _shape for sparse representation. Missing keys default to { owner: null }."
         }
       ],
       "expected_blocks": [
@@ -139,7 +131,23 @@
     },
     {
       "turn": 2,
-      "user_message": "Mike wants row 0 col 0 through 4. Sarah wants row 1 col 0 through 4.",
+      "user_message": "Label the rows Q through Z and the columns A through J",
+      "expected_entities": [
+        {
+          "type": "entity.update",
+          "payload": {
+            "id": "squares_pool",
+            "row_labels": ["Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"],
+            "col_labels": ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
+          }
+        }
+      ],
+      "notes": "Now users can reference squares as Q-A (0_0), R-B (1_1), Z-J (9_9), etc."
+    },
+    {
+      "turn": 3,
+      "user_message": "Mike wants Q-A through Q-E. Sarah wants R-A through R-E.",
+      "notes": "Q=row 0, R=row 1. A-E=cols 0-4. Maps to 0_0-0_4 and 1_0-1_4.",
       "expected_entities": [
         {
           "type": "entity.update",
@@ -162,8 +170,9 @@
       ]
     },
     {
-      "turn": 3,
-      "user_message": "Dave claims squares at (2,3), (5,7), and (8,1)",
+      "turn": 4,
+      "user_message": "Dave claims S-D, V-H, and Y-B",
+      "notes": "S=row 2, V=row 5, Y=row 8. D=col 3, H=col 7, B=col 1. Maps to 2_3, 5_7, 8_1.",
       "expected_entities": [
         {
           "type": "entity.update",
@@ -179,8 +188,8 @@
       ]
     },
     {
-      "turn": 4,
-      "user_message": "Grid is full, assign random digits. Chiefs row, Eagles column.",
+      "turn": 5,
+      "user_message": "Grid is full, assign random digits. Chiefs for rows, Eagles for columns.",
       "expected_entities": [
         {
           "type": "entity.update",
@@ -189,14 +198,14 @@
             "afc_digits": [3, 7, 1, 9, 4, 0, 6, 2, 8, 5],
             "nfc_digits": [8, 2, 5, 0, 7, 3, 9, 1, 4, 6]
           },
-          "notes": "Digits are randomly shuffled 0-9. Row 0 corresponds to Chiefs digit 3, etc."
+          "notes": "Digits shuffled 0-9. Row Q (0) = Chiefs digit 3, Col A (0) = Eagles digit 8, etc."
         }
       ]
     },
     {
-      "turn": 5,
+      "turn": 6,
       "user_message": "Q1 score: Chiefs 7, Eagles 3",
-      "notes": "Chiefs 7 → find row where afc_digits[row]=7 → row 1. Eagles 3 → find col where nfc_digits[col]=3 → col 5. Winner at 1_5.",
+      "notes": "Chiefs 7 → row where afc_digits=7 → R (row 1). Eagles 3 → col where nfc_digits=3 → F (col 5). Winner at R-F (1_5).",
       "expected_entities": [
         {
           "type": "entity.update",
@@ -209,7 +218,7 @@
                 "nfc_score": 3,
                 "afc_digit": 7,
                 "nfc_digit": 3,
-                "winner_name": "Mike",
+                "winner_name": "Sarah",
                 "payout": 250,
                 "_pos": 1.0
               }
@@ -231,9 +240,9 @@
       ]
     },
     {
-      "turn": 6,
+      "turn": 7,
       "user_message": "Halftime: Chiefs 14, Eagles 10",
-      "notes": "Chiefs 14 → last digit 4 → row where afc_digits[row]=4 → row 4. Eagles 10 → last digit 0 → col where nfc_digits[col]=0 → col 3. Winner at 4_3.",
+      "notes": "Chiefs 14 → digit 4 → U (row 4). Eagles 10 → digit 0 → D (col 3). Winner at U-D (4_3).",
       "expected_entities": [
         {
           "type": "entity.update",
@@ -246,12 +255,13 @@
                 "nfc_score": 10,
                 "afc_digit": 4,
                 "nfc_digit": 0,
-                "winner_name": "Sarah",
+                "winner_name": "Unknown",
                 "payout": 250,
                 "_pos": 2.0
               }
             }
-          }
+          },
+          "notes": "Square U-D (4_3) was unclaimed in this abbreviated scenario."
         }
       ],
       "expected_styles": [
@@ -268,8 +278,9 @@
       ]
     },
     {
-      "turn": 7,
-      "user_message": "Mike sold his square at row 0 col 2 to Lisa",
+      "turn": 8,
+      "user_message": "Mike sold Q-C to Lisa",
+      "notes": "Q-C = row Q (0), col C (2) = 0_2.",
       "expected_entities": [
         {
           "type": "entity.update",
@@ -283,69 +294,58 @@
       ]
     },
     {
-      "turn": 8,
-      "type": "query",
-      "user_message": "How many squares does Mike have?",
-      "expected_primitives": [],
-      "expected_response": {
-        "type": "text",
-        "content": "Mike has 4 squares: (0,0), (0,1), (0,3), (0,4). He sold (0,2) to Lisa.",
-        "notes": "Query counting squares per owner."
-      }
-    },
-    {
       "turn": 9,
       "type": "query",
-      "user_message": "Who's winning so far?",
+      "user_message": "What squares does Mike have?",
       "expected_primitives": [],
       "expected_response": {
         "type": "text",
-        "content": "Winners so far:\n- Q1: Mike won $250 (Chiefs 7, Eagles 3)\n- Halftime: Sarah won $250 (Chiefs 14, Eagles 10)\n\nTotal payouts: $500. Remaining pot: $500 (Q3 and Final).",
-        "notes": "Query about winner history and pot status."
+        "content": "Mike has 4 squares: Q-A, Q-B, Q-D, Q-E. He sold Q-C to Lisa.",
+        "notes": "Query uses labels in response."
       }
     },
     {
       "turn": 10,
       "type": "query",
-      "user_message": "What squares are still available?",
+      "user_message": "Who won so far?",
       "expected_primitives": [],
       "expected_response": {
         "type": "text",
-        "content": "87 squares are still available. Claimed squares:\n- Mike: 4 squares\n- Sarah: 5 squares\n- Dave: 3 squares\n- Lisa: 1 square\n\nTotal claimed: 13 of 100 squares.",
-        "notes": "Query about availability. Counts unclaimed squares."
+        "content": "Winners so far:\n- Q1: Sarah won $250 at R-F (Chiefs 7, Eagles 3)\n- Halftime: Unclaimed square U-D won $250 (Chiefs 14, Eagles 10)\n\nTotal payouts: $500. Remaining pot: $500 (Q3 and Final).",
+        "notes": "Uses labels in response."
       }
     },
     {
       "turn": 11,
-      "type": "error",
-      "user_message": "Give square (0,0) to Tom",
+      "type": "query",
+      "user_message": "What's at S-D?",
       "expected_primitives": [],
       "expected_response": {
-        "type": "clarification",
-        "content": "Square (0,0) is already claimed by Mike. Did you mean Tom is buying it from Mike, or did you want to assign a different square to Tom?",
-        "notes": "Error: attempting to claim already-owned square."
+        "type": "text",
+        "content": "S-D is owned by Dave. It corresponds to Chiefs digit 1 and Eagles digit 0.",
+        "notes": "Query about specific labeled square."
       }
     },
     {
       "turn": 12,
       "type": "error",
-      "user_message": "Q1 score: Chiefs 10, Eagles 7",
+      "user_message": "Give Q-A to Tom",
       "expected_primitives": [],
       "expected_response": {
         "type": "clarification",
-        "content": "Q1 already has a recorded score (Chiefs 7, Eagles 3) and Mike won $250. Did you mean to record a different quarter, or are you correcting the Q1 score?",
-        "notes": "Error: attempting to re-record already-scored quarter."
+        "content": "Q-A is already claimed by Mike. Did you mean Tom is buying it from Mike, or did you want a different square?",
+        "notes": "Error using labels."
       }
     },
     {
       "turn": 13,
       "type": "error",
-      "user_message": "Assign the digits",
+      "user_message": "Give A-Q to Tom",
       "expected_primitives": [],
       "expected_response": {
         "type": "clarification",
-        "content": "The digits have already been assigned:\n- Chiefs (rows): 3,7,1,9,4,0,6,2,8,5\n- Eagles (cols): 8,2,5,0,7,3,9,1,4,6\n\nOnce assigned, digits cannot be changed. Did you want to see the current digit assignments?",
-        "notes": "Error: digits already assigned. Should not allow re-assignment."
+        "content": "A-Q isn't a valid square. Rows are Q-Z and columns are A-J. Did you mean Q-A?",
+        "notes": "Error: swapped row/col labels."
       }
     }
   ],
