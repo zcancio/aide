@@ -1,4 +1,4 @@
-# AIde — System Architecture
+# AIde — System Architecture (v3)
 
 **Status:** Living document
 **Last Updated:** February 2026
@@ -9,6 +9,8 @@
 ## What AIde Is
 
 An aide is a living object. It's not a web page you build once and publish. It's a persistent, conversational state machine: a visual artifact whose state is updated through natural language from anywhere — web chat, Signal, a screenshot, eventually any channel. The object maintains itself through conversation. The published page is its body.
+
+**v3 introduces:** TypeScript interfaces for schema definitions, multi-channel rendering (HTML + text), and tree-sitter parsing for validation in both Python and JavaScript.
 
 Three roles make this work:
 
@@ -146,55 +148,52 @@ The snapshot state is embedded in the HTML file's `<script type="application/aid
 
 ```
 AideState {
+  version: 3
+
   meta: {
     title: "Poker League"
     identity: "Poker league. 8 players, biweekly Thursday, rotating hosts."
-    voice: "No first person. State reflections only."
   }
 
-  collections: {
-    roster: {
-      schema: { name: "string", status: "string", snack_duty: "bool" }
-      entities: {
-        player_mike: { name: "Mike", status: "active", snack_duty: false, _removed: false }
-        player_dave: { name: "Dave", status: "active", snack_duty: true, _removed: false }
-        ...
+  schemas: {
+    Player: {
+      interface: "interface Player { name: string; status: 'active' | 'out' | 'sub'; wins: number; }"
+      render_html: "<div class=\"player {{status}}\">{{name}} ({{wins}}W)</div>"
+      render_text: "{{name}} — {{status}} ({{wins}}W)"
+      styles: ".player { padding: 8px; } .player.out { opacity: 0.5; }"
+    }
+    Game: {
+      interface: "interface Game { date: string; host: string; winner?: string; }"
+      render_html: "<div class=\"game\">{{date}} @ {{host}}{{#winner}} → {{winner}}{{/winner}}</div>"
+      render_text: "{{date}} @ {{host}}{{#winner}} → {{winner}}{{/winner}}"
+    }
+    League: {
+      interface: "interface League { name: string; season: string; players: Record<string, Player>; games: Record<string, Game>; }"
+      render_html: "<div class=\"league\"><h1>{{name}}</h1><p>{{season}}</p>{{>players}}{{>games}}</div>"
+      render_text: "{{name}} — {{season}}\n\nPlayers:\n{{>players}}\n\nGames:\n{{>games}}"
+    }
+  }
+
+  entities: {
+    poker_league: {
+      _schema: "League"
+      name: "Poker League"
+      season: "Spring 2026"
+      players: {
+        player_mike: { name: "Mike", status: "active", wins: 3, _pos: 1.0 }
+        player_dave: { name: "Dave", status: "active", wins: 2, _pos: 2.0 }
+      }
+      games: {
+        game_feb27: { date: "2026-02-27", host: "Dave", _pos: 1.0 }
       }
     }
-    schedule: {
-      schema: { date: "date", host: "string", status: "string" }
-      entities: {
-        game_feb27: { date: "2026-02-27", host: "Dave", status: "confirmed", _removed: false }
-        ...
-      }
-    }
   }
-
-  relationships: [
-    { from: "roster/player_dave", to: "schedule/game_feb27", type: "hosting" }
-  ]
-
-  relationship_types: {
-    hosting: { cardinality: "many_to_one" }
-  }
-
-  constraints: [
-    // Persistent rules (from relationship.constrain and meta.constrain)
-  ]
 
   blocks: {
     block_root: {
-      children: ["block_title", "block_next_game", "block_roster", "block_schedule"]
+      children: ["block_league"]
     }
-    block_title:     { type: "heading", level: 1, props: { content: "Poker League" } }
-    block_next_game: { type: "metric", props: { label: "Next game", value: "Thu Feb 27 at Dave's" } }
-    block_roster:    { type: "collection_view", props: { source: "roster", view: "roster_view" } }
-    block_schedule:  { type: "collection_view", props: { source: "schedule", view: "schedule_view" } }
-  }
-
-  views: {
-    roster_view: { type: "list", source: "roster", config: { show_fields: ["name", "status"] } }
-    schedule_view: { type: "table", source: "schedule" }
+    block_league: { type: "entity_view", props: { source: "poker_league" } }
   }
 
   styles: {
@@ -203,13 +202,12 @@ AideState {
     density: "comfortable"
   }
 
-  annotations: [
-    { note: "League started Feb 1.", pinned: false, seq: 1, timestamp: "2026-02-01T14:00:00Z" }
-  ]
+  constraints: []
+  annotations: []
 }
 ```
 
-The state has seven top-level sections: `meta`, `collections`, `relationships`, `relationship_types`, `constraints`, `blocks`, `views`, `styles`, and `annotations`. Entities carry internal fields (`_removed`, `_styles`) that the reducer manages and the renderer reads. Full schema details are in `aide_primitive_schemas.md`.
+**v3 structure:** Schemas define entity types using TypeScript interfaces. Each schema includes `render_html` and `render_text` templates for multi-channel output. Entities reference their schema via `_schema` and can contain nested children in `Record<string, T>` fields. Full schema details are in `unified_entity_model.md` and `aide_primitive_schemas_spec.md`.
 
 ### The Block Tree
 
@@ -380,37 +378,31 @@ The orchestrator receives the escalation and routes to L3 with the full context.
 
 ---
 
-## Layer 4: The Primitives — 25 Declarative Operations
+## Layer 4: The Primitives — Declarative Operations
 
-The kernel has 25 primitives across 8 categories. Every state change goes through one of these. They are declarative — they describe desired state, not actions.
+The kernel has primitives across several categories. Every state change goes through one of these. They are declarative — they describe desired state, not actions.
 
-### The Primitive Set
+### The Primitive Set (v3)
 
 | # | Category | Primitive | What It Does |
 |---|----------|-----------|-------------|
-| 1 | Entity | `entity.create` | Declare a new entity into existence |
-| 2 | Entity | `entity.update` | Declare new field values on an entity |
-| 3 | Entity | `entity.remove` | Declare an entity as removed (soft-delete) |
-| 4 | Collection | `collection.create` | Declare a new collection with schema |
-| 5 | Collection | `collection.update` | Declare collection properties (name, settings, order) |
-| 6 | Collection | `collection.remove` | Declare a collection as removed |
-| 7 | Field | `field.add` | Declare a new field on a collection's schema |
-| 8 | Field | `field.update` | Declare new properties on an existing field |
-| 9 | Field | `field.remove` | Declare a field as removed from schema |
-| 10 | Relationship | `relationship.set` | Declare a link between entities |
-| 11 | Relationship | `relationship.constrain` | Declare a rule between entities |
-| 12 | Block | `block.set` | Declare a block's existence, content, and position |
-| 13 | Block | `block.remove` | Declare a block as removed from the tree |
-| 14 | Block | `block.reorder` | Declare the order of children within a parent |
-| 15 | View | `view.create` | Declare a new view of a collection |
-| 16 | View | `view.update` | Declare new view properties |
-| 17 | View | `view.remove` | Declare a view as removed |
-| 18 | Style | `style.set` | Declare visual tokens |
-| 19 | Style | `style.set_entity` | Declare per-entity visual overrides |
-| 20 | Meta | `meta.update` | Declare aide-level properties |
-| 21 | Meta | `meta.annotate` | Append a note |
-| 22 | Meta | `meta.constrain` | Declare aide-level rules |
-| 23–25 | *(reserved)* | — | Future primitives |
+| 1 | Schema | `schema.create` | Declare a new schema with TypeScript interface + templates |
+| 2 | Schema | `schema.update` | Update schema interface or templates |
+| 3 | Schema | `schema.remove` | Remove a schema (fails if entities reference it) |
+| 4 | Entity | `entity.create` | Declare a new entity with `_schema` reference |
+| 5 | Entity | `entity.update` | Update entity fields or nested children |
+| 6 | Entity | `entity.remove` | Soft-delete an entity and its children |
+| 7 | Block | `block.set` | Declare a block's existence, type, and position |
+| 8 | Block | `block.remove` | Remove a block from the tree |
+| 9 | Block | `block.reorder` | Reorder children within a parent block |
+| 10 | Style | `style.set` | Declare global visual tokens |
+| 11 | Style | `style.set_entity` | Declare per-entity visual overrides |
+| 12 | Meta | `meta.update` | Declare aide-level properties |
+| 13 | Meta | `meta.annotate` | Append a note |
+| 14 | Meta | `meta.constrain` | Declare aide-level rules |
+| 15 | Grid | `grid.create` | Batch-create grid cells using tensor shape |
+| 16 | Grid | `grid.query` | Query a grid cell by label |
+| 17–20 | *(reserved)* | — | Future primitives (triggers, computed, relationships) |
 
 ### Why Declarative
 
@@ -505,23 +497,25 @@ Four layers in one file:
 
 ### The Renderer
 
-The renderer is a pure function: `(snapshot, blueprint, events?, options?) -> HTML string`. It produces the complete, self-contained HTML file -- not just the body. No AI involved. Deterministic: same input, same output, always.
+The renderer is a pure function that produces output for different channels: `(snapshot, blueprint, channel, events?, options?) -> string`. For HTML, it produces a complete, self-contained web page. For text, it produces unicode suitable for SMS, terminal, or Slack. No AI involved. Deterministic: same input, same output, always.
 
 ```python
-def render(snapshot, blueprint, events=None, options=None) -> str:
-    # 1. Generate CSS: design system base + style token overrides
-    # 2. Generate OG tags from meta.title + derived description
-    # 3. Serialize blueprint, snapshot, events as JSON (sorted keys)
-    # 4. Walk block tree depth-first, render each block by type
-    # 5. Assemble full HTML document
-    return html_string
+def render(snapshot, blueprint, channel="html", events=None, options=None) -> str:
+    # 1. For HTML: Generate CSS from design system + schema styles + token overrides
+    # 2. Walk block tree depth-first
+    # 3. For entity_view blocks: render entity using its schema's template
+    #    - render_html for HTML channel
+    #    - render_text for text channel
+    # 4. For HTML: Assemble full document with embedded JSON
+    # 5. For text: Assemble unicode output with box-drawing characters
+    return output_string
 ```
 
-The renderer maps style tokens to CSS custom properties, formats field values by type (dates -> "Feb 27", bools -> checkmarks, nulls -> em dashes), handles sort/filter/group from view configs, and applies per-entity style overrides. Text blocks support minimal inline formatting (bold, italic, links) through a strict allowlist -- no raw HTML passthrough.
+Entities are rendered using Mustache templates defined in their schemas. The `render_html` template produces HTML with CSS classes; the `render_text` template produces unicode text. Child collections (e.g., `Record<string, T>` fields) are rendered via `{{>fieldname}}` syntax.
 
-Block types (v1): heading, text, metric, collection_view, divider, image, callout, column_list, column. View types (v1): list, table, grid. Unknown view types fall back to table.
+Block types: heading, text, metric, entity_view, divider, image, callout, column_list, column. The `entity_view` block is the bridge between the block tree and entity data — it renders an entity using its schema's template.
 
-The full rendering contract, CSS generation rules, and block type specifications are in `aide_renderer_spec.md`.
+The full rendering contract, multi-channel output, and Mustache templating are in `aide_renderer_spec.md`.
 
 ### The Assembly Layer
 
@@ -708,11 +702,12 @@ The human is the sensor. The AI is the compiler. The HTML file is the aide. The 
 
 ## Detailed Specs
 
-The kernel has four implementation specs, each covering one layer in full detail:
+The kernel has implementation specs covering each layer in full detail:
 
 | Spec                             | What it covers                                                                                                                                          |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `aide_primitive_schemas_spec.md` | JSON schemas for all 25 primitives, field types, validation rules, event wrapper, escalation signals                                                    |
-| `aide_reducer_spec.md`           | Reduction rules per primitive, ReduceResult contract, cardinality enforcement, constraint checking, type compatibility, error catalog, testing strategy |
-| `aide_renderer_spec.md`          | HTML generation, CSS from style tokens, block type rendering, view type rendering, value formatting, OG tags, empty states, sanitization                |
+| `unified_entity_model.md`        | v3 data model: TypeScript interfaces, multi-channel rendering, tree-sitter parsing, entity structure, fractional indexing                              |
+| `aide_primitive_schemas_spec.md` | JSON schemas for all primitives, TypeScript type mappings, validation rules, event wrapper, escalation signals                                          |
+| `aide_reducer_spec.md`           | Reduction rules per primitive, tree-sitter parsing, ReduceResult contract, constraint checking, type validation, error catalog, testing strategy        |
+| `aide_renderer_spec.md`          | Multi-channel rendering (HTML + text), Mustache templating, CSS generation, block rendering, entity templates, value formatting, sanitization           |
 | `aide_assembly_spec.md`          | Load/apply/save/create/publish/fork operations, R2 layout, parsing, integrity checks, concurrency, compaction, error recovery                           |

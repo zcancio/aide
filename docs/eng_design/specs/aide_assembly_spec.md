@@ -1,10 +1,10 @@
-# AIde — Assembly Spec
+# AIde — Assembly Spec (v3)
 
 **Purpose:** The assembly layer sits between the pure functions (reducer, renderer) and the outside world (R2 storage, the orchestrator, published URLs). It coordinates: loading an aide's HTML file, extracting its embedded state, applying new events through the reducer, re-rendering through the renderer, reassembling the HTML file, and uploading it. It also handles creation, forking, parsing, and integrity checks.
 
 The reducer and renderer are pure. The assembly is where IO happens.
 
-**Companion docs:** `aide_reducer_spec.md`, `aide_renderer_spec.md`, `aide_primitive_schemas.md`, `aide_architecture.md`
+**Companion docs:** `unified_entity_model.md`, `aide_reducer_spec.md`, `aide_renderer_spec.md`, `aide_primitive_schemas_spec.md`, `aide_architecture.md`
 
 ---
 
@@ -29,13 +29,27 @@ class AideAssembly:
 @dataclass
 class AideFile:
     aide_id: str
-    snapshot: AideState
+    snapshot: AideState          # v3: includes schemas, entities (not collections)
     events: list[Event]
     blueprint: Blueprint
     html: str                    # The full assembled HTML string
     last_sequence: int           # Highest event sequence number
     size_bytes: int              # Total file size
     loaded_from: str             # "r2" or "new"
+```
+
+**v3 AideState structure:**
+```python
+AideState {
+    version: int           # 3
+    meta: dict             # title, identity, visibility
+    schemas: dict          # TypeScript interfaces + templates
+    entities: dict         # entities with _schema references
+    blocks: dict           # page structure
+    styles: dict           # visual tokens
+    constraints: list      # aide-level rules
+    annotations: list      # notes
+}
 ```
 
 ```python
@@ -136,7 +150,17 @@ create(blueprint) → AideFile
 
 Steps:
 1. Generate aide_id (uuid4 or nanoid)
-2. Build empty snapshot (see aide_reducer_spec.md Empty State)
+2. Build empty snapshot (v3 structure):
+   {
+     version: 3,
+     meta: {},
+     schemas: {},
+     entities: {},
+     blocks: { block_root: { type: "root", children: [] } },
+     styles: {},
+     constraints: [],
+     annotations: []
+   }
 3. Set snapshot.meta.title from blueprint.identity (first sentence or "Untitled")
 4. Render HTML from empty snapshot + blueprint
 5. Return AideFile with:
@@ -221,12 +245,13 @@ def parse_aide_html(html: str) -> ParsedAide:
 @dataclass
 class ParsedAide:
     blueprint: Blueprint | None
-    snapshot: AideState | None
+    snapshot: AideState | None   # v3: includes schemas, entities
     events: list[Event]
     title: str                    # From <title> tag
     has_blueprint: bool
     has_snapshot: bool
     has_events: bool
+    version: int                  # Snapshot version (3 for v3)
 ```
 
 ### Extraction rules
@@ -268,11 +293,12 @@ async def check_integrity(aide_file: AideFile) -> list[IntegrityIssue]:
 |-------|------|----------|
 | Replay match | Replay all events from empty state, compare to stored snapshot | Error |
 | Sequence continuity | Event sequences are monotonically increasing with no gaps | Warning |
-| Schema consistency | Every entity's fields match its collection's schema types | Warning |
+| Schema references | Every entity's `_schema` references an existing schema | Error |
+| Schema validation | Every entity's fields match its schema's TypeScript interface | Warning |
 | Block tree integrity | All parent references are valid, no orphan blocks, no cycles | Error |
-| View references | All views reference existing collections | Warning |
-| Relationship references | All relationship endpoints are existing entities | Warning |
+| Entity path validity | All block sources reference existing entities | Warning |
 | Blueprint present | Blueprint section exists and has identity + voice | Warning |
+| Version check | Snapshot version is supported (currently 3) | Error |
 
 **When to run:**
 
