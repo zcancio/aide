@@ -1,0 +1,340 @@
+{
+  "id": "chessboard",
+  "name": "Chessboard",
+  "description": "Track a chess game with board state, pieces, and move history",
+  "complexity": "advanced",
+  "primitives_exercised": [
+    "schema.create",
+    "entity.create",
+    "entity.update",
+    "block.set",
+    "style.set_entity",
+    "meta.update",
+    "meta.annotate"
+  ],
+  "notes": "Uses Record<string, Square> with positional keys like 'e4', 'a1' instead of grid primitives",
+  "turns": [
+    {
+      "turn": 1,
+      "user_message": "Let's play chess! Set up the board.",
+      "expected_schemas": [
+        {
+          "type": "schema.create",
+          "payload": {
+            "id": "ChessGame",
+            "interface": "interface ChessGame { white_player: string; black_player: string; status: \"in_progress\" | \"white_wins\" | \"black_wins\" | \"draw\"; current_turn: \"white\" | \"black\"; squares: Record<string, Square>; moves: Record<string, Move>; }",
+            "render_html": "<div class=\"chess-game\"><div class=\"players\">{{white_player}} vs {{black_player}}</div><div class=\"status\">{{status}} - {{current_turn}}'s turn</div></div>",
+            "render_text": "{{white_player}} (White) vs {{black_player}} (Black)\nStatus: {{status}} | Turn: {{current_turn}}"
+          }
+        },
+        {
+          "type": "schema.create",
+          "payload": {
+            "id": "Square",
+            "interface": "interface Square { piece: string | null; color: \"light\" | \"dark\"; }",
+            "render_html": "<div class=\"square {{color}}\" data-pos=\"{{_key}}\">{{#piece}}<span class=\"piece\">{{piece}}</span>{{/piece}}</div>",
+            "render_text": "{{_key}}:{{#piece}}{{piece}}{{/piece}}{{^piece}}.{{/piece}}"
+          }
+        },
+        {
+          "type": "schema.create",
+          "payload": {
+            "id": "Move",
+            "interface": "interface Move { notation: string; from: string; to: string; piece: string; captured: string | null; }",
+            "render_html": "<span class=\"move\">{{notation}}</span>",
+            "render_text": "{{notation}}"
+          }
+        }
+      ],
+      "expected_entities": [
+        {
+          "type": "entity.create",
+          "payload": {
+            "id": "chess_game",
+            "_schema": "ChessGame",
+            "white_player": "Player 1",
+            "black_player": "Player 2",
+            "status": "in_progress",
+            "current_turn": "white",
+            "squares": {
+              "a1": { "piece": "♖", "color": "light", "_pos": 1.0 },
+              "b1": { "piece": "♘", "color": "dark", "_pos": 2.0 },
+              "c1": { "piece": "♗", "color": "light", "_pos": 3.0 },
+              "d1": { "piece": "♕", "color": "dark", "_pos": 4.0 },
+              "e1": { "piece": "♔", "color": "light", "_pos": 5.0 },
+              "f1": { "piece": "♗", "color": "dark", "_pos": 6.0 },
+              "g1": { "piece": "♘", "color": "light", "_pos": 7.0 },
+              "h1": { "piece": "♖", "color": "dark", "_pos": 8.0 },
+              "a2": { "piece": "♙", "color": "dark", "_pos": 9.0 },
+              "b2": { "piece": "♙", "color": "light", "_pos": 10.0 },
+              "c2": { "piece": "♙", "color": "dark", "_pos": 11.0 },
+              "d2": { "piece": "♙", "color": "light", "_pos": 12.0 },
+              "e2": { "piece": "♙", "color": "dark", "_pos": 13.0 },
+              "f2": { "piece": "♙", "color": "light", "_pos": 14.0 },
+              "g2": { "piece": "♙", "color": "dark", "_pos": 15.0 },
+              "h2": { "piece": "♙", "color": "light", "_pos": 16.0 },
+              "a7": { "piece": "♟", "color": "light", "_pos": 49.0 },
+              "b7": { "piece": "♟", "color": "dark", "_pos": 50.0 },
+              "c7": { "piece": "♟", "color": "light", "_pos": 51.0 },
+              "d7": { "piece": "♟", "color": "dark", "_pos": 52.0 },
+              "e7": { "piece": "♟", "color": "light", "_pos": 53.0 },
+              "f7": { "piece": "♟", "color": "dark", "_pos": 54.0 },
+              "g7": { "piece": "♟", "color": "light", "_pos": 55.0 },
+              "h7": { "piece": "♟", "color": "dark", "_pos": 56.0 },
+              "a8": { "piece": "♜", "color": "dark", "_pos": 57.0 },
+              "b8": { "piece": "♞", "color": "light", "_pos": 58.0 },
+              "c8": { "piece": "♝", "color": "dark", "_pos": 59.0 },
+              "d8": { "piece": "♛", "color": "light", "_pos": 60.0 },
+              "e8": { "piece": "♚", "color": "dark", "_pos": 61.0 },
+              "f8": { "piece": "♝", "color": "light", "_pos": 62.0 },
+              "g8": { "piece": "♞", "color": "dark", "_pos": 63.0 },
+              "h8": { "piece": "♜", "color": "light", "_pos": 64.0 }
+            },
+            "moves": {}
+          }
+        }
+      ],
+      "expected_blocks": [
+        {
+          "type": "block.set",
+          "payload": {
+            "id": "block_header",
+            "type": "heading",
+            "parent": "block_root",
+            "position": 1.0,
+            "props": { "level": 1, "content": "Chess Game" }
+          }
+        },
+        {
+          "type": "block.set",
+          "payload": {
+            "id": "block_board",
+            "type": "entity_view",
+            "parent": "block_root",
+            "position": 2.0,
+            "props": { "source": "chess_game/squares" }
+          }
+        },
+        {
+          "type": "block.set",
+          "payload": {
+            "id": "block_moves_header",
+            "type": "heading",
+            "parent": "block_root",
+            "position": 3.0,
+            "props": { "level": 2, "content": "Move History" }
+          }
+        },
+        {
+          "type": "block.set",
+          "payload": {
+            "id": "block_moves",
+            "type": "entity_view",
+            "parent": "block_root",
+            "position": 4.0,
+            "props": { "source": "chess_game/moves" }
+          }
+        }
+      ],
+      "expected_meta": [
+        {
+          "type": "meta.update",
+          "payload": {
+            "title": "Chess Game",
+            "identity": "Interactive chess game tracker"
+          }
+        }
+      ]
+    },
+    {
+      "turn": 2,
+      "user_message": "e4",
+      "expected_entities": [
+        {
+          "type": "entity.update",
+          "payload": {
+            "id": "chess_game",
+            "current_turn": "black",
+            "squares": {
+              "e2": { "piece": null },
+              "e4": { "piece": "♙", "color": "light", "_pos": 29.0 }
+            },
+            "moves": {
+              "move_1": {
+                "notation": "e4",
+                "from": "e2",
+                "to": "e4",
+                "piece": "♙",
+                "captured": null,
+                "_pos": 1.0
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "turn": 3,
+      "user_message": "e5",
+      "expected_entities": [
+        {
+          "type": "entity.update",
+          "payload": {
+            "id": "chess_game",
+            "current_turn": "white",
+            "squares": {
+              "e7": { "piece": null },
+              "e5": { "piece": "♟", "color": "light", "_pos": 37.0 }
+            },
+            "moves": {
+              "move_2": {
+                "notation": "e5",
+                "from": "e7",
+                "to": "e5",
+                "piece": "♟",
+                "captured": null,
+                "_pos": 2.0
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "turn": 4,
+      "user_message": "Nf3",
+      "expected_entities": [
+        {
+          "type": "entity.update",
+          "payload": {
+            "id": "chess_game",
+            "current_turn": "black",
+            "squares": {
+              "g1": { "piece": null },
+              "f3": { "piece": "♘", "color": "dark", "_pos": 22.0 }
+            },
+            "moves": {
+              "move_3": {
+                "notation": "Nf3",
+                "from": "g1",
+                "to": "f3",
+                "piece": "♘",
+                "captured": null,
+                "_pos": 3.0
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "turn": 5,
+      "user_message": "Nc6",
+      "expected_entities": [
+        {
+          "type": "entity.update",
+          "payload": {
+            "id": "chess_game",
+            "current_turn": "white",
+            "squares": {
+              "b8": { "piece": null },
+              "c6": { "piece": "♞", "color": "light", "_pos": 43.0 }
+            },
+            "moves": {
+              "move_4": {
+                "notation": "Nc6",
+                "from": "b8",
+                "to": "c6",
+                "piece": "♞",
+                "captured": null,
+                "_pos": 4.0
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "turn": 6,
+      "user_message": "Bb5 - the Ruy Lopez!",
+      "expected_entities": [
+        {
+          "type": "entity.update",
+          "payload": {
+            "id": "chess_game",
+            "current_turn": "black",
+            "squares": {
+              "f1": { "piece": null },
+              "b5": { "piece": "♗", "color": "dark", "_pos": 34.0 }
+            },
+            "moves": {
+              "move_5": {
+                "notation": "Bb5",
+                "from": "f1",
+                "to": "b5",
+                "piece": "♗",
+                "captured": null,
+                "_pos": 5.0
+              }
+            }
+          }
+        }
+      ],
+      "expected_meta": [
+        {
+          "type": "meta.annotate",
+          "payload": {
+            "note": "Ruy Lopez opening (Spanish Game)",
+            "pinned": false
+          }
+        }
+      ]
+    },
+    {
+      "turn": 7,
+      "user_message": "I'm playing as white, my friend Bob is black",
+      "expected_entities": [
+        {
+          "type": "entity.update",
+          "payload": {
+            "id": "chess_game",
+            "white_player": "Me",
+            "black_player": "Bob"
+          }
+        }
+      ]
+    },
+    {
+      "turn": 8,
+      "user_message": "Highlight the last move",
+      "expected_styles": [
+        {
+          "type": "style.set_entity",
+          "payload": {
+            "id": "chess_game/squares/b5",
+            "styles": {
+              "highlight": true,
+              "bg_color": "#bbf7d0"
+            }
+          }
+        },
+        {
+          "type": "style.set_entity",
+          "payload": {
+            "id": "chess_game/squares/f1",
+            "styles": {
+              "highlight": true,
+              "bg_color": "#fef3c7"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "final_state_assertions": {
+    "move_count": 5,
+    "white_pieces_captured": 0,
+    "black_pieces_captured": 0,
+    "opening": "Ruy Lopez"
+  }
+}

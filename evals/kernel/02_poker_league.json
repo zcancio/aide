@@ -1,0 +1,270 @@
+{
+  "id": "poker_league",
+  "name": "Poker League",
+  "description": "Track poker league with players, games, buy-ins, and standings",
+  "complexity": "advanced",
+  "primitives_exercised": [
+    "schema.create",
+    "schema.update",
+    "entity.create",
+    "entity.update",
+    "block.set",
+    "block.reorder",
+    "style.set",
+    "meta.update",
+    "meta.constrain"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "user_message": "I'm running a poker league. 8 players, biweekly Thursday nights. $20 buy-in. Players: Mike, Sarah, Dave, Lisa, Tom, Amy, Jake, Nina.",
+      "expected_schemas": [
+        {
+          "type": "schema.create",
+          "payload": {
+            "id": "PokerLeague",
+            "interface": "interface PokerLeague { name: string; buy_in: number; schedule: string; players: Record<string, Player>; games: Record<string, Game>; }",
+            "render_html": "<div class=\"poker-league\"><h1>{{name}}</h1><p>{{schedule}} | ${{buy_in}} buy-in</p></div>",
+            "render_text": "{{name}}\n{{schedule}} | ${{buy_in}} buy-in"
+          }
+        },
+        {
+          "type": "schema.create",
+          "payload": {
+            "id": "Player",
+            "interface": "interface Player { name: string; games_played: number; total_winnings: number; }",
+            "render_html": "<tr><td>{{name}}</td><td>{{games_played}}</td><td>${{total_winnings}}</td></tr>",
+            "render_text": "{{name}}: {{games_played}} games, ${{total_winnings}}"
+          }
+        },
+        {
+          "type": "schema.create",
+          "payload": {
+            "id": "Game",
+            "interface": "interface Game { date: string; host: string; winner: string | null; second: string | null; pot: number; }",
+            "render_html": "<tr><td>{{date}}</td><td>{{host}}</td><td>{{winner}}</td><td>${{pot}}</td></tr>",
+            "render_text": "{{date}} @ {{host}}: {{#winner}}Winner: {{winner}}{{/winner}}{{^winner}}Upcoming{{/winner}}"
+          }
+        }
+      ],
+      "expected_entities": [
+        {
+          "type": "entity.create",
+          "payload": {
+            "id": "poker_league",
+            "_schema": "PokerLeague",
+            "name": "Thursday Night Poker",
+            "buy_in": 20,
+            "schedule": "Biweekly Thursdays",
+            "players": {
+              "player_mike": { "name": "Mike", "games_played": 0, "total_winnings": 0, "_pos": 1.0 },
+              "player_sarah": { "name": "Sarah", "games_played": 0, "total_winnings": 0, "_pos": 2.0 },
+              "player_dave": { "name": "Dave", "games_played": 0, "total_winnings": 0, "_pos": 3.0 },
+              "player_lisa": { "name": "Lisa", "games_played": 0, "total_winnings": 0, "_pos": 4.0 },
+              "player_tom": { "name": "Tom", "games_played": 0, "total_winnings": 0, "_pos": 5.0 },
+              "player_amy": { "name": "Amy", "games_played": 0, "total_winnings": 0, "_pos": 6.0 },
+              "player_jake": { "name": "Jake", "games_played": 0, "total_winnings": 0, "_pos": 7.0 },
+              "player_nina": { "name": "Nina", "games_played": 0, "total_winnings": 0, "_pos": 8.0 }
+            },
+            "games": {}
+          }
+        }
+      ],
+      "expected_blocks": [
+        {
+          "type": "block.set",
+          "payload": {
+            "id": "block_header",
+            "type": "heading",
+            "parent": "block_root",
+            "position": 1.0,
+            "props": { "level": 1, "content": "Thursday Night Poker" }
+          }
+        },
+        {
+          "type": "block.set",
+          "payload": {
+            "id": "block_standings",
+            "type": "heading",
+            "parent": "block_root",
+            "position": 2.0,
+            "props": { "level": 2, "content": "Standings" }
+          }
+        },
+        {
+          "type": "block.set",
+          "payload": {
+            "id": "block_players",
+            "type": "entity_view",
+            "parent": "block_root",
+            "position": 3.0,
+            "props": { "source": "poker_league/players" }
+          }
+        },
+        {
+          "type": "block.set",
+          "payload": {
+            "id": "block_games_header",
+            "type": "heading",
+            "parent": "block_root",
+            "position": 4.0,
+            "props": { "level": 2, "content": "Games" }
+          }
+        },
+        {
+          "type": "block.set",
+          "payload": {
+            "id": "block_games",
+            "type": "entity_view",
+            "parent": "block_root",
+            "position": 5.0,
+            "props": { "source": "poker_league/games" }
+          }
+        }
+      ],
+      "expected_meta": [
+        {
+          "type": "meta.update",
+          "payload": {
+            "title": "Thursday Night Poker",
+            "identity": "A biweekly poker league with 8 players"
+          }
+        }
+      ],
+      "expected_constraints": [
+        {
+          "type": "meta.constrain",
+          "payload": {
+            "id": "constraint_max_players",
+            "rule": "max_children",
+            "path": "poker_league/players",
+            "value": 10,
+            "message": "Maximum 10 players in the league"
+          }
+        }
+      ]
+    },
+    {
+      "turn": 2,
+      "user_message": "Dave is hosting this Thursday, Feb 27",
+      "expected_entities": [
+        {
+          "type": "entity.update",
+          "payload": {
+            "id": "poker_league",
+            "games": {
+              "game_2026_02_27": {
+                "date": "2026-02-27",
+                "host": "Dave",
+                "winner": null,
+                "second": null,
+                "pot": 160,
+                "_pos": 1.0
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "turn": 3,
+      "user_message": "Sarah won Thursday! Jake came in second.",
+      "expected_entities": [
+        {
+          "type": "entity.update",
+          "payload": {
+            "id": "poker_league",
+            "games": {
+              "game_2026_02_27": {
+                "winner": "Sarah",
+                "second": "Jake"
+              }
+            },
+            "players": {
+              "player_sarah": { "games_played": 1, "total_winnings": 120 },
+              "player_jake": { "games_played": 1, "total_winnings": 40 },
+              "player_mike": { "games_played": 1 },
+              "player_dave": { "games_played": 1 },
+              "player_lisa": { "games_played": 1 },
+              "player_tom": { "games_played": 1 },
+              "player_amy": { "games_played": 1 },
+              "player_nina": { "games_played": 1 }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "turn": 4,
+      "user_message": "Mike can't make it anymore, he's moving. Remove him.",
+      "expected_entities": [
+        {
+          "type": "entity.update",
+          "payload": {
+            "id": "poker_league",
+            "players": {
+              "player_mike": null
+            }
+          }
+        }
+      ]
+    },
+    {
+      "turn": 5,
+      "user_message": "Add Chris to the league",
+      "expected_entities": [
+        {
+          "type": "entity.update",
+          "payload": {
+            "id": "poker_league",
+            "players": {
+              "player_chris": { "name": "Chris", "games_played": 0, "total_winnings": 0, "_pos": 9.0 }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "turn": 6,
+      "user_message": "Next game is March 13 at Tom's place",
+      "expected_entities": [
+        {
+          "type": "entity.update",
+          "payload": {
+            "id": "poker_league",
+            "games": {
+              "game_2026_03_13": {
+                "date": "2026-03-13",
+                "host": "Tom",
+                "winner": null,
+                "second": null,
+                "pot": 160,
+                "_pos": 2.0
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "turn": 7,
+      "user_message": "Actually the buy-in is going up to $25",
+      "expected_entities": [
+        {
+          "type": "entity.update",
+          "payload": {
+            "id": "poker_league",
+            "buy_in": 25
+          }
+        }
+      ]
+    }
+  ],
+  "final_state_assertions": {
+    "player_count": 8,
+    "game_count": 2,
+    "total_pot": 360,
+    "leader": "Sarah",
+    "leader_winnings": 120
+  }
+}

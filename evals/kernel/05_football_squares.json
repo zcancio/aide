@@ -1,0 +1,291 @@
+{
+  "id": "football_squares",
+  "name": "Football Squares",
+  "description": "Super Bowl squares betting pool with 10x10 grid, claims, and payouts",
+  "complexity": "advanced",
+  "primitives_exercised": [
+    "schema.create",
+    "entity.create",
+    "entity.update",
+    "block.set",
+    "style.set_entity",
+    "meta.update",
+    "meta.constrain"
+  ],
+  "notes": "Uses Record<string, Square> with keys like 'sq_0_0' through 'sq_9_9' instead of grid primitives. Rows are AFC digits (0-9), columns are NFC digits (0-9).",
+  "turns": [
+    {
+      "turn": 1,
+      "user_message": "Setting up Super Bowl squares! Chiefs vs Eagles. $10 per square.",
+      "expected_schemas": [
+        {
+          "type": "schema.create",
+          "payload": {
+            "id": "SquaresPool",
+            "interface": "interface SquaresPool { afc_team: string; nfc_team: string; price_per_square: number; afc_digits: number[] | null; nfc_digits: number[] | null; squares: Record<string, Square>; winners: Record<string, Winner>; }",
+            "render_html": "<div class=\"squares-pool\"><h2>{{afc_team}} vs {{nfc_team}}</h2><p>${{price_per_square}} per square</p></div>",
+            "render_text": "{{afc_team}} vs {{nfc_team}}\n${{price_per_square}}/square"
+          }
+        },
+        {
+          "type": "schema.create",
+          "payload": {
+            "id": "Square",
+            "interface": "interface Square { row: number; col: number; owner: string | null; }",
+            "render_html": "<div class=\"square {{#owner}}claimed{{/owner}}\" data-row=\"{{row}}\" data-col=\"{{col}}\">{{#owner}}{{owner}}{{/owner}}{{^owner}}&nbsp;{{/owner}}</div>",
+            "render_text": "[{{row}},{{col}}]:{{#owner}}{{owner}}{{/owner}}{{^owner}}-{{/owner}}"
+          }
+        },
+        {
+          "type": "schema.create",
+          "payload": {
+            "id": "Winner",
+            "interface": "interface Winner { quarter: string; afc_score: number; nfc_score: number; afc_digit: number; nfc_digit: number; winner_name: string; payout: number; }",
+            "render_html": "<tr><td>{{quarter}}</td><td>{{afc_score}}-{{nfc_score}}</td><td>{{winner_name}}</td><td>${{payout}}</td></tr>",
+            "render_text": "{{quarter}}: {{afc_score}}-{{nfc_score}} → {{winner_name}} (${{payout}})"
+          }
+        }
+      ],
+      "expected_entities": [
+        {
+          "type": "entity.create",
+          "payload": {
+            "id": "squares_pool",
+            "_schema": "SquaresPool",
+            "afc_team": "Chiefs",
+            "nfc_team": "Eagles",
+            "price_per_square": 10,
+            "afc_digits": null,
+            "nfc_digits": null,
+            "squares": {
+              "sq_0_0": { "row": 0, "col": 0, "owner": null, "_pos": 1.0 },
+              "sq_0_1": { "row": 0, "col": 1, "owner": null, "_pos": 2.0 },
+              "sq_0_2": { "row": 0, "col": 2, "owner": null, "_pos": 3.0 },
+              "sq_0_3": { "row": 0, "col": 3, "owner": null, "_pos": 4.0 },
+              "sq_0_4": { "row": 0, "col": 4, "owner": null, "_pos": 5.0 },
+              "sq_0_5": { "row": 0, "col": 5, "owner": null, "_pos": 6.0 },
+              "sq_0_6": { "row": 0, "col": 6, "owner": null, "_pos": 7.0 },
+              "sq_0_7": { "row": 0, "col": 7, "owner": null, "_pos": 8.0 },
+              "sq_0_8": { "row": 0, "col": 8, "owner": null, "_pos": 9.0 },
+              "sq_0_9": { "row": 0, "col": 9, "owner": null, "_pos": 10.0 }
+            },
+            "winners": {}
+          },
+          "notes": "Full grid would have 100 squares (sq_0_0 through sq_9_9). Abbreviated for eval."
+        }
+      ],
+      "expected_blocks": [
+        {
+          "type": "block.set",
+          "payload": {
+            "id": "block_header",
+            "type": "heading",
+            "parent": "block_root",
+            "position": 1.0,
+            "props": { "level": 1, "content": "Super Bowl Squares" }
+          }
+        },
+        {
+          "type": "block.set",
+          "payload": {
+            "id": "block_matchup",
+            "type": "text",
+            "parent": "block_root",
+            "position": 2.0,
+            "props": { "content": "Chiefs vs Eagles | $10/square" }
+          }
+        },
+        {
+          "type": "block.set",
+          "payload": {
+            "id": "block_grid",
+            "type": "entity_view",
+            "parent": "block_root",
+            "position": 3.0,
+            "props": { "source": "squares_pool/squares" }
+          }
+        },
+        {
+          "type": "block.set",
+          "payload": {
+            "id": "block_winners_header",
+            "type": "heading",
+            "parent": "block_root",
+            "position": 4.0,
+            "props": { "level": 2, "content": "Winners" }
+          }
+        },
+        {
+          "type": "block.set",
+          "payload": {
+            "id": "block_winners",
+            "type": "entity_view",
+            "parent": "block_root",
+            "position": 5.0,
+            "props": { "source": "squares_pool/winners" }
+          }
+        }
+      ],
+      "expected_meta": [
+        {
+          "type": "meta.update",
+          "payload": {
+            "title": "Super Bowl Squares",
+            "identity": "Football squares betting pool"
+          }
+        }
+      ]
+    },
+    {
+      "turn": 2,
+      "user_message": "Mike wants row 0 col 0 through 4. Sarah wants row 1 col 0 through 4.",
+      "expected_entities": [
+        {
+          "type": "entity.update",
+          "payload": {
+            "id": "squares_pool",
+            "squares": {
+              "sq_0_0": { "owner": "Mike" },
+              "sq_0_1": { "owner": "Mike" },
+              "sq_0_2": { "owner": "Mike" },
+              "sq_0_3": { "owner": "Mike" },
+              "sq_0_4": { "owner": "Mike" },
+              "sq_1_0": { "owner": "Sarah", "_pos": 11.0 },
+              "sq_1_1": { "owner": "Sarah", "_pos": 12.0 },
+              "sq_1_2": { "owner": "Sarah", "_pos": 13.0 },
+              "sq_1_3": { "owner": "Sarah", "_pos": 14.0 },
+              "sq_1_4": { "owner": "Sarah", "_pos": 15.0 }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "turn": 3,
+      "user_message": "Dave claims squares at (2,3), (5,7), and (8,1)",
+      "expected_entities": [
+        {
+          "type": "entity.update",
+          "payload": {
+            "id": "squares_pool",
+            "squares": {
+              "sq_2_3": { "row": 2, "col": 3, "owner": "Dave", "_pos": 24.0 },
+              "sq_5_7": { "row": 5, "col": 7, "owner": "Dave", "_pos": 58.0 },
+              "sq_8_1": { "row": 8, "col": 1, "owner": "Dave", "_pos": 82.0 }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "turn": 4,
+      "user_message": "Grid is full, assign random digits. Chiefs row, Eagles column.",
+      "expected_entities": [
+        {
+          "type": "entity.update",
+          "payload": {
+            "id": "squares_pool",
+            "afc_digits": [3, 7, 1, 9, 4, 0, 6, 2, 8, 5],
+            "nfc_digits": [8, 2, 5, 0, 7, 3, 9, 1, 4, 6]
+          },
+          "notes": "Digits are randomly shuffled 0-9. Row 0 corresponds to Chiefs digit 3, etc."
+        }
+      ]
+    },
+    {
+      "turn": 5,
+      "user_message": "Q1 score: Chiefs 7, Eagles 3",
+      "expected_entities": [
+        {
+          "type": "entity.update",
+          "payload": {
+            "id": "squares_pool",
+            "winners": {
+              "winner_q1": {
+                "quarter": "Q1",
+                "afc_score": 7,
+                "nfc_score": 3,
+                "afc_digit": 7,
+                "nfc_digit": 3,
+                "winner_name": "Mike",
+                "payout": 250,
+                "_pos": 1.0
+              }
+            }
+          },
+          "notes": "Chiefs 7 → afc_digit 7 → row index 1 (where 7 is in afc_digits). Eagles 3 → nfc_digit 3 → col index 5. Winner at sq_1_5."
+        }
+      ],
+      "expected_styles": [
+        {
+          "type": "style.set_entity",
+          "payload": {
+            "id": "squares_pool/squares/sq_1_5",
+            "styles": {
+              "highlight": true,
+              "bg_color": "#bbf7d0"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "turn": 6,
+      "user_message": "Halftime: Chiefs 14, Eagles 10",
+      "expected_entities": [
+        {
+          "type": "entity.update",
+          "payload": {
+            "id": "squares_pool",
+            "winners": {
+              "winner_q2": {
+                "quarter": "Halftime",
+                "afc_score": 14,
+                "nfc_score": 10,
+                "afc_digit": 4,
+                "nfc_digit": 0,
+                "winner_name": "Sarah",
+                "payout": 250,
+                "_pos": 2.0
+              }
+            }
+          },
+          "notes": "Chiefs 14 → last digit 4 → row where 4 is. Eagles 10 → last digit 0 → col where 0 is."
+        }
+      ],
+      "expected_styles": [
+        {
+          "type": "style.set_entity",
+          "payload": {
+            "id": "squares_pool/squares/sq_4_3",
+            "styles": {
+              "highlight": true,
+              "bg_color": "#bbf7d0"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "turn": 7,
+      "user_message": "Mike sold his square at row 0 col 2 to Lisa",
+      "expected_entities": [
+        {
+          "type": "entity.update",
+          "payload": {
+            "id": "squares_pool",
+            "squares": {
+              "sq_0_2": { "owner": "Lisa" }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "final_state_assertions": {
+    "squares_claimed": 13,
+    "winners_count": 2,
+    "total_payouts": 500,
+    "pot_remaining": 500
+  }
+}

@@ -1,0 +1,353 @@
+{
+  "id": "group_trip",
+  "name": "Group Trip",
+  "description": "Plan a group vacation with travelers, expenses, and itinerary",
+  "complexity": "advanced",
+  "primitives_exercised": [
+    "schema.create",
+    "schema.update",
+    "entity.create",
+    "entity.update",
+    "entity.remove",
+    "block.set",
+    "block.reorder",
+    "style.set_entity",
+    "meta.update"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "user_message": "Planning a ski trip to Tahoe. Me, Alex, Jordan, and Sam. March 15-18.",
+      "expected_schemas": [
+        {
+          "type": "schema.create",
+          "payload": {
+            "id": "Trip",
+            "interface": "interface Trip { destination: string; start_date: string; end_date: string; travelers: Record<string, Traveler>; expenses: Record<string, Expense>; itinerary: Record<string, ItineraryItem>; }",
+            "render_html": "<div class=\"trip\"><h1>{{destination}}</h1><p>{{start_date}} to {{end_date}}</p></div>",
+            "render_text": "{{destination}}\n{{start_date}} - {{end_date}}"
+          }
+        },
+        {
+          "type": "schema.create",
+          "payload": {
+            "id": "Traveler",
+            "interface": "interface Traveler { name: string; confirmed: boolean; paid: number; owes: number; }",
+            "render_html": "<div class=\"traveler {{#confirmed}}confirmed{{/confirmed}}\"><span>{{name}}</span><span>{{#confirmed}}✓{{/confirmed}}{{^confirmed}}Pending{{/confirmed}}</span></div>",
+            "render_text": "{{name}}: {{#confirmed}}Confirmed{{/confirmed}}{{^confirmed}}Pending{{/confirmed}} | Paid: ${{paid}} | Owes: ${{owes}}"
+          }
+        },
+        {
+          "type": "schema.create",
+          "payload": {
+            "id": "Expense",
+            "interface": "interface Expense { description: string; amount: number; paid_by: string; split_between: string[]; settled: boolean; }",
+            "render_html": "<tr><td>{{description}}</td><td>${{amount}}</td><td>{{paid_by}}</td><td>{{#settled}}Settled{{/settled}}{{^settled}}Pending{{/settled}}</td></tr>",
+            "render_text": "{{description}}: ${{amount}} ({{paid_by}}) {{#settled}}✓{{/settled}}"
+          }
+        },
+        {
+          "type": "schema.create",
+          "payload": {
+            "id": "ItineraryItem",
+            "interface": "interface ItineraryItem { date: string; time: string | null; activity: string; location: string | null; notes: string | null; }",
+            "render_html": "<div class=\"itinerary-item\"><strong>{{date}} {{#time}}@ {{time}}{{/time}}</strong><p>{{activity}}{{#location}} - {{location}}{{/location}}</p></div>",
+            "render_text": "{{date}}{{#time}} {{time}}{{/time}}: {{activity}}{{#location}} @ {{location}}{{/location}}"
+          }
+        }
+      ],
+      "expected_entities": [
+        {
+          "type": "entity.create",
+          "payload": {
+            "id": "trip",
+            "_schema": "Trip",
+            "destination": "Lake Tahoe Ski Trip",
+            "start_date": "2026-03-15",
+            "end_date": "2026-03-18",
+            "travelers": {
+              "traveler_me": { "name": "Me", "confirmed": true, "paid": 0, "owes": 0, "_pos": 1.0 },
+              "traveler_alex": { "name": "Alex", "confirmed": false, "paid": 0, "owes": 0, "_pos": 2.0 },
+              "traveler_jordan": { "name": "Jordan", "confirmed": false, "paid": 0, "owes": 0, "_pos": 3.0 },
+              "traveler_sam": { "name": "Sam", "confirmed": false, "paid": 0, "owes": 0, "_pos": 4.0 }
+            },
+            "expenses": {},
+            "itinerary": {}
+          }
+        }
+      ],
+      "expected_blocks": [
+        {
+          "type": "block.set",
+          "payload": {
+            "id": "block_header",
+            "type": "heading",
+            "parent": "block_root",
+            "position": 1.0,
+            "props": { "level": 1, "content": "Lake Tahoe Ski Trip" }
+          }
+        },
+        {
+          "type": "block.set",
+          "payload": {
+            "id": "block_dates",
+            "type": "text",
+            "parent": "block_root",
+            "position": 2.0,
+            "props": { "content": "March 15-18, 2026" }
+          }
+        },
+        {
+          "type": "block.set",
+          "payload": {
+            "id": "block_travelers_header",
+            "type": "heading",
+            "parent": "block_root",
+            "position": 3.0,
+            "props": { "level": 2, "content": "Travelers" }
+          }
+        },
+        {
+          "type": "block.set",
+          "payload": {
+            "id": "block_travelers",
+            "type": "entity_view",
+            "parent": "block_root",
+            "position": 4.0,
+            "props": { "source": "trip/travelers" }
+          }
+        },
+        {
+          "type": "block.set",
+          "payload": {
+            "id": "block_expenses_header",
+            "type": "heading",
+            "parent": "block_root",
+            "position": 5.0,
+            "props": { "level": 2, "content": "Expenses" }
+          }
+        },
+        {
+          "type": "block.set",
+          "payload": {
+            "id": "block_expenses",
+            "type": "entity_view",
+            "parent": "block_root",
+            "position": 6.0,
+            "props": { "source": "trip/expenses" }
+          }
+        }
+      ],
+      "expected_meta": [
+        {
+          "type": "meta.update",
+          "payload": {
+            "title": "Lake Tahoe Ski Trip",
+            "identity": "Group ski trip planning with travelers, expenses, and itinerary"
+          }
+        }
+      ]
+    },
+    {
+      "turn": 2,
+      "user_message": "Alex and Jordan are confirmed",
+      "expected_entities": [
+        {
+          "type": "entity.update",
+          "payload": {
+            "id": "trip",
+            "travelers": {
+              "traveler_alex": { "confirmed": true },
+              "traveler_jordan": { "confirmed": true }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "turn": 3,
+      "user_message": "I booked the cabin, $800 total. Split 4 ways.",
+      "expected_entities": [
+        {
+          "type": "entity.update",
+          "payload": {
+            "id": "trip",
+            "expenses": {
+              "expense_cabin": {
+                "description": "Cabin rental",
+                "amount": 800,
+                "paid_by": "Me",
+                "split_between": ["Me", "Alex", "Jordan", "Sam"],
+                "settled": false,
+                "_pos": 1.0
+              }
+            },
+            "travelers": {
+              "traveler_me": { "paid": 800 },
+              "traveler_alex": { "owes": 200 },
+              "traveler_jordan": { "owes": 200 },
+              "traveler_sam": { "owes": 200 }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "turn": 4,
+      "user_message": "Alex paid me back for the cabin",
+      "expected_entities": [
+        {
+          "type": "entity.update",
+          "payload": {
+            "id": "trip",
+            "travelers": {
+              "traveler_alex": { "paid": 200, "owes": 0 }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "turn": 5,
+      "user_message": "Add lift tickets - Jordan is covering those, $600 for everyone",
+      "expected_entities": [
+        {
+          "type": "entity.update",
+          "payload": {
+            "id": "trip",
+            "expenses": {
+              "expense_lift_tickets": {
+                "description": "Lift tickets",
+                "amount": 600,
+                "paid_by": "Jordan",
+                "split_between": ["Me", "Alex", "Jordan", "Sam"],
+                "settled": false,
+                "_pos": 2.0
+              }
+            },
+            "travelers": {
+              "traveler_jordan": { "paid": 600 },
+              "traveler_me": { "owes": 150 },
+              "traveler_alex": { "owes": 150 },
+              "traveler_sam": { "owes": 150 }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "turn": 6,
+      "user_message": "Sam dropped out",
+      "expected_entities": [
+        {
+          "type": "entity.update",
+          "payload": {
+            "id": "trip",
+            "travelers": {
+              "traveler_sam": null
+            }
+          }
+        }
+      ],
+      "notes": "Should also recalculate expense splits - kernel doesn't do this automatically, L3 should emit updates"
+    },
+    {
+      "turn": 7,
+      "user_message": "Day 1: Arrive and settle in. Day 2: Ski all day. Day 3: Morning ski, afternoon hot springs. Day 4: Head home.",
+      "expected_entities": [
+        {
+          "type": "entity.update",
+          "payload": {
+            "id": "trip",
+            "itinerary": {
+              "day_1": {
+                "date": "2026-03-15",
+                "time": null,
+                "activity": "Arrive and settle in",
+                "location": "Cabin",
+                "notes": null,
+                "_pos": 1.0
+              },
+              "day_2": {
+                "date": "2026-03-16",
+                "time": null,
+                "activity": "Ski all day",
+                "location": "Heavenly Resort",
+                "notes": null,
+                "_pos": 2.0
+              },
+              "day_3_am": {
+                "date": "2026-03-17",
+                "time": "Morning",
+                "activity": "Skiing",
+                "location": "Heavenly Resort",
+                "notes": null,
+                "_pos": 3.0
+              },
+              "day_3_pm": {
+                "date": "2026-03-17",
+                "time": "Afternoon",
+                "activity": "Hot springs",
+                "location": null,
+                "notes": null,
+                "_pos": 4.0
+              },
+              "day_4": {
+                "date": "2026-03-18",
+                "time": null,
+                "activity": "Head home",
+                "location": null,
+                "notes": null,
+                "_pos": 5.0
+              }
+            }
+          }
+        }
+      ],
+      "expected_blocks": [
+        {
+          "type": "block.set",
+          "payload": {
+            "id": "block_itinerary_header",
+            "type": "heading",
+            "parent": "block_root",
+            "position": 7.0,
+            "props": { "level": 2, "content": "Itinerary" }
+          }
+        },
+        {
+          "type": "block.set",
+          "payload": {
+            "id": "block_itinerary",
+            "type": "entity_view",
+            "parent": "block_root",
+            "position": 8.0,
+            "props": { "source": "trip/itinerary" }
+          }
+        }
+      ]
+    },
+    {
+      "turn": 8,
+      "user_message": "Highlight day 2, that's the main event",
+      "expected_styles": [
+        {
+          "type": "style.set_entity",
+          "payload": {
+            "id": "trip/itinerary/day_2",
+            "styles": {
+              "highlight": true,
+              "bg_color": "#fef3c7"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "final_state_assertions": {
+    "traveler_count": 3,
+    "expense_count": 2,
+    "total_expenses": 1400,
+    "itinerary_items": 5
+  }
+}

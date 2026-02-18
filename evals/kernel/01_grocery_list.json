@@ -1,0 +1,170 @@
+{
+  "id": "grocery_list",
+  "name": "Grocery List",
+  "description": "Classic list with checkable items, categories, and item management",
+  "complexity": "basic",
+  "primitives_exercised": [
+    "schema.create",
+    "entity.create",
+    "entity.update",
+    "entity.remove",
+    "block.set",
+    "meta.update"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "user_message": "I need to track my grocery list. Milk, eggs, bread, and cheese.",
+      "expected_schemas": [
+        {
+          "type": "schema.create",
+          "payload": {
+            "id": "GroceryList",
+            "interface": "interface GroceryList { title: string; items: Record<string, GroceryItem>; }",
+            "render_html": "<div class=\"grocery-list\"><h2>{{title}}</h2><ul>{{>items}}</ul></div>",
+            "render_text": "{{title}}\n{{>items}}"
+          }
+        },
+        {
+          "type": "schema.create",
+          "payload": {
+            "id": "GroceryItem",
+            "interface": "interface GroceryItem { name: string; checked: boolean; quantity?: number; store?: string; }",
+            "render_html": "<li class=\"item {{#checked}}done{{/checked}}\"><input type=\"checkbox\" {{#checked}}checked{{/checked}}> {{name}}{{#quantity}} ({{quantity}}){{/quantity}}</li>",
+            "render_text": "{{#checked}}✓{{/checked}}{{^checked}}○{{/checked}} {{name}}{{#quantity}} x{{quantity}}{{/quantity}}"
+          }
+        }
+      ],
+      "expected_entities": [
+        {
+          "type": "entity.create",
+          "payload": {
+            "id": "grocery_list",
+            "_schema": "GroceryList",
+            "title": "Grocery List",
+            "items": {
+              "item_milk": { "name": "Milk", "checked": false, "_pos": 1.0 },
+              "item_eggs": { "name": "Eggs", "checked": false, "_pos": 2.0 },
+              "item_bread": { "name": "Bread", "checked": false, "_pos": 3.0 },
+              "item_cheese": { "name": "Cheese", "checked": false, "_pos": 4.0 }
+            }
+          }
+        }
+      ],
+      "expected_blocks": [
+        {
+          "type": "block.set",
+          "payload": {
+            "id": "block_title",
+            "type": "heading",
+            "parent": "block_root",
+            "position": 1.0,
+            "props": { "level": 1, "content": "Grocery List" }
+          }
+        },
+        {
+          "type": "block.set",
+          "payload": {
+            "id": "block_list",
+            "type": "entity_view",
+            "parent": "block_root",
+            "position": 2.0,
+            "props": { "source": "grocery_list" }
+          }
+        }
+      ],
+      "expected_meta": [
+        {
+          "type": "meta.update",
+          "payload": {
+            "title": "Grocery List",
+            "identity": "A grocery shopping list with items to buy"
+          }
+        }
+      ]
+    },
+    {
+      "turn": 2,
+      "user_message": "Got the milk and eggs",
+      "expected_entities": [
+        {
+          "type": "entity.update",
+          "payload": {
+            "id": "grocery_list",
+            "items": {
+              "item_milk": { "checked": true },
+              "item_eggs": { "checked": true }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "turn": 3,
+      "user_message": "Add butter and yogurt",
+      "expected_entities": [
+        {
+          "type": "entity.update",
+          "payload": {
+            "id": "grocery_list",
+            "items": {
+              "item_butter": { "name": "Butter", "checked": false, "_pos": 5.0 },
+              "item_yogurt": { "name": "Yogurt", "checked": false, "_pos": 6.0 }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "turn": 4,
+      "user_message": "Actually remove cheese, we have plenty",
+      "expected_entities": [
+        {
+          "type": "entity.update",
+          "payload": {
+            "id": "grocery_list",
+            "items": {
+              "item_cheese": null
+            }
+          }
+        }
+      ]
+    },
+    {
+      "turn": 5,
+      "user_message": "Need 2 loaves of bread, not just one",
+      "expected_entities": [
+        {
+          "type": "entity.update",
+          "payload": {
+            "id": "grocery_list",
+            "items": {
+              "item_bread": { "quantity": 2 }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "turn": 6,
+      "user_message": "Uncheck milk, I grabbed the wrong kind",
+      "expected_entities": [
+        {
+          "type": "entity.update",
+          "payload": {
+            "id": "grocery_list",
+            "items": {
+              "item_milk": { "checked": false }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "final_state_assertions": {
+    "entity_count": 1,
+    "item_count": 5,
+    "checked_count": 1,
+    "removed_count": 1
+  }
+}
