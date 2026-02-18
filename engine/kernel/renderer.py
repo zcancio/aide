@@ -684,7 +684,11 @@ def _render_grid_collection(
                 cell_template = cell_schema.get("render_html", "")
                 if cell_template:
                     resolved = _resolve_child_partials(cell_template, cell, snapshot, channel, cell_schema_id)
-                    cell_context = _build_entity_context(key, cell, snapshot, channel)
+                    # Auto-compute sq if template uses it and cell doesn't have it
+                    cell_data = dict(cell)
+                    if ("{{sq}}" in cell_template or "{{ sq }}" in cell_template) and "sq" not in cell_data:
+                        cell_data["sq"] = "light" if (row + col) % 2 == 0 else "dark"
+                    cell_context = _build_entity_context(key, cell_data, snapshot, channel)
                     try:
                         content = chevron.render(resolved, cell_context)
                     except Exception:
@@ -697,11 +701,15 @@ def _render_grid_collection(
                     content = escape(str(first_val)) if first_val else ""
                     parts.append(f'<div class="aide-grid-cell">{content}</div>')
             else:
-                # Empty cell - render as schema template with no data or plain wrapper
+                # Empty cell - auto-compute checkerboard color if schema has sq field
                 if has_schema_template:
                     cell_template = child_schema.get("render_html", "")
                     if cell_template:
-                        cell_context = _build_entity_context(key, {}, snapshot, channel)
+                        # Auto-compute sq (square color) for checkerboard pattern
+                        auto_cell_data: dict[str, Any] = {}
+                        if "{{sq}}" in cell_template or "{{ sq }}" in cell_template:
+                            auto_cell_data["sq"] = "light" if (row + col) % 2 == 0 else "dark"
+                        cell_context = _build_entity_context(key, auto_cell_data, snapshot, channel)
                         try:
                             content = chevron.render(cell_template, cell_context)
                         except Exception:
