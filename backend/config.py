@@ -74,8 +74,8 @@ class Settings:
     GEMINI_API_KEY: str = os.environ.get("GEMINI_API_KEY", "")
 
     # Production models (main flow uses higher-tier for quality)
-    L2_MODEL: str = os.environ.get("L2_MODEL", "claude-sonnet-4-20250514")
-    L3_MODEL: str = os.environ.get("L3_MODEL", "claude-opus-4-6")
+    L2_MODEL: str = os.environ.get("L2_MODEL", "claude-sonnet-4-5-20250514")
+    L3_MODEL: str = os.environ.get("L3_MODEL", "claude-opus-4-5-20251101")
 
     # Shadow models (run after production calls, results recorded but not applied)
     # Shadow uses lower-tier models to measure if cheaper models would suffice
