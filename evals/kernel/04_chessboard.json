@@ -329,6 +329,72 @@
           }
         }
       ]
+    },
+    {
+      "turn": 9,
+      "type": "query",
+      "user_message": "Whose turn is it?",
+      "expected_primitives": [],
+      "expected_response": {
+        "type": "text",
+        "content": "It's Black's turn (Bob). The position after 5 moves is the Ruy Lopez opening.",
+        "notes": "Simple query about game state."
+      }
+    },
+    {
+      "turn": 10,
+      "type": "query",
+      "user_message": "What moves have been played?",
+      "expected_primitives": [],
+      "expected_response": {
+        "type": "text",
+        "content": "1. e4 e5\n2. Nf3 Nc6\n3. Bb5\n\nThis is the Ruy Lopez (Spanish Game) opening.",
+        "notes": "Query about move history, formatted in standard chess notation."
+      }
+    },
+    {
+      "turn": 11,
+      "type": "query",
+      "user_message": "What piece is on b5?",
+      "expected_primitives": [],
+      "expected_response": {
+        "type": "text",
+        "content": "White's bishop (♗) is on b5.",
+        "notes": "Query about specific square."
+      }
+    },
+    {
+      "turn": 12,
+      "type": "error",
+      "user_message": "e4",
+      "expected_primitives": [],
+      "expected_response": {
+        "type": "clarification",
+        "content": "e4 is already occupied by a white pawn. It's Black's turn - did you mean a different move for Black?",
+        "notes": "Error: invalid move (square occupied, wrong turn)."
+      }
+    },
+    {
+      "turn": 13,
+      "type": "error",
+      "user_message": "Kh4",
+      "expected_primitives": [],
+      "expected_response": {
+        "type": "clarification",
+        "content": "The king on e8 cannot move to h4 - that's not a legal king move. Did you mean a different piece or square?",
+        "notes": "Error: illegal move. Kings can only move one square."
+      }
+    },
+    {
+      "turn": 14,
+      "type": "error",
+      "user_message": "Move the rook",
+      "expected_primitives": [],
+      "expected_response": {
+        "type": "clarification",
+        "content": "Which rook and where? Black has rooks on a8 and h8. Please specify the move in algebraic notation (e.g., Ra6, Rh6) or describe the destination square.",
+        "notes": "Error: ambiguous move instruction."
+      }
     }
   ],
   "final_state_assertions": {

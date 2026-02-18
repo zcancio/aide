@@ -159,6 +159,50 @@
           }
         }
       ]
+    },
+    {
+      "turn": 7,
+      "type": "query",
+      "user_message": "What do I still need to get?",
+      "expected_primitives": [],
+      "expected_response": {
+        "type": "text",
+        "content": "You still need to get:\n- Milk\n- Bread (x2)\n- Butter\n- Yogurt\n\nYou've already checked off: Eggs",
+        "notes": "Query about unchecked items. No state changes, just read from snapshot."
+      }
+    },
+    {
+      "turn": 8,
+      "type": "query",
+      "user_message": "How many items are on my list?",
+      "expected_primitives": [],
+      "expected_response": {
+        "type": "text",
+        "content": "You have 5 items on your list: 1 checked off, 4 remaining.",
+        "notes": "Count query. Reads from snapshot, no mutations."
+      }
+    },
+    {
+      "turn": 9,
+      "type": "error",
+      "user_message": "Check off the apples",
+      "expected_primitives": [],
+      "expected_response": {
+        "type": "clarification",
+        "content": "I don't see apples on your list. Did you mean to add apples, or were you thinking of a different item? Your current items are: Milk, Eggs, Bread, Butter, Yogurt.",
+        "notes": "Error: referencing non-existent item. Should clarify, not fail silently."
+      }
+    },
+    {
+      "turn": 10,
+      "type": "error",
+      "user_message": "Add",
+      "expected_primitives": [],
+      "expected_response": {
+        "type": "clarification",
+        "content": "What would you like to add to your grocery list?",
+        "notes": "Error: incomplete command. Should ask for clarification."
+      }
     }
   ],
   "final_state_assertions": {

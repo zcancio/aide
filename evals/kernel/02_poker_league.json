@@ -258,6 +258,61 @@
           }
         }
       ]
+    },
+    {
+      "turn": 8,
+      "type": "query",
+      "user_message": "Who's in the lead?",
+      "expected_primitives": [],
+      "expected_response": {
+        "type": "text",
+        "content": "Sarah is in the lead with $120 in winnings from 1 game. Jake is second with $40.",
+        "notes": "Query about standings. Reads from snapshot, sorts by total_winnings."
+      }
+    },
+    {
+      "turn": 9,
+      "type": "query",
+      "user_message": "When's the next game?",
+      "expected_primitives": [],
+      "expected_response": {
+        "type": "text",
+        "content": "The next game is March 13 at Tom's place. With 8 players at $25 buy-in, the pot will be $200.",
+        "notes": "Query about upcoming games. Finds games with winner=null."
+      }
+    },
+    {
+      "turn": 10,
+      "type": "query",
+      "user_message": "How much has each player won?",
+      "expected_primitives": [],
+      "expected_response": {
+        "type": "text",
+        "content": "Player winnings:\n1. Sarah: $120\n2. Jake: $40\n3. Dave: $0\n4. Lisa: $0\n5. Tom: $0\n6. Amy: $0\n7. Nina: $0\n8. Chris: $0 (new)",
+        "notes": "Query listing all players sorted by winnings."
+      }
+    },
+    {
+      "turn": 11,
+      "type": "error",
+      "user_message": "Bob won the last game",
+      "expected_primitives": [],
+      "expected_response": {
+        "type": "clarification",
+        "content": "I don't see Bob in the league. The current players are: Sarah, Dave, Lisa, Tom, Amy, Jake, Nina, and Chris. Did you mean one of them, or should I add Bob as a new player first?",
+        "notes": "Error: referencing non-existent player. Should clarify before making changes."
+      }
+    },
+    {
+      "turn": 12,
+      "type": "error",
+      "user_message": "Add Alex, Ben, Carol, and Diana to the league",
+      "expected_primitives": [],
+      "expected_response": {
+        "type": "clarification",
+        "content": "Adding 4 players would bring the league to 12 players, but the maximum is 10. You can add up to 2 more players. Which players would you like to add?",
+        "notes": "Error: would violate max_children constraint. Should warn before attempting."
+      }
     }
   ],
   "final_state_assertions": {

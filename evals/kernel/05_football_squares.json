@@ -280,6 +280,72 @@
           }
         }
       ]
+    },
+    {
+      "turn": 8,
+      "type": "query",
+      "user_message": "How many squares does Mike have?",
+      "expected_primitives": [],
+      "expected_response": {
+        "type": "text",
+        "content": "Mike has 4 squares: (0,0), (0,1), (0,3), (0,4). He sold (0,2) to Lisa.",
+        "notes": "Query counting squares per owner."
+      }
+    },
+    {
+      "turn": 9,
+      "type": "query",
+      "user_message": "Who's winning so far?",
+      "expected_primitives": [],
+      "expected_response": {
+        "type": "text",
+        "content": "Winners so far:\n- Q1: Mike won $250 (Chiefs 7, Eagles 3)\n- Halftime: Sarah won $250 (Chiefs 14, Eagles 10)\n\nTotal payouts: $500. Remaining pot: $500 (Q3 and Final).",
+        "notes": "Query about winner history and pot status."
+      }
+    },
+    {
+      "turn": 10,
+      "type": "query",
+      "user_message": "What squares are still available?",
+      "expected_primitives": [],
+      "expected_response": {
+        "type": "text",
+        "content": "87 squares are still available. Claimed squares:\n- Mike: 4 squares\n- Sarah: 5 squares\n- Dave: 3 squares\n- Lisa: 1 square\n\nTotal claimed: 13 of 100 squares.",
+        "notes": "Query about availability. Counts unclaimed squares."
+      }
+    },
+    {
+      "turn": 11,
+      "type": "error",
+      "user_message": "Give square (0,0) to Tom",
+      "expected_primitives": [],
+      "expected_response": {
+        "type": "clarification",
+        "content": "Square (0,0) is already claimed by Mike. Did you mean Tom is buying it from Mike, or did you want to assign a different square to Tom?",
+        "notes": "Error: attempting to claim already-owned square."
+      }
+    },
+    {
+      "turn": 12,
+      "type": "error",
+      "user_message": "Q1 score: Chiefs 10, Eagles 7",
+      "expected_primitives": [],
+      "expected_response": {
+        "type": "clarification",
+        "content": "Q1 already has a recorded score (Chiefs 7, Eagles 3) and Mike won $250. Did you mean to record a different quarter, or are you correcting the Q1 score?",
+        "notes": "Error: attempting to re-record already-scored quarter."
+      }
+    },
+    {
+      "turn": 13,
+      "type": "error",
+      "user_message": "Assign the digits",
+      "expected_primitives": [],
+      "expected_response": {
+        "type": "clarification",
+        "content": "The digits have already been assigned:\n- Chiefs (rows): 3,7,1,9,4,0,6,2,8,5\n- Eagles (cols): 8,2,5,0,7,3,9,1,4,6\n\nOnce assigned, digits cannot be changed. Did you want to see the current digit assignments?",
+        "notes": "Error: digits already assigned. Should not allow re-assignment."
+      }
     }
   ],
   "final_state_assertions": {

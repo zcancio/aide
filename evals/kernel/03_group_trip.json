@@ -342,6 +342,61 @@
           }
         }
       ]
+    },
+    {
+      "turn": 9,
+      "type": "query",
+      "user_message": "Who owes what?",
+      "expected_primitives": [],
+      "expected_response": {
+        "type": "text",
+        "content": "Current balances:\n- Me: paid $800, owes $150 to Jordan → net +$650\n- Alex: paid $200, owes $150 to Jordan → net +$50\n- Jordan: paid $600, owed $400 → net -$400\n\nTo settle up:\n- Me pays Jordan $150\n- Alex pays Jordan $150",
+        "notes": "Query about expense balances. Computes net amounts from paid/owes."
+      }
+    },
+    {
+      "turn": 10,
+      "type": "query",
+      "user_message": "What's on the schedule for day 3?",
+      "expected_primitives": [],
+      "expected_response": {
+        "type": "text",
+        "content": "Day 3 (March 17):\n- Morning: Skiing at Heavenly Resort\n- Afternoon: Hot springs",
+        "notes": "Query about specific day in itinerary."
+      }
+    },
+    {
+      "turn": 11,
+      "type": "query",
+      "user_message": "How much is this trip costing per person?",
+      "expected_primitives": [],
+      "expected_response": {
+        "type": "text",
+        "content": "Total trip cost: $1,400\nPer person (3 travelers): ~$467 each\n\nBreakdown:\n- Cabin: $800 ($267/person)\n- Lift tickets: $600 ($200/person)",
+        "notes": "Query computing per-person costs."
+      }
+    },
+    {
+      "turn": 12,
+      "type": "error",
+      "user_message": "Mark Sam as paid",
+      "expected_primitives": [],
+      "expected_response": {
+        "type": "clarification",
+        "content": "Sam dropped out of the trip and is no longer a traveler. Did you mean to mark someone else as paid? Current travelers are: Me, Alex, and Jordan.",
+        "notes": "Error: referencing removed traveler."
+      }
+    },
+    {
+      "turn": 13,
+      "type": "error",
+      "user_message": "Add rental car - Casey paid $300",
+      "expected_primitives": [],
+      "expected_response": {
+        "type": "clarification",
+        "content": "Casey isn't on the trip. Should I add Casey as a traveler first, or did someone else pay for the rental car? Current travelers: Me, Alex, Jordan.",
+        "notes": "Error: expense paid by non-traveler. Should clarify."
+      }
     }
   ],
   "final_state_assertions": {

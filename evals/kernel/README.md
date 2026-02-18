@@ -43,6 +43,59 @@ Each scenario JSON contains:
 }
 ```
 
+## Turn Types
+
+Each turn has an optional `type` field:
+
+| Type | Description | Expected Output |
+|------|-------------|-----------------|
+| (default) | Mutation turn | `expected_*` arrays with primitives |
+| `query` | Read-only question | `expected_response` with text answer |
+| `error` | Invalid/ambiguous input | `expected_response` with clarification |
+
+### Query Turns
+
+Query turns test the system's ability to answer questions without mutating state:
+
+```json
+{
+  "turn": 7,
+  "type": "query",
+  "user_message": "What do I still need to get?",
+  "expected_primitives": [],
+  "expected_response": {
+    "type": "text",
+    "content": "You still need: Milk, Bread, Butter...",
+    "notes": "Query about unchecked items."
+  }
+}
+```
+
+### Error Turns
+
+Error turns test graceful handling of invalid or ambiguous input:
+
+```json
+{
+  "turn": 9,
+  "type": "error",
+  "user_message": "Check off the apples",
+  "expected_primitives": [],
+  "expected_response": {
+    "type": "clarification",
+    "content": "I don't see apples on your list. Did you mean...",
+    "notes": "Error: referencing non-existent item."
+  }
+}
+```
+
+Error scenarios include:
+- Referencing non-existent entities
+- Ambiguous or incomplete commands
+- Constraint violations
+- Invalid state transitions
+- Duplicate operations
+
 ## Running Evals
 
 ### Option 1: Manual Inspection
