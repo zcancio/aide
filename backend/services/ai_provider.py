@@ -69,9 +69,21 @@ class AIProvider:
                 input_tokens = 0
                 output_tokens = 0
 
+                # Use prompt caching for system prompt (5 min cache)
+                system_with_cache = [
+                    {
+                        "type": "text",
+                        "text": system,
+                        "cache_control": {"type": "ephemeral"},
+                    }
+                ]
+
+                cache_read_tokens = 0
+                cache_creation_tokens = 0
+
                 async with self.anthropic_client.messages.stream(
                     model=model,
-                    system=system,
+                    system=system_with_cache,
                     messages=messages,
                     max_tokens=max_tokens,
                     temperature=temperature,
@@ -87,7 +99,10 @@ class AIProvider:
                                 output_tokens = event.usage.output_tokens
                         elif event.type == "message_start":
                             if hasattr(event.message, "usage"):
-                                input_tokens = event.message.usage.input_tokens
+                                usage = event.message.usage
+                                input_tokens = usage.input_tokens
+                                cache_read_tokens = getattr(usage, "cache_read_input_tokens", 0) or 0
+                                cache_creation_tokens = getattr(usage, "cache_creation_input_tokens", 0) or 0
 
                 last_token_at = time.perf_counter()
 
@@ -95,11 +110,21 @@ class AIProvider:
                 total_ms = int((last_token_at - request_sent_at) * 1000)
                 ttft_ms = int((first_token_at - request_sent_at) * 1000) if first_token_at else total_ms
 
+                # Log cache stats
+                if cache_read_tokens > 0:
+                    print(f"Cache HIT: {cache_read_tokens} tokens read from cache, TTFT={ttft_ms}ms")
+                elif cache_creation_tokens > 0:
+                    print(f"Cache MISS: {cache_creation_tokens} tokens cached, TTFT={ttft_ms}ms")
+                else:
+                    print(f"No cache: TTFT={ttft_ms}ms")
+
                 return {
                     "content": content_text,
                     "usage": {
                         "input_tokens": input_tokens,
                         "output_tokens": output_tokens,
+                        "cache_read_tokens": cache_read_tokens,
+                        "cache_creation_tokens": cache_creation_tokens,
                     },
                     "timing": {
                         "ttft_ms": ttft_ms,
