@@ -384,25 +384,23 @@ The kernel has primitives across several categories. Every state change goes thr
 
 ### The Primitive Set (v3)
 
-| # | Category | Primitive | What It Does |
-|---|----------|-----------|-------------|
-| 1 | Schema | `schema.create` | Declare a new schema with TypeScript interface + templates |
-| 2 | Schema | `schema.update` | Update schema interface or templates |
-| 3 | Schema | `schema.remove` | Remove a schema (fails if entities reference it) |
-| 4 | Entity | `entity.create` | Declare a new entity with `_schema` reference |
-| 5 | Entity | `entity.update` | Update entity fields or nested children |
-| 6 | Entity | `entity.remove` | Soft-delete an entity and its children |
-| 7 | Block | `block.set` | Declare a block's existence, type, and position |
-| 8 | Block | `block.remove` | Remove a block from the tree |
-| 9 | Block | `block.reorder` | Reorder children within a parent block |
-| 10 | Style | `style.set` | Declare global visual tokens |
-| 11 | Style | `style.set_entity` | Declare per-entity visual overrides |
-| 12 | Meta | `meta.update` | Declare aide-level properties |
-| 13 | Meta | `meta.annotate` | Append a note |
-| 14 | Meta | `meta.constrain` | Declare aide-level rules |
-| 15 | Grid | `grid.create` | Batch-create grid cells using tensor shape |
-| 16 | Grid | `grid.query` | Query a grid cell by label |
-| 17–20 | *(reserved)* | — | Future primitives (triggers, computed, relationships) |
+| #     | Category     | Primitive          | What It Does                                               |
+| ----- | ------------ | ------------------ | ---------------------------------------------------------- |
+| 1     | Schema       | `schema.create`    | Declare a new schema with TypeScript interface + templates |
+| 2     | Schema       | `schema.update`    | Update schema interface or templates                       |
+| 3     | Schema       | `schema.remove`    | Remove a schema (fails if entities reference it)           |
+| 4     | Entity       | `entity.create`    | Declare a new entity with `_schema` reference              |
+| 5     | Entity       | `entity.update`    | Update entity fields or nested children                    |
+| 6     | Entity       | `entity.remove`    | Soft-delete an entity and its children                     |
+| 7     | Block        | `block.set`        | Declare a block's existence, type, and position            |
+| 8     | Block        | `block.remove`     | Remove a block from the tree                               |
+| 9     | Block        | `block.reorder`    | Reorder children within a parent block                     |
+| 10    | Style        | `style.set`        | Declare global visual tokens                               |
+| 11    | Style        | `style.set_entity` | Declare per-entity visual overrides                        |
+| 12    | Meta         | `meta.update`      | Declare aide-level properties                              |
+| 13    | Meta         | `meta.annotate`    | Append a note                                              |
+| 14    | Meta         | `meta.constrain`   | Declare aide-level rules                                   |
+| 15–20 | *(reserved)* | —                  | Future primitives (grids, triggers, computed, relationships) |
 
 ### Why Declarative
 

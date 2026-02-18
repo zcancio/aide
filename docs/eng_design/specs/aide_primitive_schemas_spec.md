@@ -439,51 +439,12 @@ Declare an aide-level rule.
 
 ---
 
-## Grid Primitives (15–16)
+## Reserved (15–20)
 
-### 15. `grid.create`
+Primitives 15–20 are reserved for future use. Candidates:
 
-Batch-create grid cells using tensor shape.
-
-```json
-{
-  "type": "grid.create",
-  "payload": {
-    "id": "squares",
-    "_schema": "SquareGrid",
-    "title": "Super Bowl Squares",
-    "cells": {
-      "_shape": [10, 10]
-    }
-  }
-}
-```
-
-The reducer expands `_shape: [10, 10]` into 100 children: `cell_0_0`, `cell_0_1`, ..., `cell_9_9`.
-
-### 16. `grid.query`
-
-Query a grid cell by label.
-
-```json
-{
-  "type": "grid.query",
-  "payload": {
-    "id": "squares/cells",
-    "cell_ref": "FU",
-    "field": "owner"
-  }
-}
-```
-
-Returns the value of `owner` field for the cell at position FU (resolved from `row_labels` and `col_labels` in meta).
-
----
-
-## Reserved (17–20)
-
-Primitives 17–20 are reserved for future use. Candidates:
-
+- `grid.create` — batch-create grid cells using tensor shape
+- `grid.query` — query a grid cell by label
 - `trigger.create` — declare a condition that fires events
 - `computed.set` — declare a derived value
 - `relationship.set` — typed links between entities

@@ -412,39 +412,6 @@ Output: snapshot with new constraint (and immediate validation warnings if appli
 
 ---
 
-### Grid Primitives
-
-#### `grid.create`
-
-```
-Input:  snapshot + { id: "squares", _schema: "SquareGrid", title: "Super Bowl Squares", cells: { _shape: [10, 10] } }
-
-Steps:
-1. Validate schema exists
-2. Expand _shape into children:
-   → [10, 10] generates 100 children: cell_0_0, cell_0_1, ..., cell_9_9
-   → Each child gets _pos based on row-major order
-3. Store as regular entity with expanded children
-
-Output: snapshot with entity containing generated grid cells
-```
-
-#### `grid.query`
-
-```
-Input:  snapshot + { id: "squares/cells", cell_ref: "FU", field: "owner" }
-
-Steps:
-1. Resolve cell_ref using row_labels and col_labels from meta
-   → "FU" with row_labels=["A"-"J"], col_labels=["P"-"Z"] → row 5, col 5 → "cell_5_5"
-2. Lookup entity at resolved path
-3. Return field value
-
-Output: query result (not a snapshot mutation)
-```
-
----
-
 ## Type Validation
 
 ### Type Checking Rules

@@ -134,23 +134,6 @@ Benefits:
 - Insert anywhere without shifting
 - Concurrent-edit safe
 
-### Tensor Shapes
-
-For grids, `_shape` auto-generates children with predictable keys:
-
-```json
-{
-  "squares": {
-    "_schema": "SquareGrid",
-    "cells": {
-      "_shape": [10, 10]
-    }
-  }
-}
-```
-
-Shape generates keys: `cell_0_0`, `cell_0_1`, ... `cell_9_9`
-
 ## Parsing with tree-sitter
 
 Both Python (backend) and JavaScript (browser) use tree-sitter to parse TypeScript interfaces.
@@ -255,8 +238,7 @@ Entity {
 }
 
 ViewConfig {
-  type: "list" | "table" | "grid"
-  cols?: number              // for grid
+  type: "list" | "table"
   sort?: { field: string, direction: "asc" | "desc" }
   filter?: { field: string, operator: string, value: any }
 }
@@ -268,7 +250,7 @@ Entities are addressed by path:
 
 - `grocery_list` — top-level entity
 - `grocery_list/items/item_milk` — child in `items` field
-- `squares/cells/cell_5_5` — grid cell
+- `poker_league/players/player_mike` — nested child
 
 The path includes the field name for children: `entity/field/child_id`
 
@@ -515,36 +497,6 @@ Weekly Groceries
 ─────────
 ○ Milk
 ✓ Eggs
-```
-
-### Football Squares
-
-```json
-{
-  "schemas": {
-    "SquareGrid": {
-      "interface": "interface SquareGrid { title: string; cells: Record<string, Square>; }",
-      "render_html": "<div class=\"grid\"><h2>{{title}}</h2><div class=\"cells\">{{>cells}}</div></div>",
-      "render_text": "{{title}}\n{{>cells}}",
-      "styles": ".grid { padding: 16px; } .cells { display: grid; grid-template-columns: repeat(10, 40px); }"
-    },
-    "Square": {
-      "interface": "interface Square { owner?: string; }",
-      "render_html": "<div class=\"square {{#owner}}claimed{{/owner}}\">{{owner}}</div>",
-      "render_text": "{{#owner}}{{owner}}{{/owner}}{{^owner}}·{{/owner}}",
-      "styles": ".square { width: 40px; height: 40px; border: 1px solid #ccc; } .claimed { background: #e8f5e9; }"
-    }
-  },
-  "entities": {
-    "squares": {
-      "_schema": "SquareGrid",
-      "title": "Super Bowl Squares",
-      "cells": {
-        "_shape": [10, 10]
-      }
-    }
-  }
-}
 ```
 
 ### Poker League (Multiple Child Collections)
