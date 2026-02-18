@@ -111,6 +111,18 @@ If multiple entities match:
 
 Grid cells use `r_c` format keys (e.g., `0_0`, `3_7`, `7_7`). Row 0 is the TOP of the grid.
 
+**Chess algebraic notation → grid coordinates:**
+- Files (columns): a=0, b=1, c=2, d=3, e=4, f=5, g=6, h=7
+- Ranks (rows): 8=0, 7=1, 6=2, 5=3, 4=4, 3=5, 2=6, 1=7 (INVERTED - rank 8 is row 0)
+
+Examples:
+- e2 = row 6, col 4 → `6_4`
+- e4 = row 4, col 4 → `4_4`
+- e5 = row 3, col 4 → `3_4`
+- f4 = row 4, col 5 → `4_5`
+- a8 = row 0, col 0 → `0_0`
+- h1 = row 7, col 7 → `7_7`
+
 **Moving items in a grid:** When moving something from one cell to another:
 1. Check the snapshot to find what's ACTUALLY in the source cell
 2. Set that value in the destination cell
