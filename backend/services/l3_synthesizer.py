@@ -59,6 +59,7 @@ class L3Synthesizer:
         content = result["content"].strip()
         raw_response = result["content"]
         usage = result.get("usage", {"input_tokens": 0, "output_tokens": 0})
+        timing = result.get("timing", {"ttft_ms": 0, "total_ms": 0})
 
         # Try to extract JSON from markdown code block anywhere in response
         if "```json" in content:
@@ -87,6 +88,7 @@ class L3Synthesizer:
                 "error": f"L3 returned invalid JSON: {e}",
                 "_raw_response": raw_response,
                 "usage": usage,
+                "timing": timing,
             }
 
         # Validate primitives
@@ -106,6 +108,7 @@ class L3Synthesizer:
             "response": response_data.get("response", ""),
             "_raw_response": raw_response,
             "usage": usage,
+            "timing": timing,
         }
 
     def _build_user_message(self, message: str, snapshot: Snapshot, recent_events: list[Event]) -> str:

@@ -59,6 +59,7 @@ async def list_turns(
                     model=c["model"],
                     tier=c["tier"],
                     latency_ms=c["latency_ms"],
+                    ttft_ms=c.get("ttft_ms", c["latency_ms"]),  # Fallback for old records
                     prompt=c.get("prompt", ""),
                     response=c.get("response", ""),
                     usage=c.get("usage", {}),

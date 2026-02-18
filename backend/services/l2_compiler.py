@@ -71,6 +71,7 @@ class L2Compiler:
 
         raw_response = result["content"]
         usage = result.get("usage", {"input_tokens": 0, "output_tokens": 0})
+        timing = result.get("timing", {"ttft_ms": 0, "total_ms": 0})
 
         try:
             response_data = json.loads(content)
@@ -85,6 +86,7 @@ class L2Compiler:
                 "error": f"L2 returned invalid JSON: {e}",
                 "_raw_response": raw_response,
                 "usage": usage,
+                "timing": timing,
             }
 
         primitives_count = len(response_data.get("primitives", []))
@@ -100,6 +102,7 @@ class L2Compiler:
                 "escalate": True,
                 "_raw_response": raw_response,
                 "usage": usage,
+                "timing": timing,
             }
 
         # Validate primitives
@@ -117,6 +120,7 @@ class L2Compiler:
                     "escalate": True,
                     "_raw_response": raw_response,
                     "usage": usage,
+                    "timing": timing,
                 }
             validated_primitives.append(primitive)
 
@@ -126,6 +130,7 @@ class L2Compiler:
             "escalate": False,
             "_raw_response": raw_response,
             "usage": usage,
+            "timing": timing,
         }
 
     def _build_user_message(self, message: str, snapshot: Snapshot, recent_events: list[Event]) -> str:

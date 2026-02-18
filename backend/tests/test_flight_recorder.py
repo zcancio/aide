@@ -64,6 +64,7 @@ class TestFlightRecorder:
             response='{"primitives": [], "response": "ok"}',
             usage={"input_tokens": 100, "output_tokens": 20},
             latency_ms=250,
+            ttft_ms=50,
             error=None,
         )
 
@@ -81,6 +82,7 @@ class TestFlightRecorder:
         assert call.tier == "L2"
         assert call.usage == {"input_tokens": 100, "output_tokens": 20}
         assert call.latency_ms == 250
+        assert call.ttft_ms == 50
         assert call.error is None
 
     def test_shadow_and_production_calls_both_recorded(self):
@@ -103,6 +105,7 @@ class TestFlightRecorder:
             response="production response",
             usage={"input_tokens": 500, "output_tokens": 100},
             latency_ms=450,
+            ttft_ms=80,
         )
         recorder.record_llm_call(
             shadow=True,
@@ -112,6 +115,7 @@ class TestFlightRecorder:
             response="shadow response",
             usage={"input_tokens": 500, "output_tokens": 95},
             latency_ms=380,
+            ttft_ms=60,
         )
 
         record = recorder.end_turn(
@@ -148,6 +152,7 @@ class TestFlightRecorder:
             response="",
             usage={"input_tokens": 0, "output_tokens": 0},
             latency_ms=100,
+            ttft_ms=0,
             error="APIConnectionError: timeout",
         )
 
@@ -179,6 +184,7 @@ class TestFlightRecorder:
             response="r",
             usage={"input_tokens": 10, "output_tokens": 5},
             latency_ms=100,
+            ttft_ms=30,
         )
 
         record = recorder.end_turn(
@@ -424,6 +430,7 @@ class TestOrchestratorFlightRecorderIntegration:
                 mock_call.return_value = {
                     "content": '{"primitives":[],"response":""}',
                     "usage": {"input_tokens": 10, "output_tokens": 5},
+                    "timing": {"ttft_ms": 50, "total_ms": 200},
                 }
 
                 await orch.process_message(

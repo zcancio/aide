@@ -342,14 +342,18 @@ class Orchestrator:
                 )
                 result = self._parse_l2_response(raw["content"])
                 usage = raw["usage"]
+                timing = raw.get("timing", {"ttft_ms": 0, "total_ms": 0})
             else:
                 result = await l2_compiler.compile(message, snapshot, recent_events)
                 usage = result.get("usage", {"input_tokens": 0, "output_tokens": 0})
+                timing = result.get("timing", {"ttft_ms": 0, "total_ms": 0})
         except Exception as e:
             error = str(e)
             print(f"L2 {'shadow' if shadow else 'production'} call failed: {e}")
+            timing = {"ttft_ms": 0, "total_ms": 0}
 
         latency_ms = int((time.monotonic() - start) * 1000)
+        ttft_ms = timing.get("ttft_ms", latency_ms)
         recorder.record_llm_call(
             shadow=shadow,
             model=model,
@@ -358,6 +362,7 @@ class Orchestrator:
             response=result.get("_raw_response", ""),
             usage=usage,
             latency_ms=latency_ms,
+            ttft_ms=ttft_ms,
             error=error,
         )
 
@@ -399,14 +404,18 @@ class Orchestrator:
                 )
                 result = self._parse_l3_response(raw["content"])
                 usage = raw["usage"]
+                timing = raw.get("timing", {"ttft_ms": 0, "total_ms": 0})
             else:
                 result = await l3_synthesizer.synthesize(message, snapshot, recent_events, image_data=image_data)
                 usage = result.get("usage", {"input_tokens": 0, "output_tokens": 0})
+                timing = result.get("timing", {"ttft_ms": 0, "total_ms": 0})
         except Exception as e:
             error = str(e)
             print(f"L3 {'shadow' if shadow else 'production'} call failed: {e}")
+            timing = {"ttft_ms": 0, "total_ms": 0}
 
         latency_ms = int((time.monotonic() - start) * 1000)
+        ttft_ms = timing.get("ttft_ms", latency_ms)
         recorder.record_llm_call(
             shadow=shadow,
             model=model,
@@ -415,6 +424,7 @@ class Orchestrator:
             response=result.get("_raw_response", ""),
             usage=usage,
             latency_ms=latency_ms,
+            ttft_ms=ttft_ms,
             error=error,
         )
 

@@ -20,7 +20,8 @@ class LLMCallRecord:
     prompt: str
     response: str
     usage: dict[str, int]
-    latency_ms: int
+    latency_ms: int  # Total time from request to last token
+    ttft_ms: int  # Time to first token
     error: str | None = None
 
 
@@ -64,6 +65,7 @@ class TurnRecord:
                     "response": c.response,
                     "usage": c.usage,
                     "latency_ms": c.latency_ms,
+                    "ttft_ms": c.ttft_ms,
                     "error": c.error,
                 }
                 for c in self.llm_calls
@@ -138,6 +140,7 @@ class FlightRecorder:
         response: str,
         usage: dict[str, int],
         latency_ms: int,
+        ttft_ms: int,
         error: str | None = None,
     ) -> None:
         """
@@ -150,7 +153,8 @@ class FlightRecorder:
             prompt: User-facing prompt content sent to model
             response: Raw model response text
             usage: Token usage dict with input_tokens and output_tokens
-            latency_ms: Elapsed milliseconds for the call
+            latency_ms: Total time from request to last token (ms)
+            ttft_ms: Time to first token (ms)
             error: Error message if call failed, None on success
         """
         self._llm_calls.append(
@@ -163,6 +167,7 @@ class FlightRecorder:
                 response=response,
                 usage=usage,
                 latency_ms=latency_ms,
+                ttft_ms=ttft_ms,
                 error=error,
             )
         )

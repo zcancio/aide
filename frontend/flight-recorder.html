@@ -482,20 +482,59 @@
                 <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "1.5px", color: "#475569", marginBottom: 16, fontWeight: 600 }}>
                   Conversation
                 </div>
-                {recording.turns.slice(0, safeTurnIndex + 1).map((t, i) => (
-                  <div key={i} style={{ marginBottom: 12 }}>
-                    <ChatBubble
-                      text={t.user_message}
-                      isUser={true}
-                      isActive={i === safeTurnIndex}
-                    />
-                    <ChatBubble
-                      text={t.response_text}
-                      isUser={false}
-                      isActive={i === safeTurnIndex}
-                    />
-                  </div>
-                ))}
+                {recording.turns.slice(0, safeTurnIndex + 1).map((t, i) => {
+                  const prodCall = t.llm_calls.find(c => !c.shadow);
+                  const ttft = prodCall?.ttft_ms;
+                  const totalMs = prodCall?.latency_ms;
+                  return (
+                    <div key={i} style={{ marginBottom: 12 }}>
+                      <ChatBubble
+                        text={t.user_message}
+                        isUser={true}
+                        isActive={i === safeTurnIndex}
+                      />
+                      <ChatBubble
+                        text={t.response_text}
+                        isUser={false}
+                        isActive={i === safeTurnIndex}
+                      />
+                      {/* Thinking time sub-bubble */}
+                      {ttft !== undefined && (
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "flex-start",
+                            marginTop: 4,
+                            marginLeft: 8,
+                            opacity: i === safeTurnIndex ? 0.8 : 0.3,
+                            transition: "opacity 0.3s ease",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 6,
+                              padding: "3px 8px",
+                              borderRadius: 8,
+                              background: "#1a1a2e",
+                              border: "1px solid #334155",
+                              fontSize: 10,
+                              fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
+                              color: "#64748b",
+                            }}
+                          >
+                            <span style={{ color: "#94a3b8" }}>thought</span>
+                            <span style={{ color: "#c4b5fd", fontWeight: 600 }}>{ttft}ms</span>
+                            <span style={{ color: "#475569" }}>|</span>
+                            <span style={{ color: "#94a3b8" }}>total</span>
+                            <span style={{ color: "#86efac", fontWeight: 600 }}>{totalMs}ms</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
                 <div ref={chatEndRef} />
               </div>
 

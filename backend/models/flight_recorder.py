@@ -14,7 +14,8 @@ class LLMCallSummary(BaseModel):
     shadow: bool
     model: str
     tier: str  # "L2" or "L3"
-    latency_ms: int
+    latency_ms: int  # Total time from request to last token
+    ttft_ms: int  # Time to first token
     prompt: str
     response: str
     usage: dict[str, int]

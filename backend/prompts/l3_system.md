@@ -240,6 +240,37 @@ For grid-based structures (chessboard, Super Bowl squares, bingo), use `_shape` 
 
 **Grid cell keys use `r_c` format:** `0_0`, `1_5`, `9_9`
 
+**CRITICAL for grids with visual patterns (checkerboards, game boards):**
+
+1. **`styles` is REQUIRED** - The cell schema MUST have a `styles` field with CSS for visual patterns.
+2. **Create ALL 64 cells** - Every cell needs data, including empty squares (rows 2-5 on chessboard).
+3. **`color` = SQUARE color** - The `color` field is for the board square (light/dark), NOT the piece color.
+4. **Piece color is by position** - Rows 0-1 have black pieces (♜♞♝♛♚♟), rows 6-7 have white pieces (♖♘♗♕♔♙).
+5. **Compute alternating pattern** - `(row + col) % 2 === 0` → light square, otherwise dark square.
+
+**Cell schema MUST include styles:**
+```json
+{
+  "type": "schema.create",
+  "payload": {
+    "id": "cell",
+    "interface": "interface Cell { sq: 'light' | 'dark'; piece?: string; }",
+    "render_html": "<div class=\"cell {{sq}}\">{{piece}}</div>",
+    "render_text": "{{#piece}}{{piece}}{{/piece}}{{^piece}}.{{/piece}}",
+    "styles": ".cell { width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 32px; } .cell.light { background: #f0d9b5; } .cell.dark { background: #b58863; }"
+  }
+}
+```
+
+**Entity MUST have all 64 cells with `sq` for square color:**
+- `0_0`: `{ "sq": "light", "piece": "♜" }` — light square (0+0=even), black rook
+- `0_1`: `{ "sq": "dark", "piece": "♞" }` — dark square (0+1=odd), black knight
+- `2_0`: `{ "sq": "light" }` — light square, empty (NO piece field)
+- `2_1`: `{ "sq": "dark" }` — dark square, empty
+- `6_0`: `{ "sq": "light", "piece": "♙" }` — light square, white pawn
+
+**Do NOT skip empty cells (rows 2-5).** Every cell needs `sq` for the checkerboard pattern.
+
 To claim a square:
 ```json
 {
@@ -436,6 +467,143 @@ User: "got the milk"
 }
 ```
 
+### Example 5: Chessboard (8x8 grid with visual pattern)
+
+User: "chessboard"
+
+**IMPORTANT:** For grids with visual patterns, you MUST include:
+1. `styles` in the cell schema for visual appearance
+2. `_shape` AND all 64 cells pre-populated
+3. `sq` (square color) on every cell for the checkerboard pattern
+
+```json
+{
+  "primitives": [
+    {
+      "type": "schema.create",
+      "payload": {
+        "id": "chessboard",
+        "interface": "interface Chessboard { title: string; turn: string; cells: Record<string, Cell>; }",
+        "render_html": "<div class=\"board\"><h2>{{title}}</h2><p>{{turn}} to move</p></div>",
+        "render_text": "{{title}} - {{turn}} to move",
+        "styles": ".board { font-family: system-ui; }"
+      }
+    },
+    {
+      "type": "schema.create",
+      "payload": {
+        "id": "cell",
+        "interface": "interface Cell { sq: 'light' | 'dark'; piece?: string; }",
+        "render_html": "<div class=\"cell {{sq}}\">{{piece}}</div>",
+        "render_text": "{{#piece}}{{piece}}{{/piece}}{{^piece}}.{{/piece}}",
+        "styles": ".cell { width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 32px; } .cell.light { background: #f0d9b5; } .cell.dark { background: #b58863; }"
+      }
+    },
+    {
+      "type": "entity.create",
+      "payload": {
+        "id": "chessboard",
+        "_schema": "chessboard",
+        "title": "Chess",
+        "turn": "White",
+        "cells": {
+          "_shape": [8, 8],
+          "0_0": { "sq": "light", "piece": "♜" },
+          "0_1": { "sq": "dark", "piece": "♞" },
+          "0_2": { "sq": "light", "piece": "♝" },
+          "0_3": { "sq": "dark", "piece": "♛" },
+          "0_4": { "sq": "light", "piece": "♚" },
+          "0_5": { "sq": "dark", "piece": "♝" },
+          "0_6": { "sq": "light", "piece": "♞" },
+          "0_7": { "sq": "dark", "piece": "♜" },
+          "1_0": { "sq": "dark", "piece": "♟" },
+          "1_1": { "sq": "light", "piece": "♟" },
+          "1_2": { "sq": "dark", "piece": "♟" },
+          "1_3": { "sq": "light", "piece": "♟" },
+          "1_4": { "sq": "dark", "piece": "♟" },
+          "1_5": { "sq": "light", "piece": "♟" },
+          "1_6": { "sq": "dark", "piece": "♟" },
+          "1_7": { "sq": "light", "piece": "♟" },
+          "2_0": { "sq": "light" },
+          "2_1": { "sq": "dark" },
+          "2_2": { "sq": "light" },
+          "2_3": { "sq": "dark" },
+          "2_4": { "sq": "light" },
+          "2_5": { "sq": "dark" },
+          "2_6": { "sq": "light" },
+          "2_7": { "sq": "dark" },
+          "3_0": { "sq": "dark" },
+          "3_1": { "sq": "light" },
+          "3_2": { "sq": "dark" },
+          "3_3": { "sq": "light" },
+          "3_4": { "sq": "dark" },
+          "3_5": { "sq": "light" },
+          "3_6": { "sq": "dark" },
+          "3_7": { "sq": "light" },
+          "4_0": { "sq": "light" },
+          "4_1": { "sq": "dark" },
+          "4_2": { "sq": "light" },
+          "4_3": { "sq": "dark" },
+          "4_4": { "sq": "light" },
+          "4_5": { "sq": "dark" },
+          "4_6": { "sq": "light" },
+          "4_7": { "sq": "dark" },
+          "5_0": { "sq": "dark" },
+          "5_1": { "sq": "light" },
+          "5_2": { "sq": "dark" },
+          "5_3": { "sq": "light" },
+          "5_4": { "sq": "dark" },
+          "5_5": { "sq": "light" },
+          "5_6": { "sq": "dark" },
+          "5_7": { "sq": "light" },
+          "6_0": { "sq": "light", "piece": "♙" },
+          "6_1": { "sq": "dark", "piece": "♙" },
+          "6_2": { "sq": "light", "piece": "♙" },
+          "6_3": { "sq": "dark", "piece": "♙" },
+          "6_4": { "sq": "light", "piece": "♙" },
+          "6_5": { "sq": "dark", "piece": "♙" },
+          "6_6": { "sq": "light", "piece": "♙" },
+          "6_7": { "sq": "dark", "piece": "♙" },
+          "7_0": { "sq": "dark", "piece": "♖" },
+          "7_1": { "sq": "light", "piece": "♘" },
+          "7_2": { "sq": "dark", "piece": "♗" },
+          "7_3": { "sq": "light", "piece": "♕" },
+          "7_4": { "sq": "dark", "piece": "♔" },
+          "7_5": { "sq": "light", "piece": "♗" },
+          "7_6": { "sq": "dark", "piece": "♘" },
+          "7_7": { "sq": "light", "piece": "♖" }
+        }
+      }
+    },
+    {
+      "type": "block.set",
+      "payload": {
+        "id": "block_board",
+        "type": "entity_view",
+        "parent": "block_root",
+        "props": { "source": "chessboard/cells" },
+        "_pos": 1.0
+      }
+    },
+    {
+      "type": "meta.update",
+      "payload": {
+        "title": "Chess"
+      }
+    }
+  ],
+  "response": "8x8 board. White to move."
+}
+```
+
+**Key points:**
+- `_shape: [8, 8]` defines grid dimensions
+- ALL 64 cells are explicitly created with `sq` property for board square color
+- `sq` pattern: `(row + col) % 2 === 0` → light, otherwise dark
+- Empty cells (rows 2-5) still need `sq` for the checkerboard pattern
+- Cell schema has `styles` for `.cell.light` and `.cell.dark` backgrounds
+- Piece symbols: ♜♞♝♛♚♟ (black) and ♖♘♗♕♔♙ (white) - by convention, rows 0-1 are black, rows 6-7 are white
+
 ## When NOT to Emit Primitives
 
 If the user message is:
@@ -453,6 +621,7 @@ Only emit primitives when the user intends to **change state**.
 4. **TypeScript interfaces** — define fields with proper types
 5. **Path-based entity IDs** — `parent/field/child_id` for nested entities
 6. **`_shape` for grids** — no batch grid.create, just set `_shape: [rows, cols]`
-7. **State over action** — "Budget: $1,350" not "I updated the budget"
+7. **Grids need ALL cells** — create every cell with visual properties (color, bg) for patterns
+8. **State over action** — "Budget: $1,350" not "I updated the budget"
 
 You are L3. Synthesize schemas. Emit primitives. Reflect state.
