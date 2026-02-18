@@ -12,7 +12,7 @@
     "meta.update",
     "meta.constrain"
   ],
-  "notes": "Uses Record<string, Square> with keys like 'sq_0_0' through 'sq_9_9' instead of grid primitives. Rows are AFC digits (0-9), columns are NFC digits (0-9).",
+  "notes": "Uses _shape: [10, 10] with r_c keys. Position derived from key, no redundant row/col fields.",
   "turns": [
     {
       "turn": 1,
@@ -31,9 +31,9 @@
           "type": "schema.create",
           "payload": {
             "id": "Square",
-            "interface": "interface Square { row: number; col: number; owner: string | null; }",
-            "render_html": "<div class=\"square {{#owner}}claimed{{/owner}}\" data-row=\"{{row}}\" data-col=\"{{col}}\">{{#owner}}{{owner}}{{/owner}}{{^owner}}&nbsp;{{/owner}}</div>",
-            "render_text": "[{{row}},{{col}}]:{{#owner}}{{owner}}{{/owner}}{{^owner}}-{{/owner}}"
+            "interface": "interface Square { owner: string | null; }",
+            "render_html": "<div class=\"square {{#owner}}claimed{{/owner}}\">{{#owner}}{{owner}}{{/owner}}{{^owner}}&nbsp;{{/owner}}</div>",
+            "render_text": "{{#owner}}{{owner}}{{/owner}}{{^owner}}-{{/owner}}"
           }
         },
         {
@@ -58,20 +58,21 @@
             "afc_digits": null,
             "nfc_digits": null,
             "squares": {
-              "sq_0_0": { "row": 0, "col": 0, "owner": null, "_pos": 1.0 },
-              "sq_0_1": { "row": 0, "col": 1, "owner": null, "_pos": 2.0 },
-              "sq_0_2": { "row": 0, "col": 2, "owner": null, "_pos": 3.0 },
-              "sq_0_3": { "row": 0, "col": 3, "owner": null, "_pos": 4.0 },
-              "sq_0_4": { "row": 0, "col": 4, "owner": null, "_pos": 5.0 },
-              "sq_0_5": { "row": 0, "col": 5, "owner": null, "_pos": 6.0 },
-              "sq_0_6": { "row": 0, "col": 6, "owner": null, "_pos": 7.0 },
-              "sq_0_7": { "row": 0, "col": 7, "owner": null, "_pos": 8.0 },
-              "sq_0_8": { "row": 0, "col": 8, "owner": null, "_pos": 9.0 },
-              "sq_0_9": { "row": 0, "col": 9, "owner": null, "_pos": 10.0 }
+              "_shape": [10, 10],
+              "0_0": { "owner": null },
+              "0_1": { "owner": null },
+              "0_2": { "owner": null },
+              "0_3": { "owner": null },
+              "0_4": { "owner": null },
+              "0_5": { "owner": null },
+              "0_6": { "owner": null },
+              "0_7": { "owner": null },
+              "0_8": { "owner": null },
+              "0_9": { "owner": null }
             },
             "winners": {}
           },
-          "notes": "Full grid would have 100 squares (sq_0_0 through sq_9_9). Abbreviated for eval."
+          "notes": "Full grid would have 100 squares (0_0 through 9_9). Abbreviated for eval."
         }
       ],
       "expected_blocks": [
@@ -145,16 +146,16 @@
           "payload": {
             "id": "squares_pool",
             "squares": {
-              "sq_0_0": { "owner": "Mike" },
-              "sq_0_1": { "owner": "Mike" },
-              "sq_0_2": { "owner": "Mike" },
-              "sq_0_3": { "owner": "Mike" },
-              "sq_0_4": { "owner": "Mike" },
-              "sq_1_0": { "owner": "Sarah", "_pos": 11.0 },
-              "sq_1_1": { "owner": "Sarah", "_pos": 12.0 },
-              "sq_1_2": { "owner": "Sarah", "_pos": 13.0 },
-              "sq_1_3": { "owner": "Sarah", "_pos": 14.0 },
-              "sq_1_4": { "owner": "Sarah", "_pos": 15.0 }
+              "0_0": { "owner": "Mike" },
+              "0_1": { "owner": "Mike" },
+              "0_2": { "owner": "Mike" },
+              "0_3": { "owner": "Mike" },
+              "0_4": { "owner": "Mike" },
+              "1_0": { "owner": "Sarah" },
+              "1_1": { "owner": "Sarah" },
+              "1_2": { "owner": "Sarah" },
+              "1_3": { "owner": "Sarah" },
+              "1_4": { "owner": "Sarah" }
             }
           }
         }
@@ -169,9 +170,9 @@
           "payload": {
             "id": "squares_pool",
             "squares": {
-              "sq_2_3": { "row": 2, "col": 3, "owner": "Dave", "_pos": 24.0 },
-              "sq_5_7": { "row": 5, "col": 7, "owner": "Dave", "_pos": 58.0 },
-              "sq_8_1": { "row": 8, "col": 1, "owner": "Dave", "_pos": 82.0 }
+              "2_3": { "owner": "Dave" },
+              "5_7": { "owner": "Dave" },
+              "8_1": { "owner": "Dave" }
             }
           }
         }
@@ -195,6 +196,7 @@
     {
       "turn": 5,
       "user_message": "Q1 score: Chiefs 7, Eagles 3",
+      "notes": "Chiefs 7 → find row where afc_digits[row]=7 → row 1. Eagles 3 → find col where nfc_digits[col]=3 → col 5. Winner at 1_5.",
       "expected_entities": [
         {
           "type": "entity.update",
@@ -212,15 +214,14 @@
                 "_pos": 1.0
               }
             }
-          },
-          "notes": "Chiefs 7 → afc_digit 7 → row index 1 (where 7 is in afc_digits). Eagles 3 → nfc_digit 3 → col index 5. Winner at sq_1_5."
+          }
         }
       ],
       "expected_styles": [
         {
           "type": "style.set_entity",
           "payload": {
-            "id": "squares_pool/squares/sq_1_5",
+            "id": "squares_pool/squares/1_5",
             "styles": {
               "highlight": true,
               "bg_color": "#bbf7d0"
@@ -232,6 +233,7 @@
     {
       "turn": 6,
       "user_message": "Halftime: Chiefs 14, Eagles 10",
+      "notes": "Chiefs 14 → last digit 4 → row where afc_digits[row]=4 → row 4. Eagles 10 → last digit 0 → col where nfc_digits[col]=0 → col 3. Winner at 4_3.",
       "expected_entities": [
         {
           "type": "entity.update",
@@ -249,15 +251,14 @@
                 "_pos": 2.0
               }
             }
-          },
-          "notes": "Chiefs 14 → last digit 4 → row where 4 is. Eagles 10 → last digit 0 → col where 0 is."
+          }
         }
       ],
       "expected_styles": [
         {
           "type": "style.set_entity",
           "payload": {
-            "id": "squares_pool/squares/sq_4_3",
+            "id": "squares_pool/squares/4_3",
             "styles": {
               "highlight": true,
               "bg_color": "#bbf7d0"
@@ -275,7 +276,7 @@
           "payload": {
             "id": "squares_pool",
             "squares": {
-              "sq_0_2": { "owner": "Lisa" }
+              "0_2": { "owner": "Lisa" }
             }
           }
         }

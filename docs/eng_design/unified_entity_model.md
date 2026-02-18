@@ -134,6 +134,74 @@ Benefits:
 - Insert anywhere without shifting
 - Concurrent-edit safe
 
+### Grid Layout with _shape
+
+For grid-structured data, `_shape` defines dimensions and key format:
+
+```json
+{
+  "squares": {
+    "_shape": [8, 8],
+    "0_0": { "piece": "♖", "color": "light" },
+    "0_1": { "piece": "♘", "color": "dark" },
+    "7_7": { "piece": "♜", "color": "light" }
+  }
+}
+```
+
+**Key format:** Underscore-separated indices matching `_shape` dimensions.
+
+| Dimensions | _shape | Key Examples |
+|------------|--------|--------------|
+| 2D (8×8) | `[8, 8]` | `0_0`, `3_4`, `7_7` |
+| 2D (10×10) | `[10, 10]` | `0_0`, `5_7`, `9_9` |
+| 3D (3×3×6) | `[3, 3, 6]` | `0_0_0`, `1_2_3`, `2_2_5` |
+| 4D | `[2, 3, 4, 5]` | `0_0_0_0`, `1_2_3_4` |
+
+**Renderer behavior:**
+1. Detects `_shape` on collection
+2. Parses keys by splitting on `_`
+3. Lays out as grid instead of list
+4. Uses `_shape` for bounds validation
+
+**Example: Chessboard**
+
+```json
+{
+  "schemas": {
+    "ChessGame": {
+      "interface": "interface ChessGame { current_turn: 'white' | 'black'; squares: Record<string, Square>; }",
+      "render_html": "<div class=\"board\">{{>squares}}</div>",
+      "render_text": "{{>squares}}"
+    },
+    "Square": {
+      "interface": "interface Square { piece: string | null; color: 'light' | 'dark'; }",
+      "render_html": "<div class=\"square {{color}}\">{{#piece}}{{piece}}{{/piece}}</div>",
+      "render_text": "{{#piece}}{{piece}}{{/piece}}{{^piece}}.{{/piece}}"
+    }
+  },
+  "entities": {
+    "chess_game": {
+      "_schema": "ChessGame",
+      "current_turn": "white",
+      "squares": {
+        "_shape": [8, 8],
+        "0_0": { "piece": "♖", "color": "light" },
+        "0_1": { "piece": "♘", "color": "dark" },
+        "0_4": { "piece": "♔", "color": "light" },
+        "7_4": { "piece": "♚", "color": "dark" }
+      }
+    }
+  }
+}
+```
+
+**Benefits:**
+- Position derived from key (no redundant row/col fields)
+- Renderer knows grid dimensions
+- Scales to N dimensions
+- Consistent key format across all grid use cases
+
 ## Parsing with tree-sitter
 
 Both Python (backend) and JavaScript (browser) use tree-sitter to parse TypeScript interfaces.
@@ -238,11 +306,13 @@ Entity {
 }
 
 ViewConfig {
-  type: "list" | "table"
+  type: "list" | "table" | "grid"
   sort?: { field: string, direction: "asc" | "desc" }
   filter?: { field: string, operator: string, value: any }
 }
 ```
+
+Note: When `_shape` is present on a collection, the renderer automatically uses grid layout. `_view.type: "grid"` is optional but explicit.
 
 ## Addressing
 

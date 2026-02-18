@@ -130,12 +130,40 @@ def run_eval(scenario: dict):
 
 ## Design Notes
 
-### No Grid Primitives
+### Grid Layout with _shape
 
-Grid primitives (`grid.create`, `grid.query`) were deferred. Chessboard and Football Squares use `Record<string, T>` with positional keys:
+Grid-structured data uses `_shape` to define dimensions and `r_c` keys:
 
-- **Chessboard**: `squares.e4`, `squares.a1` (algebraic notation)
-- **Football Squares**: `squares.sq_0_0` through `squares.sq_9_9` (row_col)
+```json
+{
+  "squares": {
+    "_shape": [8, 8],
+    "0_0": { "piece": "♖", "color": "light" },
+    "0_1": { "piece": "♘", "color": "dark" },
+    "7_7": { "piece": "♜", "color": "light" }
+  }
+}
+```
+
+**Key format:** Underscore-separated indices matching `_shape` dimensions.
+
+| Dimensions | _shape | Key Examples |
+|------------|--------|--------------|
+| 2D (8x8) | `[8, 8]` | `0_0`, `3_4`, `7_7` |
+| 2D (10x10) | `[10, 10]` | `0_0`, `5_7`, `9_9` |
+| 3D | `[3, 3, 6]` | `0_0_0`, `1_2_3`, `2_2_5` |
+
+**Renderer behavior:**
+1. Detects `_shape` on collection
+2. Parses keys by splitting on `_`
+3. Lays out as grid instead of list
+4. Uses `_shape` for bounds
+
+Position is derived from the key - no redundant row/col fields needed.
+
+**Examples:**
+- **Chessboard**: `_shape: [8, 8]` with keys `0_0` through `7_7`
+- **Football Squares**: `_shape: [10, 10]` with keys `0_0` through `9_9`
 
 ### Entity Paths
 
