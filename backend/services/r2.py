@@ -200,6 +200,63 @@ class R2Service:
             except Exception:
                 return None
 
+    async def list_flight_logs(self, aide_id: str) -> list[str]:
+        """
+        List all flight log JSONL file keys for an aide.
+
+        Args:
+            aide_id: Aide ID
+
+        Returns:
+            List of R2 object keys, e.g., ["flight-logs/{aide_id}/2024-01-15/abc123.jsonl"]
+        """
+        bucket = settings.R2_WORKSPACE_BUCKET
+        prefix = f"flight-logs/{aide_id}/"
+
+        keys: list[str] = []
+        async with self.session.client(
+            "s3",
+            endpoint_url=self.endpoint,
+            aws_access_key_id=self.access_key,
+            aws_secret_access_key=self.secret_key,
+        ) as s3:
+            try:
+                paginator = s3.get_paginator("list_objects_v2")
+                async for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+                    for obj in page.get("Contents", []):
+                        if obj["Key"].endswith(".jsonl"):
+                            keys.append(obj["Key"])
+            except ClientError:
+                return []
+        return keys
+
+    async def get_flight_log(self, key: str) -> str | None:
+        """
+        Download a flight log JSONL file from R2.
+
+        Args:
+            key: Full R2 object key
+
+        Returns:
+            JSONL content as string, or None if not found
+        """
+        bucket = settings.R2_WORKSPACE_BUCKET
+
+        async with self.session.client(
+            "s3",
+            endpoint_url=self.endpoint,
+            aws_access_key_id=self.access_key,
+            aws_secret_access_key=self.secret_key,
+        ) as s3:
+            try:
+                response = await s3.get_object(Bucket=bucket, Key=key)
+                body = await response["Body"].read()
+                return body.decode("utf-8")
+            except ClientError as e:
+                if e.response["Error"]["Code"] in ("NoSuchKey", "404"):
+                    return None
+                raise
+
 
 # Singleton instance
 r2_service = R2Service()
