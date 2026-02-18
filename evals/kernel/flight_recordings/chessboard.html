@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Chess Game</title>
+  <style>
+    body { font-family: system-ui; padding: 20px; }
+    .chess-game { text-align: center; }
+    .players { font-size: 20px; font-weight: bold; }
+    .turn { color: #666; margin-bottom: 16px; }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(8, 50px);
+      width: 400px;
+      margin: 20px auto;
+      border: 2px solid #333;
+    }
+    .square {
+      width: 50px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+    }
+    .square.light { background: #f0d9b5; }
+    .square.dark { background: #b58863; }
+    h2 { margin-top: 32px; }
+  </style>
+</head>
+<body>
+  <h1>Chess Game</h1>
+  <div class="chess-game">
+    <div class="players">White vs Black</div>
+    <div class="turn">white's turn</div>
+  </div>
+
+  <div class="board">
+    <!-- Rank 8 (black back rank) - a8=light, b8=dark, ... h8=dark -->
+    <div class="square light">♜</div><div class="square dark">♞</div><div class="square light">♝</div><div class="square dark">♛</div><div class="square light">♚</div><div class="square dark">♝</div><div class="square light">♞</div><div class="square dark">♜</div>
+    <!-- Rank 7 (black pawns) -->
+    <div class="square dark">♟</div><div class="square light">♟</div><div class="square dark">♟</div><div class="square light">♟</div><div class="square dark">♟</div><div class="square light">♟</div><div class="square dark">♟</div><div class="square light">♟</div>
+    <!-- Rank 6 -->
+    <div class="square light"></div><div class="square dark"></div><div class="square light"></div><div class="square dark"></div><div class="square light"></div><div class="square dark"></div><div class="square light"></div><div class="square dark"></div>
+    <!-- Rank 5 -->
+    <div class="square dark"></div><div class="square light"></div><div class="square dark"></div><div class="square light"></div><div class="square dark"></div><div class="square light"></div><div class="square dark"></div><div class="square light"></div>
+    <!-- Rank 4 -->
+    <div class="square light"></div><div class="square dark"></div><div class="square light"></div><div class="square dark"></div><div class="square light"></div><div class="square dark"></div><div class="square light"></div><div class="square dark"></div>
+    <!-- Rank 3 -->
+    <div class="square dark"></div><div class="square light"></div><div class="square dark"></div><div class="square light"></div><div class="square dark"></div><div class="square light"></div><div class="square dark"></div><div class="square light"></div>
+    <!-- Rank 2 (white pawns) -->
+    <div class="square light">♙</div><div class="square dark">♙</div><div class="square light">♙</div><div class="square dark">♙</div><div class="square light">♙</div><div class="square dark">♙</div><div class="square light">♙</div><div class="square dark">♙</div>
+    <!-- Rank 1 (white back rank) - a1=dark, b1=light, ... h1=light -->
+    <div class="square dark">♖</div><div class="square light">♘</div><div class="square dark">♗</div><div class="square light">♕</div><div class="square dark">♔</div><div class="square light">♗</div><div class="square dark">♘</div><div class="square light">♖</div>
+  </div>
+
+  <h2>Moves</h2>
+  <p><em>No moves yet</em></p>
+</body>
+</html>

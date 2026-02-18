@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Super Bowl Squares</title>
+  <style>
+    body { font-family: system-ui; padding: 20px; }
+    .squares-pool { text-align: center; }
+    .matchup { font-size: 18px; margin: 16px 0; color: #333; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(10, 60px);
+      gap: 1px;
+      background: #ccc;
+      padding: 1px;
+      width: fit-content;
+      margin: 20px auto;
+    }
+    .square {
+      width: 60px;
+      height: 40px;
+      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+    }
+    .square.claimed { background: #e0f2fe; }
+    h2 { margin-top: 32px; }
+  </style>
+</head>
+<body>
+  <h1>Super Bowl Squares</h1>
+  <p class="matchup">Chiefs vs 49ers | $20/square | Total pot: $2,000</p>
+
+  <div class="grid">
+    <!-- 10x10 grid of unclaimed squares -->
+    <div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div>
+    <div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div>
+    <div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div>
+    <div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div>
+    <div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div>
+    <div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div>
+    <div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div>
+    <div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div>
+    <div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div>
+    <div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div><div class="square"></div>
+  </div>
+
+  <h2>Winners</h2>
+  <p><em>No scores recorded yet</em></p>
+</body>
+</html>
