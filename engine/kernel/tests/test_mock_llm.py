@@ -71,16 +71,16 @@ async def test_instant_profile_no_delay(mock_llm: MockLLM) -> None:
 @pytest.mark.asyncio
 async def test_realistic_l2_timing(mock_llm: MockLLM) -> None:
     """
-    realistic_l2 profile: ~300ms think time + ~200ms per-line.
-    With update_simple (1 line): total ≈ 300ms (no per-line delay after last line).
-    Expect at least 240ms (80% margin for CI scheduling variance).
+    realistic_l2 profile: ~200ms think time + ~50ms per-line.
+    With update_simple (1 line): total ≈ 200ms (no per-line delay after last line).
+    Expect at least 160ms (80% margin for CI scheduling variance).
     """
     start = time.perf_counter()
     async for _ in mock_llm.stream("update_simple", profile="realistic_l2"):
         pass
     elapsed_ms = (time.perf_counter() - start) * 1000
 
-    assert elapsed_ms >= 240, f"realistic_l2 only took {elapsed_ms:.1f}ms — expected ≥240ms"
+    assert elapsed_ms >= 160, f"realistic_l2 only took {elapsed_ms:.1f}ms — expected ≥160ms"
 
 
 # ---------------------------------------------------------------------------
@@ -91,16 +91,16 @@ async def test_realistic_l2_timing(mock_llm: MockLLM) -> None:
 @pytest.mark.asyncio
 async def test_realistic_l3_timing(mock_llm: MockLLM) -> None:
     """
-    realistic_l3 profile: ~1500ms think time + ~150ms per-line.
-    With update_simple (1 line): total ≈ 1500ms.
-    Expect at least 1200ms (80% margin).
+    realistic_l3 profile: ~800ms think time + ~100ms per-line.
+    With update_simple (1 line): total ≈ 800ms.
+    Expect at least 640ms (80% margin).
     """
     start = time.perf_counter()
     async for _ in mock_llm.stream("update_simple", profile="realistic_l3"):
         pass
     elapsed_ms = (time.perf_counter() - start) * 1000
 
-    assert elapsed_ms >= 1200, f"realistic_l3 only took {elapsed_ms:.1f}ms — expected ≥1200ms"
+    assert elapsed_ms >= 640, f"realistic_l3 only took {elapsed_ms:.1f}ms — expected ≥640ms"
 
 
 # ---------------------------------------------------------------------------

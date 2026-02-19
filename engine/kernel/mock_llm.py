@@ -15,9 +15,10 @@ GOLDEN_DIR = Path(__file__).parent / "tests" / "fixtures" / "golden"
 
 DELAY_PROFILES: dict[str, dict[str, int]] = {
     "instant": {"think_ms": 0, "per_line_ms": 0},
-    "realistic_l2": {"think_ms": 300, "per_line_ms": 200},
-    "realistic_l3": {"think_ms": 1500, "per_line_ms": 150},
-    "slow": {"think_ms": 3000, "per_line_ms": 500},
+    "realistic_l2": {"think_ms": 200, "per_line_ms": 50},  # Haiku: fast
+    "realistic_l3": {"think_ms": 800, "per_line_ms": 100},  # Sonnet: moderate
+    "realistic_l4": {"think_ms": 1500, "per_line_ms": 150},  # Opus: slower
+    "slow": {"think_ms": 2000, "per_line_ms": 300},  # Testing
 }
 
 

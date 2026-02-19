@@ -561,6 +561,22 @@
 
     #drag-overlay.active { display: flex; }
 
+    /* Mount animation for progressive entity rendering */
+    @keyframes entity-mount {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .entity-new {
+      animation: entity-mount 200ms ease-out;
+    }
+
     /* Scrollbar */
     ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -631,6 +647,26 @@
     .editable-value { cursor: pointer; padding: 2px 4px; border-radius: 4px; display: inline; }
     .editable-value:hover { background: #f0f0f0; }
     .editable-input { font: inherit; font-size: inherit; color: inherit; padding: 2px 6px; border: 1.5px solid #2563eb; border-radius: 4px; outline: none; background: #fff; display: inline; min-width: 80px; }
+
+    /* Mount animation for progressive rendering */
+    @keyframes entity-mount {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .aide-card,
+    .aide-section,
+    .checklist-item,
+    .aide-table tbody tr,
+    .aide-metric {
+      animation: entity-mount 200ms ease-out;
+    }
 
     /* Fallback (unchanged) */
     .fb-entity { border-left: 2px solid #e0e0e0; padding: 8px 0 8px 12px; margin: 4px 0; }
@@ -705,6 +741,11 @@
             </svg>
           </button>
           <input id="image-file-input" type="file" accept="image/jpeg,image/png,image/webp,image/heic" style="display:none;" />
+          <button id="stop-btn" class="action-btn" title="Stop" style="display:none;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <rect x="6" y="6" width="12" height="12" rx="2"/>
+            </svg>
+          </button>
           <button id="send-btn" class="action-btn" title="Send">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
               <path d="M2 21L23 12 2 3v7l15 2-15 2z"/>
@@ -762,6 +803,8 @@
         delete this.entities[delta.id];
         this.rootIds = this.rootIds.filter(id => id !== delta.id);
       }
+      // Update progress indicator with entity count
+      updateStreamProgress();
     },
 
     getChildren(parentId) {
@@ -1162,10 +1205,22 @@ ${entities || '<div class="empty">Send a message to get started.</div>'}
             if (!last || last.role !== 'assistant' || last.content !== msg.text) {
               conversationHistory.push({ role: 'assistant', content: msg.text });
               renderHistory();
+              // Smooth scroll to show new voice message
+              const historyPanel = document.getElementById('history-panel');
+              if (historyPanel.classList.contains('open')) {
+                historyPanel.scrollTo({
+                  top: historyPanel.scrollHeight,
+                  behavior: 'smooth'
+                });
+              }
             }
           }
         } else if (msg.type === 'direct_edit.error') {
           console.warn('[WS] direct_edit rejected:', msg.error);
+        } else if (msg.type === 'stream.interrupted') {
+          console.log('[WS] stream interrupted by user');
+          setSendingState(false);
+          isSending = false;
         } else if (msg.type === 'stream.end') {
           setSendingState(false);
           isSending = false;
@@ -1541,11 +1596,28 @@ ${entities || '<div class="empty">Send a message to get started.</div>'}
   let thinkingInterval = null;
   const thinkingStates = ['Thinking', 'Processing', 'Generating'];
 
+  function updateStreamProgress() {
+    // Update progress indicator with entity count during streaming
+    if (isSending) {
+      const count = Object.keys(entityStore.entities).length;
+      const thinkingText = document.getElementById('thinking-text');
+      if (count > 0) {
+        thinkingText.textContent = `Building (${count} items)`;
+      }
+    }
+  }
+
   function setSendingState(sending) {
-    document.getElementById('send-btn').disabled = sending;
-    document.getElementById('message-input').disabled = sending;
+    const sendBtn = document.getElementById('send-btn');
+    const stopBtn = document.getElementById('stop-btn');
+    const messageInput = document.getElementById('message-input');
     const indicator = document.getElementById('thinking-indicator');
     const thinkingText = document.getElementById('thinking-text');
+
+    // Toggle between send and stop buttons
+    sendBtn.style.display = sending ? 'none' : '';
+    stopBtn.style.display = sending ? '' : 'none';
+    messageInput.disabled = sending;
 
     if (sending) {
       indicator.classList.add('visible');
@@ -1665,6 +1737,13 @@ ${entities || '<div class="empty">Send a message to get started.</div>'}
   });
 
   document.getElementById('send-btn').addEventListener('click', sendMessage);
+
+  // Stop button handler - interrupts the current stream
+  document.getElementById('stop-btn').addEventListener('click', () => {
+    if (aideWs && aideWs.readyState === WebSocket.OPEN) {
+      aideWs.send(JSON.stringify({ type: 'interrupt' }));
+    }
+  });
 
   function resizeTextarea(el) {
     el.style.height = 'auto';
