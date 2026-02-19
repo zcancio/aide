@@ -1,4 +1,4 @@
-# AIde — System Architecture (v3)
+# AIde — System Architecture (v1.3)
 
 **Status:** Living document
 **Last Updated:** February 2026
@@ -10,7 +10,7 @@
 
 An aide is a living object. It's not a web page you build once and publish. It's a persistent, conversational state machine: a visual artifact whose state is updated through natural language from anywhere — web chat, Signal, a screenshot, eventually any channel. The object maintains itself through conversation. The published page is its body.
 
-**v3 introduces:** TypeScript interfaces for schema definitions, multi-channel rendering (HTML + text), and tree-sitter parsing for validation in both Python and JavaScript.
+**v1.3 introduces:** TypeScript interfaces for schema definitions, multi-channel rendering (HTML + text), and tree-sitter parsing for validation in both Python and JavaScript.
 
 Three roles make this work:
 
@@ -207,7 +207,7 @@ AideState {
 }
 ```
 
-**v3 structure:** Schemas define entity types using TypeScript interfaces. Each schema includes `render_html` and `render_text` templates for multi-channel output. Entities reference their schema via `_schema` and can contain nested children in `Record<string, T>` fields. Full schema details are in `unified_entity_model.md` and `aide_primitive_schemas_spec.md`.
+**v1.3 structure:** Schemas define entity types using TypeScript interfaces. Each schema includes `render_html` and `render_text` templates for multi-channel output. Entities reference their schema via `_schema` and can contain nested children in `Record<string, T>` fields. Full schema details are in `unified_entity_model.md` and `aide_primitive_schemas_spec.md`.
 
 ### The Block Tree
 
@@ -382,7 +382,7 @@ The orchestrator receives the escalation and routes to L3 with the full context.
 
 The kernel has primitives across several categories. Every state change goes through one of these. They are declarative — they describe desired state, not actions.
 
-### The Primitive Set (v3)
+### The Primitive Set (v1.3)
 
 | #     | Category     | Primitive          | What It Does                                               |
 | ----- | ------------ | ------------------ | ---------------------------------------------------------- |
@@ -704,7 +704,7 @@ The kernel has implementation specs covering each layer in full detail:
 
 | Spec                             | What it covers                                                                                                                                          |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `unified_entity_model.md`        | v3 data model: TypeScript interfaces, multi-channel rendering, tree-sitter parsing, entity structure, fractional indexing                              |
+| `unified_entity_model.md`        | v1.3 data model: TypeScript interfaces, multi-channel rendering, tree-sitter parsing, entity structure, fractional indexing                              |
 | `aide_primitive_schemas_spec.md` | JSON schemas for all primitives, TypeScript type mappings, validation rules, event wrapper, escalation signals                                          |
 | `aide_reducer_spec.md`           | Reduction rules per primitive, tree-sitter parsing, ReduceResult contract, constraint checking, type validation, error catalog, testing strategy        |
 | `aide_renderer_spec.md`          | Multi-channel rendering (HTML + text), Mustache templating, CSS generation, block rendering, entity templates, value formatting, sanitization           |

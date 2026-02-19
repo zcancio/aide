@@ -1,8 +1,8 @@
-# AIde — Reducer Spec (v3)
+# AIde — Reducer Spec (v1.3)
 
 **Purpose:** The reducer is a pure function: `(snapshot, event) → snapshot`. It takes the current state and one event, returns the new state. Replay all events from an empty state and you get the current snapshot. This is the heart of the kernel — everything above it (the AI, the ears) produces events, and everything below it (the renderer, the HTML file) consumes the snapshot.
 
-**Companion docs:** `aide_primitive_schemas_spec.md` (what goes in), `unified_entity_model.md` (v3 data model), `aide_architecture.md` (how it fits)
+**Companion docs:** `aide_primitive_schemas_spec.md` (what goes in), `unified_entity_model.md` (v1.3 data model), `aide_architecture.md` (how it fits)
 
 ---
 

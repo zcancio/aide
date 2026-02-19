@@ -1,4 +1,4 @@
-# AIde — Assembly Spec (v3)
+# AIde — Assembly Spec (v1.3)
 
 **Purpose:** The assembly layer sits between the pure functions (reducer, renderer) and the outside world (R2 storage, the orchestrator, published URLs). It coordinates: loading an aide's HTML file, extracting its embedded state, applying new events through the reducer, re-rendering through the renderer, reassembling the HTML file, and uploading it. It also handles creation, forking, parsing, and integrity checks.
 
@@ -29,7 +29,7 @@ class AideAssembly:
 @dataclass
 class AideFile:
     aide_id: str
-    snapshot: AideState          # v3: includes schemas, entities (not collections)
+    snapshot: AideState          # v1.3: includes schemas, entities (not collections)
     events: list[Event]
     blueprint: Blueprint
     html: str                    # The full assembled HTML string
@@ -38,7 +38,7 @@ class AideFile:
     loaded_from: str             # "r2" or "new"
 ```
 
-**v3 AideState structure:**
+**v1.3 AideState structure:**
 ```python
 AideState {
     version: int           # 3
@@ -150,7 +150,7 @@ create(blueprint) → AideFile
 
 Steps:
 1. Generate aide_id (uuid4 or nanoid)
-2. Build empty snapshot (v3 structure):
+2. Build empty snapshot (v1.3 structure):
    {
      version: 3,
      meta: {},
@@ -245,13 +245,13 @@ def parse_aide_html(html: str) -> ParsedAide:
 @dataclass
 class ParsedAide:
     blueprint: Blueprint | None
-    snapshot: AideState | None   # v3: includes schemas, entities
+    snapshot: AideState | None   # v1.3: includes schemas, entities
     events: list[Event]
     title: str                    # From <title> tag
     has_blueprint: bool
     has_snapshot: bool
     has_events: bool
-    version: int                  # Snapshot version (3 for v3)
+    version: int                  # Snapshot version (3 for v1.3)
 ```
 
 ### Extraction rules

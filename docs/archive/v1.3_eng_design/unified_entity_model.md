@@ -1,6 +1,6 @@
 # Unified Entity Model
 
-**Status:** Draft v3
+**Status:** Draft v1.3
 **Date:** February 2026
 
 ## Summary

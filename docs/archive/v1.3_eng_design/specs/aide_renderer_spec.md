@@ -1,8 +1,8 @@
-# AIde — Renderer Spec (v3)
+# AIde — Renderer Spec (v1.3)
 
 **Purpose:** The renderer is a pure function that transforms snapshots into output for different channels. For HTML, it produces a complete, self-contained web page. For text, it produces unicode for SMS, terminal, or Slack. No AI, no network calls, no randomness. Deterministic: same input → same output, always.
 
-**Companion docs:** `aide_reducer_spec.md` (what produces the snapshot), `aide_primitive_schemas_spec.md` (what's in the snapshot), `unified_entity_model.md` (v3 data model), design system in `docs/aide_design_system.md` (visual rules)
+**Companion docs:** `aide_reducer_spec.md` (what produces the snapshot), `aide_primitive_schemas_spec.md` (what's in the snapshot), `unified_entity_model.md` (v1.3 data model), design system in `docs/aide_design_system.md` (visual rules)
 
 ---
 

@@ -1,8 +1,8 @@
-# AIde — Primitive Schemas (v3)
+# AIde — Primitive Schemas (v1.3)
 
 **Purpose:** Exact JSON schemas for the kernel primitives. This is what L2 emits, what the reducer consumes, and what the validation layer checks. Every state change in AIde goes through one of these.
 
-**Companion docs:** `aide_architecture.md` (how primitives fit in the system), `unified_entity_model.md` (v3 data model)
+**Companion docs:** `aide_architecture.md` (how primitives fit in the system), `unified_entity_model.md` (v1.3 data model)
 
 ---
 
@@ -286,7 +286,7 @@ Create or update a block in the page tree.
 | `position` | no | number | Fractional position among siblings |
 | `props` | no | object | Type-specific properties |
 
-**Block types (v3):**
+**Block types (v1.3):**
 
 | Type | Props | Renders as |
 |------|-------|-----------|
