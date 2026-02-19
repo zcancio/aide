@@ -1,0 +1,13 @@
+{"t":"meta.set","p":{"title":"Super Bowl Squares Pool","identity":"squares_pool"}}
+{"t":"entity.create","id":"page","display":"page","p":{"title":"Super Bowl Squares Pool"}}
+{"t":"entity.create","id":"game_info","parent":"page","display":"section","p":{"title":"Game Info","collapsed":false}}
+{"t":"entity.create","id":"matchup","parent":"game_info","display":"card","p":{"home_team":"Kansas City Chiefs","away_team":"San Francisco 49ers","cost_per_square":"$10","total_squares":100,"total_pot":"$1,000"}}
+{"t":"entity.create","id":"grid_section","parent":"page","display":"section","p":{"title":"Squares Grid","collapsed":false}}
+{"t":"entity.create","id":"squares_grid","parent":"grid_section","display":"grid","p":{"rows":10,"cols":10,"home_team_label":"Chiefs","away_team_label":"49ers","home_numbers":[0,1,2,3,4,5,6,7,8,9],"away_numbers":[0,1,2,3,4,5,6,7,8,9]}}
+{"t":"voice","text":"Game setup complete. Grid ready for square purchases."}
+{"t":"entity.create","id":"participants_section","parent":"page","display":"section","p":{"title":"Participants","collapsed":false}}
+{"t":"entity.create","id":"participants_list","parent":"participants_section","display":"table","p":{"headers":["Name","Squares Owned","Amount Paid","Status"]}}
+{"t":"entity.create","id":"rules_section","parent":"page","display":"section","p":{"title":"Rules & Payouts","collapsed":true}}
+{"t":"entity.create","id":"rules_text","parent":"rules_section","display":"text","p":{"content":"Standard squares pool rules: numbers drawn randomly after all squares sold. Payouts typically 20% each quarter (1st, 2nd, 3rd) and 40% final score. Winners determined by last digit of each team's score at end of each quarter."}}
+{"t":"style.set","p":{"primary_color":"#2d3748","font_family":"Inter","density":"comfortable"}}
+{"t":"voice","text":"Squares pool ready. Add participants as they buy squares."}

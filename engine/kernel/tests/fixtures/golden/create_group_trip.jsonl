@@ -1,0 +1,33 @@
+{"t":"meta.set","p":{"title":"Cabo Trip - March 15-20","identity":"group_trip_planner"}}
+{"t":"entity.create","id":"page","display":"page","p":{}}
+{"t":"style.set","p":{"primary_color":"#2d3748","font_family":"Inter","density":"comfortable"}}
+{"t":"entity.create","id":"trip_overview","parent":"page","display":"card","p":{"destination":"Cabo","dates":"March 15-20, 2025","group_size":8,"budget_per_person":1500,"total_budget":12000}}
+{"t":"entity.create","id":"friends_section","parent":"page","display":"section","p":{"title":"Friends"}}
+{"t":"entity.create","id":"friends_list","parent":"friends_section","display":"table","p":{}}
+{"t":"entity.create","id":"friend_1","parent":"friends_list","display":"card","p":{"name":"[Friend 1]","paid":0,"owes":1500}}
+{"t":"entity.create","id":"friend_2","parent":"friends_list","display":"card","p":{"name":"[Friend 2]","paid":0,"owes":1500}}
+{"t":"entity.create","id":"friend_3","parent":"friends_list","display":"card","p":{"name":"[Friend 3]","paid":0,"owes":1500}}
+{"t":"entity.create","id":"friend_4","parent":"friends_list","display":"card","p":{"name":"[Friend 4]","paid":0,"owes":1500}}
+{"t":"voice","text":"Trip overview set. Adding friend tracking and bookings."}
+{"t":"entity.create","id":"friend_5","parent":"friends_list","display":"card","p":{"name":"[Friend 5]","paid":0,"owes":1500}}
+{"t":"entity.create","id":"friend_6","parent":"friends_list","display":"card","p":{"name":"[Friend 6]","paid":0,"owes":1500}}
+{"t":"entity.create","id":"friend_7","parent":"friends_list","display":"card","p":{"name":"[Friend 7]","paid":0,"owes":1500}}
+{"t":"entity.create","id":"friend_8","parent":"friends_list","display":"card","p":{"name":"[Friend 8]","paid":0,"owes":1500}}
+{"t":"entity.create","id":"flights_section","parent":"page","display":"section","p":{"title":"Flights"}}
+{"t":"entity.create","id":"flight_tasks","parent":"flights_section","display":"checklist","p":{}}
+{"t":"entity.create","id":"research_flights","parent":"flight_tasks","display":"card","p":{"task":"Research flight options","done":false,"assigned_to":"[Assign to someone]"}}
+{"t":"entity.create","id":"book_flights","parent":"flight_tasks","display":"card","p":{"task":"Book group flights","done":false,"estimated_cost":"$400 per person"}}
+{"t":"entity.create","id":"confirm_seats","parent":"flight_tasks","display":"card","p":{"task":"Confirm seats together","done":false}}
+{"t":"voice","text":"Friend list ready. Building accommodation and activity tracking."}
+{"t":"entity.create","id":"hotel_section","parent":"page","display":"section","p":{"title":"Hotel"}}
+{"t":"entity.create","id":"hotel_tasks","parent":"hotel_section","display":"checklist","p":{}}
+{"t":"entity.create","id":"research_hotels","parent":"hotel_tasks","display":"card","p":{"task":"Research beachfront hotels","done":false,"estimated_cost":"$200 per night per room"}}
+{"t":"entity.create","id":"book_rooms","parent":"hotel_tasks","display":"card","p":{"task":"Book rooms (4 double occupancy)","done":false}}
+{"t":"entity.create","id":"confirm_amenities","parent":"hotel_tasks","display":"card","p":{"task":"Confirm pool/beach access","done":false}}
+{"t":"entity.create","id":"activities_section","parent":"page","display":"section","p":{"title":"Activities"}}
+{"t":"entity.create","id":"activity_tasks","parent":"activities_section","display":"checklist","p":{}}
+{"t":"entity.create","id":"boat_tour","parent":"activity_tasks","display":"card","p":{"task":"Book sunset boat tour","done":false,"estimated_cost":"$80 per person"}}
+{"t":"entity.create","id":"dinner_reservations","parent":"activity_tasks","display":"card","p":{"task":"Make dinner reservations","done":false}}
+{"t":"entity.create","id":"beach_activities","parent":"activity_tasks","display":"card","p":{"task":"Plan beach day activities","done":false}}
+{"t":"entity.create","id":"airport_transport","parent":"activity_tasks","display":"card","p":{"task":"Arrange airport transport","done":false,"estimated_cost":"$15 per person"}}
+{"t":"voice","text":"All sections created. Trip planning structure ready."}
