@@ -138,6 +138,8 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
 
     Protocol:
       Client → Server:  {"type": "message", "content": "...", "message_id": "<uuid>"}
+                        {"type": "interrupt"}
+                        {"type": "set_profile", "profile": "realistic_l3"}
       Server → Client:  EntityDelta | VoiceDelta | StreamStatus
 
     For Phase 1, uses MockLLM with the "create_graduation" golden file.
@@ -149,6 +151,9 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
     # Per-connection state — start with an empty v2 snapshot
     snapshot: dict[str, Any] = empty_snapshot()
     mock_llm = MockLLM()
+    current_profile = "realistic_l3"
+    interrupt_requested = False
+    current_message_id: str | None = None
 
     try:
         while True:
@@ -161,6 +166,24 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
 
             msg_type = msg.get("type")
 
+            # ── interrupt ────────────────────────────────────────────
+            if msg_type == "interrupt":
+                interrupt_requested = True
+                if current_message_id:
+                    await websocket.send_text(
+                        json.dumps({"type": "stream.interrupted", "message_id": current_message_id})
+                    )
+                    logger.info("ws: interrupt requested for message_id=%s", current_message_id)
+                continue
+
+            # ── set_profile ──────────────────────────────────────────
+            if msg_type == "set_profile":
+                profile = msg.get("profile", "realistic_l3")
+                if profile in {"instant", "realistic_l2", "realistic_l3", "realistic_l4", "slow"}:
+                    current_profile = profile
+                    logger.info("ws: profile set to %s", current_profile)
+                continue
+
             # ── direct_edit ──────────────────────────────────────────
             if msg_type == "direct_edit":
                 snapshot = await _handle_direct_edit(websocket, aide_id, snapshot, msg)
@@ -171,6 +194,8 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
 
             content: str = msg.get("content", "")
             message_id: str = msg.get("message_id") or f"msg_{uuid.uuid4().hex[:8]}"
+            current_message_id = message_id
+            interrupt_requested = False
 
             # --- stream.start ---
             await websocket.send_text(json.dumps({"type": "stream.start", "message_id": message_id}))
@@ -180,12 +205,19 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
 
             # Buffer for partial lines
             line_buffer = ""
+            # Batch buffering state
+            in_batch = False
+            batch_buffer: list[dict[str, Any]] = []
 
             # Pick scenario based on content (Phase 1: static golden files)
             scenario = _pick_scenario(content)
 
             try:
-                async for line in mock_llm.stream(scenario, profile="instant"):
+                async for line in mock_llm.stream(scenario, profile=current_profile):
+                    # Check for interrupt request
+                    if interrupt_requested:
+                        logger.info("ws: stream interrupted message_id=%s", message_id)
+                        break
                     # The mock LLM already yields one complete JSONL line per iteration.
                     # Parse the raw line and pass it directly to the v2 reducer
                     # (which expects the short-hand keys: t, p, id, parent, display).
@@ -204,6 +236,29 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
                         # v2 reducer uses "t" for event type
                         event_type: str = event.get("t", "")
 
+                        # Handle batch signals
+                        if event_type == "batch.start":
+                            in_batch = True
+                            batch_buffer = []
+                            continue
+
+                        if event_type == "batch.end":
+                            in_batch = False
+                            # Apply all buffered events at once
+                            for buffered_event in batch_buffer:
+                                buffered_type = buffered_event.get("t", "")
+                                result = reduce(snapshot, buffered_event)
+                                if result.accepted:
+                                    snapshot = result.snapshot
+                                    if ttfc is None:
+                                        ttfc = (time.monotonic() - start_time) * 1000
+                                    if buffered_type in _ENTITY_TYPES:
+                                        entity_id = buffered_event.get("id")
+                                        delta = _make_delta(buffered_type, entity_id, snapshot)
+                                        await websocket.send_text(json.dumps(delta))
+                            batch_buffer = []
+                            continue
+
                         if event_type in _VOICE_TYPES:
                             voice_text: str = event.get("text", "")
                             if voice_text:
@@ -213,6 +268,11 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
                         if event_type not in _ENTITY_TYPES and not event_type.startswith(
                             ("meta.", "style.", "collection.", "field.", "block.", "view.", "relationship.", "rel.")
                         ):
+                            continue
+
+                        # Buffer events during batch mode
+                        if in_batch:
+                            batch_buffer.append(event)
                             continue
 
                         # Apply to snapshot via v2 reducer (raw event, not expanded)
@@ -250,15 +310,18 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
 
             ttc = (time.monotonic() - start_time) * 1000
             logger.info(
-                "ws: turn complete aide_id=%s message_id=%s ttfc=%.0fms ttc=%.0fms",
+                "ws: turn complete aide_id=%s message_id=%s ttfc=%.0fms ttc=%.0fms interrupted=%s",
                 aide_id,
                 message_id,
                 ttfc or 0,
                 ttc,
+                interrupt_requested,
             )
 
             # --- stream.end ---
-            await websocket.send_text(json.dumps({"type": "stream.end", "message_id": message_id}))
+            if not interrupt_requested:
+                await websocket.send_text(json.dumps({"type": "stream.end", "message_id": message_id}))
+            current_message_id = None
 
     except WebSocketDisconnect:
         logger.info("WebSocket disconnected: aide_id=%s", aide_id)
