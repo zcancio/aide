@@ -1,0 +1,53 @@
+graph TD
+    subgraph CLIENT["CLIENT"]
+        direction TB
+        INPUT["Chat Input"]
+        CHAT["Chat Panel<br/><i>voice lines, L4 responses</i>"]
+        GRAPH["Entity Graph<br/><i>React state store</i>"]
+        RENDERER["AideEntity<br/><i>recursive renderer</i>"]
+        PAGE["Live Page<br/><i>PageDisplay, TableDisplay,<br/>ChecklistDisplay, ...</i>"]
+        
+        GRAPH --> RENDERER
+        RENDERER --> PAGE
+    end
+
+    subgraph SERVER["SERVER"]
+        direction TB
+        CLASSIFIER["Classifier<br/><i>&lt;10ms, rule-based</i>"]
+        
+        HAIKU["Haiku<br/><i>L2 — routine mutations</i>"]
+        SONNET["Sonnet<br/><i>L3 — schema synthesis</i>"]
+        OPUS["Opus<br/><i>L4 — queries only</i>"]
+        
+        PARSER["JSONL Parser<br/><i>buffer → newline → parse</i>"]
+        REDUCER["Reducer<br/><i>pure function</i>"]
+        R2["R2 Store<br/><i>events.jsonl<br/>snapshot.json<br/>published.html</i>"]
+        
+        CLASSIFIER -->|"L2"| HAIKU
+        CLASSIFIER -->|"L3"| SONNET
+        CLASSIFIER -->|"L4"| OPUS
+        
+        HAIKU -->|"JSONL stream"| PARSER
+        SONNET -->|"JSONL stream"| PARSER
+        HAIKU -.->|"escalate to L3"| SONNET
+        
+        PARSER --> REDUCER
+        REDUCER -->|"save"| R2
+    end
+
+    INPUT -->|"user message"| CLASSIFIER
+    REDUCER -->|"render deltas<br/>(WebSocket)"| GRAPH
+    PARSER -->|"voice lines"| CHAT
+    OPUS -->|"text response"| CHAT
+
+    classDef client fill:#f0f4ff,stroke:#4a6fa5,color:#1a1a2e
+    classDef server fill:#f5f0ff,stroke:#6b5b95,color:#1a1a2e
+    classDef llm fill:#fff3e0,stroke:#e67e22,color:#1a1a2e
+    classDef pipeline fill:#e8f5e9,stroke:#4caf50,color:#1a1a2e
+    classDef storage fill:#fce4ec,stroke:#e91e63,color:#1a1a2e
+
+    class INPUT,CHAT,GRAPH,RENDERER,PAGE client
+    class CLASSIFIER server
+    class HAIKU,SONNET,OPUS llm
+    class PARSER,REDUCER pipeline
+    class R2 storage
