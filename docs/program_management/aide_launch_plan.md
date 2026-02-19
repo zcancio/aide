@@ -98,6 +98,9 @@ _Wire the kernel to users. Web chat for creation, Signal for ongoing updates._
   - Creates new aide on first message if no aide_id
 - [x] Publish flow: creates/updates aide's slug in DB, uploads to R2
   - Published URL: `toaide.com/s/{slug}` (namespaced under `/s/` for route safety)
+- [x] Display components: EditableField, PageDisplay, CardDisplay, SectionDisplay, TableDisplay, ChecklistDisplay, MetricDisplay, TextDisplay, ListDisplay, ImageDisplay, GridDisplay
+- [x] Direct edit pipeline: click field → inline input → WebSocket → reducer → delta broadcast (<200ms)
+- [x] Telemetry for direct edits (edit_latency_ms recorded)
 
 ### 1.5 Signal Ear
 - [ ] signal-cli-rest-api: Docker container on Railway alongside FastAPI

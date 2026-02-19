@@ -566,6 +566,82 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
   </style>
+  <!-- Display component styles (injected into preview iframe) -->
+  <script id="display-css-template" type="text/template">
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; font-size: 14px; color: #1a1a1a; padding: 24px; background: #fafaf9; margin: 0; }
+    * { box-sizing: border-box; }
+
+    /* Page */
+    .aide-page { max-width: 800px; margin: 0 auto; padding: 8px; }
+    .page-title { font-size: 28px; font-weight: 700; margin-bottom: 24px; color: #111; letter-spacing: -0.5px; }
+
+    /* Card */
+    .aide-card { background: #fff; border: 1px solid #e5e5e5; border-radius: 10px; padding: 16px; margin-bottom: 12px; }
+    .card-title { font-size: 14px; font-weight: 600; color: #333; margin-bottom: 10px; }
+    .card-field { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 0; border-bottom: 1px solid #f0f0f0; gap: 12px; }
+    .card-field:last-child { border-bottom: none; }
+    .field-label { color: #888; font-size: 12px; text-transform: capitalize; flex-shrink: 0; }
+
+    /* Table */
+    .aide-table-wrap { overflow-x: auto; margin-bottom: 16px; }
+    .aide-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; border: 1px solid #e5e5e5; }
+    .aide-table th { padding: 10px 14px; text-align: left; font-weight: 500; color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; background: #fafafa; border-bottom: 1px solid #e5e5e5; }
+    .aide-table td { padding: 10px 14px; border-bottom: 1px solid #f5f5f5; font-size: 13px; }
+    .aide-table tr:last-child td { border-bottom: none; }
+    .aide-table tr:hover td { background: #fafafa; }
+
+    /* Checklist */
+    .aide-checklist { background: #fff; border: 1px solid #e5e5e5; border-radius: 10px; padding: 12px 16px; margin-bottom: 12px; }
+    .checklist-item { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid #f5f5f5; cursor: default; }
+    .checklist-item:last-child { border-bottom: none; }
+    .checklist-item input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: #1a1a1a; flex-shrink: 0; }
+    .checklist-item.done .item-label { text-decoration: line-through; color: #aaa; }
+
+    /* Section */
+    .aide-section { margin-bottom: 20px; }
+    .section-header { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 4px 0; user-select: none; }
+    .collapse-icon { color: #888; font-size: 12px; width: 14px; text-align: center; }
+    .section-title { font-size: 17px; font-weight: 600; color: #222; }
+    .section-content { padding-left: 22px; margin-top: 8px; }
+
+    /* Metric */
+    .aide-metric { background: #fff; border: 1px solid #e5e5e5; border-radius: 10px; padding: 20px 24px; margin-bottom: 12px; display: inline-flex; flex-direction: column; gap: 4px; min-width: 140px; }
+    .metric-value { font-size: 36px; font-weight: 700; color: #111; letter-spacing: -1px; }
+    .metric-label { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.4px; }
+    .metric-group { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+
+    /* Text */
+    .aide-text { color: #444; line-height: 1.7; margin-bottom: 12px; font-size: 14px; }
+
+    /* List */
+    .aide-list { padding-left: 20px; margin-bottom: 12px; color: #333; }
+    .aide-list li { padding: 4px 0; font-size: 13px; }
+
+    /* Image */
+    .aide-image { margin-bottom: 16px; }
+    .aide-image img { max-width: 100%; border-radius: 8px; border: 1px solid #e5e5e5; }
+    .aide-image figcaption { font-size: 12px; color: #888; margin-top: 6px; text-align: center; }
+
+    /* Grid */
+    .aide-grid-display { display: grid; gap: 2px; margin-bottom: 16px; }
+    .grid-cell { background: #fff; border: 1px solid #e5e5e5; padding: 8px; font-size: 12px; text-align: center; border-radius: 4px; min-height: 40px; display: flex; align-items: center; justify-content: center; }
+    .grid-cell.claimed { background: #f0fdf4; color: #166534; font-weight: 500; }
+
+    /* Editable fields */
+    .editable-value { cursor: pointer; padding: 2px 4px; border-radius: 4px; display: inline; }
+    .editable-value:hover { background: #f0f0f0; }
+    .editable-input { font: inherit; font-size: inherit; color: inherit; padding: 2px 6px; border: 1.5px solid #2563eb; border-radius: 4px; outline: none; background: #fff; display: inline; min-width: 80px; }
+
+    /* Fallback (unchanged) */
+    .fb-entity { border-left: 2px solid #e0e0e0; padding: 8px 0 8px 12px; margin: 4px 0; }
+    .fb-header { display: flex; gap: 8px; align-items: baseline; margin-bottom: 4px; }
+    .fb-id { font-weight: 600; color: #2d3748; font-size: 12px; }
+    .fb-display { font-size: 11px; color: #888; }
+    .fb-props { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; font-size: 12px; color: #555; }
+    dt { font-weight: 500; color: #444; }
+    dd { color: #666; word-break: break-word; }
+    .empty { color: #aaa; text-align: center; padding: 40px; font-size: 13px; }
+  </script>
 </head>
 <body>
 
@@ -700,8 +776,203 @@
     },
   };
 
+  // ── Display utilities ───────────────────────────────
+  function escapeAttr(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function formatLabel(key) {
+    return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  // EditableField — renders as a span click-to-edit; edits posted via postMessage to parent
+  function editableField(value, entityId, field, opts) {
+    const cls = opts && opts.className ? ` ${opts.className}` : '';
+    const display = String(value ?? '—');
+    return `<span class="editable-value${cls}" data-entity-id="${escapeAttr(entityId)}" data-field="${escapeAttr(field)}" onclick="window.__startEdit(this)">${escapeHtml(display)}</span>`;
+  }
+
+  // Helper: get props from entity (v2 format nests props under entity.props)
+  function getProps(entity) {
+    return entity.props || {};
+  }
+
+  // ── Display Renderers ────────────────────────────────
+
+  function renderPageDisplay(id) {
+    const entity = entityStore.entities[id];
+    if (!entity) return '';
+    const p = getProps(entity);
+    const title = p.title || p.name || 'Untitled';
+    const children = entityStore.getChildren(id).map(renderEntity).join('');
+    return `<div class="aide-page">
+      <div class="page-title">${editableField(title, id, p.title !== undefined ? 'title' : 'name', { className: 'page-title' })}</div>
+      <div class="page-content">${children}</div>
+    </div>`;
+  }
+
+  function renderCardDisplay(id) {
+    const entity = entityStore.entities[id];
+    if (!entity) return '';
+    const p = getProps(entity);
+    const skipKeys = new Set(['_pos', '_schema', '_shape']);
+    const name = p.name || p.title || '';
+    const fields = Object.entries(p)
+      .filter(([k]) => !k.startsWith('_') && !skipKeys.has(k) && k !== 'name' && k !== 'title')
+      .map(([k, v]) => `<div class="card-field">
+        <span class="field-label">${escapeHtml(formatLabel(k))}</span>
+        ${editableField(v, id, k)}
+      </div>`)
+      .join('');
+    const children = entityStore.getChildren(id).map(renderEntity).join('');
+    return `<div class="aide-card">
+      ${name ? `<div class="card-title">${editableField(name, id, p.title !== undefined ? 'title' : 'name')}</div>` : ''}
+      ${fields}
+      ${children}
+    </div>`;
+  }
+
+  function renderSectionDisplay(id) {
+    const entity = entityStore.entities[id];
+    if (!entity) return '';
+    const p = getProps(entity);
+    const title = p.title || p.name || 'Section';
+    const uid = `sec_${id.replace(/[^a-z0-9]/gi, '_')}`;
+    const children = entityStore.getChildren(id).map(renderEntity).join('');
+    return `<div class="aide-section" id="${escapeAttr(uid)}">
+      <div class="section-header" onclick="window.__toggleSection('${escapeAttr(uid)}')">
+        <span class="collapse-icon" id="${escapeAttr(uid)}_icon">▾</span>
+        <span class="section-title">${editableField(title, id, p.title !== undefined ? 'title' : 'name')}</span>
+      </div>
+      <div class="section-content" id="${escapeAttr(uid)}_content">${children}</div>
+    </div>`;
+  }
+
+  function renderTableDisplay(id) {
+    const entity = entityStore.entities[id];
+    if (!entity) return '';
+    const children = entityStore.getChildren(id);
+    if (children.length === 0) {
+      return renderCardDisplay(id);
+    }
+    // Infer columns from child props
+    const skipKeys = new Set(['_pos', '_schema', '_shape']);
+    const colSet = new Set();
+    children.forEach(cid => {
+      const child = entityStore.entities[cid];
+      const cp = child ? getProps(child) : {};
+      Object.keys(cp).filter(k => !k.startsWith('_') && !skipKeys.has(k)).forEach(k => colSet.add(k));
+    });
+    const cols = Array.from(colSet);
+    const thead = `<tr>${cols.map(c => `<th>${escapeHtml(formatLabel(c))}</th>`).join('')}</tr>`;
+    const tbody = children.map(cid => {
+      const child = entityStore.entities[cid];
+      if (!child) return '';
+      const cp = getProps(child);
+      return `<tr>${cols.map(c => `<td>${editableField(cp[c], cid, c)}</td>`).join('')}</tr>`;
+    }).join('');
+    return `<div class="aide-table-wrap">
+      <table class="aide-table">
+        <thead>${thead}</thead>
+        <tbody>${tbody}</tbody>
+      </table>
+    </div>`;
+  }
+
+  function renderChecklistDisplay(id) {
+    const entity = entityStore.entities[id];
+    if (!entity) return '';
+    const children = entityStore.getChildren(id);
+    if (children.length === 0) return renderCardDisplay(id);
+    const items = children.map(cid => {
+      const child = entityStore.entities[cid];
+      if (!child) return '';
+      const cp = getProps(child);
+      const done = cp.done === true || cp.done === 'true' || cp.completed === true;
+      const label = cp.task || cp.label || cp.name || cid;
+      const labelField = cp.task !== undefined ? 'task' : (cp.label !== undefined ? 'label' : 'name');
+      return `<div class="checklist-item${done ? ' done' : ''}">
+        <input type="checkbox"${done ? ' checked' : ''} data-entity-id="${escapeAttr(cid)}" data-field="done" onchange="window.__toggleCheck(this)">
+        <span class="item-label">${editableField(label, cid, labelField)}</span>
+      </div>`;
+    }).join('');
+    return `<div class="aide-checklist">${items}</div>`;
+  }
+
+  function renderMetricDisplay(id) {
+    const entity = entityStore.entities[id];
+    if (!entity) return '';
+    const p = getProps(entity);
+    const value = p.value ?? p.count ?? p.total ?? '';
+    const label = p.label || p.name || '';
+    return `<div class="aide-metric">
+      <div class="metric-value">${escapeHtml(String(value))}</div>
+      ${label ? `<div class="metric-label">${escapeHtml(label)}</div>` : ''}
+    </div>`;
+  }
+
+  function renderTextDisplay(id) {
+    const entity = entityStore.entities[id];
+    if (!entity) return '';
+    const p = getProps(entity);
+    const text = p.text || p.content || p.body || '';
+    const field = p.text !== undefined ? 'text' : (p.content !== undefined ? 'content' : 'body');
+    return `<div class="aide-text">${editableField(text, id, field)}</div>`;
+  }
+
+  function renderListDisplay(id) {
+    const entity = entityStore.entities[id];
+    if (!entity) return '';
+    const p = getProps(entity);
+    const ordered = p.ordered === true;
+    const children = entityStore.getChildren(id);
+    const Tag = ordered ? 'ol' : 'ul';
+    let items;
+    if (children.length > 0) {
+      items = children.map(cid => {
+        const child = entityStore.entities[cid];
+        const cp = child ? getProps(child) : {};
+        const text = cp.text || cp.label || cp.name || cid;
+        return `<li>${editableField(text, cid, 'text')}</li>`;
+      }).join('');
+    } else {
+      const itemsArr = p.items || [];
+      items = itemsArr.map(item => `<li>${escapeHtml(String(item))}</li>`).join('');
+    }
+    return `<${Tag} class="aide-list">${items}</${Tag}>`;
+  }
+
+  function renderImageDisplay(id) {
+    const entity = entityStore.entities[id];
+    if (!entity) return '';
+    const p = getProps(entity);
+    const src = p.src || p.url || '';
+    const caption = p.caption || '';
+    return `<figure class="aide-image">
+      ${src ? `<img src="${escapeAttr(src)}" alt="${escapeAttr(caption)}">` : ''}
+      ${caption ? `<figcaption>${escapeHtml(caption)}</figcaption>` : ''}
+    </figure>`;
+  }
+
+  function renderGridDisplay(id) {
+    const entity = entityStore.entities[id];
+    if (!entity) return '';
+    const p = getProps(entity);
+    const cols = p.cols || (p._shape && p._shape[1]) || 10;
+    const children = entityStore.getChildren(id);
+    const cells = children.length > 0
+      ? children.map(cid => {
+          const child = entityStore.entities[cid];
+          const cp = child ? getProps(child) : {};
+          const label = cp.label || cp.name || cp.claim || cid;
+          const claimed = cp.claim || cp.claimed || cp.owner;
+          return `<div class="grid-cell${claimed ? ' claimed' : ''}">${escapeHtml(String(label))}</div>`;
+        }).join('')
+      : '';
+    return `<div class="aide-grid-display" style="grid-template-columns:repeat(${parseInt(cols, 10) || 10},1fr)">${cells}</div>`;
+  }
+
   // ── FallbackDisplay ─────────────────────────────────
-  // Renders entity tree as key-value HTML (Phase 1 only).
   function renderFallbackEntity(id, depth) {
     const entity = entityStore.entities[id];
     if (!entity) return '';
@@ -721,25 +992,123 @@
     </div>`;
   }
 
-  function buildFallbackHtml() {
-    const entities = entityStore.rootIds
-      .map(id => renderFallbackEntity(id, 0))
-      .join('');
+  // ── Display resolution ───────────────────────────────
+  function resolveDisplay(entity) {
+    const hint = (entity.display || '').toLowerCase();
+    const id = entity._id || '';
+    // Check hint first
+    if (hint === 'page') return 'page';
+    if (hint === 'card') return 'card';
+    if (hint === 'table') return 'table';
+    if (hint === 'checklist') return 'checklist';
+    if (hint === 'section') return 'section';
+    if (hint === 'metric') return 'metric';
+    if (hint === 'text') return 'text';
+    if (hint === 'list') return 'list';
+    if (hint === 'image') return 'image';
+    if (hint === 'grid') return 'grid';
+    // Heuristic: if entity has children that look like checklist items
+    if (hint === 'fallback' || !hint) return 'fallback';
+    return 'fallback';
+  }
+
+  function renderEntity(id) {
+    const entity = entityStore.entities[id];
+    if (!entity) return '';
+    const displayType = resolveDisplay(entity);
+    switch (displayType) {
+      case 'page':      return renderPageDisplay(id);
+      case 'card':      return renderCardDisplay(id);
+      case 'table':     return renderTableDisplay(id);
+      case 'checklist': return renderChecklistDisplay(id);
+      case 'section':   return renderSectionDisplay(id);
+      case 'metric':    return renderMetricDisplay(id);
+      case 'text':      return renderTextDisplay(id);
+      case 'list':      return renderListDisplay(id);
+      case 'image':     return renderImageDisplay(id);
+      case 'grid':      return renderGridDisplay(id);
+      default:          return renderFallbackEntity(id, 0);
+    }
+  }
+
+  // ── Preview HTML builder ─────────────────────────────
+  function buildPreviewHtml() {
+    const css = document.getElementById('display-css-template').textContent;
+    const entities = entityStore.rootIds.map(renderEntity).join('');
+
+    // Inline script for iframe interactivity (direct edit, collapse)
+    const iframeScript = `
+      // Toggle section collapse
+      window.__toggleSection = function(uid) {
+        const content = document.getElementById(uid + '_content');
+        const icon = document.getElementById(uid + '_icon');
+        if (!content) return;
+        const collapsed = content.style.display === 'none';
+        content.style.display = collapsed ? '' : 'none';
+        if (icon) icon.textContent = collapsed ? '▾' : '▸';
+      };
+
+      // Start inline edit
+      window.__startEdit = function(el) {
+        if (el.dataset.editing) return;
+        el.dataset.editing = '1';
+        const val = el.textContent === '—' ? '' : el.textContent;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'editable-input';
+        input.value = val;
+        input.style.width = Math.max(el.offsetWidth, 80) + 'px';
+        el.parentNode.insertBefore(input, el);
+        el.style.display = 'none';
+        input.focus();
+        input.select();
+
+        const commit = () => {
+          const newVal = input.value;
+          el.textContent = newVal || '—';
+          el.style.display = '';
+          delete el.dataset.editing;
+          input.remove();
+          if (newVal !== val) {
+            window.parent.postMessage({
+              type: 'direct_edit',
+              entity_id: el.dataset.entityId,
+              field: el.dataset.field,
+              value: newVal
+            }, '*');
+          }
+        };
+
+        input.addEventListener('blur', commit);
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') { e.preventDefault(); commit(); }
+          if (e.key === 'Escape') {
+            el.style.display = '';
+            delete el.dataset.editing;
+            input.remove();
+          }
+        });
+      };
+
+      // Toggle checkbox
+      window.__toggleCheck = function(el) {
+        window.parent.postMessage({
+          type: 'direct_edit',
+          entity_id: el.dataset.entityId,
+          field: el.dataset.field,
+          value: el.checked
+        }, '*');
+        const item = el.closest('.checklist-item');
+        if (item) item.classList.toggle('done', el.checked);
+      };
+    `;
 
     return `<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
-<style>
-  body { font-family: -apple-system, sans-serif; font-size: 13px; color: #1a1a1a; padding: 16px; background: #fafaf9; }
-  .fb-entity { border-left: 2px solid #e0e0e0; padding: 8px 0 8px 12px; margin: 4px 0; }
-  .fb-header { display: flex; gap: 8px; align-items: baseline; margin-bottom: 4px; }
-  .fb-id { font-weight: 600; color: #2d3748; font-size: 12px; }
-  .fb-display { font-size: 11px; color: #888; }
-  .fb-props { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; font-size: 12px; color: #555; }
-  dt { font-weight: 500; color: #444; }
-  dd { color: #666; word-break: break-word; }
-  .empty { color: #aaa; text-align: center; padding: 40px; font-size: 13px; }
-</style></head><body>
+<style>${css}</style>
+</head><body>
 ${entities || '<div class="empty">Send a message to get started.</div>'}
+<script>${iframeScript}<\/script>
 </body></html>`;
   }
 
@@ -747,7 +1116,7 @@ ${entities || '<div class="empty">Send a message to get started.</div>'}
     const frame = document.getElementById('preview-frame');
     // Only use entity preview when we have live entity data from WebSocket
     if (entityStore.rootIds.length > 0) {
-      frame.srcdoc = buildFallbackHtml();
+      frame.srcdoc = buildPreviewHtml();
     }
   }
 
@@ -795,6 +1164,8 @@ ${entities || '<div class="empty">Send a message to get started.</div>'}
               renderHistory();
             }
           }
+        } else if (msg.type === 'direct_edit.error') {
+          console.warn('[WS] direct_edit rejected:', msg.error);
         } else if (msg.type === 'stream.end') {
           setSendingState(false);
           isSending = false;
@@ -828,6 +1199,23 @@ ${entities || '<div class="empty">Send a message to get started.</div>'}
     aideWs.send(JSON.stringify({ type: 'message', content, message_id: messageId }));
     return true;
   }
+
+  function sendDirectEdit(entityId, field, value) {
+    if (!aideWs || aideWs.readyState !== WebSocket.OPEN) {
+      console.warn('[WS] direct_edit: no open connection');
+      return;
+    }
+    aideWs.send(JSON.stringify({ type: 'direct_edit', entity_id: entityId, field, value }));
+  }
+
+  // Listen for postMessage from the preview iframe (direct edits + checkbox toggles)
+  window.addEventListener('message', (event) => {
+    if (!event.data || typeof event.data !== 'object') return;
+    if (event.data.type === 'direct_edit') {
+      const { entity_id, field, value } = event.data;
+      sendDirectEdit(entity_id, field, value);
+    }
+  });
 
   // ── Screens ────────────────────────────────────────
   function showScreen(name) {
