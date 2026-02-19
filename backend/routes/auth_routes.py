@@ -186,3 +186,36 @@ async def logout_endpoint(response: Response) -> LogoutResponse:
     )
 
     return LogoutResponse()
+
+
+@router.get("/dev-login", status_code=200)
+async def dev_login_endpoint(response: Response) -> UserPublic:
+    """
+    DEV ONLY: Create a test user and set session cookie.
+
+    This endpoint only works in non-production environments.
+    """
+    import os
+
+    if os.getenv("RAILWAY_ENVIRONMENT") == "production":
+        raise HTTPException(status_code=404, detail="Not found")
+
+    # Get or create dev test user
+    test_email = "dev@example.com"
+    user = await user_repo.get_by_email(test_email)
+    if not user:
+        user = await user_repo.create(test_email)
+
+    # Create JWT and set cookie
+    jwt_token = create_jwt(user.id)
+    response.set_cookie(
+        key="session",
+        value=jwt_token,
+        httponly=True,
+        secure=False,  # Allow HTTP for local dev
+        samesite="lax",
+        max_age=config.settings.JWT_EXPIRY_HOURS * 3600,
+        path="/",
+    )
+
+    return UserPublic.from_user(user)

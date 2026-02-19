@@ -1,0 +1,193 @@
+"""
+WebSocket endpoint for real-time aide interaction.
+
+Accepts connections at /ws/aide/{aide_id}, streams deltas back to the client
+as the MockLLM processes each JSONL line through the v2 reducer.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import time
+import uuid
+from typing import Any
+
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+
+from engine.kernel.mock_llm import MockLLM
+from engine.kernel.reducer_v2 import empty_snapshot, reduce
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(tags=["websocket"])
+
+# Types that the client cares about as entity mutations
+_ENTITY_TYPES = {"entity.create", "entity.update", "entity.remove"}
+
+# Types that carry voice text to display in the chat
+_VOICE_TYPES = {"voice"}
+
+
+def _make_delta(event_type: str, entity_id: str | None, snapshot: dict) -> dict[str, Any]:
+    """Build an EntityDelta payload for the given event."""
+    if event_type == "entity.remove":
+        return {"type": "entity.remove", "id": entity_id, "data": None}
+
+    if entity_id and entity_id in snapshot.get("entities", {}):
+        entity_data = snapshot["entities"][entity_id]
+        return {"type": event_type, "id": entity_id, "data": entity_data}
+
+    # Fallback: send the event type with no data (client will ignore gracefully)
+    return {"type": event_type, "id": entity_id, "data": None}
+
+
+@router.websocket("/ws/aide/{aide_id}")
+async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
+    """
+    Stream aide deltas to the client over WebSocket.
+
+    Protocol:
+      Client → Server:  {"type": "message", "content": "...", "message_id": "<uuid>"}
+      Server → Client:  EntityDelta | VoiceDelta | StreamStatus
+
+    For Phase 1, uses MockLLM with the "create_graduation" golden file.
+    Authentication is intentionally skipped for Phase 1 (local dev only).
+    """
+    await websocket.accept()
+    logger.info("WebSocket accepted: aide_id=%s", aide_id)
+
+    # Per-connection state — start with an empty v2 snapshot
+    snapshot: dict[str, Any] = empty_snapshot()
+    mock_llm = MockLLM()
+
+    try:
+        while True:
+            raw = await websocket.receive_text()
+            try:
+                msg = json.loads(raw)
+            except json.JSONDecodeError:
+                logger.warning("ws: malformed message from client: %r", raw[:200])
+                continue
+
+            if msg.get("type") != "message":
+                continue
+
+            content: str = msg.get("content", "")
+            message_id: str = msg.get("message_id") or f"msg_{uuid.uuid4().hex[:8]}"
+
+            # --- stream.start ---
+            await websocket.send_text(json.dumps({"type": "stream.start", "message_id": message_id}))
+
+            ttfc: float | None = None
+            start_time = time.monotonic()
+
+            # Buffer for partial lines
+            line_buffer = ""
+
+            # Pick scenario based on content (Phase 1: static golden files)
+            scenario = _pick_scenario(content)
+
+            try:
+                async for line in mock_llm.stream(scenario, profile="instant"):
+                    # The mock LLM already yields one complete JSONL line per iteration.
+                    # Parse the raw line and pass it directly to the v2 reducer
+                    # (which expects the short-hand keys: t, p, id, parent, display).
+                    line_buffer += line + "\n"
+                    while "\n" in line_buffer:
+                        raw_line, line_buffer = line_buffer.split("\n", 1)
+                        raw_line = raw_line.strip()
+                        if not raw_line:
+                            continue
+                        try:
+                            event: dict[str, Any] = json.loads(raw_line)
+                        except json.JSONDecodeError:
+                            logger.warning("ws: malformed JSONL line: %r", raw_line[:200])
+                            continue
+
+                        # v2 reducer uses "t" for event type
+                        event_type: str = event.get("t", "")
+
+                        if event_type in _VOICE_TYPES:
+                            voice_text: str = event.get("text", "")
+                            if voice_text:
+                                await websocket.send_text(json.dumps({"type": "voice", "text": voice_text}))
+                            continue
+
+                        if event_type not in _ENTITY_TYPES and not event_type.startswith(
+                            ("meta.", "style.", "collection.", "field.", "block.", "view.", "relationship.", "rel.")
+                        ):
+                            continue
+
+                        # Apply to snapshot via v2 reducer (raw event, not expanded)
+                        result = reduce(snapshot, event)
+
+                        if result.accepted:
+                            snapshot = result.snapshot
+
+                            if ttfc is None:
+                                ttfc = (time.monotonic() - start_time) * 1000
+
+                            if event_type in _ENTITY_TYPES:
+                                entity_id = event.get("id")
+                                delta = _make_delta(event_type, entity_id, snapshot)
+                                await websocket.send_text(json.dumps(delta))
+                        else:
+                            logger.debug(
+                                "ws: reducer rejected %s (reason=%s)",
+                                event_type,
+                                result.reason,
+                            )
+
+            except FileNotFoundError:
+                logger.error("ws: golden file not found for scenario=%s", scenario)
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "type": "stream.error",
+                            "message_id": message_id,
+                            "error": f"Scenario '{scenario}' not found.",
+                        }
+                    )
+                )
+                continue
+
+            ttc = (time.monotonic() - start_time) * 1000
+            logger.info(
+                "ws: turn complete aide_id=%s message_id=%s ttfc=%.0fms ttc=%.0fms",
+                aide_id,
+                message_id,
+                ttfc or 0,
+                ttc,
+            )
+
+            # --- stream.end ---
+            await websocket.send_text(json.dumps({"type": "stream.end", "message_id": message_id}))
+
+    except WebSocketDisconnect:
+        logger.info("WebSocket disconnected: aide_id=%s", aide_id)
+
+
+def _pick_scenario(content: str) -> str:
+    """
+    Choose a golden file scenario based on message content.
+
+    Phase 1: simple keyword matching against available scenarios.
+    """
+    content_lower = content.lower()
+
+    if any(kw in content_lower for kw in ("graduation", "party", "sophie")):
+        return "create_graduation"
+    if any(kw in content_lower for kw in ("poker", "card", "chips")):
+        return "create_poker"
+    if any(kw in content_lower for kw in ("inspo", "inspiration", "mood")):
+        return "create_inspo"
+    if any(kw in content_lower for kw in ("football", "squares", "grid", "pool")):
+        return "create_football_squares"
+    if any(kw in content_lower for kw in ("trip", "travel", "group")):
+        return "create_group_trip"
+    if any(kw in content_lower for kw in ("update", "add", "guest")):
+        return "update_simple"
+
+    # Default: graduation party demo
+    return "create_graduation"

@@ -661,6 +661,174 @@
   let conversationHistory = []; // {role, content}
   let isSending = false;
 
+  // ── Entity Store ────────────────────────────────────
+  // Holds the live entity graph populated by WebSocket deltas.
+  const entityStore = {
+    entities: {},   // id → entity data
+    rootIds: [],    // top-level entity IDs (parent === 'root' or no parent)
+
+    applyDelta(delta) {
+      if (delta.type === 'entity.create') {
+        this.entities[delta.id] = delta.data || {};
+        const parent = (delta.data || {}).parent;
+        if (!parent || parent === 'root') {
+          if (!this.rootIds.includes(delta.id)) {
+            this.rootIds.push(delta.id);
+          }
+        }
+      } else if (delta.type === 'entity.update') {
+        if (this.entities[delta.id]) {
+          Object.assign(this.entities[delta.id], delta.data || {});
+        } else {
+          this.entities[delta.id] = delta.data || {};
+        }
+      } else if (delta.type === 'entity.remove') {
+        delete this.entities[delta.id];
+        this.rootIds = this.rootIds.filter(id => id !== delta.id);
+      }
+    },
+
+    getChildren(parentId) {
+      return Object.entries(this.entities)
+        .filter(([, e]) => e.parent === parentId)
+        .map(([id]) => id);
+    },
+
+    reset() {
+      this.entities = {};
+      this.rootIds = [];
+    },
+  };
+
+  // ── FallbackDisplay ─────────────────────────────────
+  // Renders entity tree as key-value HTML (Phase 1 only).
+  function renderFallbackEntity(id, depth) {
+    const entity = entityStore.entities[id];
+    if (!entity) return '';
+    const display = entity.display || 'entity';
+    const props = Object.entries(entity)
+      .filter(([k]) => !k.startsWith('_') && k !== 'parent' && k !== 'display')
+      .map(([k, v]) => `<dt>${escapeHtml(k)}</dt><dd>${escapeHtml(typeof v === 'object' ? JSON.stringify(v) : String(v))}</dd>`)
+      .join('');
+    const children = entityStore.getChildren(id)
+      .map(cid => renderFallbackEntity(cid, depth + 1))
+      .join('');
+    const indent = depth * 16;
+    return `<div class="fb-entity" style="margin-left:${indent}px">
+      <div class="fb-header"><span class="fb-id">${escapeHtml(id)}</span><span class="fb-display">[${escapeHtml(display)}]</span></div>
+      ${props ? `<dl class="fb-props">${props}</dl>` : ''}
+      ${children}
+    </div>`;
+  }
+
+  function buildFallbackHtml() {
+    const entities = entityStore.rootIds
+      .map(id => renderFallbackEntity(id, 0))
+      .join('');
+
+    return `<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>
+  body { font-family: -apple-system, sans-serif; font-size: 13px; color: #1a1a1a; padding: 16px; background: #fafaf9; }
+  .fb-entity { border-left: 2px solid #e0e0e0; padding: 8px 0 8px 12px; margin: 4px 0; }
+  .fb-header { display: flex; gap: 8px; align-items: baseline; margin-bottom: 4px; }
+  .fb-id { font-weight: 600; color: #2d3748; font-size: 12px; }
+  .fb-display { font-size: 11px; color: #888; }
+  .fb-props { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; font-size: 12px; color: #555; }
+  dt { font-weight: 500; color: #444; }
+  dd { color: #666; word-break: break-word; }
+  .empty { color: #aaa; text-align: center; padding: 40px; font-size: 13px; }
+</style></head><body>
+${entities || '<div class="empty">Send a message to get started.</div>'}
+</body></html>`;
+  }
+
+  function refreshEntityPreview() {
+    const frame = document.getElementById('preview-frame');
+    // Only use entity preview when we have live entity data from WebSocket
+    if (entityStore.rootIds.length > 0) {
+      frame.srcdoc = buildFallbackHtml();
+    }
+  }
+
+  // ── WebSocket Client ────────────────────────────────
+  let aideWs = null;
+  let wsConnectedAideId = null;
+
+  function connectWebSocket(aideId) {
+    // Close existing connection if switching aides
+    if (aideWs && wsConnectedAideId !== aideId) {
+      aideWs.close();
+      aideWs = null;
+    }
+    if (aideWs && aideWs.readyState === WebSocket.OPEN) return;
+
+    const wsId = aideId || 'new';
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const url = `${proto}//${location.host}/ws/aide/${wsId}`;
+
+    try {
+      aideWs = new WebSocket(url);
+      wsConnectedAideId = wsId;
+
+      aideWs.onopen = () => {
+        console.log('[WS] connected:', url);
+      };
+
+      aideWs.onmessage = (event) => {
+        let msg;
+        try { msg = JSON.parse(event.data); } catch { return; }
+
+        if (msg.type === 'stream.start') {
+          // Reset entity store for new message
+          entityStore.reset();
+        } else if (msg.type === 'entity.create' || msg.type === 'entity.update' || msg.type === 'entity.remove') {
+          entityStore.applyDelta(msg);
+          refreshEntityPreview();
+        } else if (msg.type === 'voice') {
+          // Show voice text as assistant message in history
+          if (msg.text) {
+            // Only add if not already the last assistant message
+            const last = conversationHistory[conversationHistory.length - 1];
+            if (!last || last.role !== 'assistant' || last.content !== msg.text) {
+              conversationHistory.push({ role: 'assistant', content: msg.text });
+              renderHistory();
+            }
+          }
+        } else if (msg.type === 'stream.end') {
+          setSendingState(false);
+          isSending = false;
+        } else if (msg.type === 'stream.error') {
+          const errMsg = msg.error || 'Stream error.';
+          conversationHistory.push({ role: 'assistant', content: errMsg });
+          renderHistory();
+          setSendingState(false);
+          isSending = false;
+        }
+      };
+
+      aideWs.onerror = (err) => {
+        console.warn('[WS] error, will fall back to HTTP:', err);
+      };
+
+      aideWs.onclose = () => {
+        console.log('[WS] disconnected');
+        if (wsConnectedAideId === wsId) {
+          aideWs = null;
+        }
+      };
+    } catch (err) {
+      console.warn('[WS] could not connect:', err);
+      aideWs = null;
+    }
+  }
+
+  function sendViaWebSocket(content, messageId) {
+    if (!aideWs || aideWs.readyState !== WebSocket.OPEN) return false;
+    aideWs.send(JSON.stringify({ type: 'message', content, message_id: messageId }));
+    return true;
+  }
+
   // ── Screens ────────────────────────────────────────
   function showScreen(name) {
     document.getElementById('auth-screen').classList.toggle('active', name === 'auth');
@@ -836,6 +1004,10 @@
 
     showScreen('editor');
     document.getElementById('message-input').focus();
+
+    // Connect WebSocket for real-time entity streaming
+    entityStore.reset();
+    connectWebSocket(aideId);
   }
 
   document.getElementById('editor-back').addEventListener('click', () => {
@@ -887,13 +1059,45 @@
     input.value = '';
     resizeTextarea(input);
 
+    const messageId = 'msg_' + Math.random().toString(36).slice(2, 10);
+    clearImagePreview();
+
+    // Try WebSocket first (streaming entity deltas)
+    const sentViaWs = !pendingImage && sendViaWebSocket(text, messageId);
+
+    if (sentViaWs) {
+      // WS handler will call setSendingState(false) on stream.end
+      // Also call HTTP endpoint in background to persist state
+      const body = {
+        aide_id: currentAideId || undefined,
+        message: text || ' ',
+      };
+      fetch('/api/message', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }).then(async res => {
+        if (res.status === 401) { showScreen('auth'); return; }
+        if (res.ok) {
+          const data = await res.json();
+          currentAideId = data.aide_id;
+          history.replaceState({}, '', `?aide=${data.aide_id}`);
+          // Reconnect WS with real aide ID if we started without one
+          if (wsConnectedAideId === 'new' && data.aide_id) {
+            connectWebSocket(data.aide_id);
+          }
+        }
+      }).catch(() => {});
+      return;
+    }
+
+    // Fallback: HTTP-only path (used when no image support in WS or WS unavailable)
     const body = {
       aide_id: currentAideId || undefined,
       message: text || ' ',
       image: pendingImage ? pendingImage.base64 : undefined,
     };
-
-    clearImagePreview();
 
     try {
       const res = await fetch('/api/message', {
