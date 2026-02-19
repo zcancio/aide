@@ -1,6 +1,6 @@
 # Phase 0b: Reducer Implementation
 
-**Status:** Not Started
+**Status:** ✅ Complete (2026-02-19)
 **Prerequisites:** Phase 0a complete (golden files exist)
 **Checkpoint:** All golden files reduce cleanly, test suite passes
 
