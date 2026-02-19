@@ -385,14 +385,14 @@ async def test_websocket_message_yields_deltas():
 
 ## Checkpoint Criteria
 
-- [ ] WebSocket endpoint accepts connections and receives messages
-- [ ] JSONL parser correctly buffers and expands abbreviations
-- [ ] Orchestrator streams MockLLM → parser → reducer → deltas
-- [ ] Frontend store receives and applies deltas
-- [ ] AideEntity recursively renders entity tree
-- [ ] FallbackDisplay shows all entity props
-- [ ] Telemetry records ttfc and ttc for each message
-- [ ] All tests pass
+- [x] WebSocket endpoint accepts connections and receives messages
+- [x] JSONL parser correctly buffers and expands abbreviations
+- [x] Orchestrator streams MockLLM → parser → reducer → deltas
+- [x] Frontend store receives and applies deltas
+- [x] AideEntity recursively renders entity tree (FallbackDisplay in vanilla JS)
+- [x] FallbackDisplay shows all entity props
+- [ ] Telemetry records ttfc and ttc for each message (ttfc logged to server stdout; DB telemetry wired in Phase 1.3)
+- [x] All tests pass
 
 ## Measurements
 
