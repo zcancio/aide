@@ -15,6 +15,8 @@ from typing import Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from backend.models.telemetry import TelemetryEvent
+from backend.repos import telemetry_repo
 from engine.kernel.mock_llm import MockLLM
 from engine.kernel.reducer_v2 import empty_snapshot, reduce
 
@@ -40,6 +42,93 @@ def _make_delta(event_type: str, entity_id: str | None, snapshot: dict) -> dict[
 
     # Fallback: send the event type with no data (client will ignore gracefully)
     return {"type": event_type, "id": entity_id, "data": None}
+
+
+async def _handle_direct_edit(
+    websocket: WebSocket,
+    aide_id: str,
+    snapshot: dict[str, Any],
+    msg: dict[str, Any],
+) -> dict[str, Any]:
+    """
+    Handle a direct_edit message from the client.
+
+    Protocol:
+      Client sends: {"type": "direct_edit", "entity_id": "...", "field": "...", "value": "..."}
+      Server applies entity.update through reducer and broadcasts delta.
+
+    Returns the (possibly updated) snapshot.
+    """
+    start_ms = time.monotonic()
+
+    entity_id: str | None = msg.get("entity_id")
+    field: str | None = msg.get("field")
+    value = msg.get("value")
+
+    if not entity_id or not field:
+        logger.warning("ws: direct_edit missing entity_id or field")
+        await websocket.send_text(
+            json.dumps({"type": "direct_edit.error", "error": "entity_id and field are required"})
+        )
+        return snapshot
+
+    # Validate entity exists in current snapshot
+    if entity_id not in snapshot.get("entities", {}):
+        logger.warning("ws: direct_edit entity_id not found: %s", entity_id)
+        await websocket.send_text(json.dumps({"type": "direct_edit.error", "error": f"Entity '{entity_id}' not found"}))
+        return snapshot
+
+    # Build entity.update event (v2 format: short keys; uses "ref" not "id")
+    event: dict[str, Any] = {"t": "entity.update", "ref": entity_id, "p": {field: value}}
+
+    result = reduce(snapshot, event)
+
+    if not result.accepted:
+        logger.warning(
+            "ws: direct_edit reducer rejected: entity=%s field=%s reason=%s",
+            entity_id,
+            field,
+            result.reason,
+        )
+        await websocket.send_text(
+            json.dumps({"type": "direct_edit.error", "error": result.reason or "Reducer rejected edit"})
+        )
+        return snapshot
+
+    snapshot = result.snapshot
+    latency_ms = int((time.monotonic() - start_ms) * 1000)
+
+    # Broadcast the delta back to the client
+    delta = _make_delta("entity.update", entity_id, snapshot)
+    await websocket.send_text(json.dumps(delta))
+
+    logger.info(
+        "ws: direct_edit applied aide_id=%s entity_id=%s field=%s latency=%dms",
+        aide_id,
+        entity_id,
+        field,
+        latency_ms,
+    )
+
+    # Record telemetry (best-effort — don't fail the edit if telemetry fails)
+    try:
+        # aide_id may be 'new' for unauthenticated Phase 1 sessions; skip telemetry
+        import re
+
+        _UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE)
+        if _UUID_RE.match(aide_id):
+            import uuid as _uuid
+
+            event_record = TelemetryEvent(
+                aide_id=_uuid.UUID(aide_id),
+                event_type="direct_edit",
+                edit_latency_ms=latency_ms,
+            )
+            await telemetry_repo.record_event(event_record)
+    except Exception:
+        logger.debug("ws: telemetry record failed (non-fatal)", exc_info=True)
+
+    return snapshot
 
 
 @router.websocket("/ws/aide/{aide_id}")
@@ -70,7 +159,14 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
                 logger.warning("ws: malformed message from client: %r", raw[:200])
                 continue
 
-            if msg.get("type") != "message":
+            msg_type = msg.get("type")
+
+            # ── direct_edit ──────────────────────────────────────────
+            if msg_type == "direct_edit":
+                snapshot = await _handle_direct_edit(websocket, aide_id, snapshot, msg)
+                continue
+
+            if msg_type != "message":
                 continue
 
             content: str = msg.get("content", "")

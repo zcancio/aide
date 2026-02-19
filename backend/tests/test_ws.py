@@ -197,3 +197,141 @@ class TestWebSocketEdgeCases:
                     break
             types = {m["type"] for m in messages}
             assert "stream.end" in types
+
+
+class TestDirectEdit:
+    """Tests for the direct_edit WebSocket message type."""
+
+    def _run_graduation_stream(self, ws) -> None:
+        """Send a graduation message and drain until stream.end."""
+        ws.send_text(json.dumps({"type": "message", "content": "graduation party", "message_id": "setup"}))
+        for _ in range(200):
+            msg = json.loads(ws.receive_text())
+            if msg["type"] == "stream.end":
+                break
+
+    def test_direct_edit_updates_existing_entity(self, client):
+        """Editing a field on an existing entity returns entity.update delta."""
+        with client.websocket_connect("/ws/aide/test") as ws:
+            self._run_graduation_stream(ws)
+
+            ws.send_text(
+                json.dumps(
+                    {
+                        "type": "direct_edit",
+                        "entity_id": "page_graduation",
+                        "field": "title",
+                        "value": "Sophie's Party 2026",
+                    }
+                )
+            )
+
+            msg = json.loads(ws.receive_text())
+            assert msg["type"] == "entity.update"
+            assert msg["id"] == "page_graduation"
+            # v2 entities nest props under .props
+            assert msg["data"]["props"]["title"] == "Sophie's Party 2026"
+
+    def test_direct_edit_nonexistent_entity_returns_error(self, client):
+        """Editing an entity that doesn't exist returns direct_edit.error."""
+        with client.websocket_connect("/ws/aide/test") as ws:
+            ws.send_text(
+                json.dumps(
+                    {
+                        "type": "direct_edit",
+                        "entity_id": "does_not_exist",
+                        "field": "title",
+                        "value": "oops",
+                    }
+                )
+            )
+            msg = json.loads(ws.receive_text())
+            assert msg["type"] == "direct_edit.error"
+            assert "error" in msg
+
+    def test_direct_edit_missing_field_returns_error(self, client):
+        """Missing field parameter returns direct_edit.error."""
+        with client.websocket_connect("/ws/aide/test") as ws:
+            ws.send_text(
+                json.dumps(
+                    {
+                        "type": "direct_edit",
+                        "entity_id": "page_graduation",
+                        # field is missing
+                        "value": "oops",
+                    }
+                )
+            )
+            msg = json.loads(ws.receive_text())
+            assert msg["type"] == "direct_edit.error"
+
+    def test_direct_edit_missing_entity_id_returns_error(self, client):
+        """Missing entity_id parameter returns direct_edit.error."""
+        with client.websocket_connect("/ws/aide/test") as ws:
+            ws.send_text(
+                json.dumps(
+                    {
+                        "type": "direct_edit",
+                        "field": "title",
+                        "value": "oops",
+                    }
+                )
+            )
+            msg = json.loads(ws.receive_text())
+            assert msg["type"] == "direct_edit.error"
+
+    def test_direct_edit_preserves_snapshot_across_edits(self, client):
+        """Multiple direct edits accumulate in the snapshot."""
+        with client.websocket_connect("/ws/aide/test") as ws:
+            self._run_graduation_stream(ws)
+
+            # First edit
+            ws.send_text(
+                json.dumps(
+                    {
+                        "type": "direct_edit",
+                        "entity_id": "page_graduation",
+                        "field": "title",
+                        "value": "Edit One",
+                    }
+                )
+            )
+            msg1 = json.loads(ws.receive_text())
+            assert msg1["type"] == "entity.update"
+            assert msg1["data"]["props"]["title"] == "Edit One"
+
+            # Second edit to same entity
+            ws.send_text(
+                json.dumps(
+                    {
+                        "type": "direct_edit",
+                        "entity_id": "page_graduation",
+                        "field": "title",
+                        "value": "Edit Two",
+                    }
+                )
+            )
+            msg2 = json.loads(ws.receive_text())
+            assert msg2["type"] == "entity.update"
+            assert msg2["data"]["props"]["title"] == "Edit Two"
+
+    def test_direct_edit_response_has_required_fields(self, client):
+        """Successful direct edit response includes type, id, data."""
+        with client.websocket_connect("/ws/aide/test") as ws:
+            self._run_graduation_stream(ws)
+
+            ws.send_text(
+                json.dumps(
+                    {
+                        "type": "direct_edit",
+                        "entity_id": "page_graduation",
+                        "field": "title",
+                        "value": "Test Title",
+                    }
+                )
+            )
+            msg = json.loads(ws.receive_text())
+            assert "type" in msg
+            assert "id" in msg
+            assert "data" in msg
+            assert msg["type"] == "entity.update"
