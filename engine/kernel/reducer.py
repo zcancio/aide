@@ -475,10 +475,10 @@ def _handle_entity_update(snap: dict, event: Event) -> ReduceResult:
             for child_id, child_data in value.items():
                 if child_data is None:
                     # Remove child
-                    if child_id in existing_val:
+                    if child_id in existing_val and isinstance(existing_val[child_id], dict):
                         existing_val[child_id]["_removed"] = True
                         _remove_nested_children(existing_val[child_id])
-                elif child_id in existing_val and not existing_val[child_id].get("_removed"):
+                elif child_id in existing_val and isinstance(existing_val[child_id], dict) and not existing_val[child_id].get("_removed"):
                     # Update existing child — merge fields
                     for ck, cv in child_data.items():
                         if ck not in {"_removed", "_created_seq", "_updated_seq"}:

@@ -240,6 +240,8 @@ For grid-based structures (chessboard, Super Bowl squares, bingo), use `_shape` 
 
 **Grid cell keys use `r_c` format:** `0_0`, `1_5`, `9_9`
 
+**For ALL grids:** Use `aspect-ratio: 1` in cell styles to ensure square cells.
+
 **CRITICAL for grids with visual patterns (checkerboards, game boards):**
 
 1. **`styles` is REQUIRED** - The cell schema MUST have a `styles` field with CSS for visual patterns.
@@ -387,8 +389,9 @@ User: "Super Bowl squares pool, Chiefs vs 49ers"
       "payload": {
         "id": "square",
         "interface": "interface Square { owner: string | null; }",
-        "render_html": "<div class=\"square {{#owner}}claimed{{/owner}}\">{{owner}}</div>",
-        "render_text": "{{#owner}}{{owner}}{{/owner}}{{^owner}}-{{/owner}}"
+        "render_html": "<div class=\"sq {{#owner}}claimed{{/owner}}\">{{owner}}</div>",
+        "render_text": "{{#owner}}{{owner}}{{/owner}}{{^owner}}-{{/owner}}",
+        "styles": ".sq { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border: 1px solid #ccc; font-size: 0.7em; } .sq.claimed { background: #e8f5e9; }"
       }
     },
     {
