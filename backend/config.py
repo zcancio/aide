@@ -48,6 +48,9 @@ class Settings:
     # Application
     ENVIRONMENT: str = os.environ.get("ENVIRONMENT", "development")
 
+    # LLM routing — set USE_MOCK_LLM=true to use MockLLM (tests, UX simulation)
+    USE_MOCK_LLM: bool = os.environ.get("USE_MOCK_LLM", "").lower() == "true"
+
     @property
     def EDITOR_URL(self) -> str:
         url = os.environ.get("EDITOR_URL")
