@@ -352,7 +352,7 @@ engine/kernel/tests/
 ```python
 def test_golden_files_reduce_cleanly():
     """Every line from every golden file should be accepted."""
-    golden_dir = Path("scripts/golden")  # or wherever golden files are stored
+    golden_dir = Path("engine/kernel/tests/fixtures/golden")
 
     for golden_file in golden_dir.glob("*.jsonl"):
         snapshot = empty_snapshot()
@@ -428,4 +428,4 @@ engine/kernel/
 
 - The v1.3 reducer exists in `engine/kernel/reducer.py` but uses the old schema format (`ref`, `fields` nesting, TypeScript interfaces). The v2 reducer is a rewrite with the simplified JSONL format.
 - Consider whether to replace v1.3 reducer or build v2 alongside it during transition.
-- Golden files from phase 0a should be copied to `scripts/golden/` or a test fixtures directory.
+- Golden files from phase 0a are stored in `engine/kernel/tests/fixtures/golden/`.

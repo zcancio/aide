@@ -1,0 +1,20 @@
+{"t":"meta.set","p":{"title":"Poker League","identity":"poker_league"}}
+{"t":"entity.create","id":"poker_league","display":"page","p":{"name":"Poker League"}}
+{"t":"entity.create","id":"schedule_section","parent":"poker_league","display":"section","p":{"title":"Schedule"}}
+{"t":"entity.create","id":"next_game","parent":"schedule_section","display":"card","p":{"date":"2025-01-23","day":"Thursday","time":"7:00 PM","host":"TBD","snacks":"TBD"}}
+{"t":"voice","text":"Schedule set. Building player standings."}
+{"t":"entity.create","id":"standings_section","parent":"poker_league","display":"section","p":{"title":"Standings"}}
+{"t":"entity.create","id":"player_alex","parent":"standings_section","display":"table","p":{"name":"Alex","games":0,"wins":0,"points":0}}
+{"t":"entity.create","id":"player_blake","parent":"standings_section","display":"table","p":{"name":"Blake","games":0,"wins":0,"points":0}}
+{"t":"entity.create","id":"player_casey","parent":"standings_section","display":"table","p":{"name":"Casey","games":0,"wins":0,"points":0}}
+{"t":"entity.create","id":"player_devon","parent":"standings_section","display":"table","p":{"name":"Devon","games":0,"wins":0,"points":0}}
+{"t":"entity.create","id":"player_ellis","parent":"standings_section","display":"table","p":{"name":"Ellis","games":0,"wins":0,"points":0}}
+{"t":"entity.create","id":"player_finley","parent":"standings_section","display":"table","p":{"name":"Finley","games":0,"wins":0,"points":0}}
+{"t":"entity.create","id":"player_gray","parent":"standings_section","display":"table","p":{"name":"Gray","games":0,"wins":0,"points":0}}
+{"t":"entity.create","id":"player_harper","parent":"standings_section","display":"table","p":{"name":"Harper","games":0,"wins":0,"points":0}}
+{"t":"voice","text":"Players added. Setting up rotation tracking."}
+{"t":"entity.create","id":"rotation_section","parent":"poker_league","display":"section","p":{"title":"Rotation"}}
+{"t":"entity.create","id":"host_rotation","parent":"rotation_section","display":"list","p":{"title":"Host Order","items":["Alex","Blake","Casey","Devon","Ellis","Finley","Gray","Harper"]}}
+{"t":"entity.create","id":"snack_rotation","parent":"rotation_section","display":"list","p":{"title":"Snack Order","items":["Alex","Blake","Casey","Devon","Ellis","Finley","Gray","Harper"]}}
+{"t":"style.set","p":{"primary_color":"#2d3748","font_family":"Inter","density":"comfortable"}}
+{"t":"voice","text":"Poker league ready. Set the first host to lock in Jan 23."}

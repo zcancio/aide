@@ -1,0 +1,23 @@
+{"t":"meta.set","p":{"title":"Sophie's Graduation Party","identity":"graduation_coordinator"}}
+{"t":"entity.create","id":"page_graduation","display":"page","p":{"title":"Sophie's Graduation Party"}}
+{"t":"entity.create","id":"section_event","parent":"page_graduation","display":"section","p":{"title":"Event Details"}}
+{"t":"entity.create","id":"ceremony_details","parent":"section_event","display":"card","p":{"event":"Graduation Ceremony","date":"2026-05-22","time":"10:00 AM","location":"UC Davis","expected_guests":40}}
+{"t":"voice","text":"Event details set. Building guest coordination."}
+{"t":"entity.create","id":"section_guests","parent":"page_graduation","display":"section","p":{"title":"Guest List"}}
+{"t":"entity.create","id":"guest_tracker","parent":"section_guests","display":"table","p":{"description":"Track RSVPs and coordination"}}
+{"t":"voice","text":"Guest tracking ready. Setting up food coordination."}
+{"t":"entity.create","id":"section_food","parent":"page_graduation","display":"section","p":{"title":"Food & Catering"}}
+{"t":"entity.create","id":"food_tracker","parent":"section_food","display":"table","p":{"description":"Menu items and assignments"}}
+{"t":"voice","text":"Food section created. Adding travel coordination."}
+{"t":"entity.create","id":"section_travel","parent":"page_graduation","display":"section","p":{"title":"Travel & Lodging"}}
+{"t":"entity.create","id":"travel_tracker","parent":"section_travel","display":"table","p":{"description":"Guest travel arrangements"}}
+{"t":"voice","text":"Travel tracking ready. Building to-do list."}
+{"t":"entity.create","id":"section_tasks","parent":"page_graduation","display":"section","p":{"title":"To-Do List"}}
+{"t":"entity.create","id":"tasks","parent":"section_tasks","display":"checklist","p":{}}
+{"t":"entity.create","id":"task_venue","parent":"tasks","display":"card","p":{"task":"Book venue for party","done":false}}
+{"t":"entity.create","id":"task_catering","parent":"tasks","display":"card","p":{"task":"Finalize catering menu","done":false}}
+{"t":"entity.create","id":"task_invites","parent":"tasks","display":"card","p":{"task":"Send invitations","done":false}}
+{"t":"entity.create","id":"task_lodging","parent":"tasks","display":"card","p":{"task":"Reserve hotel blocks","done":false}}
+{"t":"entity.create","id":"task_decorations","parent":"tasks","display":"card","p":{"task":"Plan decorations","done":false}}
+{"t":"style.set","p":{"primary_color":"#2d3748","font_family":"Inter","density":"comfortable"}}
+{"t":"voice","text":"Graduation party page ready. Add guests and food items to start coordinating."}

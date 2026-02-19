@@ -1,0 +1,23 @@
+{"t":"batch.start"}
+{"t":"entity.remove","ref":"idea_walnut"}
+{"t":"entity.remove","ref":"idea_brass"}
+{"t":"entity.remove","ref":"idea_herringbone"}
+{"t":"entity.remove","ref":"idea_pendant"}
+{"t":"entity.remove","ref":"idea_butcher"}
+{"t":"entity.remove","ref":"idea_terracotta"}
+{"t":"entity.remove","ref":"ideas"}
+{"t":"entity.create","id":"island","parent":"page","display":"section","p":{"title":"Island"}}
+{"t":"entity.create","id":"island_countertop","parent":"island","display":"text","p":{"content":"Butcher block countertop — contrast with white perimeter counters"}}
+{"t":"entity.create","id":"island_lighting","parent":"island","display":"image","p":{"src":"https://example.com/pendant-lights.jpg","caption":"Brass pendant lights"}}
+{"t":"voice","text":"Island section ready. Moving to backsplash."}
+{"t":"entity.create","id":"backsplash","parent":"page","display":"section","p":{"title":"Backsplash"}}
+{"t":"entity.create","id":"backsplash_herringbone","parent":"backsplash","display":"image","p":{"src":"https://example.com/herringbone-backsplash.jpg","caption":"White herringbone tile"}}
+{"t":"entity.create","id":"shelving","parent":"page","display":"section","p":{"title":"Shelving"}}
+{"t":"entity.create","id":"shelving_walnut","parent":"shelving","display":"text","p":{"content":"Walnut open shelving — warm tone, pairs with white quartz"}}
+{"t":"voice","text":"Shelving and flooring sections next."}
+{"t":"entity.create","id":"flooring","parent":"page","display":"section","p":{"title":"Flooring"}}
+{"t":"entity.create","id":"flooring_terracotta","parent":"flooring","display":"image","p":{"src":"https://example.com/terracotta-floor.jpg","caption":"Terracotta tile"}}
+{"t":"entity.create","id":"hardware","parent":"page","display":"section","p":{"title":"Hardware"}}
+{"t":"entity.create","id":"hardware_brass","parent":"hardware","display":"text","p":{"content":"Brass cabinet hardware throughout"}}
+{"t":"batch.end"}
+{"t":"voice","text":"Organized by area: island, backsplash, shelving, flooring, hardware."}

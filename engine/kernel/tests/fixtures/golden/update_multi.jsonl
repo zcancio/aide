@@ -1,0 +1,3 @@
+{"t":"entity.create","id":"guest_aunt_linda","parent":"guests","p":{"name":"Aunt Linda","rsvp":"yes","traveling_from":"Portland"}}
+{"t":"entity.create","id":"food_potato_salad","parent":"food","p":{"item":"Potato Salad","who":"Aunt Linda"}}
+{"t":"rel.set","from":"guest_aunt_linda","to":"food_potato_salad","type":"bringing","cardinality":"many_to_one"}

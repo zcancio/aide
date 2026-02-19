@@ -1,0 +1,17 @@
+{"t":"meta.set","p":{"title":"Kitchen Renovation","identity":"inspiration_board"}}
+{"t":"entity.create","id":"page_root","display":"page","p":{}}
+{"t":"entity.create","id":"vision","parent":"page_root","display":"section","p":{"title":"Vision"}}
+{"t":"entity.create","id":"vision_text","parent":"vision","display":"text","p":{"content":"Warm wood tones, white countertops, open shelving. A space that feels inviting and functional."}}
+{"t":"entity.create","id":"palette","parent":"page_root","display":"section","p":{"title":"Color Palette"}}
+{"t":"entity.create","id":"color_wood","parent":"palette","display":"card","p":{"name":"Warm Wood","tone":"Natural oak, walnut, or pine","use":"Cabinets, shelving, accents"}}
+{"t":"entity.create","id":"color_white","parent":"palette","display":"card","p":{"name":"White","tone":"Clean, bright","use":"Countertops, backsplash, walls"}}
+{"t":"entity.create","id":"color_accent","parent":"palette","display":"card","p":{"name":"Accent","tone":"Matte black or brass","use":"Hardware, fixtures"}}
+{"t":"voice","text":"Vision and palette set. Building material and design sections."}
+{"t":"entity.create","id":"materials","parent":"page_root","display":"section","p":{"title":"Materials & Elements"}}
+{"t":"entity.create","id":"mat_countertop","parent":"materials","display":"card","p":{"item":"Countertops","material":"Quartz or marble","color":"White"}}
+{"t":"entity.create","id":"mat_shelving","parent":"materials","display":"card","p":{"item":"Open Shelving","material":"Solid wood or floating brackets","finish":"Natural or light stain"}}
+{"t":"entity.create","id":"mat_cabinets","parent":"materials","display":"card","p":{"item":"Cabinets","material":"Wood or wood veneer","finish":"Warm stain or natural"}}
+{"t":"entity.create","id":"inspiration","parent":"page_root","display":"section","p":{"title":"Inspiration Links"}}
+{"t":"entity.create","id":"inspo_note","parent":"inspiration","display":"text","p":{"content":"Drop links to Pinterest boards, product pages, or photos here as you find them."}}
+{"t":"voice","text":"Board ready. Add images and links as you find inspiration."}
+{"t":"style.set","p":{"primary_color":"#8b6f47","font_family":"Inter","density":"comfortable"}}

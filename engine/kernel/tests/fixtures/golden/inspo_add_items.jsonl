@@ -1,0 +1,2 @@
+{"t":"entity.create","id":"idea_oak_shelving","parent":"ideas","display":"image","p":{"src":"https://example.com/oak-shelving.jpg","caption":"Oak open shelving example"}}
+{"t":"entity.create","id":"note_backsplash","parent":"ideas","display":"text","p":{"content":"Considering subway tile as an alternative to herringbone for backsplash — cleaner lines, still classic."}}
