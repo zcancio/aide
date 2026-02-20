@@ -122,3 +122,22 @@ class AideResponse(BaseModel):
             created_at=aide.created_at,
             updated_at=aide.updated_at,
         )
+
+
+class HydrateResponse(BaseModel):
+    """
+    Cold load hydration response.
+
+    Returns the complete state needed to initialize the editor:
+    - snapshot: current reduced state (ready to render, no replay needed)
+    - events: full event log (for audit trail + published embed)
+    - blueprint: identity, voice, prompt
+    - messages: conversation history
+    - snapshot_hash: checksum for reconciliation
+    """
+
+    snapshot: dict[str, Any]
+    events: list[dict[str, Any]]
+    blueprint: dict[str, str]
+    messages: list[dict[str, Any]]
+    snapshot_hash: str
