@@ -118,20 +118,23 @@ def render(
     parts.append("<body>")
     parts.append('  <main class="aide-page">')
 
-    # Page title (from meta.title)
-    page_title = snapshot.get("meta", {}).get("title")
-    if page_title:
-        parts.append(f'    <h1 class="aide-heading aide-heading--1">{escape(page_title)}</h1>')
-
     # Block tree
     body_html = _render_block_tree(snapshot)
     if body_html:
+        # Page title (from meta.title) - only render if there's content
+        page_title = snapshot.get("meta", {}).get("title")
+        if page_title:
+            parts.append(f'    <h1 class="aide-heading aide-heading--1">{escape(page_title)}</h1>')
         parts.append(body_html)
     else:
         # Check for v2 entities (entity tree with parent relationships)
         if snapshot.get("entities"):
             auto_html = _auto_render_v2_entities(snapshot)
             if auto_html:
+                # Page title (from meta.title) - only render if there's content
+                page_title = snapshot.get("meta", {}).get("title")
+                if page_title:
+                    parts.append(f'    <h1 class="aide-heading aide-heading--1">{escape(page_title)}</h1>')
                 parts.append(auto_html)
             else:
                 parts.append('    <p class="aide-empty">This page is empty.</p>')
@@ -139,6 +142,10 @@ def render(
             # Fallback to v1 collections
             auto_html = _auto_render_collections(snapshot)
             if auto_html:
+                # Page title (from meta.title) - only render if there's content
+                page_title = snapshot.get("meta", {}).get("title")
+                if page_title:
+                    parts.append(f'    <h1 class="aide-heading aide-heading--1">{escape(page_title)}</h1>')
                 parts.append(auto_html)
             else:
                 parts.append('    <p class="aide-empty">This page is empty.</p>')
