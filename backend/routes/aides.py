@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse
 
 from backend.auth import get_current_user
-from backend.models.aide import AideResponse, CreateAideRequest, UpdateAideRequest
+from backend.models.aide import AideResponse, CreateAideRequest, SaveStateRequest, SaveStateResponse, UpdateAideRequest
 from backend.models.conversation import ConversationHistoryResponse, MessageResponse
 from backend.models.user import User
 from backend.repos.aide_repo import AideRepo
@@ -98,6 +98,10 @@ async def get_aide_preview(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aide not found.")
 
     # Fetch HTML from R2
+    # TODO: Race condition - if user refreshes before R2 upload completes,
+    # R2 returns nothing but aide.state has content. Should fall back to
+    # rendering from aide.state using render_react_preview() instead of
+    # showing "Send a message" placeholder.
     html_content = await r2_service.get_html(str(aide_id))
     if not html_content:
         # Return placeholder if no HTML yet
@@ -135,3 +139,71 @@ async def get_aide_history(
     ]
 
     return ConversationHistoryResponse(messages=messages)
+
+
+@router.post("/{aide_id}/state", status_code=200)
+async def save_aide_state(
+    aide_id: UUID,
+    req: SaveStateRequest,
+    user: User = Depends(get_current_user),
+) -> SaveStateResponse:
+    """
+    Save streamed state to database and R2.
+
+    This endpoint persists the state that was streamed via WebSocket.
+    No LLM call - just saves what the frontend already has.
+    """
+    from engine.kernel.react_preview import render_react_preview
+
+    # Verify user owns this aide
+    aide = await aide_repo.get(user.id, aide_id)
+    if not aide:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aide not found.")
+
+    # Build v2 snapshot from frontend state
+    snapshot = {
+        "entities": req.entities,
+        "meta": req.meta,
+        "relationships": [],
+        "styles": {"global": {}, "entities": {}},
+        "_sequence": 0,
+    }
+
+    # Update aide state in database
+    title = req.meta.get("title") or aide.title
+    await aide_repo.update_state(user.id, aide_id, snapshot, event_log=[], title=title)
+
+    # Render HTML and upload to R2
+    html_content = render_react_preview(snapshot, title=title)
+    await r2_service.upload_html(str(aide_id), html_content)
+
+    # Save conversation history if provided
+    if req.message or req.response:
+        from datetime import datetime, timezone
+
+        from backend.models.conversation import Message
+
+        # Get or create conversation for this aide
+        conversation = await conversation_repo.get_for_aide(user.id, aide_id)
+        if not conversation:
+            conversation = await conversation_repo.create(user.id, aide_id, channel="web")
+
+        now = datetime.now(timezone.utc)
+
+        # Append user message
+        if req.message:
+            await conversation_repo.append_message(
+                user.id,
+                conversation.id,
+                Message(role="user", content=req.message, timestamp=now),
+            )
+
+        # Append assistant response
+        if req.response:
+            await conversation_repo.append_message(
+                user.id,
+                conversation.id,
+                Message(role="assistant", content=req.response, timestamp=now),
+            )
+
+    return SaveStateResponse(preview_url=f"/api/aides/{aide_id}/preview")

@@ -49,7 +49,7 @@ class L2Compiler:
             system=self.system_prompt,
             messages=messages,
             max_tokens=4096,
-            temperature=1.0,
+            temperature=0.0,
         )
 
         # Parse JSON response (extract from markdown code blocks if present)

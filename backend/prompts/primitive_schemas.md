@@ -377,33 +377,38 @@ Set accent color.
 
 ## Meta Primitives
 
-### meta.set_title
-Set aide title.
+### meta.update
+Update aide metadata (title, description, labels).
 
 ```json
 {
-  "type": "meta.set_title",
+  "type": "meta.update",
   "payload": {
     "title": "Weekly Grocery Run"
   }
 }
 ```
 
-- `title`: aide title (required)
-
-### meta.set_description
-Set aide description.
+Or with multiple fields:
 
 ```json
 {
-  "type": "meta.set_description",
+  "type": "meta.update",
   "payload": {
+    "title": "Weekly Grocery Run",
     "description": "Shared shopping list for the household"
   }
 }
 ```
 
-- `description`: aide description (required)
+- `title`: aide title (optional)
+- `description`: aide description (optional)
+- `row_label`: label for grid row axis (optional)
+- `col_label`: label for grid column axis (optional)
+- `row_labels`: array of labels for grid row indices (optional)
+- `col_labels`: array of labels for grid column indices (optional)
+
+All fields are optional — include only the ones you want to update.
 
 ## Relationship Primitives
 
@@ -448,7 +453,7 @@ Remove a relationship between entities.
 ### Creating a new aide from scratch
 1. `collection.create` — define the schema
 2. `entity.create` (×N) — add initial entities
-3. `meta.set_title` — set the title
+3. `meta.update` — set the title
 
 ### Routine updates
 1. `entity.update` — modify existing entities

@@ -28,6 +28,23 @@ class SendMessageResponse(BaseModel):
     aide_id: UUID
 
 
+class SaveStateRequest(BaseModel):
+    """What the client sends to persist streamed state (no LLM call)."""
+
+    model_config = {"extra": "forbid"}
+
+    entities: dict[str, Any]
+    meta: dict[str, Any] = Field(default_factory=dict)
+    message: str | None = None  # Original user message for conversation history
+    response: str | None = None  # AI response text for conversation history
+
+
+class SaveStateResponse(BaseModel):
+    """What the save state endpoint returns."""
+
+    preview_url: str
+
+
 class PublishRequest(BaseModel):
     """What the client sends to publish an aide."""
 

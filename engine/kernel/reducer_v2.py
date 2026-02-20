@@ -544,7 +544,12 @@ def _handle_style_entity(snap: dict, event: dict) -> ReduceResult:
 
 
 def _handle_meta_set(snap: dict, event: dict) -> ReduceResult:
+    # Support both {"t":"meta.set","p":{...}} and {"t":"meta.update","title":...} formats
     props = event.get("p", {})
+    # Also check for direct properties (meta.update format from L3)
+    for key in ("title", "identity", "row_label", "col_label", "row_labels", "col_labels"):
+        if key in event and key not in props:
+            props[key] = event[key]
     for key, value in props.items():
         if key in ("title", "identity"):
             snap["meta"][key] = value
@@ -665,6 +670,7 @@ _HANDLERS: dict[str, Any] = {
     "style.entity": _handle_style_entity,
     # Meta primitives
     "meta.set": _handle_meta_set,
+    "meta.update": _handle_meta_set,  # Alias for L3 compatibility
     "meta.annotate": _handle_meta_annotate,
     "meta.constrain": _handle_meta_constrain,
     # Signals

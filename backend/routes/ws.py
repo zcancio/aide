@@ -29,6 +29,9 @@ router = APIRouter(tags=["websocket"])
 # Types that the client cares about as entity mutations
 _ENTITY_TYPES = {"entity.create", "entity.update", "entity.remove"}
 
+# Types that update page metadata
+_META_TYPES = {"meta.update"}
+
 # Types that carry voice text to display in the chat
 _VOICE_TYPES = {"voice"}
 
@@ -260,6 +263,10 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
                                 entity_id = event.get("id")
                                 delta = _make_delta(event_type, entity_id, snapshot)
                                 await websocket.send_text(json.dumps(delta))
+                            elif event_type in _META_TYPES:
+                                # Send meta update to client
+                                meta = snapshot.get("meta", {})
+                                await websocket.send_text(json.dumps({"type": "meta.update", "data": meta}))
                             continue
 
                         # Rejection
@@ -345,6 +352,10 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
                                     entity_id = event.get("id")
                                     delta = _make_delta(event_type, entity_id, snapshot)
                                     await websocket.send_text(json.dumps(delta))
+                                elif event_type in _META_TYPES:
+                                    # Send meta update to client
+                                    meta = snapshot.get("meta", {})
+                                    await websocket.send_text(json.dumps({"type": "meta.update", "data": meta}))
                             else:
                                 logger.debug(
                                     "ws: reducer rejected %s (reason=%s)",
