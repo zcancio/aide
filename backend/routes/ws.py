@@ -69,9 +69,9 @@ async def _load_snapshot(user_id: UUID | None, aide_id: str) -> dict[str, Any]:
     try:
         aide = await aide_repo.get(user_id, UUID(aide_id))
         if aide and aide.state:
-            # Ensure we have a valid v2 snapshot structure
             state = aide.state
             if isinstance(state, dict) and "entities" in state:
+                logger.info("ws: loaded %d entities for aide_id=%s", len(state.get("entities", {})), aide_id)
                 return state
     except Exception as e:
         logger.warning("ws: failed to load snapshot for aide_id=%s: %s", aide_id, e)
@@ -97,7 +97,7 @@ async def _save_snapshot(user_id: UUID | None, aide_id: str, snapshot: dict[str,
         html_content = render_react_preview(snapshot, title=title)
         await r2_service.upload_html(aide_id, html_content)
 
-        logger.info("ws: saved snapshot for aide_id=%s entities=%d", aide_id, len(snapshot.get("entities", {})))
+        logger.info("ws: saved %d entities for aide_id=%s", len(snapshot.get("entities", {})), aide_id)
     except Exception as e:
         logger.warning("ws: failed to save snapshot for aide_id=%s: %s", aide_id, e)
 
@@ -232,11 +232,26 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
 
     # Get user_id from session cookie for DB access
     user_id = _get_user_id_from_websocket(websocket)
-    logger.info("ws: user_id=%s for aide_id=%s", user_id, aide_id)
 
     # Load existing snapshot from database (or start empty for new aides)
     snapshot: dict[str, Any] = await _load_snapshot(user_id, aide_id)
-    logger.info("ws: loaded snapshot with %d entities", len(snapshot.get("entities", {})))
+
+    # Send existing entities to client on connection (hydrate client state)
+    entities = snapshot.get("entities", {})
+    if entities:
+        # Send snapshot.start to signal hydration beginning
+        await websocket.send_text(json.dumps({"type": "snapshot.start"}))
+        # Send each entity as entity.create
+        for entity_id, entity_data in entities.items():
+            delta = {"type": "entity.create", "id": entity_id, "data": entity_data}
+            await websocket.send_text(json.dumps(delta))
+        # Send meta if present
+        meta = snapshot.get("meta", {})
+        if meta:
+            await websocket.send_text(json.dumps({"type": "meta.update", "data": meta}))
+        # Send snapshot.end to signal hydration complete
+        await websocket.send_text(json.dumps({"type": "snapshot.end"}))
+        logger.info("ws: hydrated %d entities for aide_id=%s", len(entities), aide_id)
 
     mock_llm = MockLLM()
     current_profile = "realistic_l3"
