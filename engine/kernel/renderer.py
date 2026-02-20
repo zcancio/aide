@@ -176,7 +176,7 @@ def escape(text: str) -> str:
 
 
 def _render_og_tags(snapshot: dict) -> str:
-    title = escape(snapshot.get("meta", {}).get("title", "AIde"))
+    title = escape(snapshot.get("meta", {}).get("title") or "AIde")
     description = escape(_derive_description(snapshot))
 
     return (
@@ -208,7 +208,7 @@ def _derive_description(snapshot: dict) -> str:
         return f"{name}: {count} items"
 
     # Strategy 3: title
-    return snapshot.get("meta", {}).get("title", "A living page")
+    return snapshot.get("meta", {}).get("title") or "A living page"
 
 
 # ---------------------------------------------------------------------------
