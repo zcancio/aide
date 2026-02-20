@@ -1,436 +1,425 @@
-# AIde Editor Architecture Change: Kill the iframe
+# Architecture Change: Inline Preview (Kill the Iframe)
 
-**Author:** Claude (implementing GitHub issue #43)
 **Date:** 2026-02-20
-**Status:** In Implementation
-**Supersedes:** aide_editor_prd.md iframe approach
-
----
-
-## Summary
-
-Replace the sandboxed `<iframe>` preview with an inline `<div>` in the same React app. Stream primitives via Server-Sent Events (SSE) for real-time page building during LLM calls.
+**Status:** Approved
+**Supersedes:** Editor PRD § "Preview Iframe" and § "State Flow"
+**Affects:** `frontend/`, `backend/routes/`, `backend/services/`
 
 ---
 
 ## Problem
 
-The current iframe-based architecture creates fundamental issues:
+The editor PRD specified a sandboxed `<iframe>` for the preview, with `srcdoc` updated per turn. This creates a dual-state problem: the editor wrapper needs `entityState` for routing and context, and the iframe has its own copy embedded in the rendered HTML. Keeping them aligned across turns — especially during streaming — is fragile and fundamentally broken.
 
-### 1. Dual-State Sync Problem
-- Editor state (React app) and preview state (iframe srcdoc) are separate
-- `postMessage` coordination is fragile and error-prone
-- State can drift between editor and preview
-- Updates require full iframe reload
-
-### 2. Poor UX During LLM Calls
-- Preview is frozen during LLM processing (5-15s on L3 Sonnet)
-- No visual feedback that work is happening
-- User sees stale state while waiting
-- No incremental progress indication
-
-### 3. Complexity
-- Sandbox coordination via `postMessage`
-- CSP management across iframe boundary
-- Scroll position preservation hacks
-- Link interception complexity
+Additionally, the iframe approach means the preview is frozen during the entire LLM call. On first-turn L3 calls (schema synthesis, 5-15 seconds), the user stares at a blank or stale page with no feedback. This is unacceptable UX.
 
 ---
 
-## Solution
+## Decision
 
-**Single React app, single state, single render cycle.**
+**Kill the iframe. The preview is a `<div>` inside the same React app.**
 
-### Architecture
+One app. One state. One render cycle. No `postMessage`. No sync. The engine (`reduce` + `render`) runs client-side.
 
-```
-┌─────────────────────────────────────────────────────┐
-│  React App (get.toaide.com/aide/:id)                │
-│                                                     │
-│  ┌─────────────────────────────────────────────┐   │
-│  │  <PreviewDiv>                                │   │
-│  │    - Renders snapshot via engine.render()   │   │
-│  │    - Client-side reducer/renderer           │   │
-│  │    - CSS-scoped (.aide-preview wrapper)     │   │
-│  │    - Updates incrementally during stream    │   │
-│  └─────────────────────────────────────────────┘   │
-│                                                     │
-│  ┌─────────────────────────────────────────────┐   │
-│  │  <ChatOverlay>                               │   │
-│  │    - Floating input bar                      │   │
-│  │    - Expandable history                      │   │
-│  └─────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────┘
-         ↕ SSE connection
-┌─────────────────────────────────────────────────────┐
-│  FastAPI Backend                                     │
-│  GET /sse/aide/:id?token=xxx                        │
-│    → Streams primitives as LLM generates them       │
-│    → Event types: token, primitive, done, error     │
-└─────────────────────────────────────────────────────┘
-```
-
-### Flow
-
-1. **User sends message** → WebSocket or POST to backend
-2. **Backend starts LLM call** → Opens SSE stream to client
-3. **LLM generates primitives** → Backend streams each primitive via SSE
-4. **Client receives primitive** → Apply via `reduce()`, render via `render()`
-5. **Preview updates incrementally** → Page "builds itself" in real-time
-6. **LLM finishes** → SSE sends `done` event with final snapshot hash
-7. **Client reconciles** → Verify hash matches, save final state
+This is the same pattern Claude.ai uses for artifacts — inline rendering in the same DOM, not an iframe.
 
 ---
 
-## Component Details
+## Why This Works (Security)
 
-### 1. Engine Client Bundle
+The iframe existed for sandboxing. But AIde's security boundary is NOT the iframe — it's the **primitive → reducer → renderer pipeline**. The AI never produces raw HTML. It produces structured primitives (`entity.create`, `block.set`, etc.), and the deterministic renderer converts those to HTML. There is nothing to sandbox against because the renderer is the sandbox.
 
-**File:** `engine/builds/engine.esm.js`
+Published pages on `toaide.com/s/{slug}` remain static HTML served from R2 on a separate origin. That's the real security boundary for end users.
 
-- ESM bundle of TypeScript engine (reducer + renderer)
-- Exports: `reduce()`, `render()`, `empty_snapshot()`
-- No dependencies, tree-shakeable
-- Served from R2 CDN: `https://aide-published.com/engine/v3/engine.esm.js`
+---
 
-**Build:**
-```bash
-cd engine
-tsc --project tsconfig.json --outDir builds/esm --module esnext
-# Produces: builds/esm/reducer.js, builds/esm/renderer.js, builds/esm/index.js
+## New Architecture
+
+### State Ownership
+
+```
+Editor (single React app)
+├── state:
+│   ├── entityState: AideState        // THE single source of truth
+│   ├── messages: Message[]           // conversation history
+│   ├── aideId: string
+│   └── isProcessing: boolean
+├── engine.js (client-side)
+│   ├── emptyState()
+│   ├── reduce(snapshot, event) → ReduceResult
+│   └── render(snapshot, blueprint, events) → HTML string
 ```
 
-### 2. PreviewDiv Component
+The editor owns `entityState`. There is exactly one copy. The preview div renders from it. The server persists it but does not need to send rendered HTML back.
 
-**File:** `frontend/components/PreviewDiv.tsx`
+### Component Structure
 
-```tsx
-interface PreviewDivProps {
-  snapshot: Snapshot;
-  className?: string;
-}
+```jsx
+function Editor({ aideId }) {
+  const [entityState, setEntityState] = useState(emptyState())
+  const [events, setEvents] = useState([])
+  const [messages, setMessages] = useState([])
+  const [blueprint, setBlueprint] = useState(null)
 
-function PreviewDiv({ snapshot, className }: PreviewDivProps) {
-  const htmlContent = render(snapshot);
+  // Preview is just rendered HTML from state
+  const previewHtml = useMemo(
+    () => render(entityState, blueprint, events),
+    [entityState, blueprint, events]
+  )
 
   return (
+    <>
+      <Header aideId={aideId} />
+      <PreviewDiv html={previewHtml} />
+      <ChatOverlay messages={messages} onSend={handleSend} />
+    </>
+  )
+}
+
+function PreviewDiv({ html }) {
+  return (
     <div
-      className={`aide-preview ${className}`}
-      dangerouslySetInnerHTML={{ __html: htmlContent }}
+      className="aide-preview"
+      dangerouslySetInnerHTML={{ __html: html }}
     />
-  );
+  )
 }
 ```
 
-**Responsibilities:**
-- Render snapshot to HTML via `engine.render()`
-- Apply CSS scoping wrapper
-- Preserve scroll position on update (via `useEffect` + `scrollY` ref)
-- Intercept links to open in new tab
+### CSS Scoping
 
-### 3. CSS Scoping
-
-**File:** `frontend/styles/preview-isolation.css`
+The preview div needs scoped CSS so aide styles don't leak into the editor chrome. Approach:
 
 ```css
-/* Scope all aide-generated styles to .aide-preview */
 .aide-preview {
-  /* Reset to prevent parent styles from leaking in */
-  all: initial;
-  display: block;
-
-  /* Allow aide styles to work normally inside */
-  * {
-    all: revert;
-  }
+  /* Contains the rendered aide page */
+  all: initial;           /* Reset inherited styles */
+  position: absolute;
+  top: var(--header-height);
+  bottom: 0;
+  width: 100%;
+  overflow-y: auto;
 }
 
-/* Ensure links don't navigate inside SPA */
-.aide-preview a {
-  cursor: pointer;
-}
+/* Aide's own styles (from renderer) are scoped inside .aide-preview */
+.aide-preview .aide-page { ... }
 ```
 
-### 4. SSE Endpoint
+The renderer already produces CSS scoped to `.aide-page`. We just need to ensure the editor's own styles (header, chat overlay) don't collide. Use a prefix convention: editor styles use `.editor-*`, aide styles use `.aide-*`.
 
-**File:** `backend/routes/sse.py`
+---
+
+## Streaming Primitives
+
+This is the key UX improvement. On first turn (L3), the page builds live as primitives stream in. On subsequent turns (L2), it's fast enough to feel like a snap.
+
+### SSE Protocol
+
+```
+POST /api/aide/{aide_id}/chat
+Content-Type: application/json
+Accept: text/event-stream
+
+Request:  { "message": "poker league, 8 players, biweekly thursdays" }
+
+Response (SSE stream):
+
+event: token
+data: {"text": "Setting up an 8-player poker league..."}
+
+event: token
+data: {"text": " with biweekly rotation."}
+
+event: primitive
+data: {"type": "meta.update", "payload": {"title": "Poker League"}, "sequence": 1, ...}
+
+event: primitive
+data: {"type": "collection.create", "payload": {"id": "roster", ...}, "sequence": 2, ...}
+
+event: primitive
+data: {"type": "entity.create", "payload": {"collection": "roster", ...}, "sequence": 3, ...}
+
+...more primitives...
+
+event: done
+data: {"snapshot_hash": "abc123", "event_count": 24}
+```
+
+### Client-Side Handling
+
+```javascript
+const eventSource = new EventSource(...)  // or fetch + ReadableStream
+
+eventSource.on('token', (data) => {
+  // Append to streaming chat message
+  appendToCurrentMessage(data.text)
+})
+
+eventSource.on('primitive', (data) => {
+  const event = data  // already a valid primitive event
+  const result = reduce(entityState, event)
+
+  if (result.applied) {
+    setEntityState(result.snapshot)
+    setEvents(prev => [...prev, event])
+    // React re-renders → previewHtml updates → DOM updates
+    // User sees the page building in real-time
+  } else {
+    console.warn('Primitive rejected:', result.error)
+    // Don't break — server will reconcile on done
+  }
+})
+
+eventSource.on('done', (data) => {
+  // Server has persisted everything.
+  // Optionally verify snapshot_hash matches local state.
+  // If mismatch: fetch canonical state from server and replace.
+  setIsProcessing(false)
+})
+```
+
+### What the User Sees
+
+**First turn (L3, ~5-15 seconds):**
+```
+t=0s     User hits send. Message appears in chat.
+         Preview shows empty state / "This page is empty."
+t=1s     TTFT. Chat starts streaming: "Setting up an 8-player..."
+t=1.5s   First primitives arrive. Collections appear.
+         Preview shows empty table structures.
+t=2-4s   Entity primitives stream in.
+         Preview fills with player names, schedule rows.
+t=4-8s   Block, view, style primitives arrive.
+         Layout takes shape. Styles apply. Page "builds itself."
+t=8-15s  Done. Final state. Page is complete.
+```
+
+**Subsequent turns (L2, ~1.5-3 seconds):**
+```
+t=0s     User hits send. Message appears in chat.
+t=0.8s   TTFT. Chat streams: "Mike out. Dave substituting."
+t=1.2s   1-2 primitives arrive. Preview snaps to new state.
+t=1.5s   Done.
+```
+
+The first turn feels like watching a page build itself — similar to Claude's artifact experience. Subsequent turns feel snappy — type, beat, result.
+
+---
+
+## Server Changes
+
+### Endpoint: `POST /api/aide/{aide_id}/chat`
+
+Currently returns `{ response_text, html, mutated }`. Change to SSE stream.
 
 ```python
-@router.get("/sse/aide/{aide_id}")
-async def stream_primitives(
-    aide_id: UUID,
-    user: User = Depends(get_current_user)
-):
-    """
-    Stream primitives as LLM generates them.
+@router.post("/api/aide/{aide_id}/chat")
+async def chat(aide_id: str, body: ChatRequest, user=Depends(get_current_user)):
+    async def event_stream():
+        # 1. Load current state from DB
+        aide = await aide_repo.get(aide_id, user.id)
+        snapshot = aide.current_snapshot
+        events = aide.event_log
 
-    Event types:
-    - token: LLM text tokens (for chat display)
-    - primitive: Structural primitive event (for preview updates)
-    - done: Final snapshot hash + event count
-    - error: Error message
-    """
-    async def event_generator():
-        try:
-            orchestrator = StreamingOrchestrator(aide_id, user.id)
+        # 2. Call L2/L3 with streaming
+        async for chunk in orchestrator.stream(
+            message=body.message,
+            snapshot=snapshot,
+            events=events,
+        ):
+            if chunk.type == "token":
+                yield sse_event("token", {"text": chunk.text})
 
-            async for event in orchestrator.stream():
-                if event["type"] == "token":
-                    yield f"event: token\ndata: {json.dumps(event)}\n\n"
-                elif event["type"] == "primitive":
-                    yield f"event: primitive\ndata: {json.dumps(event)}\n\n"
-                elif event["type"] == "done":
-                    yield f"event: done\ndata: {json.dumps(event)}\n\n"
+            elif chunk.type == "primitive":
+                # Validate + apply server-side (server stays authoritative)
+                result = reduce(snapshot, chunk.event)
+                if result.applied:
+                    snapshot = result.snapshot
+                    events.append(chunk.event)
+                    yield sse_event("primitive", chunk.event)
+                else:
+                    yield sse_event("warning", {"error": result.error})
 
-        except Exception as e:
-            logger.error(f"SSE stream error: {e}")
-            yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
+        # 3. Persist final state
+        await aide_repo.update_state(aide_id, snapshot, events)
 
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-        }
-    )
+        # 4. If published, update R2 async
+        if aide.status == "published":
+            background_tasks.add_task(publish_to_r2, aide_id, snapshot, events)
+
+        yield sse_event("done", {
+            "snapshot_hash": hash_snapshot(snapshot),
+            "event_count": len(events),
+        })
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
 ```
 
-### 5. Client SSE Handler
+Key: the server applies each primitive to its own copy of the snapshot as it streams. Both client and server process the same primitives in the same order. They arrive at the same state. The `snapshot_hash` on `done` is a checksum the client can verify.
 
-**File:** `frontend/hooks/useSSE.ts`
+### Orchestrator Changes
 
-```typescript
-interface SSEState {
-  snapshot: Snapshot;
-  tokens: string[];
-  error: string | null;
-  done: boolean;
-}
+The orchestrator needs to stream primitives as the LLM generates them, not batch them at the end.
 
-function useSSE(aideId: string) {
-  const [state, setState] = useState<SSEState>({
-    snapshot: empty_snapshot(),
-    tokens: [],
-    error: null,
-    done: false,
-  });
+The L2/L3 prompt already asks for JSONL primitives. As the LLM streams tokens, parse complete JSON lines as they arrive:
 
-  useEffect(() => {
-    const es = new EventSource(`/sse/aide/${aideId}`);
+```python
+async def stream(self, message, snapshot, events):
+    buffer = ""
+    async for token in llm.stream(prompt):
+        buffer += token
 
-    es.addEventListener('token', (e) => {
-      const { text } = JSON.parse(e.data);
-      setState(prev => ({
-        ...prev,
-        tokens: [...prev.tokens, text]
-      }));
-    });
+        # Try to extract complete JSONL primitives from buffer
+        while "\n" in buffer:
+            line, buffer = buffer.split("\n", 1)
+            line = line.strip()
+            if not line:
+                continue
 
-    es.addEventListener('primitive', (e) => {
-      const primitive = JSON.parse(e.data);
-      setState(prev => ({
-        ...prev,
-        snapshot: reduce(prev.snapshot, primitive)
-      }));
-    });
-
-    es.addEventListener('done', (e) => {
-      const { hash, event_count } = JSON.parse(e.data);
-      // TODO: Verify hash matches client-side computed hash
-      setState(prev => ({ ...prev, done: true }));
-      es.close();
-    });
-
-    es.addEventListener('error', (e) => {
-      const { error } = JSON.parse(e.data);
-      setState(prev => ({ ...prev, error }));
-      es.close();
-    });
-
-    return () => es.close();
-  }, [aideId]);
-
-  return state;
-}
+            parsed = try_parse_primitive(line)
+            if parsed:
+                yield StreamChunk(type="primitive", event=parsed)
+            else:
+                # It's response text
+                yield StreamChunk(type="token", text=line)
 ```
 
-### 6. Snapshot Reconciliation
+This requires the LLM to emit primitives as JSONL lines in the response (one per line, parseable as they arrive). The system prompt should instruct the model to emit primitives first, then response text — or interleave them with clear delimiters.
 
-After `done` event, verify client-side snapshot matches server:
+---
 
-```typescript
-function verifySnapshot(clientSnapshot: Snapshot, serverHash: string): boolean {
-  const clientHash = hashSnapshot(clientSnapshot);
-  if (clientHash !== serverHash) {
-    console.error('Snapshot mismatch! Reloading from server...');
-    // Fetch canonical snapshot from server
-    return false;
+## Cold Load (Refresh, Returning, Deep Link)
+
+When the user refreshes the page, returns to an aide from the dashboard, or opens a direct link — the editor has no state in memory. It needs to hydrate from the server.
+
+### Endpoint
+
+```
+GET /api/aide/{aide_id}
+→ {
+    snapshot: AideState,       // current state (already reduced, ready to render)
+    events: Event[],           // full event log (for audit trail + published embed)
+    blueprint: Blueprint,      // identity, voice, prompt
+    messages: Message[],       // conversation history
   }
-  return true;
-}
+```
 
-function hashSnapshot(snapshot: Snapshot): string {
-  // Simple JSON hash for now (could use xxhash later)
-  return btoa(JSON.stringify(snapshot));
+### Client Hydration
+
+```javascript
+async function loadAide(aideId) {
+  const res = await fetch(`/api/aide/${aideId}`)
+  const { snapshot, events, blueprint, messages } = await res.json()
+
+  setEntityState(snapshot)       // NOT replayed — snapshot is already current
+  setEvents(events)
+  setBlueprint(blueprint)
+  setMessages(messages)
+
+  // Preview renders immediately from snapshot
+  // render(snapshot, blueprint, events) → HTML → div
 }
 ```
+
+### Key Points
+
+- **No replay on load.** The server persists the reduced snapshot after every turn. The client receives the current state directly — it does not replay the event log to reconstruct it. The events are carried for the audit trail and for embedding in published HTML, not for client-side reconstruction.
+- **No HTML transfer.** The server does not send rendered HTML. The client renders locally from the snapshot using the same `render()` function used during streaming. This means the cold load path and the streaming path produce identical output — same engine, same function, same result.
+- **Load time.** A typical aide's JSON payload (snapshot + events + messages) is 20-100KB. The client-side render is milliseconds. Total cold load: one network round-trip + a few ms of rendering. Fast.
+- **New aide (no state yet).** When creating a new aide, there's no server state to load. The client starts with `emptyState()` and an empty event log. The first message creates everything via streamed primitives.
+
+### Sequence
+
+```
+Cold load:
+  t=0ms     GET /api/aide/{id}
+  t=200ms   JSON response arrives (snapshot + events + blueprint + messages)
+  t=205ms   render(snapshot, blueprint, events) → HTML string
+  t=210ms   DOM update. Preview visible. Chat history populated.
+  t=210ms   Ready for input.
+
+New aide:
+  t=0ms     emptyState() + empty events + no blueprint
+  t=0ms     render(emptyState()) → "This page is empty."
+  t=0ms     Ready for input. Placeholder: "What are you running?"
+```
+
+---
+
+## Reconciliation
+
+If the client and server diverge (network glitch, rejected primitive the client accepted, etc.):
+
+1. On `done`, client computes `hash(entityState)` and compares to server's `snapshot_hash`
+2. If they match: done, everything is consistent
+3. If they don't match: client fetches canonical snapshot from `GET /api/aide/{aide_id}/state` and replaces local state
+
+This should be rare. Both sides run the same `reduce()` function on the same primitives. But the safety net is there.
+
+---
+
+## Client-Side Engine Bundle
+
+The engine is already built as `engine.js` (874 lines, ~25KB unminified). It exports:
+
+- `emptyState()` → fresh AideState
+- `reduce(snapshot, event)` → ReduceResult
+- `replay(events)` → AideState
+- `render(snapshot, blueprint, events)` → HTML string
+- `parseAideHtml(html)` → { snapshot, blueprint, events }
+
+For the editor, we need this as an ES module import (currently CommonJS). Either:
+- Build an ESM version from `engine.ts`
+- Use a bundler (vite/esbuild) that handles CJS→ESM
+- Or just convert the exports: `export { emptyState, reduce, replay, render }`
+
+The compact build (`engine.compact.js`) is also available if bundle size matters, but 25KB is fine.
+
+---
+
+## What Stays the Same
+
+- **Published pages** are still static HTML files on R2. `render()` still produces full standalone HTML with embedded `aide+json`, `aide-events+json`, and `aide-blueprint+json` blocks. Publishing runs server-side after state is persisted.
+- **The chat overlay** spec is unchanged — floating input bar, expandable history, backdrop blur, auto-collapse.
+- **Voice rules** are unchanged.
+- **L2/L3 routing** is unchanged.
+- **Server is still authoritative.** Client-side reduce is for real-time preview. Server persists. On mismatch, server wins.
+- **Database schema** is unchanged. `aides` table stores snapshot + event log.
+
+---
+
+## What Changes
+
+| Before (PRD) | After |
+|---|---|
+| Preview is a sandboxed `<iframe>` with `srcdoc` | Preview is a `<div>` with `dangerouslySetInnerHTML` |
+| Server returns `{ html }` per turn | Server streams primitives via SSE |
+| Engine runs server-side only | Engine runs on both client and server |
+| Preview updates once on turn completion | Preview updates incrementally as primitives arrive |
+| Editor holds no entityState | Editor holds entityState as single source of truth during session |
+| No streaming | SSE streaming of tokens + primitives |
 
 ---
 
 ## Migration Steps
 
-### Phase 1: Infrastructure (this PR)
-- [x] Create this document
-- [ ] Bundle engine.js for client (ESM build)
-- [ ] Build `<PreviewDiv>` component
-- [ ] Add CSS scoping
-- [ ] Build SSE endpoint
-- [ ] Build client-side SSE handler
-- [ ] Add reconciliation logic
-
-### Phase 2: Integration
-- [ ] Update `StreamingOrchestrator` to emit primitives line-by-line
-- [ ] Replace iframe with `<PreviewDiv>` in editor route
-- [ ] Add scroll preservation logic
-- [ ] Test CSS isolation
-
-### Phase 3: Cleanup
-- [ ] Remove all iframe-related code
-- [ ] Remove `postMessage` coordination
-- [ ] Remove CSP iframe rules
-- [ ] Update tests
+1. **Bundle engine.js for client** — ESM build from engine.ts, include in frontend bundle
+2. **Build `<PreviewDiv>` component** — replaces iframe, renders from entityState via `render()`
+3. **Add CSS scoping** — `.aide-preview` wrapper with style isolation
+4. **Build SSE endpoint** — replace batch `/chat` endpoint with streaming version
+5. **Build client-side SSE handler** — parse `token` and `primitive` events, update state incrementally
+6. **Add reconciliation** — snapshot hash check on `done`
+7. **Update orchestrator** — stream primitives as JSONL lines, parse incrementally
+8. **Test scroll preservation** — preview div should maintain scroll position across re-renders (React key strategy or manual scroll save/restore)
+9. **Test CSS isolation** — aide styles must not leak into editor chrome and vice versa
+10. **Remove all iframe references** — clean up any `sandbox`, `srcdoc`, `postMessage` code
 
 ---
 
 ## Open Questions
 
-### 1. Scroll Preservation
-**Options:**
-- A) Save/restore `scrollY` in `useEffect` (simple, can flicker)
-- B) Surgical DOM updates (complex, pixel-perfect)
-- C) Render to virtual DOM, diff, patch (React reconciliation)
+1. **Scroll preservation on re-render.** When `dangerouslySetInnerHTML` changes, React replaces the DOM. This resets scroll position. We need either: (a) save/restore scroll position around updates, or (b) use a more surgical DOM update strategy (diff and patch instead of full replace). Option (a) is simpler for v1.
 
-**Decision:** Start with (A), optimize to (C) if flicker is noticeable.
+2. **Renderer output format.** Currently `render()` produces a full HTML document (`<!DOCTYPE html><html>...`). For inline preview, we only need the `<body>` content + `<style>` block. Consider adding a `RenderOptions.fragment` flag that emits just the inner content without the document wrapper, `<head>`, OG tags, etc.
 
-### 2. Renderer Fragment Mode
-Should `render()` emit full HTML document or just body content?
-
-**Full document:**
-```html
-<!DOCTYPE html>
-<html><head>...</head><body>...</body></html>
-```
-
-**Fragment mode:**
-```html
-<div class="aide-root">...</div>
-```
-
-**Decision:** Fragment mode for inline preview. Full document for published pages. Add `fragmentMode: boolean` option to `render()`.
-
-### 3. Link Handling
-How to prevent links from navigating the SPA?
-
-**Options:**
-- A) `target="_blank"` on all `<a>` tags (server-side in renderer)
-- B) Click intercept in `<PreviewDiv>` (client-side event listener)
-- C) Both (defense in depth)
-
-**Decision:** (C) — renderer adds `target="_blank"`, component intercepts as backup.
-
----
-
-## Benefits
-
-### UX
-- Real-time preview updates during LLM calls
-- Visual feedback that work is happening
-- Smoother, more responsive editing experience
-- No frozen preview state
-
-### Technical
-- Single state, single source of truth
-- No `postMessage` complexity
-- Simpler CSP (no iframe sandbox)
-- Client-side reducer enables offline editing (future)
-
-### Performance
-- No iframe reload overhead
-- Incremental updates (only changed parts re-render)
-- Streaming reduces perceived latency
-- Smaller payloads (primitives vs full HTML)
-
----
-
-## Risks
-
-### 1. CSS Isolation
-**Risk:** Parent styles leak into preview, preview styles leak out.
-**Mitigation:** CSS scoping via `.aide-preview` wrapper + `all: initial` reset.
-
-### 2. XSS
-**Risk:** User-controlled content in inline HTML.
-**Mitigation:** Renderer already escapes all user content. No `<script>` tags in preview.
-
-### 3. Performance (Large Snapshots)
-**Risk:** Re-rendering large snapshots (1000+ entities) on every primitive.
-**Mitigation:** React memoization. If still slow, batch primitives into 100ms windows.
-
-### 4. Browser Compatibility
-**Risk:** Old browsers don't support `EventSource` (SSE).
-**Mitigation:** Polyfill or fallback to polling (rare case, modern browsers widely support SSE).
-
----
-
-## Testing
-
-### Unit Tests
-- `engine.render()` fragment mode
-- `reduce()` determinism (snapshot hash stability)
-- CSS scoping (styles don't leak)
-
-### Integration Tests
-- SSE stream sends primitives in order
-- Client-side reducer applies primitives correctly
-- Snapshot reconciliation detects mismatches
-
-### E2E Tests
-- User sends message → preview updates incrementally
-- Scroll position preserved on update
-- Links open in new tab
-- Error handling (SSE disconnect)
-
----
-
-## Future Enhancements
-
-### 1. Optimistic Updates
-Apply user input immediately (before LLM responds) for instant feedback.
-
-### 2. Offline Editing
-Client-side reducer enables full offline editing. Sync to server on reconnect.
-
-### 3. Time-Travel Debugging
-Replay event log to reconstruct any historical snapshot state.
-
-### 4. Collaborative Editing
-Multiple SSE streams merge primitives via CRDT or OT.
-
----
-
-## References
-
-- **SSE Spec:** https://html.spec.whatwg.org/multipage/server-sent-events.html
-- **React dangerouslySetInnerHTML:** https://react.dev/reference/react-dom/components/common#dangerously-setting-the-inner-html
-- **CSS `all: initial`:** https://developer.mozilla.org/en-US/docs/Web/CSS/all
-- **EventSource polyfill:** https://github.com/Yaffle/EventSource
-
----
-
-## Approval
-
-- [ ] Technical review (engine determinism verified)
-- [ ] UX review (scroll preservation acceptable)
-- [ ] Security review (CSS isolation, XSS prevention)
-- [ ] Performance benchmarks (1000 entity snapshot renders < 100ms)
+3. **Link handling.** In an iframe, links naturally don't navigate the parent. In a div, clicking a link in the preview would navigate the editor away. Add `target="_blank"` to all links in rendered output, or add a click handler on `.aide-preview` that intercepts navigation.
