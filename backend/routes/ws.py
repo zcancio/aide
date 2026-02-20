@@ -9,20 +9,98 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 import uuid
 from typing import Any
+from uuid import UUID
 
+import jwt
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from backend.config import settings
 from backend.models.telemetry import TelemetryEvent
 from backend.repos import telemetry_repo
+from backend.repos.aide_repo import AideRepo
 from backend.services.streaming_orchestrator import StreamingOrchestrator
 from engine.kernel.mock_llm import MockLLM
+from engine.kernel.react_preview import render_react_preview
 from engine.kernel.reducer_v2 import empty_snapshot, reduce
 
 logger = logging.getLogger(__name__)
+
+# UUID regex for validation
+_UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE)
+
+aide_repo = AideRepo()
+
+
+def _get_user_id_from_websocket(websocket: WebSocket) -> UUID | None:
+    """
+    Extract user_id from WebSocket session cookie.
+
+    Returns None if not authenticated (allows unauthenticated connections for dev).
+    """
+    cookies = websocket.cookies
+    session = cookies.get("session")
+    if not session:
+        return None
+
+    try:
+        payload = jwt.decode(session, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        user_id_str = payload.get("sub")
+        if user_id_str:
+            return UUID(user_id_str)
+    except (jwt.InvalidTokenError, ValueError):
+        pass
+
+    return None
+
+
+async def _load_snapshot(user_id: UUID | None, aide_id: str) -> dict[str, Any]:
+    """
+    Load snapshot from database for the given aide.
+
+    Returns empty_snapshot() if aide not found or user not authenticated.
+    """
+    if not user_id or not _UUID_RE.match(aide_id):
+        return empty_snapshot()
+
+    try:
+        aide = await aide_repo.get(user_id, UUID(aide_id))
+        if aide and aide.state:
+            state = aide.state
+            if isinstance(state, dict) and "entities" in state:
+                logger.info("ws: loaded %d entities for aide_id=%s", len(state.get("entities", {})), aide_id)
+                return state
+    except Exception as e:
+        logger.warning("ws: failed to load snapshot for aide_id=%s: %s", aide_id, e)
+
+    return empty_snapshot()
+
+
+async def _save_snapshot(user_id: UUID | None, aide_id: str, snapshot: dict[str, Any]) -> None:
+    """
+    Save snapshot to database and R2 for the given aide.
+    """
+    if not user_id or not _UUID_RE.match(aide_id):
+        return
+
+    try:
+        aide_uuid = UUID(aide_id)
+        title = snapshot.get("meta", {}).get("title")
+        await aide_repo.update_state(user_id, aide_uuid, snapshot, event_log=[], title=title)
+
+        # Also render and upload to R2
+        from backend.services.r2 import r2_service
+
+        html_content = render_react_preview(snapshot, title=title)
+        await r2_service.upload_html(aide_id, html_content)
+
+        logger.info("ws: saved %d entities for aide_id=%s", len(snapshot.get("entities", {})), aide_id)
+    except Exception as e:
+        logger.warning("ws: failed to save snapshot for aide_id=%s: %s", aide_id, e)
+
 
 router = APIRouter(tags=["websocket"])
 
@@ -51,6 +129,7 @@ def _make_delta(event_type: str, entity_id: str | None, snapshot: dict) -> dict[
 
 async def _handle_direct_edit(
     websocket: WebSocket,
+    user_id: UUID | None,
     aide_id: str,
     snapshot: dict[str, Any],
     msg: dict[str, Any],
@@ -115,17 +194,15 @@ async def _handle_direct_edit(
         latency_ms,
     )
 
+    # Persist the updated snapshot
+    await _save_snapshot(user_id, aide_id, snapshot)
+
     # Record telemetry (best-effort — don't fail the edit if telemetry fails)
     try:
         # aide_id may be 'new' for unauthenticated Phase 1 sessions; skip telemetry
-        import re
-
-        _UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE)
         if _UUID_RE.match(aide_id):
-            import uuid as _uuid
-
             event_record = TelemetryEvent(
-                aide_id=_uuid.UUID(aide_id),
+                aide_id=UUID(aide_id),
                 event_type="direct_edit",
                 edit_latency_ms=latency_ms,
             )
@@ -147,14 +224,35 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
                         {"type": "set_profile", "profile": "realistic_l3"}
       Server → Client:  EntityDelta | VoiceDelta | StreamStatus
 
-    For Phase 1, uses MockLLM with the "create_graduation" golden file.
-    Authentication is intentionally skipped for Phase 1 (local dev only).
+    Loads existing snapshot from database on connection.
+    Persists updated snapshot after each stream.end.
     """
     await websocket.accept()
     logger.info("WebSocket accepted: aide_id=%s", aide_id)
 
-    # Per-connection state — start with an empty v2 snapshot
-    snapshot: dict[str, Any] = empty_snapshot()
+    # Get user_id from session cookie for DB access
+    user_id = _get_user_id_from_websocket(websocket)
+
+    # Load existing snapshot from database (or start empty for new aides)
+    snapshot: dict[str, Any] = await _load_snapshot(user_id, aide_id)
+
+    # Send existing entities to client on connection (hydrate client state)
+    entities = snapshot.get("entities", {})
+    if entities:
+        # Send snapshot.start to signal hydration beginning
+        await websocket.send_text(json.dumps({"type": "snapshot.start"}))
+        # Send each entity as entity.create
+        for entity_id, entity_data in entities.items():
+            delta = {"type": "entity.create", "id": entity_id, "data": entity_data}
+            await websocket.send_text(json.dumps(delta))
+        # Send meta if present
+        meta = snapshot.get("meta", {})
+        if meta:
+            await websocket.send_text(json.dumps({"type": "meta.update", "data": meta}))
+        # Send snapshot.end to signal hydration complete
+        await websocket.send_text(json.dumps({"type": "snapshot.end"}))
+        logger.info("ws: hydrated %d entities for aide_id=%s", len(entities), aide_id)
+
     mock_llm = MockLLM()
     current_profile = "realistic_l3"
     interrupt_requested = False
@@ -191,7 +289,7 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
 
             # ── direct_edit ──────────────────────────────────────────
             if msg_type == "direct_edit":
-                snapshot = await _handle_direct_edit(websocket, aide_id, snapshot, msg)
+                snapshot = await _handle_direct_edit(websocket, user_id, aide_id, snapshot, msg)
                 continue
 
             if msg_type != "message":
@@ -388,6 +486,8 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
 
             # --- stream.end ---
             if not interrupt_requested:
+                # Persist snapshot to database and R2
+                await _save_snapshot(user_id, aide_id, snapshot)
                 await websocket.send_text(json.dumps({"type": "stream.end", "message_id": message_id}))
             current_message_id = None
 

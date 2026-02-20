@@ -8,7 +8,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse
 
 from backend.auth import get_current_user
-from backend.models.aide import AideResponse, CreateAideRequest, SaveStateRequest, SaveStateResponse, UpdateAideRequest
+from backend.models.aide import (
+    AideResponse,
+    CreateAideRequest,
+    SaveConversationRequest,
+    SaveStateRequest,
+    SaveStateResponse,
+    UpdateAideRequest,
+)
 from backend.models.conversation import ConversationHistoryResponse, MessageResponse
 from backend.models.user import User
 from backend.repos.aide_repo import AideRepo
@@ -115,6 +122,23 @@ async def get_aide_preview(
     return HTMLResponse(content=html_content)
 
 
+@router.get("/{aide_id}/state", status_code=200)
+async def get_aide_state(
+    aide_id: UUID,
+    user: User = Depends(get_current_user),
+) -> dict:
+    """Get the aide's current state (entities, meta) for client-side hydration."""
+    aide = await aide_repo.get(user.id, aide_id)
+    if not aide:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aide not found.")
+
+    state = aide.state or {}
+    return {
+        "entities": state.get("entities", {}),
+        "meta": state.get("meta", {}),
+    }
+
+
 @router.get("/{aide_id}/history", status_code=200)
 async def get_aide_history(
     aide_id: UUID,
@@ -207,3 +231,53 @@ async def save_aide_state(
             )
 
     return SaveStateResponse(preview_url=f"/api/aides/{aide_id}/preview")
+
+
+@router.post("/{aide_id}/conversation", status_code=200)
+async def save_conversation(
+    aide_id: UUID,
+    req: SaveConversationRequest,
+    user: User = Depends(get_current_user),
+) -> dict[str, str]:
+    """
+    Save conversation history only (no state update).
+
+    Server handles state persistence in ws.py after stream.end.
+    This endpoint only saves the user message and AI response.
+    """
+    from datetime import UTC, datetime
+
+    from backend.models.conversation import Message
+
+    # Verify user owns this aide
+    aide = await aide_repo.get(user.id, aide_id)
+    if not aide:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aide not found.")
+
+    if not req.message and not req.response:
+        return {"status": "ok"}
+
+    # Get or create conversation for this aide
+    conversation = await conversation_repo.get_for_aide(user.id, aide_id)
+    if not conversation:
+        conversation = await conversation_repo.create(user.id, aide_id, channel="web")
+
+    now = datetime.now(UTC)
+
+    # Append user message
+    if req.message:
+        await conversation_repo.append_message(
+            user.id,
+            conversation.id,
+            Message(role="user", content=req.message, timestamp=now),
+        )
+
+    # Append assistant response
+    if req.response:
+        await conversation_repo.append_message(
+            user.id,
+            conversation.id,
+            Message(role="assistant", content=req.response, timestamp=now),
+        )
+
+    return {"status": "ok"}

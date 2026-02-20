@@ -45,6 +45,15 @@ class SaveStateResponse(BaseModel):
     preview_url: str
 
 
+class SaveConversationRequest(BaseModel):
+    """What the client sends to save conversation history only (no state)."""
+
+    model_config = {"extra": "forbid"}
+
+    message: str | None = None  # Original user message
+    response: str | None = None  # AI response text
+
+
 class PublishRequest(BaseModel):
     """What the client sends to publish an aide."""
 

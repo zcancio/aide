@@ -2028,22 +2028,39 @@ root.render(
           resolve();
         };
 
+      let isHydrating = false; // Track if we're receiving initial snapshot
+
       aideWs.onmessage = (event) => {
         let msg;
         try { msg = JSON.parse(event.data); } catch { return; }
 
-        if (msg.type === 'stream.start') {
-          // Reset entity store for new message
+        if (msg.type === 'snapshot.start') {
+          // Beginning of initial snapshot hydration - reset store
+          isHydrating = true;
           entityStore.reset();
-          pendingVoiceResponse = ''; // Reset voice accumulator for new stream
+          console.log('[WS] Hydrating snapshot...');
+        } else if (msg.type === 'snapshot.end') {
+          // End of snapshot hydration - refresh preview once
+          isHydrating = false;
+          refreshEntityPreview();
+          console.log('[WS] Snapshot hydrated:', Object.keys(entityStore.entities).length, 'entities');
+        } else if (msg.type === 'stream.start') {
+          // Don't reset entityStore - keep existing entities for follow-up messages
+          // Only reset voice accumulator for new stream
+          pendingVoiceResponse = '';
         } else if (msg.type === 'entity.create' || msg.type === 'entity.update' || msg.type === 'entity.remove') {
           entityStore.applyDelta(msg);
-          refreshEntityPreview();
+          // Only refresh preview during streaming, not during hydration (wait for snapshot.end)
+          if (!isHydrating) {
+            refreshEntityPreview();
+          }
         } else if (msg.type === 'meta.update') {
           // Update page metadata (title, etc.)
           if (msg.data) {
             entityStore.meta = msg.data;
-            refreshEntityPreview();
+            if (!isHydrating) {
+              refreshEntityPreview();
+            }
           }
         } else if (msg.type === 'voice') {
           // Show voice text as assistant message in history
@@ -2076,15 +2093,13 @@ root.render(
           isSending = false;
           pendingPreviewUrl = null;
 
-          // Persist streamed state to database and R2 (no LLM call)
-          if (currentAideId && Object.keys(entityStore.entities).length > 0) {
-            fetch(`/api/aides/${currentAideId}/state`, {
+          // Save conversation history only (server saves snapshot in ws.py)
+          if (currentAideId && (pendingUserMessage || pendingVoiceResponse)) {
+            fetch(`/api/aides/${currentAideId}/conversation`, {
               method: 'POST',
               credentials: 'include',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                entities: entityStore.entities,
-                meta: entityStore.meta,
                 message: pendingUserMessage,
                 response: pendingVoiceResponse,
               }),
@@ -2094,7 +2109,7 @@ root.render(
               pendingUserMessage = null;
               pendingVoiceResponse = '';
             })
-            .catch(err => console.error('Failed to persist state:', err));
+            .catch(err => console.error('Failed to save conversation:', err));
           }
         } else if (msg.type === 'stream.error') {
           const errMsg = msg.error || 'Stream error.';
@@ -2303,12 +2318,6 @@ root.render(
       history.replaceState({}, '', `?aide=${aideId}`);
 
       // Existing AIde - load preview and conversation history
-      // TODO: Race condition - if user refreshes before R2 upload completes,
-      // the preview may not exist yet. Options:
-      // 1. Show loading state while preview loads
-      // 2. Fall back to rendering from aide.state if R2 404s
-      // 3. Poll/retry until preview is available
-      // 4. Use React preview from aide.state instead of R2 HTML
       frame.removeAttribute('srcdoc');
       frame.src = `/api/aides/${aideId}/preview`;
 
@@ -2332,7 +2341,7 @@ root.render(
     document.getElementById('message-input').focus();
 
     // Connect WebSocket for real-time entity streaming
-    entityStore.reset();
+    // WebSocket will send snapshot.start/snapshot.end to hydrate entityStore
     connectWebSocket(aideId);
   }
 
