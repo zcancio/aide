@@ -179,7 +179,7 @@ async def save_aide_state(
 
     # Save conversation history if provided
     if req.message or req.response:
-        from datetime import datetime, timezone
+        from datetime import UTC, datetime
 
         from backend.models.conversation import Message
 
@@ -188,7 +188,7 @@ async def save_aide_state(
         if not conversation:
             conversation = await conversation_repo.create(user.id, aide_id, channel="web")
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Append user message
         if req.message:

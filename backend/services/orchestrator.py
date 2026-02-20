@@ -16,7 +16,7 @@ from backend.services.grid_resolver import resolve_primitives
 from backend.services.l2_compiler import l2_compiler
 from backend.services.l3_synthesizer import l3_synthesizer
 from backend.services.r2 import r2_service
-from engine.kernel.reducer_v2 import reduce, empty_snapshot as empty_v2_snapshot
+from engine.kernel.reducer_v2 import empty_snapshot as empty_v2_snapshot, reduce
 from engine.kernel.renderer import render
 from engine.kernel.types import Blueprint, Event, ReduceResult, Snapshot
 
