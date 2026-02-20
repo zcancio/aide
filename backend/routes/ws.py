@@ -15,8 +15,10 @@ from typing import Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from backend.config import settings
 from backend.models.telemetry import TelemetryEvent
 from backend.repos import telemetry_repo
+from backend.services.streaming_orchestrator import StreamingOrchestrator
 from engine.kernel.mock_llm import MockLLM
 from engine.kernel.reducer_v2 import empty_snapshot, reduce
 
@@ -26,6 +28,9 @@ router = APIRouter(tags=["websocket"])
 
 # Types that the client cares about as entity mutations
 _ENTITY_TYPES = {"entity.create", "entity.update", "entity.remove"}
+
+# Types that update page metadata
+_META_TYPES = {"meta.update"}
 
 # Types that carry voice text to display in the chat
 _VOICE_TYPES = {"voice"}
@@ -209,77 +214,47 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
             in_batch = False
             batch_buffer: list[dict[str, Any]] = []
 
-            # Pick scenario based on content (Phase 1: static golden files)
-            scenario = _pick_scenario(content)
+            # Determine if we should use real LLM or mock
+            use_real_llm = settings.ANTHROPIC_API_KEY and not settings.USE_MOCK_LLM
 
             try:
-                async for line in mock_llm.stream(scenario, profile=current_profile):
-                    # Check for interrupt request
-                    if interrupt_requested:
-                        logger.info("ws: stream interrupted message_id=%s", message_id)
-                        break
-                    # The mock LLM already yields one complete JSONL line per iteration.
-                    # Parse the raw line and pass it directly to the v2 reducer
-                    # (which expects the short-hand keys: t, p, id, parent, display).
-                    line_buffer += line + "\n"
-                    while "\n" in line_buffer:
-                        raw_line, line_buffer = line_buffer.split("\n", 1)
-                        raw_line = raw_line.strip()
-                        if not raw_line:
-                            continue
-                        try:
-                            event: dict[str, Any] = json.loads(raw_line)
-                        except json.JSONDecodeError:
-                            logger.warning("ws: malformed JSONL line: %r", raw_line[:200])
-                            continue
+                if use_real_llm:
+                    # Use real Anthropic API streaming
+                    orchestrator = StreamingOrchestrator(
+                        aide_id=aide_id,
+                        snapshot=snapshot,
+                        conversation=[],  # TODO: Load conversation history
+                        api_key=settings.ANTHROPIC_API_KEY,
+                    )
 
-                        # v2 reducer uses "t" for event type
-                        event_type: str = event.get("t", "")
+                    async for result in orchestrator.process_message(content):
+                        # Check for interrupt request
+                        if interrupt_requested:
+                            logger.info("ws: stream interrupted message_id=%s", message_id)
+                            break
 
-                        # Handle batch signals
-                        if event_type == "batch.start":
-                            in_batch = True
-                            batch_buffer = []
+                        result_type = result.get("type")
+
+                        # Classification metadata
+                        if result_type == "meta.classification":
+                            logger.info(
+                                "ws: tier=%s model=%s reason=%s",
+                                result.get("tier"),
+                                result.get("model"),
+                                result.get("reason"),
+                            )
                             continue
 
-                        if event_type == "batch.end":
-                            in_batch = False
-                            # Apply all buffered events at once
-                            for buffered_event in batch_buffer:
-                                buffered_type = buffered_event.get("t", "")
-                                result = reduce(snapshot, buffered_event)
-                                if result.accepted:
-                                    snapshot = result.snapshot
-                                    if ttfc is None:
-                                        ttfc = (time.monotonic() - start_time) * 1000
-                                    if buffered_type in _ENTITY_TYPES:
-                                        entity_id = buffered_event.get("id")
-                                        delta = _make_delta(buffered_type, entity_id, snapshot)
-                                        await websocket.send_text(json.dumps(delta))
-                            batch_buffer = []
+                        # Voice events
+                        if result_type == "voice":
+                            await websocket.send_text(json.dumps({"type": "voice", "text": result.get("text", "")}))
                             continue
 
-                        if event_type in _VOICE_TYPES:
-                            voice_text: str = event.get("text", "")
-                            if voice_text:
-                                await websocket.send_text(json.dumps({"type": "voice", "text": voice_text}))
-                            continue
-
-                        if event_type not in _ENTITY_TYPES and not event_type.startswith(
-                            ("meta.", "style.", "collection.", "field.", "block.", "view.", "relationship.", "rel.")
-                        ):
-                            continue
-
-                        # Buffer events during batch mode
-                        if in_batch:
-                            batch_buffer.append(event)
-                            continue
-
-                        # Apply to snapshot via v2 reducer (raw event, not expanded)
-                        result = reduce(snapshot, event)
-
-                        if result.accepted:
-                            snapshot = result.snapshot
+                        # Event processed
+                        if result_type == "event":
+                            event = result.get("event", {})
+                            snapshot = result.get("snapshot", snapshot)
+                            event_type = event.get("t", "")
 
                             if ttfc is None:
                                 ttfc = (time.monotonic() - start_time) * 1000
@@ -288,12 +263,105 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
                                 entity_id = event.get("id")
                                 delta = _make_delta(event_type, entity_id, snapshot)
                                 await websocket.send_text(json.dumps(delta))
-                        else:
-                            logger.debug(
-                                "ws: reducer rejected %s (reason=%s)",
-                                event_type,
-                                result.reason,
-                            )
+                            elif event_type in _META_TYPES:
+                                # Send meta update to client
+                                meta = snapshot.get("meta", {})
+                                await websocket.send_text(json.dumps({"type": "meta.update", "data": meta}))
+                            continue
+
+                        # Rejection
+                        if result_type == "rejection":
+                            logger.debug("ws: event rejected reason=%s", result.get("reason"))
+                            continue
+
+                else:
+                    # Use mock LLM (Phase 1-3: static golden files)
+                    scenario = _pick_scenario(content)
+                    async for line in mock_llm.stream(scenario, profile=current_profile):
+                        # Check for interrupt request
+                        if interrupt_requested:
+                            logger.info("ws: stream interrupted message_id=%s", message_id)
+                            break
+                        # The mock LLM already yields one complete JSONL line per iteration.
+                        # Parse the raw line and pass it directly to the v2 reducer
+                        # (which expects the short-hand keys: t, p, id, parent, display).
+                        line_buffer += line + "\n"
+                        while "\n" in line_buffer:
+                            raw_line, line_buffer = line_buffer.split("\n", 1)
+                            raw_line = raw_line.strip()
+                            if not raw_line:
+                                continue
+                            try:
+                                event: dict[str, Any] = json.loads(raw_line)
+                            except json.JSONDecodeError:
+                                logger.warning("ws: malformed JSONL line: %r", raw_line[:200])
+                                continue
+
+                            # v2 reducer uses "t" for event type
+                            event_type: str = event.get("t", "")
+
+                            # Handle batch signals
+                            if event_type == "batch.start":
+                                in_batch = True
+                                batch_buffer = []
+                                continue
+
+                            if event_type == "batch.end":
+                                in_batch = False
+                                # Apply all buffered events at once
+                                for buffered_event in batch_buffer:
+                                    buffered_type = buffered_event.get("t", "")
+                                    result = reduce(snapshot, buffered_event)
+                                    if result.accepted:
+                                        snapshot = result.snapshot
+                                        if ttfc is None:
+                                            ttfc = (time.monotonic() - start_time) * 1000
+                                        if buffered_type in _ENTITY_TYPES:
+                                            entity_id = buffered_event.get("id")
+                                            delta = _make_delta(buffered_type, entity_id, snapshot)
+                                            await websocket.send_text(json.dumps(delta))
+                                batch_buffer = []
+                                continue
+
+                            if event_type in _VOICE_TYPES:
+                                voice_text: str = event.get("text", "")
+                                if voice_text:
+                                    await websocket.send_text(json.dumps({"type": "voice", "text": voice_text}))
+                                continue
+
+                            if event_type not in _ENTITY_TYPES and not event_type.startswith(
+                                ("meta.", "style.", "collection.", "field.", "block.", "view.", "relationship.", "rel.")
+                            ):
+                                continue
+
+                            # Buffer events during batch mode
+                            if in_batch:
+                                batch_buffer.append(event)
+                                continue
+
+                            # Apply to snapshot via v2 reducer (raw event, not expanded)
+                            result = reduce(snapshot, event)
+
+                            if result.accepted:
+                                snapshot = result.snapshot
+
+                                if ttfc is None:
+                                    ttfc = (time.monotonic() - start_time) * 1000
+
+                                if event_type in _ENTITY_TYPES:
+                                    entity_id = event.get("id")
+                                    delta = _make_delta(event_type, entity_id, snapshot)
+                                    await websocket.send_text(json.dumps(delta))
+                                elif event_type in _META_TYPES:
+                                    # Send meta update to client
+                                    meta = snapshot.get("meta", {})
+                                    await websocket.send_text(json.dumps({"type": "meta.update", "data": meta}))
+                            else:
+                                logger.debug(
+                                    "ws: reducer rejected %s (reason=%s)",
+                                    event_type,
+                                    result.reason,
+                                )
 
             except FileNotFoundError:
                 logger.error("ws: golden file not found for scenario=%s", scenario)

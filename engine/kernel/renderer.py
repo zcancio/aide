@@ -52,6 +52,14 @@ def render(
     Returns a UTF-8 HTML string.
     Pure function. No side effects. No IO.
     """
+    # For v2 snapshots (entity tree), use React-based rendering
+    # This ensures pixel-perfect consistency with streaming preview
+    if snapshot.get("entities"):
+        from engine.kernel.react_preview import render_react_preview
+        title = snapshot.get("meta", {}).get("title")
+        return render_react_preview(snapshot, title=title)
+
+    # Fall back to v1 Python rendering for legacy snapshots
     opts = options or RenderOptions()
     events = events or []
 
@@ -65,7 +73,7 @@ def render(
     parts.append('  <meta name="viewport" content="width=device-width, initial-scale=1">')
 
     # Title
-    title = escape(snapshot.get("meta", {}).get("title", "AIde"))
+    title = escape(snapshot.get("meta", {}).get("title") or "AIde")
     parts.append(f"  <title>{title}</title>")
 
     # OG tags
@@ -113,14 +121,34 @@ def render(
     # Block tree
     body_html = _render_block_tree(snapshot)
     if body_html:
+        # Page title (from meta.title) - only render if there's content
+        page_title = snapshot.get("meta", {}).get("title")
+        if page_title:
+            parts.append(f'    <h1 class="aide-heading aide-heading--1">{escape(page_title)}</h1>')
         parts.append(body_html)
     else:
-        # No explicit blocks — auto-render collections if they exist
-        auto_html = _auto_render_collections(snapshot)
-        if auto_html:
-            parts.append(auto_html)
+        # Check for v2 entities (entity tree with parent relationships)
+        if snapshot.get("entities"):
+            auto_html = _auto_render_v2_entities(snapshot)
+            if auto_html:
+                # Page title (from meta.title) - only render if there's content
+                page_title = snapshot.get("meta", {}).get("title")
+                if page_title:
+                    parts.append(f'    <h1 class="aide-heading aide-heading--1">{escape(page_title)}</h1>')
+                parts.append(auto_html)
+            else:
+                parts.append('    <p class="aide-empty">This page is empty.</p>')
         else:
-            parts.append('    <p class="aide-empty">This page is empty.</p>')
+            # Fallback to v1 collections
+            auto_html = _auto_render_collections(snapshot)
+            if auto_html:
+                # Page title (from meta.title) - only render if there's content
+                page_title = snapshot.get("meta", {}).get("title")
+                if page_title:
+                    parts.append(f'    <h1 class="aide-heading aide-heading--1">{escape(page_title)}</h1>')
+                parts.append(auto_html)
+            else:
+                parts.append('    <p class="aide-empty">This page is empty.</p>')
 
     # Annotations
     annotations_html = _render_annotations(snapshot)
@@ -155,7 +183,7 @@ def escape(text: str) -> str:
 
 
 def _render_og_tags(snapshot: dict) -> str:
-    title = escape(snapshot.get("meta", {}).get("title", "AIde"))
+    title = escape(snapshot.get("meta", {}).get("title") or "AIde")
     description = escape(_derive_description(snapshot))
 
     return (
@@ -187,7 +215,7 @@ def _derive_description(snapshot: dict) -> str:
         return f"{name}: {count} items"
 
     # Strategy 3: title
-    return snapshot.get("meta", {}).get("title", "A living page")
+    return snapshot.get("meta", {}).get("title") or "A living page"
 
 
 # ---------------------------------------------------------------------------
@@ -251,6 +279,252 @@ def _render_css(snapshot: dict) -> str:
 # ---------------------------------------------------------------------------
 # Block tree rendering
 # ---------------------------------------------------------------------------
+
+
+def _auto_render_v2_entities(snapshot: dict) -> str:
+    """
+    Auto-render v2 entity tree snapshots.
+    Entities have 'parent' field for tree structure and 'display' hint.
+    """
+    entities = snapshot.get("entities", {})
+    if not entities:
+        return ""
+
+    # Find root entities (parent is "root" or missing)
+    root_ids = [
+        eid for eid, e in entities.items()
+        if not e.get("_removed") and e.get("parent") in (None, "root", "")
+    ]
+
+    if not root_ids:
+        return ""
+
+    parts: list[str] = []
+    for root_id in root_ids:
+        html = _render_v2_entity(root_id, entities, snapshot.get("meta", {}))
+        if html:
+            parts.append(html)
+
+    return "\n".join(parts)
+
+
+def _render_v2_entity(entity_id: str, entities: dict, meta: dict) -> str:
+    """Render a single v2 entity and its children recursively."""
+    entity = entities.get(entity_id)
+    if not entity or entity.get("_removed"):
+        return ""
+
+    display = (entity.get("display") or "").lower()
+    props = entity.get("props", {})
+
+    # Get children
+    child_ids = [
+        eid for eid, e in entities.items()
+        if not e.get("_removed") and e.get("parent") == entity_id
+    ]
+
+    # Determine display type with heuristics if not specified
+    if not display:
+        if props.get("src") or props.get("url"):
+            display = "image"
+        elif props.get("value") is not None or props.get("count") is not None:
+            if len([k for k in props if not k.startswith("_")]) <= 3:
+                display = "metric"
+        elif child_ids:
+            # Check if children are checklist items
+            first_child = entities.get(child_ids[0], {})
+            cp = first_child.get("props", {})
+            if isinstance(cp.get("done"), bool) or isinstance(cp.get("checked"), bool):
+                display = "checklist"
+            else:
+                display = "table"
+        else:
+            display = "card"
+
+    # Render based on display type
+    if display == "section":
+        return _render_v2_section(entity_id, entity, child_ids, entities, meta)
+    elif display == "table":
+        return _render_v2_table(entity_id, entity, child_ids, entities)
+    elif display == "checklist":
+        return _render_v2_checklist(entity_id, entity, child_ids, entities)
+    elif display == "metric":
+        return _render_v2_metric(entity_id, entity)
+    elif display == "image":
+        return _render_v2_image(entity_id, entity)
+    elif display == "text":
+        return _render_v2_text(entity_id, entity)
+    else:
+        # Default: card or recurse children
+        return _render_v2_card(entity_id, entity, child_ids, entities, meta)
+
+
+def _render_v2_section(entity_id: str, entity: dict, child_ids: list, entities: dict, meta: dict) -> str:
+    """Render a section with title and children."""
+    props = entity.get("props", {})
+    title = props.get("title") or props.get("name") or "Section"
+
+    parts = [f'    <section class="aide-section">']
+    parts.append(f'      <h2 class="aide-heading aide-heading--2">{escape(title)}</h2>')
+
+    if child_ids:
+        for cid in child_ids:
+            child_html = _render_v2_entity(cid, entities, meta)
+            if child_html:
+                parts.append(child_html)
+    else:
+        parts.append('      <p class="aide-collection-empty">No items yet.</p>')
+
+    parts.append("    </section>")
+    return "\n".join(parts)
+
+
+def _render_v2_table(entity_id: str, entity: dict, child_ids: list, entities: dict) -> str:
+    """Render children as a table."""
+    props = entity.get("props", {})
+    title = props.get("title") or props.get("name") or ""
+
+    if not child_ids:
+        return _render_v2_card(entity_id, entity, [], entities, {})
+
+    # Derive columns from children
+    skip_keys = {"_pos", "_schema", "_shape", "_removed", "_styles"}
+    columns: list[str] = []
+    for cid in child_ids:
+        child = entities.get(cid, {})
+        cp = child.get("props", {})
+        for k in cp:
+            if k not in skip_keys and not k.startswith("_") and k not in columns:
+                columns.append(k)
+
+    parts: list[str] = []
+    if title:
+        parts.append(f'    <h3 class="aide-heading aide-heading--3">{escape(title)}</h3>')
+
+    parts.append('    <div class="aide-table-wrap">')
+    parts.append('      <table class="aide-table">')
+    parts.append("        <thead>")
+    parts.append("          <tr>")
+    for col in columns:
+        display_name = escape(col.replace("_", " ").title())
+        parts.append(f'            <th class="aide-table__th">{display_name}</th>')
+    parts.append("          </tr>")
+    parts.append("        </thead>")
+    parts.append("        <tbody>")
+
+    for cid in child_ids:
+        child = entities.get(cid, {})
+        cp = child.get("props", {})
+        parts.append("          <tr>")
+        for col in columns:
+            value = cp.get(col)
+            formatted = _format_value(value, "string")
+            parts.append(f'            <td class="aide-table__td">{formatted}</td>')
+        parts.append("          </tr>")
+
+    parts.append("        </tbody>")
+    parts.append("      </table>")
+    parts.append("    </div>")
+    return "\n".join(parts)
+
+
+def _render_v2_checklist(entity_id: str, entity: dict, child_ids: list, entities: dict) -> str:
+    """Render children as a checklist."""
+    props = entity.get("props", {})
+    title = props.get("title") or props.get("name") or ""
+
+    parts: list[str] = []
+    if title:
+        parts.append(f'    <h3 class="aide-heading aide-heading--3">{escape(title)}</h3>')
+
+    parts.append('    <ul class="aide-list">')
+
+    completed = 0
+    for cid in child_ids:
+        child = entities.get(cid, {})
+        cp = child.get("props", {})
+        done = cp.get("done") is True or cp.get("checked") is True or cp.get("completed") is True
+        if done:
+            completed += 1
+        label = cp.get("task") or cp.get("label") or cp.get("name") or cid
+        check = "\u2713" if done else "\u25cb"
+        done_class = " aide-list__field--bool" if done else " aide-list__field--bool-false"
+        strike = " style=\"text-decoration: line-through; color: var(--text-tertiary);\"" if done else ""
+        parts.append(f'      <li class="aide-list__item">')
+        parts.append(f'        <span class="{done_class}">{check}</span>')
+        parts.append(f'        <span class="aide-list__field--primary"{strike}>{escape(str(label))}</span>')
+        parts.append("      </li>")
+
+    parts.append("    </ul>")
+    parts.append(f'    <p class="aide-collection-empty" style="font-size:13px;">{completed} of {len(child_ids)} complete</p>')
+    return "\n".join(parts)
+
+
+def _render_v2_metric(entity_id: str, entity: dict) -> str:
+    """Render a metric display."""
+    props = entity.get("props", {})
+    value = props.get("value") or props.get("count") or props.get("total") or ""
+    label = props.get("label") or props.get("name") or ""
+
+    return (
+        f'    <div class="aide-metric">\n'
+        f'      <span class="aide-metric__label">{escape(str(label))}</span>\n'
+        f'      <span class="aide-metric__value">{escape(str(value))}</span>\n'
+        f"    </div>"
+    )
+
+
+def _render_v2_image(entity_id: str, entity: dict) -> str:
+    """Render an image."""
+    props = entity.get("props", {})
+    src = props.get("src") or props.get("url") or ""
+    caption = props.get("caption") or ""
+
+    parts = ['    <figure class="aide-image">']
+    if src:
+        parts.append(f'      <img src="{escape(src)}" alt="{escape(caption)}" loading="lazy">')
+    if caption:
+        parts.append(f'      <figcaption class="aide-image__caption">{escape(caption)}</figcaption>')
+    parts.append("    </figure>")
+    return "\n".join(parts)
+
+
+def _render_v2_text(entity_id: str, entity: dict) -> str:
+    """Render a text block."""
+    props = entity.get("props", {})
+    text = props.get("text") or props.get("content") or props.get("body") or ""
+    return f'    <p class="aide-text">{escape(str(text))}</p>'
+
+
+def _render_v2_card(entity_id: str, entity: dict, child_ids: list, entities: dict, meta: dict) -> str:
+    """Render as a card with key-value fields."""
+    props = entity.get("props", {})
+    title = props.get("title") or props.get("name") or ""
+    skip_keys = {"title", "name", "_pos", "_schema", "_shape", "_removed", "_styles"}
+
+    parts = ['    <div class="aide-card" style="background:#fff;border:1px solid var(--border-light);border-radius:var(--radius-md);padding:var(--space-4);margin-bottom:var(--space-3);">']
+
+    if title:
+        parts.append(f'      <div style="font-size:15px;font-weight:500;color:var(--text-primary);margin-bottom:var(--space-2);">{escape(str(title))}</div>')
+
+    for key, value in props.items():
+        if key in skip_keys or key.startswith("_"):
+            continue
+        label = key.replace("_", " ").title()
+        formatted = _format_value(value, "string")
+        parts.append(f'      <div style="display:flex;justify-content:space-between;padding:var(--space-1) 0;border-bottom:1px solid var(--border-light);">')
+        parts.append(f'        <span style="color:var(--text-tertiary);font-size:12px;">{escape(label)}</span>')
+        parts.append(f'        <span>{formatted}</span>')
+        parts.append("      </div>")
+
+    # Render children if any
+    for cid in child_ids:
+        child_html = _render_v2_entity(cid, entities, meta)
+        if child_html:
+            parts.append(child_html)
+
+    parts.append("    </div>")
+    return "\n".join(parts)
 
 
 def _auto_render_collections(snapshot: dict) -> str:

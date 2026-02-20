@@ -1,5 +1,7 @@
 """Main orchestrator — coordinates L2/L3, reducer, renderer, and persistence."""
 
+from __future__ import annotations
+
 import time
 import uuid
 from datetime import UTC, datetime
@@ -16,7 +18,8 @@ from backend.services.grid_resolver import resolve_primitives
 from backend.services.l2_compiler import l2_compiler
 from backend.services.l3_synthesizer import l3_synthesizer
 from backend.services.r2 import r2_service
-from engine.kernel.reducer import reduce
+from engine.kernel.reducer_v2 import empty_snapshot as empty_v2_snapshot
+from engine.kernel.reducer_v2 import reduce
 from engine.kernel.renderer import render
 from engine.kernel.types import Blueprint, Event, ReduceResult, Snapshot
 
@@ -222,26 +225,35 @@ class Orchestrator:
         if resolve_result.query_response:
             response_text = resolve_result.query_response
 
-        # 4. Apply primitives through reducer
+        # 4. Apply primitives through v2 reducer
         print(f"Orchestrator: {len(primitives)} primitives from AI")
         for p in primitives:
             print(f"  - {p.get('type')}: {p.get('payload', {}).keys()}")
 
+        # Convert primitives to v2 events and wrap in Event objects for logging
+        v2_events = self._primitives_to_v2_events(primitives)
         events = self._wrap_primitives(primitives, str(user_id), source, message)
-        # Use snapshot_dict from grid resolution (already converted above)
-        new_snapshot = snapshot_dict
+
+        # Start with empty v2 snapshot if current one is empty/v1 format
+        if not snapshot_dict.get("entities"):
+            new_snapshot = empty_v2_snapshot()
+            # Copy over meta if present
+            if snapshot_dict.get("meta"):
+                new_snapshot["meta"] = snapshot_dict["meta"]
+        else:
+            new_snapshot = snapshot_dict
 
         applied_count = 0
-        for event in events:
-            result: ReduceResult = reduce(new_snapshot, event)
-            if result.error:
-                print(f"Reducer REJECTED {event.type}: {result.error}")
+        for v2_event in v2_events:
+            result: ReduceResult = reduce(new_snapshot, v2_event)
+            if not result.accepted:
+                print(f"Reducer REJECTED {v2_event.get('t')}: {result.reason}")
                 # Skip invalid event, continue with others
                 continue
             applied_count += 1
             new_snapshot = result.snapshot
 
-        print(f"Orchestrator: {applied_count}/{len(events)} events applied successfully")
+        print(f"Orchestrator: {applied_count}/{len(v2_events)} events applied successfully")
 
         # 5. Render HTML
         blueprint = Blueprint(identity=aide.title if hasattr(aide, "title") else "AIde")
@@ -338,7 +350,7 @@ class Orchestrator:
                     system=l2_compiler.system_prompt,
                     messages=[{"role": "user", "content": prompt}],
                     max_tokens=4096,
-                    temperature=1.0,
+                    temperature=0.0,
                 )
                 result = self._parse_l2_response(raw["content"])
                 usage = raw["usage"]
@@ -395,7 +407,7 @@ class Orchestrator:
                     system=l3_synthesizer.system_prompt,
                     messages=[{"role": "user", "content": prompt}],
                     max_tokens=16384,
-                    temperature=1.0,
+                    temperature=0.0,
                 )
                 result = self._parse_l3_response(raw["content"])
                 usage = raw["usage"]
@@ -570,6 +582,89 @@ class Orchestrator:
             )
 
         return events
+
+    def _primitives_to_v2_events(self, primitives: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Convert v1 primitives (type/payload) to v2 events (t/shorthand)."""
+        v2_events = []
+        for p in primitives:
+            ptype = p.get("type", "")
+            payload = p.get("payload", {})
+
+            if ptype == "collection.create":
+                # v2 doesn't have collections, convert to entity.create with section display
+                v2_events.append(
+                    {
+                        "t": "entity.create",
+                        "id": payload.get("id", ""),
+                        "parent": "root",
+                        "display": "section",
+                        "p": {"title": payload.get("name", "")},
+                    }
+                )
+            elif ptype == "entity.create":
+                # Convert to v2 format
+                collection = payload.get("collection", "")
+                entity_id = payload.get("id", "")
+                fields = payload.get("fields", {})
+                display = payload.get("display", "card")
+                v2_events.append(
+                    {
+                        "t": "entity.create",
+                        "id": entity_id,
+                        "parent": collection or "root",
+                        "display": display,
+                        "p": fields,
+                    }
+                )
+            elif ptype == "entity.update":
+                v2_events.append(
+                    {
+                        "t": "entity.update",
+                        "ref": payload.get("ref", payload.get("id", "")),
+                        "p": payload.get("fields", {}),
+                    }
+                )
+            elif ptype == "entity.delete":
+                v2_events.append(
+                    {
+                        "t": "entity.remove",
+                        "id": payload.get("ref", payload.get("id", "")),
+                    }
+                )
+            elif ptype == "meta.update":
+                v2_events.append(
+                    {
+                        "t": "meta.update",
+                        **{k: v for k, v in payload.items()},
+                    }
+                )
+            elif ptype == "field.add":
+                v2_events.append(
+                    {
+                        "t": "field.add",
+                        "collection": payload.get("collection", ""),
+                        "field": payload.get("name", ""),
+                        "type": payload.get("type", "string"),
+                    }
+                )
+            elif ptype == "grid.create":
+                v2_events.append(
+                    {
+                        "t": "grid.create",
+                        "collection": payload.get("collection", ""),
+                        "rows": payload.get("rows", 10),
+                        "cols": payload.get("cols", 10),
+                    }
+                )
+            else:
+                # Generic fallback
+                v2_events.append(
+                    {
+                        "t": ptype,
+                        **payload,
+                    }
+                )
+        return v2_events
 
     async def replay_turn(
         self,

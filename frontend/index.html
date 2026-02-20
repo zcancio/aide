@@ -582,101 +582,521 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
   </style>
-  <!-- Display component styles (injected into preview iframe) -->
-  <script id="display-css-template" type="text/template">
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; font-size: 14px; color: #1a1a1a; padding: 24px; background: #fafaf9; margin: 0; }
-    * { box-sizing: border-box; }
+  <!-- CSS from renderer.py (source of truth for styling) -->
+  <script id="renderer-css-template" type="text/template">
+/* CSS custom properties - exact copy from renderer.py */
+:root {
+  /* Design system defaults */
+  --font-serif: 'Cormorant Garamond', Georgia, serif;
+  --font-sans: 'IBM Plex Sans', -apple-system, sans-serif;
+  --text-primary: #1a1a1a;
+  --text-secondary: #4a4a4a;
+  --text-tertiary: #8a8a8a;
+  --text-slate: #374151;
+  --bg-primary: #fafaf9;
+  --bg-cream: #f5f1eb;
+  --accent-navy: #1f2a44;
+  --accent-steel: #5a6e8a;
+  --accent-forest: #2d5a3d;
+  --border: #d4d0c8;
+  --border-light: #e8e4dc;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  /* Spacing scale */
+  --space-0: 0px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 48px;
+  --space-10: 56px;
+  --space-11: 64px;
+  --space-12: 80px;
+  --space-13: 96px;
+  --space-14: 112px;
+  --space-15: 128px;
+  --space-16: 160px;
+}
 
-    /* Page */
-    .aide-page { max-width: 800px; margin: 0 auto; padding: 8px; }
-    .page-title { font-size: 28px; font-weight: 700; margin-bottom: 24px; color: #111; letter-spacing: -0.5px; }
+/* ── Base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* Card */
-    .aide-card { background: #fff; border: 1px solid #e5e5e5; border-radius: 10px; padding: 16px; margin-bottom: 12px; }
-    .card-title { font-size: 14px; font-weight: 600; color: #333; margin-bottom: 10px; }
-    .card-field { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 0; border-bottom: 1px solid #f0f0f0; gap: 12px; }
-    .card-field:last-child { border-bottom: none; }
-    .field-label { color: #888; font-size: 12px; text-transform: capitalize; flex-shrink: 0; }
+body {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 300;
+  line-height: 1.65;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  -webkit-font-smoothing: antialiased;
+}
 
-    /* Table */
-    .aide-table-wrap { overflow-x: auto; margin-bottom: 16px; }
-    .aide-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; border: 1px solid #e5e5e5; }
-    .aide-table th { padding: 10px 14px; text-align: left; font-weight: 500; color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; background: #fafafa; border-bottom: 1px solid #e5e5e5; }
-    .aide-table td { padding: 10px 14px; border-bottom: 1px solid #f5f5f5; font-size: 13px; }
-    .aide-table tr:last-child td { border-bottom: none; }
-    .aide-table tr:hover td { background: #fafafa; }
+.aide-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--space-12) var(--space-8);
+}
 
-    /* Checklist */
-    .aide-checklist { background: #fff; border: 1px solid #e5e5e5; border-radius: 10px; padding: 12px 16px; margin-bottom: 12px; }
-    .checklist-item { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid #f5f5f5; cursor: default; }
-    .checklist-item:last-child { border-bottom: none; }
-    .checklist-item input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: #1a1a1a; flex-shrink: 0; }
-    .checklist-item.done .item-label { text-decoration: line-through; color: #aaa; }
+@media (max-width: 640px) {
+  .aide-page {
+    padding: var(--space-8) var(--space-5);
+  }
+}
 
-    /* Section */
-    .aide-section { margin-bottom: 20px; }
-    .section-header { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 4px 0; user-select: none; }
-    .collapse-icon { color: #888; font-size: 12px; width: 14px; text-align: center; }
-    .section-title { font-size: 17px; font-weight: 600; color: #222; }
-    .section-content { padding-left: 22px; margin-top: 8px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 
-    /* Metric */
-    .aide-metric { background: #fff; border: 1px solid #e5e5e5; border-radius: 10px; padding: 20px 24px; margin-bottom: 12px; display: inline-flex; flex-direction: column; gap: 4px; min-width: 140px; }
-    .metric-value { font-size: 36px; font-weight: 700; color: #111; letter-spacing: -1px; }
-    .metric-label { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.4px; }
-    .metric-group { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+/* ── Headings ── */
+.aide-heading { margin-bottom: var(--space-4); }
+.aide-heading--1 {
+  font-family: var(--font-serif);
+  font-size: clamp(32px, 4.5vw, 42px);
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+.aide-heading--2 {
+  font-family: var(--font-serif);
+  font-size: clamp(24px, 3.5vw, 32px);
+  font-weight: 400;
+  line-height: 1.25;
+  color: var(--text-primary);
+}
+.aide-heading--3 {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--text-primary);
+}
 
-    /* Text */
-    .aide-text { color: #444; line-height: 1.7; margin-bottom: 12px; font-size: 14px; }
+/* ── Text ── */
+.aide-text {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 300;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-4);
+}
+.aide-text a {
+  color: var(--accent-steel);
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+  text-underline-offset: 2px;
+}
+.aide-text a:hover {
+  text-decoration-color: var(--accent-steel);
+}
 
-    /* List */
-    .aide-list { padding-left: 20px; margin-bottom: 12px; color: #333; }
-    .aide-list li { padding: 4px 0; font-size: 13px; }
+/* ── Metric ── */
+.aide-metric {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-3) 0;
+}
+.aide-metric__label {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+.aide-metric__label::after { content: ':'; }
+.aide-metric__value {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
 
-    /* Image */
-    .aide-image { margin-bottom: 16px; }
-    .aide-image img { max-width: 100%; border-radius: 8px; border: 1px solid #e5e5e5; }
-    .aide-image figcaption { font-size: 12px; color: #888; margin-top: 6px; text-align: center; }
+/* ── Divider ── */
+.aide-divider {
+  border: none;
+  border-top: 1px solid var(--border-light);
+  margin: var(--space-6) 0;
+}
 
-    /* Grid */
-    .aide-grid-display { display: grid; gap: 2px; margin-bottom: 16px; }
-    .grid-cell { background: #fff; border: 1px solid #e5e5e5; padding: 8px; font-size: 12px; text-align: center; border-radius: 4px; min-height: 40px; display: flex; align-items: center; justify-content: center; }
-    .grid-cell.claimed { background: #f0fdf4; color: #166534; font-weight: 500; }
+/* ── Image ── */
+.aide-image { margin: var(--space-6) 0; }
+.aide-image img { max-width: 100%; height: auto; border-radius: var(--radius-sm); }
+.aide-image__caption {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-top: var(--space-2);
+}
 
-    /* Editable fields */
-    .editable-value { cursor: pointer; padding: 2px 4px; border-radius: 4px; display: inline; }
-    .editable-value:hover { background: #f0f0f0; }
-    .editable-input { font: inherit; font-size: inherit; color: inherit; padding: 2px 6px; border: 1.5px solid #2563eb; border-radius: 4px; outline: none; background: #fff; display: inline; min-width: 80px; }
+/* ── Callout ── */
+.aide-callout {
+  background: var(--bg-cream);
+  border-left: 3px solid var(--border);
+  padding: var(--space-4) var(--space-5);
+  margin: var(--space-4) 0;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text-slate);
+}
 
-    /* Mount animation for progressive rendering */
-    @keyframes entity-mount {
-      from {
-        opacity: 0;
-        transform: translateY(8px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
+/* ── Columns ── */
+.aide-columns {
+  display: flex;
+  gap: var(--space-6);
+}
+@media (max-width: 640px) {
+  .aide-columns {
+    flex-direction: column;
+  }
+}
 
-    .aide-card,
-    .aide-section,
-    .checklist-item,
-    .aide-table tbody tr,
-    .aide-metric {
-      animation: entity-mount 200ms ease-out;
-    }
+/* ── Empty states ── */
+.aide-empty {
+  color: var(--text-tertiary);
+  font-size: 15px;
+  padding: var(--space-16) 0;
+  text-align: center;
+}
+.aide-collection-empty {
+  color: var(--text-tertiary);
+  font-size: 14px;
+  padding: var(--space-4) 0;
+}
 
-    /* Fallback (unchanged) */
-    .fb-entity { border-left: 2px solid #e0e0e0; padding: 8px 0 8px 12px; margin: 4px 0; }
-    .fb-header { display: flex; gap: 8px; align-items: baseline; margin-bottom: 4px; }
-    .fb-id { font-weight: 600; color: #2d3748; font-size: 12px; }
-    .fb-display { font-size: 11px; color: #888; }
-    .fb-props { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; font-size: 12px; color: #555; }
-    dt { font-weight: 500; color: #444; }
-    dd { color: #666; word-break: break-word; }
-    .empty { color: #aaa; text-align: center; padding: 40px; font-size: 13px; }
+/* ── Highlight ── */
+.aide-highlight {
+  background-color: rgba(31, 42, 68, 0.04);
+}
+
+/* ── List view ── */
+.aide-list {
+  list-style: none;
+  padding: 0;
+}
+.aide-list__item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border-light);
+  font-size: 15px;
+  line-height: 1.5;
+}
+.aide-list__item:last-child { border-bottom: none; }
+.aide-list__field--primary {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.aide-list__field {
+  color: var(--text-secondary);
+}
+
+/* ── Table view ── */
+.aide-table-wrap {
+  overflow-x: auto;
+  margin: var(--space-4) 0;
+}
+.aide-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+.aide-table__th {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 2px solid var(--border);
+}
+.aide-table__td {
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-slate);
+  vertical-align: top;
+}
+.aide-table__td--bool { text-align: center; }
+.aide-table__td--int,
+.aide-table__td--float { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ── Grid view ── */
+.aide-grid {
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.aide-grid__col-label,
+.aide-grid__row-label {
+  font-weight: 500;
+  color: var(--text-tertiary);
+  padding: var(--space-2);
+  text-align: center;
+}
+.aide-grid__cell {
+  border: 1px solid var(--border-light);
+  padding: var(--space-2);
+  text-align: center;
+  min-width: 48px;
+  min-height: 48px;
+  vertical-align: middle;
+}
+.aide-grid__cell--filled {
+  background: var(--bg-cream);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.aide-grid__cell--empty {
+  color: var(--text-tertiary);
+}
+
+/* ── Group headers ── */
+.aide-group { margin-bottom: var(--space-6); }
+.aide-group__header {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-light);
+}
+
+/* ── Annotations ── */
+.aide-annotations { margin-top: var(--space-10); }
+.aide-annotation {
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.aide-annotation:last-child { border-bottom: none; }
+.aide-annotation__text {
+  font-size: 15px;
+  color: var(--text-slate);
+  line-height: 1.5;
+}
+.aide-annotation__meta {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-left: var(--space-3);
+}
+.aide-annotation--pinned {
+  border-left: 3px solid var(--accent-navy);
+  padding-left: var(--space-4);
+}
+
+/* ── Footer ── */
+.aide-footer {
+  margin-top: var(--space-16);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--border-light);
+  font-size: 12px;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+.aide-footer__link {
+  color: var(--text-tertiary);
+  text-decoration: none;
+}
+.aide-footer__link:hover {
+  color: var(--text-secondary);
+}
+
+/* ── Card (React component) ── */
+.aide-card {
+  background: #fff;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+.aide-card__title {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+}
+.aide-card__field {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid var(--border-light);
+  gap: var(--space-3);
+}
+.aide-card__field:last-child { border-bottom: none; }
+.aide-card__label {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  text-transform: capitalize;
+  flex-shrink: 0;
+}
+
+/* ── Section (React component) ── */
+.aide-section {
+  margin-bottom: var(--space-6);
+}
+.aide-section__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  padding: var(--space-1) 0;
+  user-select: none;
+}
+.aide-section__icon {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  width: 14px;
+  text-align: center;
+  transition: transform 0.2s;
+}
+.aide-section__icon--collapsed {
+  transform: rotate(-90deg);
+}
+.aide-section__title {
+  font-family: var(--font-serif);
+  font-size: clamp(24px, 3.5vw, 32px);
+  font-weight: 400;
+  line-height: 1.25;
+  color: var(--text-primary);
+}
+.aide-section__content {
+  margin-top: var(--space-3);
+}
+.aide-section__content--collapsed {
+  display: none;
+}
+
+/* ── Checklist (React component) ── */
+.aide-checklist {
+  list-style: none;
+  padding: 0;
+  margin-bottom: var(--space-4);
+}
+.aide-checklist__item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border-light);
+  font-size: 15px;
+  line-height: 1.5;
+}
+.aide-checklist__item:last-child { border-bottom: none; }
+.aide-checklist__checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--accent-navy);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.aide-checklist__label {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.aide-checklist__label--done {
+  text-decoration: line-through;
+  color: var(--text-tertiary);
+}
+.aide-checklist__summary {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  padding-top: var(--space-2);
+}
+
+/* ── Editable field (React component) ── */
+.editable-field {
+  cursor: text;
+  border-radius: 2px;
+  padding: 1px 2px;
+  margin: -1px -2px;
+  transition: background-color 0.15s;
+}
+.editable-field:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+.editable-field--empty {
+  color: var(--text-tertiary);
+}
+.editable-input {
+  font: inherit;
+  color: inherit;
+  background: #fff;
+  border: 1px solid var(--accent-steel);
+  border-radius: 2px;
+  padding: 1px 4px;
+  margin: -2px -5px;
+  outline: none;
+  min-width: 60px;
+}
+
+/* ── Mount animation ── */
+.aide-mount-animation {
+  animation: aide-fade-in 0.2s ease-out;
+}
+@keyframes aide-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Legacy editable support (for vanilla JS fallback) ── */
+.editable-value {
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  display: inline;
+}
+.editable-value:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+/* ── Fallback entity renderer ── */
+.fb-entity {
+  border-left: 2px solid var(--border);
+  padding: 8px 0 8px 12px;
+  margin: 4px 0;
+}
+.fb-header {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+.fb-id {
+  font-weight: 600;
+  color: var(--text-slate);
+  font-size: 12px;
+}
+.fb-display {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+.fb-props {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+dt {
+  font-weight: 500;
+  color: var(--text-slate);
+}
+dd {
+  color: var(--text-secondary);
+  word-break: break-word;
+}
   </script>
 </head>
 <body>
@@ -777,12 +1197,16 @@
   let pendingImage = null; // { dataUrl, base64 }
   let conversationHistory = []; // {role, content}
   let isSending = false;
+  let pendingPreviewUrl = null; // Server-rendered preview to load when stream ends
+  let pendingUserMessage = null; // Track user message for stream persistence
+  let pendingVoiceResponse = ''; // Accumulate voice response for stream persistence
 
   // ── Entity Store ────────────────────────────────────
   // Holds the live entity graph populated by WebSocket deltas.
   const entityStore = {
     entities: {},   // id → entity data
     rootIds: [],    // top-level entity IDs (parent === 'root' or no parent)
+    meta: {},       // page metadata (title, description, etc.)
 
     applyDelta(delta) {
       if (delta.type === 'entity.create') {
@@ -816,6 +1240,7 @@
     reset() {
       this.entities = {};
       this.rootIds = [];
+      this.meta = {};
     },
   };
 
@@ -1039,6 +1464,8 @@
   function resolveDisplay(entity) {
     const hint = (entity.display || '').toLowerCase();
     const id = entity._id || '';
+    const props = getProps(entity);
+
     // Check hint first
     if (hint === 'page') return 'page';
     if (hint === 'card') return 'card';
@@ -1050,9 +1477,33 @@
     if (hint === 'list') return 'list';
     if (hint === 'image') return 'image';
     if (hint === 'grid') return 'grid';
-    // Heuristic: if entity has children that look like checklist items
-    if (hint === 'fallback' || !hint) return 'fallback';
-    return 'fallback';
+
+    // Heuristics when no hint provided
+    // Grid cell (has row/col)
+    if (props.row !== undefined && props.col !== undefined) return 'card';
+
+    // Checklist-like (has done/checked/completed boolean)
+    if (typeof props.done === 'boolean' || typeof props.checked === 'boolean' || typeof props.completed === 'boolean') {
+      return 'card';
+    }
+
+    // Metric (has value/count/total with few fields)
+    if (props.value !== undefined || props.count !== undefined || props.total !== undefined) {
+      if (Object.keys(props).filter(k => !k.startsWith('_')).length <= 3) {
+        return 'metric';
+      }
+    }
+
+    // Image
+    if (props.src || props.url) return 'image';
+
+    // Text block (only text field)
+    if (props.text && Object.keys(props).filter(k => !k.startsWith('_')).length === 1) {
+      return 'text';
+    }
+
+    // Default to card (clean display for most entities)
+    return 'card';
   }
 
   function renderEntity(id) {
@@ -1074,84 +1525,470 @@
     }
   }
 
-  // ── Preview HTML builder ─────────────────────────────
-  function buildPreviewHtml() {
-    const css = document.getElementById('display-css-template').textContent;
-    const entities = entityStore.rootIds.map(renderEntity).join('');
+  // ── Preview HTML builder (React-based) ─────────────────────────────
+  // React display components template - matches docs/eng_design/04_display_components.md
+  const REACT_COMPONENTS_TEMPLATE = `
+    const { useState, useContext, createContext, useMemo } = React;
 
-    // Inline script for iframe interactivity (direct edit, collapse)
-    const iframeScript = `
-      // Toggle section collapse
-      window.__toggleSection = function(uid) {
-        const content = document.getElementById(uid + '_content');
-        const icon = document.getElementById(uid + '_icon');
-        if (!content) return;
-        const collapsed = content.style.display === 'none';
-        content.style.display = collapsed ? '' : 'none';
-        if (icon) icon.textContent = collapsed ? '▾' : '▸';
-      };
+    // ── Entity Context ────────────────────────────────────
+    const EntityContext = createContext({ entities: {}, meta: {}, rootIds: [] });
 
-      // Start inline edit
-      window.__startEdit = function(el) {
-        if (el.dataset.editing) return;
-        el.dataset.editing = '1';
-        const val = el.textContent === '—' ? '' : el.textContent;
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'editable-input';
-        input.value = val;
-        input.style.width = Math.max(el.offsetWidth, 80) + 'px';
-        el.parentNode.insertBefore(input, el);
-        el.style.display = 'none';
-        input.focus();
-        input.select();
+    function useEntity(id) {
+      const { entities } = useContext(EntityContext);
+      return entities[id] || null;
+    }
 
-        const commit = () => {
-          const newVal = input.value;
-          el.textContent = newVal || '—';
-          el.style.display = '';
-          delete el.dataset.editing;
-          input.remove();
-          if (newVal !== val) {
-            window.parent.postMessage({
-              type: 'direct_edit',
-              entity_id: el.dataset.entityId,
-              field: el.dataset.field,
-              value: newVal
-            }, '*');
-          }
-        };
+    function useChildren(parentId) {
+      const { entities } = useContext(EntityContext);
+      return Object.entries(entities)
+        .filter(([, e]) => e.parent === parentId)
+        .map(([id]) => id);
+    }
 
-        input.addEventListener('blur', commit);
-        input.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') { e.preventDefault(); commit(); }
-          if (e.key === 'Escape') {
-            el.style.display = '';
-            delete el.dataset.editing;
-            input.remove();
-          }
-        });
-      };
+    function useMeta() {
+      const { meta } = useContext(EntityContext);
+      return meta;
+    }
 
-      // Toggle checkbox
-      window.__toggleCheck = function(el) {
+    function useRootIds() {
+      const { rootIds } = useContext(EntityContext);
+      return rootIds;
+    }
+
+    // ── Helpers ────────────────────────────────────────────
+    function humanize(str) {
+      if (!str) return '';
+      return str.replace(/_/g, ' ').replace(/\\b\\w/g, c => c.toUpperCase());
+    }
+
+    function getDisplayableProps(props) {
+      if (!props) return {};
+      const skip = new Set(['title', 'name', '_removed', '_styles', '_pos', '_schema', '_shape']);
+      return Object.fromEntries(
+        Object.entries(props).filter(([k]) => !k.startsWith('_') && !skip.has(k))
+      );
+    }
+
+    function inferType(value) {
+      if (typeof value === 'boolean') return 'boolean';
+      if (typeof value === 'number') return 'number';
+      if (typeof value === 'string' && /^\\d{4}-\\d{2}-\\d{2}/.test(value)) return 'date';
+      return 'string';
+    }
+
+    function formatValue(value, type) {
+      if (value === null || value === undefined) return '—';
+      if (type === 'boolean') return value ? '✓' : '○';
+      if (type === 'date' && typeof value === 'string') {
+        try {
+          const d = new Date(value);
+          return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        } catch { return value; }
+      }
+      return String(value);
+    }
+
+    function deriveColumns(children, entities) {
+      const cols = new Set();
+      const skip = new Set(['_pos', '_schema', '_shape']);
+      children.forEach(id => {
+        const entity = entities[id];
+        const props = entity?.props || {};
+        Object.keys(props).filter(k => !k.startsWith('_') && !skip.has(k)).forEach(k => cols.add(k));
+      });
+      return Array.from(cols);
+    }
+
+    function applyStyles(styles) {
+      if (!styles) return {};
+      const css = {};
+      if (styles.bg_color) css.backgroundColor = styles.bg_color;
+      if (styles.text_color) css.color = styles.text_color;
+      return css;
+    }
+
+    // ── EditableField ──────────────────────────────────────
+    function EditableField({ entityId, field, value, type = 'string', className = '' }) {
+      const [editing, setEditing] = useState(false);
+      const [draft, setDraft] = useState(value ?? '');
+
+      const emitUpdate = (newValue) => {
         window.parent.postMessage({
           type: 'direct_edit',
-          entity_id: el.dataset.entityId,
-          field: el.dataset.field,
-          value: el.checked
+          entity_id: entityId,
+          field: field,
+          value: newValue
         }, '*');
-        const item = el.closest('.checklist-item');
-        if (item) item.classList.toggle('done', el.checked);
       };
-    `;
+
+      // Booleans toggle immediately
+      if (type === 'boolean') {
+        return React.createElement('input', {
+          type: 'checkbox',
+          className: 'aide-checklist__checkbox',
+          checked: !!value,
+          onChange: () => emitUpdate(!value)
+        });
+      }
+
+      if (!editing) {
+        const displayValue = formatValue(value, type);
+        const isEmpty = value === null || value === undefined || value === '';
+        return React.createElement('span', {
+          className: 'editable-field ' + (isEmpty ? 'editable-field--empty ' : '') + className,
+          onClick: () => { setDraft(value ?? ''); setEditing(true); }
+        }, displayValue);
+      }
+
+      return React.createElement('input', {
+        type: type === 'number' ? 'number' : type === 'date' ? 'date' : 'text',
+        className: 'editable-input',
+        value: draft,
+        autoFocus: true,
+        onChange: (e) => setDraft(e.target.value),
+        onBlur: () => {
+          setEditing(false);
+          if (draft !== value) {
+            const coerced = type === 'number' ? Number(draft) : draft;
+            emitUpdate(coerced);
+          }
+        },
+        onKeyDown: (e) => {
+          if (e.key === 'Enter') e.target.blur();
+          if (e.key === 'Escape') { setDraft(value ?? ''); setEditing(false); }
+        }
+      });
+    }
+
+    // ── Display Components ─────────────────────────────────
+
+    function PageDisplay({ entity, entityId, children }) {
+      const props = entity?.props || {};
+      const title = props.title || props.name || '';
+      return React.createElement('div', { className: 'aide-page aide-mount-animation' },
+        title && React.createElement('h1', { className: 'aide-heading aide-heading--1' },
+          React.createElement(EditableField, { entityId, field: 'title', value: title })
+        ),
+        children || React.createElement('p', { className: 'aide-empty' }, 'Say something to get started.')
+      );
+    }
+
+    function SectionDisplay({ entity, entityId, children }) {
+      const [collapsed, setCollapsed] = useState(false);
+      const props = entity?.props || {};
+      const title = props.title || props.name || 'Section';
+
+      return React.createElement('div', { className: 'aide-section aide-mount-animation' },
+        React.createElement('div', {
+          className: 'aide-section__header',
+          onClick: () => setCollapsed(!collapsed)
+        },
+          React.createElement('span', {
+            className: 'aide-section__icon' + (collapsed ? ' aide-section__icon--collapsed' : '')
+          }, '▾'),
+          React.createElement('span', { className: 'aide-section__title' },
+            React.createElement(EditableField, { entityId, field: 'title', value: title })
+          )
+        ),
+        React.createElement('div', {
+          className: 'aide-section__content' + (collapsed ? ' aide-section__content--collapsed' : '')
+        }, children || React.createElement('p', { className: 'aide-collection-empty' }, 'No items yet.'))
+      );
+    }
+
+    function CardDisplay({ entity, entityId, children }) {
+      const props = entity?.props || {};
+      const title = props.title || props.name || '';
+      const displayProps = getDisplayableProps(props);
+      const styles = applyStyles(entity?._styles);
+
+      return React.createElement('div', { className: 'aide-card aide-mount-animation', style: styles },
+        title && React.createElement('div', { className: 'aide-card__title' },
+          React.createElement(EditableField, { entityId, field: props.title !== undefined ? 'title' : 'name', value: title })
+        ),
+        Object.entries(displayProps).map(([key, value]) =>
+          React.createElement('div', { key, className: 'aide-card__field' },
+            React.createElement('span', { className: 'aide-card__label' }, humanize(key)),
+            React.createElement(EditableField, { entityId, field: key, value, type: inferType(value) })
+          )
+        ),
+        children
+      );
+    }
+
+    function ListDisplay({ entity, entityId, children }) {
+      const props = entity?.props || {};
+      const title = props.title || props.name || '';
+
+      return React.createElement('div', { className: 'aide-mount-animation' },
+        title && React.createElement('h3', { className: 'aide-heading aide-heading--3' },
+          React.createElement(EditableField, { entityId, field: 'title', value: title })
+        ),
+        React.createElement('ul', { className: 'aide-list' },
+          children || React.createElement('li', { className: 'aide-collection-empty' }, 'No items yet.')
+        )
+      );
+    }
+
+    function TableDisplay({ entity, entityId, children }) {
+      const { entities } = useContext(EntityContext);
+      const childIds = useChildren(entityId);
+      const props = entity?.props || {};
+      const title = props.title || props.name || '';
+
+      if (childIds.length === 0) {
+        return React.createElement(CardDisplay, { entity, entityId, children });
+      }
+
+      const columns = deriveColumns(childIds, entities);
+
+      return React.createElement('div', { className: 'aide-mount-animation' },
+        title && React.createElement('h3', { className: 'aide-heading aide-heading--3' },
+          React.createElement(EditableField, { entityId, field: 'title', value: title })
+        ),
+        React.createElement('div', { className: 'aide-table-wrap' },
+          React.createElement('table', { className: 'aide-table' },
+            React.createElement('thead', null,
+              React.createElement('tr', null,
+                columns.map(col =>
+                  React.createElement('th', { key: col, className: 'aide-table__th' }, humanize(col))
+                )
+              )
+            ),
+            React.createElement('tbody', null,
+              childIds.map(cid => {
+                const child = entities[cid];
+                const cp = child?.props || {};
+                return React.createElement('tr', { key: cid, className: 'aide-mount-animation' },
+                  columns.map(col =>
+                    React.createElement('td', { key: col, className: 'aide-table__td aide-table__td--' + inferType(cp[col]) },
+                      React.createElement(EditableField, { entityId: cid, field: col, value: cp[col], type: inferType(cp[col]) })
+                    )
+                  )
+                );
+              })
+            )
+          )
+        )
+      );
+    }
+
+    function ChecklistDisplay({ entity, entityId, children }) {
+      const { entities } = useContext(EntityContext);
+      const childIds = useChildren(entityId);
+      const props = entity?.props || {};
+      const title = props.title || props.name || '';
+
+      if (childIds.length === 0) {
+        return React.createElement(CardDisplay, { entity, entityId, children });
+      }
+
+      const completed = childIds.filter(cid => {
+        const cp = entities[cid]?.props || {};
+        return cp.done === true || cp.checked === true || cp.completed === true;
+      }).length;
+
+      return React.createElement('div', { className: 'aide-mount-animation' },
+        title && React.createElement('h3', { className: 'aide-heading aide-heading--3' },
+          React.createElement(EditableField, { entityId, field: 'title', value: title })
+        ),
+        React.createElement('div', { className: 'aide-checklist' },
+          childIds.map(cid => {
+            const child = entities[cid];
+            const cp = child?.props || {};
+            const done = cp.done === true || cp.checked === true || cp.completed === true;
+            const label = cp.task || cp.label || cp.name || cid;
+            const labelField = cp.task !== undefined ? 'task' : (cp.label !== undefined ? 'label' : 'name');
+
+            return React.createElement('div', { key: cid, className: 'aide-checklist__item aide-mount-animation' },
+              React.createElement(EditableField, { entityId: cid, field: 'done', value: done, type: 'boolean' }),
+              React.createElement('span', {
+                className: 'aide-checklist__label' + (done ? ' aide-checklist__label--done' : '')
+              },
+                React.createElement(EditableField, { entityId: cid, field: labelField, value: label })
+              )
+            );
+          })
+        ),
+        React.createElement('div', { className: 'aide-checklist__summary' },
+          completed + ' of ' + childIds.length + ' complete'
+        )
+      );
+    }
+
+    function MetricDisplay({ entity, entityId }) {
+      const props = entity?.props || {};
+      const value = props.value ?? props.count ?? props.total ?? '';
+      const label = props.label || props.name || '';
+      const styles = applyStyles(entity?._styles);
+
+      return React.createElement('div', { className: 'aide-metric aide-mount-animation', style: styles },
+        React.createElement('span', { className: 'aide-metric__label' }, label),
+        React.createElement('span', { className: 'aide-metric__value' },
+          React.createElement(EditableField, { entityId, field: 'value', value, type: inferType(value) })
+        )
+      );
+    }
+
+    function TextDisplay({ entity, entityId }) {
+      const props = entity?.props || {};
+      const text = props.text || props.content || props.body || '';
+      const field = props.text !== undefined ? 'text' : (props.content !== undefined ? 'content' : 'body');
+
+      return React.createElement('p', { className: 'aide-text aide-mount-animation' },
+        React.createElement(EditableField, { entityId, field, value: text })
+      );
+    }
+
+    function ImageDisplay({ entity, entityId }) {
+      const props = entity?.props || {};
+      const src = props.src || props.url || '';
+      const caption = props.caption || '';
+
+      return React.createElement('figure', { className: 'aide-image aide-mount-animation' },
+        src && React.createElement('img', { src, alt: caption, loading: 'lazy' }),
+        caption && React.createElement('figcaption', { className: 'aide-image__caption' },
+          React.createElement(EditableField, { entityId, field: 'caption', value: caption })
+        )
+      );
+    }
+
+    function FallbackDisplay({ entity, entityId, children }) {
+      const props = entity?.props || {};
+      const displayProps = Object.entries(props).filter(([k]) => !k.startsWith('_'));
+
+      return React.createElement('div', { className: 'aide-card aide-mount-animation' },
+        displayProps.map(([key, value]) =>
+          React.createElement('div', { key, className: 'aide-card__field' },
+            React.createElement('span', { className: 'aide-card__label' }, humanize(key)),
+            React.createElement(EditableField, { entityId, field: key, value, type: inferType(value) })
+          )
+        ),
+        children
+      );
+    }
+
+    // ── Display Resolution ─────────────────────────────────
+    const DISPLAY_COMPONENTS = {
+      page: PageDisplay,
+      section: SectionDisplay,
+      card: CardDisplay,
+      list: ListDisplay,
+      table: TableDisplay,
+      checklist: ChecklistDisplay,
+      metric: MetricDisplay,
+      text: TextDisplay,
+      image: ImageDisplay
+    };
+
+    function resolveDisplay(entity, childIds, entities) {
+      const hint = (entity?.display || '').toLowerCase();
+      if (DISPLAY_COMPONENTS[hint]) return DISPLAY_COMPONENTS[hint];
+
+      // Heuristics based on props and children
+      const props = entity?.props || {};
+
+      // Image
+      if (props.src || props.url) return ImageDisplay;
+
+      // Checklist items have done/checked/completed - leaf nodes
+      if (typeof props.done === 'boolean' || typeof props.checked === 'boolean' || typeof props.completed === 'boolean') {
+        return CardDisplay;
+      }
+
+      // Metric (few fields with value/count)
+      if ((props.value !== undefined || props.count !== undefined) && Object.keys(props).filter(k => !k.startsWith('_')).length <= 3) {
+        return MetricDisplay;
+      }
+
+      // Text block
+      if (props.text && Object.keys(props).filter(k => !k.startsWith('_')).length === 1) {
+        return TextDisplay;
+      }
+
+      // If entity has multiple children, render as table or checklist
+      if (childIds && childIds.length > 0 && entities) {
+        const firstChild = entities[childIds[0]];
+        const cp = firstChild?.props || {};
+        // Check if children are checklist items
+        if (typeof cp.done === 'boolean' || typeof cp.checked === 'boolean' || typeof cp.completed === 'boolean') {
+          return ChecklistDisplay;
+        }
+        // Multiple children with props → table
+        return TableDisplay;
+      }
+
+      return CardDisplay;
+    }
+
+    // ── AideEntity (recursive renderer) ────────────────────
+    function AideEntity({ entityId }) {
+      const { entities } = useContext(EntityContext);
+      const entity = useEntity(entityId);
+      const childIds = useChildren(entityId);
+      const Component = resolveDisplay(entity, childIds, entities);
+
+      if (!entity || entity._removed) return null;
+
+      // For table/checklist displays, don't recursively render children
+      // - the component handles its own child rendering
+      const shouldPassChildren = Component !== TableDisplay && Component !== ChecklistDisplay;
+      const children = (shouldPassChildren && childIds.length > 0)
+        ? childIds.map(id => React.createElement(AideEntity, { key: id, entityId: id }))
+        : null;
+
+      return React.createElement(Component, { entity, entityId }, children);
+    }
+
+    // ── PreviewApp (root) ──────────────────────────────────
+    function PreviewApp() {
+      const meta = useMeta();
+      const rootIds = useRootIds();
+
+      return React.createElement('main', { className: 'aide-page' },
+        meta.title && React.createElement('h1', { className: 'aide-heading aide-heading--1' }, meta.title),
+        rootIds.length > 0
+          ? rootIds.map(id => React.createElement(AideEntity, { key: id, entityId: id }))
+          : React.createElement('p', { className: 'aide-empty' }, 'Send a message to get started.')
+      );
+    }
+  `;
+
+  function buildPreviewHtml() {
+    const css = document.getElementById('renderer-css-template').textContent;
+
+    // Serialize entity store for React
+    const entitiesJson = JSON.stringify(entityStore.entities);
+    const metaJson = JSON.stringify(entityStore.meta);
+    const rootIdsJson = JSON.stringify(entityStore.rootIds);
 
     return `<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"><` + `/script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"><` + `/script>
 <style>${css}</style>
 </head><body>
-${entities || '<div class="empty">Send a message to get started.</div>'}
-<script>${iframeScript}<\/script>
+<div id="root"></div>
+<script>
+const INITIAL_ENTITIES = ${entitiesJson};
+const INITIAL_META = ${metaJson};
+const INITIAL_ROOT_IDS = ${rootIdsJson};
+
+${REACT_COMPONENTS_TEMPLATE}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(
+  React.createElement(EntityContext.Provider, {
+    value: { entities: INITIAL_ENTITIES, meta: INITIAL_META, rootIds: INITIAL_ROOT_IDS }
+  },
+    React.createElement(PreviewApp)
+  )
+);
+<` + `/script>
 </body></html>`;
   }
 
@@ -1173,19 +2010,23 @@ ${entities || '<div class="empty">Send a message to get started.</div>'}
       aideWs.close();
       aideWs = null;
     }
-    if (aideWs && aideWs.readyState === WebSocket.OPEN) return;
+    if (aideWs && aideWs.readyState === WebSocket.OPEN) {
+      return Promise.resolve();
+    }
 
     const wsId = aideId || 'new';
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const url = `${proto}//${location.host}/ws/aide/${wsId}`;
 
-    try {
-      aideWs = new WebSocket(url);
-      wsConnectedAideId = wsId;
+    return new Promise((resolve, reject) => {
+      try {
+        aideWs = new WebSocket(url);
+        wsConnectedAideId = wsId;
 
-      aideWs.onopen = () => {
-        console.log('[WS] connected:', url);
-      };
+        aideWs.onopen = () => {
+          console.log('[WS] connected:', url);
+          resolve();
+        };
 
       aideWs.onmessage = (event) => {
         let msg;
@@ -1194,12 +2035,21 @@ ${entities || '<div class="empty">Send a message to get started.</div>'}
         if (msg.type === 'stream.start') {
           // Reset entity store for new message
           entityStore.reset();
+          pendingVoiceResponse = ''; // Reset voice accumulator for new stream
         } else if (msg.type === 'entity.create' || msg.type === 'entity.update' || msg.type === 'entity.remove') {
           entityStore.applyDelta(msg);
           refreshEntityPreview();
+        } else if (msg.type === 'meta.update') {
+          // Update page metadata (title, etc.)
+          if (msg.data) {
+            entityStore.meta = msg.data;
+            refreshEntityPreview();
+          }
         } else if (msg.type === 'voice') {
           // Show voice text as assistant message in history
           if (msg.text) {
+            // Track for persistence (use last voice message as the response)
+            pendingVoiceResponse = msg.text;
             // Only add if not already the last assistant message
             const last = conversationHistory[conversationHistory.length - 1];
             if (!last || last.role !== 'assistant' || last.content !== msg.text) {
@@ -1224,6 +2074,28 @@ ${entities || '<div class="empty">Send a message to get started.</div>'}
         } else if (msg.type === 'stream.end') {
           setSendingState(false);
           isSending = false;
+          pendingPreviewUrl = null;
+
+          // Persist streamed state to database and R2 (no LLM call)
+          if (currentAideId && Object.keys(entityStore.entities).length > 0) {
+            fetch(`/api/aides/${currentAideId}/state`, {
+              method: 'POST',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                entities: entityStore.entities,
+                meta: entityStore.meta,
+                message: pendingUserMessage,
+                response: pendingVoiceResponse,
+              }),
+            })
+            .then(() => {
+              // Clear pending conversation after successful save
+              pendingUserMessage = null;
+              pendingVoiceResponse = '';
+            })
+            .catch(err => console.error('Failed to persist state:', err));
+          }
         } else if (msg.type === 'stream.error') {
           const errMsg = msg.error || 'Stream error.';
           conversationHistory.push({ role: 'assistant', content: errMsg });
@@ -1235,6 +2107,7 @@ ${entities || '<div class="empty">Send a message to get started.</div>'}
 
       aideWs.onerror = (err) => {
         console.warn('[WS] error, will fall back to HTTP:', err);
+        reject(err);
       };
 
       aideWs.onclose = () => {
@@ -1246,7 +2119,9 @@ ${entities || '<div class="empty">Send a message to get started.</div>'}
     } catch (err) {
       console.warn('[WS] could not connect:', err);
       aideWs = null;
+      reject(err);
     }
+    });
   }
 
   function sendViaWebSocket(content, messageId) {
@@ -1289,6 +2164,7 @@ ${entities || '<div class="empty">Send a message to get started.</div>'}
         currentUser = await res.json();
         // Check if there's an aide ID in the URL
         const aideId = new URLSearchParams(location.search).get('aide');
+        console.log('[URL Debug] Page load - URL aide param:', aideId, 'Full URL:', location.href);
         if (aideId) {
           openEditor(aideId);
         } else {
@@ -1411,6 +2287,7 @@ ${entities || '<div class="empty">Send a message to get started.</div>'}
 
   // ── Editor ─────────────────────────────────────────
   async function openEditor(aideId) {
+    console.log('[URL Debug] openEditor called with aideId:', aideId);
     currentAideId = aideId;
     conversationHistory = [];
     pendingImage = null;
@@ -1426,6 +2303,12 @@ ${entities || '<div class="empty">Send a message to get started.</div>'}
       history.replaceState({}, '', `?aide=${aideId}`);
 
       // Existing AIde - load preview and conversation history
+      // TODO: Race condition - if user refreshes before R2 upload completes,
+      // the preview may not exist yet. Options:
+      // 1. Show loading state while preview loads
+      // 2. Fall back to rendering from aide.state if R2 404s
+      // 3. Poll/retry until preview is available
+      // 4. Use React preview from aide.state instead of R2 HTML
       frame.removeAttribute('srcdoc');
       frame.src = `/api/aides/${aideId}/preview`;
 
@@ -1505,33 +2388,38 @@ ${entities || '<div class="empty">Send a message to get started.</div>'}
     const messageId = 'msg_' + Math.random().toString(36).slice(2, 10);
     clearImagePreview();
 
+    // If new aide, create it first to get aide_id immediately
+    if (!currentAideId) {
+      try {
+        const createRes = await fetch('/api/aides', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: 'Untitled' }),
+        });
+        if (createRes.ok) {
+          const aideData = await createRes.json();
+          currentAideId = aideData.id;
+          history.replaceState({}, '', `?aide=${aideData.id}`);
+          // Reconnect WebSocket with real aide ID and wait for it
+          await connectWebSocket(aideData.id);
+        } else if (createRes.status === 401) {
+          showScreen('auth');
+          return;
+        }
+      } catch (err) {
+        console.error('Failed to create aide:', err);
+      }
+    }
+
     // Try WebSocket first (streaming entity deltas)
     const sentViaWs = !pendingImage && sendViaWebSocket(text, messageId);
 
     if (sentViaWs) {
-      // WS handler will call setSendingState(false) on stream.end
-      // Also call HTTP endpoint in background to persist state
-      const body = {
-        aide_id: currentAideId || undefined,
-        message: text || ' ',
-      };
-      fetch('/api/message', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      }).then(async res => {
-        if (res.status === 401) { showScreen('auth'); return; }
-        if (res.ok) {
-          const data = await res.json();
-          currentAideId = data.aide_id;
-          history.replaceState({}, '', `?aide=${data.aide_id}`);
-          // Reconnect WS with real aide ID if we started without one
-          if (wsConnectedAideId === 'new' && data.aide_id) {
-            connectWebSocket(data.aide_id);
-          }
-        }
-      }).catch(() => {});
+      // Track user message for persistence at stream.end
+      pendingUserMessage = text;
+      // WebSocket handles streaming. State persistence happens at stream.end
+      // via POST /api/aides/{id}/state (no duplicate LLM call)
       return;
     }
 
@@ -1587,9 +2475,16 @@ ${entities || '<div class="empty">Send a message to get started.</div>'}
     // Preview URL is now a backend proxy endpoint that handles auth
     const frame = document.getElementById('preview-frame');
     if (pageUrl) {
-      // Clear srcdoc first - it takes precedence over src
-      frame.removeAttribute('srcdoc');
-      frame.src = pageUrl;
+      // Fetch the HTML first, then swap srcdoc seamlessly (no blank flash)
+      try {
+        const res = await fetch(pageUrl, { credentials: 'include' });
+        if (res.ok) {
+          const html = await res.text();
+          frame.srcdoc = html;
+        }
+      } catch (e) {
+        console.warn('Preview fetch failed:', e);
+      }
     }
   }
 
