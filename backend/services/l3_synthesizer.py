@@ -159,7 +159,7 @@ class L3Synthesizer:
                         "id": obj.get("id", ""),
                         "name": props.get("title", props.get("name", obj.get("id", ""))),
                         "schema": {},  # Will be inferred from entities
-                    }
+                    },
                 }
 
             # Use parent as collection if collection not provided (v2 format)
