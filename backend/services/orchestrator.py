@@ -1,5 +1,7 @@
 """Main orchestrator — coordinates L2/L3, reducer, renderer, and persistence."""
 
+from __future__ import annotations
+
 import time
 import uuid
 from datetime import UTC, datetime
