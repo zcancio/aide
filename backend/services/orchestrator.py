@@ -18,7 +18,8 @@ from backend.services.grid_resolver import resolve_primitives
 from backend.services.l2_compiler import l2_compiler
 from backend.services.l3_synthesizer import l3_synthesizer
 from backend.services.r2 import r2_service
-from engine.kernel.reducer_v2 import empty_snapshot as empty_v2_snapshot, reduce
+from engine.kernel.reducer_v2 import empty_snapshot as empty_v2_snapshot
+from engine.kernel.reducer_v2 import reduce
 from engine.kernel.renderer import render
 from engine.kernel.types import Blueprint, Event, ReduceResult, Snapshot
 
@@ -591,62 +592,78 @@ class Orchestrator:
 
             if ptype == "collection.create":
                 # v2 doesn't have collections, convert to entity.create with section display
-                v2_events.append({
-                    "t": "entity.create",
-                    "id": payload.get("id", ""),
-                    "parent": "root",
-                    "display": "section",
-                    "p": {"title": payload.get("name", "")},
-                })
+                v2_events.append(
+                    {
+                        "t": "entity.create",
+                        "id": payload.get("id", ""),
+                        "parent": "root",
+                        "display": "section",
+                        "p": {"title": payload.get("name", "")},
+                    }
+                )
             elif ptype == "entity.create":
                 # Convert to v2 format
                 collection = payload.get("collection", "")
                 entity_id = payload.get("id", "")
                 fields = payload.get("fields", {})
                 display = payload.get("display", "card")
-                v2_events.append({
-                    "t": "entity.create",
-                    "id": entity_id,
-                    "parent": collection or "root",
-                    "display": display,
-                    "p": fields,
-                })
+                v2_events.append(
+                    {
+                        "t": "entity.create",
+                        "id": entity_id,
+                        "parent": collection or "root",
+                        "display": display,
+                        "p": fields,
+                    }
+                )
             elif ptype == "entity.update":
-                v2_events.append({
-                    "t": "entity.update",
-                    "ref": payload.get("ref", payload.get("id", "")),
-                    "p": payload.get("fields", {}),
-                })
+                v2_events.append(
+                    {
+                        "t": "entity.update",
+                        "ref": payload.get("ref", payload.get("id", "")),
+                        "p": payload.get("fields", {}),
+                    }
+                )
             elif ptype == "entity.delete":
-                v2_events.append({
-                    "t": "entity.remove",
-                    "id": payload.get("ref", payload.get("id", "")),
-                })
+                v2_events.append(
+                    {
+                        "t": "entity.remove",
+                        "id": payload.get("ref", payload.get("id", "")),
+                    }
+                )
             elif ptype == "meta.update":
-                v2_events.append({
-                    "t": "meta.update",
-                    **{k: v for k, v in payload.items()},
-                })
+                v2_events.append(
+                    {
+                        "t": "meta.update",
+                        **{k: v for k, v in payload.items()},
+                    }
+                )
             elif ptype == "field.add":
-                v2_events.append({
-                    "t": "field.add",
-                    "collection": payload.get("collection", ""),
-                    "field": payload.get("name", ""),
-                    "type": payload.get("type", "string"),
-                })
+                v2_events.append(
+                    {
+                        "t": "field.add",
+                        "collection": payload.get("collection", ""),
+                        "field": payload.get("name", ""),
+                        "type": payload.get("type", "string"),
+                    }
+                )
             elif ptype == "grid.create":
-                v2_events.append({
-                    "t": "grid.create",
-                    "collection": payload.get("collection", ""),
-                    "rows": payload.get("rows", 10),
-                    "cols": payload.get("cols", 10),
-                })
+                v2_events.append(
+                    {
+                        "t": "grid.create",
+                        "collection": payload.get("collection", ""),
+                        "rows": payload.get("rows", 10),
+                        "cols": payload.get("cols", 10),
+                    }
+                )
             else:
                 # Generic fallback
-                v2_events.append({
-                    "t": ptype,
-                    **payload,
-                })
+                v2_events.append(
+                    {
+                        "t": ptype,
+                        **payload,
+                    }
+                )
         return v2_events
 
     async def replay_turn(
