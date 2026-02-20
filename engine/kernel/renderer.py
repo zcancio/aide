@@ -73,7 +73,7 @@ def render(
     parts.append('  <meta name="viewport" content="width=device-width, initial-scale=1">')
 
     # Title
-    title = escape(snapshot.get("meta", {}).get("title", "AIde"))
+    title = escape(snapshot.get("meta", {}).get("title") or "AIde")
     parts.append(f"  <title>{title}</title>")
 
     # OG tags
