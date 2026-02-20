@@ -101,6 +101,7 @@ async def _save_snapshot(user_id: UUID | None, aide_id: str, snapshot: dict[str,
     except Exception as e:
         logger.warning("ws: failed to save snapshot for aide_id=%s: %s", aide_id, e)
 
+
 router = APIRouter(tags=["websocket"])
 
 # Types that the client cares about as entity mutations
