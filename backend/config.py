@@ -51,6 +51,9 @@ class Settings:
     # LLM routing — set USE_MOCK_LLM=true to use MockLLM (tests, UX simulation)
     USE_MOCK_LLM: bool = os.environ.get("USE_MOCK_LLM", "").lower() == "true"
 
+    # Testing mode — set TESTING=true to use mock services
+    TESTING: bool = os.environ.get("TESTING", "").lower() == "true"
+
     @property
     def EDITOR_URL(self) -> str:
         url = os.environ.get("EDITOR_URL")

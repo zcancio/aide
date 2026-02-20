@@ -313,7 +313,8 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
             batch_buffer: list[dict[str, Any]] = []
 
             # Determine if we should use real LLM or mock
-            use_real_llm = settings.ANTHROPIC_API_KEY and not settings.USE_MOCK_LLM
+            # Use mock LLM in tests (TESTING=true) or when USE_MOCK_LLM=true
+            use_real_llm = settings.ANTHROPIC_API_KEY and not settings.USE_MOCK_LLM and not settings.TESTING
 
             try:
                 if use_real_llm:
