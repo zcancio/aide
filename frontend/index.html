@@ -174,12 +174,14 @@
 
     #editor.active { display: block; }
 
-    /* Full-viewport preview iframe */
-    #preview-frame {
+    /* Full-viewport inline preview */
+    #preview-root {
       width: 100%;
       height: 100%;
-      border: none;
+      overflow-y: auto;
       background: #fff;
+      /* Isolate aide-generated styles */
+      position: relative;
     }
 
     /* Floating chat overlay */
@@ -1137,7 +1139,8 @@ dd {
 <button id="publish-btn-floating">Publish</button>
 
 <div id="editor">
-  <iframe id="preview-frame" sandbox="allow-scripts allow-same-origin"></iframe>
+  <!-- Inline preview div - replaces iframe for real-time React rendering -->
+  <div id="preview-root"></div>
 
   <div id="chat-overlay">
     <div id="history-panel"></div>
@@ -1613,12 +1616,8 @@ dd {
       const [draft, setDraft] = useState(value ?? '');
 
       const emitUpdate = (newValue) => {
-        window.parent.postMessage({
-          type: 'direct_edit',
-          entity_id: entityId,
-          field: field,
-          value: newValue
-        }, '*');
+        // Send direct edit via WebSocket (no postMessage needed with inline preview)
+        sendDirectEdit(entityId, field, newValue);
       };
 
       // Booleans toggle immediately
@@ -1993,10 +1992,35 @@ root.render(
   }
 
   function refreshEntityPreview() {
-    const frame = document.getElementById('preview-frame');
-    // Only use entity preview when we have live entity data from WebSocket
-    if (entityStore.rootIds.length > 0) {
-      frame.srcdoc = buildPreviewHtml();
+    const root = document.getElementById('preview-root');
+    if (!root) return;
+
+    // Save scroll position for restoration
+    const scrollY = root.scrollTop;
+
+    // Only render when we have live entity data from WebSocket
+    if (entityStore.rootIds.length > 0 || Object.keys(entityStore.meta).length > 0) {
+      // Create React root and render preview app
+      const previewRoot = ReactDOM.createRoot(root);
+      previewRoot.render(
+        React.createElement(EntityContext.Provider, {
+          value: {
+            entities: entityStore.entities,
+            meta: entityStore.meta,
+            rootIds: entityStore.rootIds
+          }
+        },
+          React.createElement(PreviewApp)
+        )
+      );
+
+      // Restore scroll position after render
+      requestAnimationFrame(() => {
+        root.scrollTop = scrollY;
+      });
+    } else {
+      // Empty state
+      root.innerHTML = '<p class="aide-empty">Send a message to get started.</p>';
     }
   }
 
@@ -2153,14 +2177,7 @@ root.render(
     aideWs.send(JSON.stringify({ type: 'direct_edit', entity_id: entityId, field, value }));
   }
 
-  // Listen for postMessage from the preview iframe (direct edits + checkbox toggles)
-  window.addEventListener('message', (event) => {
-    if (!event.data || typeof event.data !== 'object') return;
-    if (event.data.type === 'direct_edit') {
-      const { entity_id, field, value } = event.data;
-      sendDirectEdit(entity_id, field, value);
-    }
-  });
+  // postMessage listener removed - inline preview calls sendDirectEdit() directly
 
   // ── Screens ────────────────────────────────────────
   function showScreen(name) {
@@ -2311,15 +2328,9 @@ root.render(
     clearImagePreview();
     document.getElementById('message-input').value = '';
 
-    const frame = document.getElementById('preview-frame');
-
     if (aideId) {
       // Update URL to include aide ID (for refresh persistence)
       history.replaceState({}, '', `?aide=${aideId}`);
-
-      // Existing AIde - load preview and conversation history
-      frame.removeAttribute('srcdoc');
-      frame.src = `/api/aides/${aideId}/preview`;
 
       // Load conversation history
       try {
@@ -2333,8 +2344,8 @@ root.render(
         console.error('Failed to load conversation history:', e);
       }
     } else {
-      // New AIde - show placeholder
-      frame.srcdoc = '<html><body style="background:#f9f9f9;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#aaa;font-size:14px;">Send a message to get started.</body></html>';
+      // New AIde - entityStore will be empty, refreshEntityPreview() shows placeholder
+      entityStore.reset();
     }
 
     showScreen('editor');
@@ -2467,8 +2478,8 @@ root.render(
         renderHistory();
       }
 
-      // Refresh preview: use page_url if accessible, otherwise fetch HTML
-      refreshPreview(data.page_url);
+      // Preview will be refreshed by WebSocket delta events (entity.create/update/remove)
+      // No need to manually refresh here - the WebSocket already handles it
 
     } catch (e) {
       conversationHistory.push({ role: 'assistant', content: 'Network error.' });
@@ -2479,23 +2490,7 @@ root.render(
     }
   }
 
-  async function refreshPreview(pageUrl) {
-    // Load the preview URL in the iframe
-    // Preview URL is now a backend proxy endpoint that handles auth
-    const frame = document.getElementById('preview-frame');
-    if (pageUrl) {
-      // Fetch the HTML first, then swap srcdoc seamlessly (no blank flash)
-      try {
-        const res = await fetch(pageUrl, { credentials: 'include' });
-        if (res.ok) {
-          const html = await res.text();
-          frame.srcdoc = html;
-        }
-      } catch (e) {
-        console.warn('Preview fetch failed:', e);
-      }
-    }
-  }
+  // refreshPreview() removed - WebSocket delta events handle all preview updates
 
   let thinkingInterval = null;
   const thinkingStates = ['Thinking', 'Processing', 'Generating'];
