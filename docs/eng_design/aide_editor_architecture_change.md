@@ -295,12 +295,13 @@ When the user refreshes the page, returns to an aide from the dashboard, or open
 ### Endpoint
 
 ```
-GET /api/aide/{aide_id}
+GET /api/aides/{aide_id}/hydrate
 → {
     snapshot: AideState,       // current state (already reduced, ready to render)
     events: Event[],           // full event log (for audit trail + published embed)
     blueprint: Blueprint,      // identity, voice, prompt
     messages: Message[],       // conversation history
+    snapshot_hash: string,     // checksum for reconciliation
   }
 ```
 
@@ -308,8 +309,8 @@ GET /api/aide/{aide_id}
 
 ```javascript
 async function loadAide(aideId) {
-  const res = await fetch(`/api/aide/${aideId}`)
-  const { snapshot, events, blueprint, messages } = await res.json()
+  const res = await fetch(`/api/aides/${aideId}/hydrate`)
+  const { snapshot, events, blueprint, messages, snapshot_hash } = await res.json()
 
   setEntityState(snapshot)       // NOT replayed — snapshot is already current
   setEvents(events)
@@ -332,8 +333,8 @@ async function loadAide(aideId) {
 
 ```
 Cold load:
-  t=0ms     GET /api/aide/{id}
-  t=200ms   JSON response arrives (snapshot + events + blueprint + messages)
+  t=0ms     GET /api/aides/{id}/hydrate
+  t=200ms   JSON response arrives (snapshot + events + blueprint + messages + snapshot_hash)
   t=205ms   render(snapshot, blueprint, events) → HTML string
   t=210ms   DOM update. Preview visible. Chat history populated.
   t=210ms   Ready for input.

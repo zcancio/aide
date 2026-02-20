@@ -22,6 +22,7 @@ from backend.models.user import User
 from backend.repos.aide_repo import AideRepo
 from backend.repos.conversation_repo import ConversationRepo
 from backend.services.r2 import r2_service
+from backend.utils.snapshot_hash import hash_snapshot
 
 router = APIRouter(prefix="/api/aides", tags=["aides"])
 aide_repo = AideRepo()
@@ -75,8 +76,6 @@ async def hydrate_aide(
     No replay is needed - the snapshot is the current state, persisted
     after each turn by the server.
     """
-    from backend.utils.snapshot_hash import hash_snapshot
-
     # Verify user owns this aide
     aide = await aide_repo.get(user.id, aide_id)
     if not aide:
