@@ -378,8 +378,9 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
                         # Log the error and send error message to client
                         logger.error("ws: real LLM failed: %s", e)
                         try:
+                            error_msg = "Anthropic API is temporarily unavailable. Please try again."
                             await websocket.send_text(
-                                json.dumps({"type": "stream.error", "error": "Anthropic API is temporarily unavailable. Please try again."})
+                                json.dumps({"type": "stream.error", "error": error_msg})
                             )
                         except RuntimeError:
                             pass

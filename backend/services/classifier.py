@@ -12,6 +12,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Literal
 
+from backend.config import settings
+
 Tier = Literal["L2", "L3", "L4"]
 
 
@@ -24,8 +26,6 @@ class ClassificationResult:
 
 
 # Model mapping - uses settings for configurable models
-from backend.config import settings
-
 TIER_MODELS = {
     "L2": settings.L2_MODEL,
     "L3": settings.L3_MODEL,
