@@ -393,4 +393,3 @@ class TestPublishedPageServing:
             res = await async_client.get("/s/deterministic-page")
 
         assert res.headers["ETag"] == expected_etag
-
