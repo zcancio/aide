@@ -4,6 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AIde</title>
+  <!-- Fonts for renderer display components -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1100,6 +1104,9 @@ dd {
   word-break: break-word;
 }
   </script>
+  <!-- React for inline preview rendering -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 </head>
 <body>
 
@@ -1247,749 +1254,437 @@ dd {
     },
   };
 
-  // ── Display utilities ───────────────────────────────
-  function escapeAttr(s) {
-    return String(s ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // ── React Display Components (inline preview) ─────────────────────────────
+  // Matches docs/eng_design/04_display_components.md
+  const { useState, useContext, createContext, useMemo } = React;
+
+  // ── Entity Context ────────────────────────────────────
+  const EntityContext = createContext({ entities: {}, meta: {}, rootIds: [] });
+
+  function useEntity(id) {
+    const { entities } = useContext(EntityContext);
+    return entities[id] || null;
   }
 
-  function formatLabel(key) {
-    return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  function useChildren(parentId) {
+    const { entities } = useContext(EntityContext);
+    return Object.entries(entities)
+      .filter(([, e]) => e.parent === parentId)
+      .map(([id]) => id);
   }
 
-  // EditableField — renders as a span click-to-edit; edits posted via postMessage to parent
-  function editableField(value, entityId, field, opts) {
-    const cls = opts && opts.className ? ` ${opts.className}` : '';
-    const display = String(value ?? '—');
-    return `<span class="editable-value${cls}" data-entity-id="${escapeAttr(entityId)}" data-field="${escapeAttr(field)}" onclick="window.__startEdit(this)">${escapeHtml(display)}</span>`;
+  function useMeta() {
+    const { meta } = useContext(EntityContext);
+    return meta;
   }
 
-  // Helper: get props from entity (v2 format nests props under entity.props)
-  function getProps(entity) {
-    return entity.props || {};
+  function useRootIds() {
+    const { rootIds } = useContext(EntityContext);
+    return rootIds;
   }
 
-  // ── Display Renderers ────────────────────────────────
-
-  function renderPageDisplay(id) {
-    const entity = entityStore.entities[id];
-    if (!entity) return '';
-    const p = getProps(entity);
-    const title = p.title || p.name || 'Untitled';
-    const children = entityStore.getChildren(id).map(renderEntity).join('');
-    return `<div class="aide-page">
-      <div class="page-title">${editableField(title, id, p.title !== undefined ? 'title' : 'name', { className: 'page-title' })}</div>
-      <div class="page-content">${children}</div>
-    </div>`;
+  // ── Helpers ────────────────────────────────────────────
+  function humanize(str) {
+    if (!str) return '';
+    return str.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   }
 
-  function renderCardDisplay(id) {
-    const entity = entityStore.entities[id];
-    if (!entity) return '';
-    const p = getProps(entity);
-    const skipKeys = new Set(['_pos', '_schema', '_shape']);
-    const name = p.name || p.title || '';
-    const fields = Object.entries(p)
-      .filter(([k]) => !k.startsWith('_') && !skipKeys.has(k) && k !== 'name' && k !== 'title')
-      .map(([k, v]) => `<div class="card-field">
-        <span class="field-label">${escapeHtml(formatLabel(k))}</span>
-        ${editableField(v, id, k)}
-      </div>`)
-      .join('');
-    const children = entityStore.getChildren(id).map(renderEntity).join('');
-    return `<div class="aide-card">
-      ${name ? `<div class="card-title">${editableField(name, id, p.title !== undefined ? 'title' : 'name')}</div>` : ''}
-      ${fields}
-      ${children}
-    </div>`;
+  function getDisplayableProps(props) {
+    if (!props) return {};
+    const skip = new Set(['title', 'name', '_removed', '_styles', '_pos', '_schema', '_shape']);
+    return Object.fromEntries(
+      Object.entries(props).filter(([k]) => !k.startsWith('_') && !skip.has(k))
+    );
   }
 
-  function renderSectionDisplay(id) {
-    const entity = entityStore.entities[id];
-    if (!entity) return '';
-    const p = getProps(entity);
-    const title = p.title || p.name || 'Section';
-    const uid = `sec_${id.replace(/[^a-z0-9]/gi, '_')}`;
-    const children = entityStore.getChildren(id).map(renderEntity).join('');
-    return `<div class="aide-section" id="${escapeAttr(uid)}">
-      <div class="section-header" onclick="window.__toggleSection('${escapeAttr(uid)}')">
-        <span class="collapse-icon" id="${escapeAttr(uid)}_icon">▾</span>
-        <span class="section-title">${editableField(title, id, p.title !== undefined ? 'title' : 'name')}</span>
-      </div>
-      <div class="section-content" id="${escapeAttr(uid)}_content">${children}</div>
-    </div>`;
+  function inferType(value) {
+    if (typeof value === 'boolean') return 'boolean';
+    if (typeof value === 'number') return 'number';
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) return 'date';
+    return 'string';
   }
 
-  function renderTableDisplay(id) {
-    const entity = entityStore.entities[id];
-    if (!entity) return '';
-    const children = entityStore.getChildren(id);
-    if (children.length === 0) {
-      return renderCardDisplay(id);
+  function formatValue(value, type) {
+    if (value === null || value === undefined) return '—';
+    if (type === 'boolean') return value ? '✓' : '○';
+    if (type === 'date' && typeof value === 'string') {
+      try {
+        const d = new Date(value);
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      } catch { return value; }
     }
-    // Infer columns from child props
-    const skipKeys = new Set(['_pos', '_schema', '_shape']);
-    const colSet = new Set();
-    children.forEach(cid => {
-      const child = entityStore.entities[cid];
-      const cp = child ? getProps(child) : {};
-      Object.keys(cp).filter(k => !k.startsWith('_') && !skipKeys.has(k)).forEach(k => colSet.add(k));
+    return String(value);
+  }
+
+  function deriveColumns(children, entities) {
+    const cols = new Set();
+    const skip = new Set(['_pos', '_schema', '_shape']);
+    children.forEach(id => {
+      const entity = entities[id];
+      const props = entity?.props || {};
+      Object.keys(props).filter(k => !k.startsWith('_') && !skip.has(k)).forEach(k => cols.add(k));
     });
-    const cols = Array.from(colSet);
-    const thead = `<tr>${cols.map(c => `<th>${escapeHtml(formatLabel(c))}</th>`).join('')}</tr>`;
-    const tbody = children.map(cid => {
-      const child = entityStore.entities[cid];
-      if (!child) return '';
-      const cp = getProps(child);
-      return `<tr>${cols.map(c => `<td>${editableField(cp[c], cid, c)}</td>`).join('')}</tr>`;
-    }).join('');
-    return `<div class="aide-table-wrap">
-      <table class="aide-table">
-        <thead>${thead}</thead>
-        <tbody>${tbody}</tbody>
-      </table>
-    </div>`;
+    return Array.from(cols);
   }
 
-  function renderChecklistDisplay(id) {
-    const entity = entityStore.entities[id];
-    if (!entity) return '';
-    const children = entityStore.getChildren(id);
-    if (children.length === 0) return renderCardDisplay(id);
-    const items = children.map(cid => {
-      const child = entityStore.entities[cid];
-      if (!child) return '';
-      const cp = getProps(child);
-      const done = cp.done === true || cp.done === 'true' || cp.completed === true;
-      const label = cp.task || cp.label || cp.name || cid;
-      const labelField = cp.task !== undefined ? 'task' : (cp.label !== undefined ? 'label' : 'name');
-      return `<div class="checklist-item${done ? ' done' : ''}">
-        <input type="checkbox"${done ? ' checked' : ''} data-entity-id="${escapeAttr(cid)}" data-field="done" onchange="window.__toggleCheck(this)">
-        <span class="item-label">${editableField(label, cid, labelField)}</span>
-      </div>`;
-    }).join('');
-    return `<div class="aide-checklist">${items}</div>`;
+  function applyStyles(styles) {
+    if (!styles) return {};
+    const css = {};
+    if (styles.bg_color) css.backgroundColor = styles.bg_color;
+    if (styles.text_color) css.color = styles.text_color;
+    return css;
   }
 
-  function renderMetricDisplay(id) {
-    const entity = entityStore.entities[id];
-    if (!entity) return '';
-    const p = getProps(entity);
-    const value = p.value ?? p.count ?? p.total ?? '';
-    const label = p.label || p.name || '';
-    return `<div class="aide-metric">
-      <div class="metric-value">${escapeHtml(String(value))}</div>
-      ${label ? `<div class="metric-label">${escapeHtml(label)}</div>` : ''}
-    </div>`;
-  }
+  // ── EditableField ──────────────────────────────────────
+  function EditableField({ entityId, field, value, type = 'string', className = '' }) {
+    const [editing, setEditing] = useState(false);
+    const [draft, setDraft] = useState(value ?? '');
 
-  function renderTextDisplay(id) {
-    const entity = entityStore.entities[id];
-    if (!entity) return '';
-    const p = getProps(entity);
-    const text = p.text || p.content || p.body || '';
-    const field = p.text !== undefined ? 'text' : (p.content !== undefined ? 'content' : 'body');
-    return `<div class="aide-text">${editableField(text, id, field)}</div>`;
-  }
-
-  function renderListDisplay(id) {
-    const entity = entityStore.entities[id];
-    if (!entity) return '';
-    const p = getProps(entity);
-    const ordered = p.ordered === true;
-    const children = entityStore.getChildren(id);
-    const Tag = ordered ? 'ol' : 'ul';
-    let items;
-    if (children.length > 0) {
-      items = children.map(cid => {
-        const child = entityStore.entities[cid];
-        const cp = child ? getProps(child) : {};
-        const text = cp.text || cp.label || cp.name || cid;
-        return `<li>${editableField(text, cid, 'text')}</li>`;
-      }).join('');
-    } else {
-      const itemsArr = p.items || [];
-      items = itemsArr.map(item => `<li>${escapeHtml(String(item))}</li>`).join('');
-    }
-    return `<${Tag} class="aide-list">${items}</${Tag}>`;
-  }
-
-  function renderImageDisplay(id) {
-    const entity = entityStore.entities[id];
-    if (!entity) return '';
-    const p = getProps(entity);
-    const src = p.src || p.url || '';
-    const caption = p.caption || '';
-    return `<figure class="aide-image">
-      ${src ? `<img src="${escapeAttr(src)}" alt="${escapeAttr(caption)}">` : ''}
-      ${caption ? `<figcaption>${escapeHtml(caption)}</figcaption>` : ''}
-    </figure>`;
-  }
-
-  function renderGridDisplay(id) {
-    const entity = entityStore.entities[id];
-    if (!entity) return '';
-    const p = getProps(entity);
-    const cols = p.cols || (p._shape && p._shape[1]) || 10;
-    const children = entityStore.getChildren(id);
-    const cells = children.length > 0
-      ? children.map(cid => {
-          const child = entityStore.entities[cid];
-          const cp = child ? getProps(child) : {};
-          const label = cp.label || cp.name || cp.claim || cid;
-          const claimed = cp.claim || cp.claimed || cp.owner;
-          return `<div class="grid-cell${claimed ? ' claimed' : ''}">${escapeHtml(String(label))}</div>`;
-        }).join('')
-      : '';
-    return `<div class="aide-grid-display" style="grid-template-columns:repeat(${parseInt(cols, 10) || 10},1fr)">${cells}</div>`;
-  }
-
-  // ── FallbackDisplay ─────────────────────────────────
-  function renderFallbackEntity(id, depth) {
-    const entity = entityStore.entities[id];
-    if (!entity) return '';
-    const display = entity.display || 'entity';
-    const props = Object.entries(entity)
-      .filter(([k]) => !k.startsWith('_') && k !== 'parent' && k !== 'display')
-      .map(([k, v]) => `<dt>${escapeHtml(k)}</dt><dd>${escapeHtml(typeof v === 'object' ? JSON.stringify(v) : String(v))}</dd>`)
-      .join('');
-    const children = entityStore.getChildren(id)
-      .map(cid => renderFallbackEntity(cid, depth + 1))
-      .join('');
-    const indent = depth * 16;
-    return `<div class="fb-entity" style="margin-left:${indent}px">
-      <div class="fb-header"><span class="fb-id">${escapeHtml(id)}</span><span class="fb-display">[${escapeHtml(display)}]</span></div>
-      ${props ? `<dl class="fb-props">${props}</dl>` : ''}
-      ${children}
-    </div>`;
-  }
-
-  // ── Display resolution ───────────────────────────────
-  function resolveDisplay(entity) {
-    const hint = (entity.display || '').toLowerCase();
-    const id = entity._id || '';
-    const props = getProps(entity);
-
-    // Check hint first
-    if (hint === 'page') return 'page';
-    if (hint === 'card') return 'card';
-    if (hint === 'table') return 'table';
-    if (hint === 'checklist') return 'checklist';
-    if (hint === 'section') return 'section';
-    if (hint === 'metric') return 'metric';
-    if (hint === 'text') return 'text';
-    if (hint === 'list') return 'list';
-    if (hint === 'image') return 'image';
-    if (hint === 'grid') return 'grid';
-
-    // Heuristics when no hint provided
-    // Grid cell (has row/col)
-    if (props.row !== undefined && props.col !== undefined) return 'card';
-
-    // Checklist-like (has done/checked/completed boolean)
-    if (typeof props.done === 'boolean' || typeof props.checked === 'boolean' || typeof props.completed === 'boolean') {
-      return 'card';
-    }
-
-    // Metric (has value/count/total with few fields)
-    if (props.value !== undefined || props.count !== undefined || props.total !== undefined) {
-      if (Object.keys(props).filter(k => !k.startsWith('_')).length <= 3) {
-        return 'metric';
-      }
-    }
-
-    // Image
-    if (props.src || props.url) return 'image';
-
-    // Text block (only text field)
-    if (props.text && Object.keys(props).filter(k => !k.startsWith('_')).length === 1) {
-      return 'text';
-    }
-
-    // Default to card (clean display for most entities)
-    return 'card';
-  }
-
-  function renderEntity(id) {
-    const entity = entityStore.entities[id];
-    if (!entity) return '';
-    const displayType = resolveDisplay(entity);
-    switch (displayType) {
-      case 'page':      return renderPageDisplay(id);
-      case 'card':      return renderCardDisplay(id);
-      case 'table':     return renderTableDisplay(id);
-      case 'checklist': return renderChecklistDisplay(id);
-      case 'section':   return renderSectionDisplay(id);
-      case 'metric':    return renderMetricDisplay(id);
-      case 'text':      return renderTextDisplay(id);
-      case 'list':      return renderListDisplay(id);
-      case 'image':     return renderImageDisplay(id);
-      case 'grid':      return renderGridDisplay(id);
-      default:          return renderFallbackEntity(id, 0);
-    }
-  }
-
-  // ── Preview HTML builder (React-based) ─────────────────────────────
-  // React display components template - matches docs/eng_design/04_display_components.md
-  const REACT_COMPONENTS_TEMPLATE = `
-    const { useState, useContext, createContext, useMemo } = React;
-
-    // ── Entity Context ────────────────────────────────────
-    const EntityContext = createContext({ entities: {}, meta: {}, rootIds: [] });
-
-    function useEntity(id) {
-      const { entities } = useContext(EntityContext);
-      return entities[id] || null;
-    }
-
-    function useChildren(parentId) {
-      const { entities } = useContext(EntityContext);
-      return Object.entries(entities)
-        .filter(([, e]) => e.parent === parentId)
-        .map(([id]) => id);
-    }
-
-    function useMeta() {
-      const { meta } = useContext(EntityContext);
-      return meta;
-    }
-
-    function useRootIds() {
-      const { rootIds } = useContext(EntityContext);
-      return rootIds;
-    }
-
-    // ── Helpers ────────────────────────────────────────────
-    function humanize(str) {
-      if (!str) return '';
-      return str.replace(/_/g, ' ').replace(/\\b\\w/g, c => c.toUpperCase());
-    }
-
-    function getDisplayableProps(props) {
-      if (!props) return {};
-      const skip = new Set(['title', 'name', '_removed', '_styles', '_pos', '_schema', '_shape']);
-      return Object.fromEntries(
-        Object.entries(props).filter(([k]) => !k.startsWith('_') && !skip.has(k))
-      );
-    }
-
-    function inferType(value) {
-      if (typeof value === 'boolean') return 'boolean';
-      if (typeof value === 'number') return 'number';
-      if (typeof value === 'string' && /^\\d{4}-\\d{2}-\\d{2}/.test(value)) return 'date';
-      return 'string';
-    }
-
-    function formatValue(value, type) {
-      if (value === null || value === undefined) return '—';
-      if (type === 'boolean') return value ? '✓' : '○';
-      if (type === 'date' && typeof value === 'string') {
-        try {
-          const d = new Date(value);
-          return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        } catch { return value; }
-      }
-      return String(value);
-    }
-
-    function deriveColumns(children, entities) {
-      const cols = new Set();
-      const skip = new Set(['_pos', '_schema', '_shape']);
-      children.forEach(id => {
-        const entity = entities[id];
-        const props = entity?.props || {};
-        Object.keys(props).filter(k => !k.startsWith('_') && !skip.has(k)).forEach(k => cols.add(k));
-      });
-      return Array.from(cols);
-    }
-
-    function applyStyles(styles) {
-      if (!styles) return {};
-      const css = {};
-      if (styles.bg_color) css.backgroundColor = styles.bg_color;
-      if (styles.text_color) css.color = styles.text_color;
-      return css;
-    }
-
-    // ── EditableField ──────────────────────────────────────
-    function EditableField({ entityId, field, value, type = 'string', className = '' }) {
-      const [editing, setEditing] = useState(false);
-      const [draft, setDraft] = useState(value ?? '');
-
-      const emitUpdate = (newValue) => {
-        // Send direct edit via WebSocket (no postMessage needed with inline preview)
-        sendDirectEdit(entityId, field, newValue);
-      };
-
-      // Booleans toggle immediately
-      if (type === 'boolean') {
-        return React.createElement('input', {
-          type: 'checkbox',
-          className: 'aide-checklist__checkbox',
-          checked: !!value,
-          onChange: () => emitUpdate(!value)
-        });
-      }
-
-      if (!editing) {
-        const displayValue = formatValue(value, type);
-        const isEmpty = value === null || value === undefined || value === '';
-        return React.createElement('span', {
-          className: 'editable-field ' + (isEmpty ? 'editable-field--empty ' : '') + className,
-          onClick: () => { setDraft(value ?? ''); setEditing(true); }
-        }, displayValue);
-      }
-
-      return React.createElement('input', {
-        type: type === 'number' ? 'number' : type === 'date' ? 'date' : 'text',
-        className: 'editable-input',
-        value: draft,
-        autoFocus: true,
-        onChange: (e) => setDraft(e.target.value),
-        onBlur: () => {
-          setEditing(false);
-          if (draft !== value) {
-            const coerced = type === 'number' ? Number(draft) : draft;
-            emitUpdate(coerced);
-          }
-        },
-        onKeyDown: (e) => {
-          if (e.key === 'Enter') e.target.blur();
-          if (e.key === 'Escape') { setDraft(value ?? ''); setEditing(false); }
-        }
-      });
-    }
-
-    // ── Display Components ─────────────────────────────────
-
-    function PageDisplay({ entity, entityId, children }) {
-      const props = entity?.props || {};
-      const title = props.title || props.name || '';
-      return React.createElement('div', { className: 'aide-page aide-mount-animation' },
-        title && React.createElement('h1', { className: 'aide-heading aide-heading--1' },
-          React.createElement(EditableField, { entityId, field: 'title', value: title })
-        ),
-        children || React.createElement('p', { className: 'aide-empty' }, 'Say something to get started.')
-      );
-    }
-
-    function SectionDisplay({ entity, entityId, children }) {
-      const [collapsed, setCollapsed] = useState(false);
-      const props = entity?.props || {};
-      const title = props.title || props.name || 'Section';
-
-      return React.createElement('div', { className: 'aide-section aide-mount-animation' },
-        React.createElement('div', {
-          className: 'aide-section__header',
-          onClick: () => setCollapsed(!collapsed)
-        },
-          React.createElement('span', {
-            className: 'aide-section__icon' + (collapsed ? ' aide-section__icon--collapsed' : '')
-          }, '▾'),
-          React.createElement('span', { className: 'aide-section__title' },
-            React.createElement(EditableField, { entityId, field: 'title', value: title })
-          )
-        ),
-        React.createElement('div', {
-          className: 'aide-section__content' + (collapsed ? ' aide-section__content--collapsed' : '')
-        }, children || React.createElement('p', { className: 'aide-collection-empty' }, 'No items yet.'))
-      );
-    }
-
-    function CardDisplay({ entity, entityId, children }) {
-      const props = entity?.props || {};
-      const title = props.title || props.name || '';
-      const displayProps = getDisplayableProps(props);
-      const styles = applyStyles(entity?._styles);
-
-      return React.createElement('div', { className: 'aide-card aide-mount-animation', style: styles },
-        title && React.createElement('div', { className: 'aide-card__title' },
-          React.createElement(EditableField, { entityId, field: props.title !== undefined ? 'title' : 'name', value: title })
-        ),
-        Object.entries(displayProps).map(([key, value]) =>
-          React.createElement('div', { key, className: 'aide-card__field' },
-            React.createElement('span', { className: 'aide-card__label' }, humanize(key)),
-            React.createElement(EditableField, { entityId, field: key, value, type: inferType(value) })
-          )
-        ),
-        children
-      );
-    }
-
-    function ListDisplay({ entity, entityId, children }) {
-      const props = entity?.props || {};
-      const title = props.title || props.name || '';
-
-      return React.createElement('div', { className: 'aide-mount-animation' },
-        title && React.createElement('h3', { className: 'aide-heading aide-heading--3' },
-          React.createElement(EditableField, { entityId, field: 'title', value: title })
-        ),
-        React.createElement('ul', { className: 'aide-list' },
-          children || React.createElement('li', { className: 'aide-collection-empty' }, 'No items yet.')
-        )
-      );
-    }
-
-    function TableDisplay({ entity, entityId, children }) {
-      const { entities } = useContext(EntityContext);
-      const childIds = useChildren(entityId);
-      const props = entity?.props || {};
-      const title = props.title || props.name || '';
-
-      if (childIds.length === 0) {
-        return React.createElement(CardDisplay, { entity, entityId, children });
-      }
-
-      const columns = deriveColumns(childIds, entities);
-
-      return React.createElement('div', { className: 'aide-mount-animation' },
-        title && React.createElement('h3', { className: 'aide-heading aide-heading--3' },
-          React.createElement(EditableField, { entityId, field: 'title', value: title })
-        ),
-        React.createElement('div', { className: 'aide-table-wrap' },
-          React.createElement('table', { className: 'aide-table' },
-            React.createElement('thead', null,
-              React.createElement('tr', null,
-                columns.map(col =>
-                  React.createElement('th', { key: col, className: 'aide-table__th' }, humanize(col))
-                )
-              )
-            ),
-            React.createElement('tbody', null,
-              childIds.map(cid => {
-                const child = entities[cid];
-                const cp = child?.props || {};
-                return React.createElement('tr', { key: cid, className: 'aide-mount-animation' },
-                  columns.map(col =>
-                    React.createElement('td', { key: col, className: 'aide-table__td aide-table__td--' + inferType(cp[col]) },
-                      React.createElement(EditableField, { entityId: cid, field: col, value: cp[col], type: inferType(cp[col]) })
-                    )
-                  )
-                );
-              })
-            )
-          )
-        )
-      );
-    }
-
-    function ChecklistDisplay({ entity, entityId, children }) {
-      const { entities } = useContext(EntityContext);
-      const childIds = useChildren(entityId);
-      const props = entity?.props || {};
-      const title = props.title || props.name || '';
-
-      if (childIds.length === 0) {
-        return React.createElement(CardDisplay, { entity, entityId, children });
-      }
-
-      const completed = childIds.filter(cid => {
-        const cp = entities[cid]?.props || {};
-        return cp.done === true || cp.checked === true || cp.completed === true;
-      }).length;
-
-      return React.createElement('div', { className: 'aide-mount-animation' },
-        title && React.createElement('h3', { className: 'aide-heading aide-heading--3' },
-          React.createElement(EditableField, { entityId, field: 'title', value: title })
-        ),
-        React.createElement('div', { className: 'aide-checklist' },
-          childIds.map(cid => {
-            const child = entities[cid];
-            const cp = child?.props || {};
-            const done = cp.done === true || cp.checked === true || cp.completed === true;
-            const label = cp.task || cp.label || cp.name || cid;
-            const labelField = cp.task !== undefined ? 'task' : (cp.label !== undefined ? 'label' : 'name');
-
-            return React.createElement('div', { key: cid, className: 'aide-checklist__item aide-mount-animation' },
-              React.createElement(EditableField, { entityId: cid, field: 'done', value: done, type: 'boolean' }),
-              React.createElement('span', {
-                className: 'aide-checklist__label' + (done ? ' aide-checklist__label--done' : '')
-              },
-                React.createElement(EditableField, { entityId: cid, field: labelField, value: label })
-              )
-            );
-          })
-        ),
-        React.createElement('div', { className: 'aide-checklist__summary' },
-          completed + ' of ' + childIds.length + ' complete'
-        )
-      );
-    }
-
-    function MetricDisplay({ entity, entityId }) {
-      const props = entity?.props || {};
-      const value = props.value ?? props.count ?? props.total ?? '';
-      const label = props.label || props.name || '';
-      const styles = applyStyles(entity?._styles);
-
-      return React.createElement('div', { className: 'aide-metric aide-mount-animation', style: styles },
-        React.createElement('span', { className: 'aide-metric__label' }, label),
-        React.createElement('span', { className: 'aide-metric__value' },
-          React.createElement(EditableField, { entityId, field: 'value', value, type: inferType(value) })
-        )
-      );
-    }
-
-    function TextDisplay({ entity, entityId }) {
-      const props = entity?.props || {};
-      const text = props.text || props.content || props.body || '';
-      const field = props.text !== undefined ? 'text' : (props.content !== undefined ? 'content' : 'body');
-
-      return React.createElement('p', { className: 'aide-text aide-mount-animation' },
-        React.createElement(EditableField, { entityId, field, value: text })
-      );
-    }
-
-    function ImageDisplay({ entity, entityId }) {
-      const props = entity?.props || {};
-      const src = props.src || props.url || '';
-      const caption = props.caption || '';
-
-      return React.createElement('figure', { className: 'aide-image aide-mount-animation' },
-        src && React.createElement('img', { src, alt: caption, loading: 'lazy' }),
-        caption && React.createElement('figcaption', { className: 'aide-image__caption' },
-          React.createElement(EditableField, { entityId, field: 'caption', value: caption })
-        )
-      );
-    }
-
-    function FallbackDisplay({ entity, entityId, children }) {
-      const props = entity?.props || {};
-      const displayProps = Object.entries(props).filter(([k]) => !k.startsWith('_'));
-
-      return React.createElement('div', { className: 'aide-card aide-mount-animation' },
-        displayProps.map(([key, value]) =>
-          React.createElement('div', { key, className: 'aide-card__field' },
-            React.createElement('span', { className: 'aide-card__label' }, humanize(key)),
-            React.createElement(EditableField, { entityId, field: key, value, type: inferType(value) })
-          )
-        ),
-        children
-      );
-    }
-
-    // ── Display Resolution ─────────────────────────────────
-    const DISPLAY_COMPONENTS = {
-      page: PageDisplay,
-      section: SectionDisplay,
-      card: CardDisplay,
-      list: ListDisplay,
-      table: TableDisplay,
-      checklist: ChecklistDisplay,
-      metric: MetricDisplay,
-      text: TextDisplay,
-      image: ImageDisplay
+    const emitUpdate = (newValue) => {
+      // Send direct edit via WebSocket
+      sendDirectEdit(entityId, field, newValue);
     };
 
-    function resolveDisplay(entity, childIds, entities) {
-      const hint = (entity?.display || '').toLowerCase();
-      if (DISPLAY_COMPONENTS[hint]) return DISPLAY_COMPONENTS[hint];
+    // Booleans toggle immediately
+    if (type === 'boolean') {
+      return React.createElement('input', {
+        type: 'checkbox',
+        className: 'aide-checklist__checkbox',
+        checked: !!value,
+        onChange: () => emitUpdate(!value)
+      });
+    }
 
-      // Heuristics based on props and children
-      const props = entity?.props || {};
+    if (!editing) {
+      const displayValue = formatValue(value, type);
+      const isEmpty = value === null || value === undefined || value === '';
+      return React.createElement('span', {
+        className: 'editable-field ' + (isEmpty ? 'editable-field--empty ' : '') + className,
+        onClick: () => { setDraft(value ?? ''); setEditing(true); }
+      }, displayValue);
+    }
 
-      // Image
-      if (props.src || props.url) return ImageDisplay;
-
-      // Checklist items have done/checked/completed - leaf nodes
-      if (typeof props.done === 'boolean' || typeof props.checked === 'boolean' || typeof props.completed === 'boolean') {
-        return CardDisplay;
-      }
-
-      // Metric (few fields with value/count)
-      if ((props.value !== undefined || props.count !== undefined) && Object.keys(props).filter(k => !k.startsWith('_')).length <= 3) {
-        return MetricDisplay;
-      }
-
-      // Text block
-      if (props.text && Object.keys(props).filter(k => !k.startsWith('_')).length === 1) {
-        return TextDisplay;
-      }
-
-      // If entity has multiple children, render as table or checklist
-      if (childIds && childIds.length > 0 && entities) {
-        const firstChild = entities[childIds[0]];
-        const cp = firstChild?.props || {};
-        // Check if children are checklist items
-        if (typeof cp.done === 'boolean' || typeof cp.checked === 'boolean' || typeof cp.completed === 'boolean') {
-          return ChecklistDisplay;
+    return React.createElement('input', {
+      type: type === 'number' ? 'number' : type === 'date' ? 'date' : 'text',
+      className: 'editable-input',
+      value: draft,
+      autoFocus: true,
+      onChange: (e) => setDraft(e.target.value),
+      onBlur: () => {
+        setEditing(false);
+        if (draft !== value) {
+          const coerced = type === 'number' ? Number(draft) : draft;
+          emitUpdate(coerced);
         }
-        // Multiple children with props → table
-        return TableDisplay;
+      },
+      onKeyDown: (e) => {
+        if (e.key === 'Enter') e.target.blur();
+        if (e.key === 'Escape') { setDraft(value ?? ''); setEditing(false); }
       }
+    });
+  }
 
+  // ── Display Components ─────────────────────────────────
+
+  function PageDisplay({ entity, entityId, children }) {
+    const props = entity?.props || {};
+    const title = props.title || props.name || '';
+    return React.createElement('div', { className: 'aide-page aide-mount-animation' },
+      title && React.createElement('h1', { className: 'aide-heading aide-heading--1' },
+        React.createElement(EditableField, { entityId, field: 'title', value: title })
+      ),
+      children || React.createElement('p', { className: 'aide-empty' }, 'Say something to get started.')
+    );
+  }
+
+  function SectionDisplay({ entity, entityId, children }) {
+    const [collapsed, setCollapsed] = useState(false);
+    const props = entity?.props || {};
+    const title = props.title || props.name || 'Section';
+
+    return React.createElement('div', { className: 'aide-section aide-mount-animation' },
+      React.createElement('div', {
+        className: 'aide-section__header',
+        onClick: () => setCollapsed(!collapsed)
+      },
+        React.createElement('span', {
+          className: 'aide-section__icon' + (collapsed ? ' aide-section__icon--collapsed' : '')
+        }, '▾'),
+        React.createElement('span', { className: 'aide-section__title' },
+          React.createElement(EditableField, { entityId, field: 'title', value: title })
+        )
+      ),
+      React.createElement('div', {
+        className: 'aide-section__content' + (collapsed ? ' aide-section__content--collapsed' : '')
+      }, children || React.createElement('p', { className: 'aide-collection-empty' }, 'No items yet.'))
+    );
+  }
+
+  function CardDisplay({ entity, entityId, children }) {
+    const props = entity?.props || {};
+    const title = props.title || props.name || '';
+    const displayProps = getDisplayableProps(props);
+    const styles = applyStyles(entity?._styles);
+
+    return React.createElement('div', { className: 'aide-card aide-mount-animation', style: styles },
+      title && React.createElement('div', { className: 'aide-card__title' },
+        React.createElement(EditableField, { entityId, field: props.title !== undefined ? 'title' : 'name', value: title })
+      ),
+      Object.entries(displayProps).map(([key, value]) =>
+        React.createElement('div', { key, className: 'aide-card__field' },
+          React.createElement('span', { className: 'aide-card__label' }, humanize(key)),
+          React.createElement(EditableField, { entityId, field: key, value, type: inferType(value) })
+        )
+      ),
+      children
+    );
+  }
+
+  function ListDisplay({ entity, entityId, children }) {
+    const props = entity?.props || {};
+    const title = props.title || props.name || '';
+
+    return React.createElement('div', { className: 'aide-mount-animation' },
+      title && React.createElement('h3', { className: 'aide-heading aide-heading--3' },
+        React.createElement(EditableField, { entityId, field: 'title', value: title })
+      ),
+      React.createElement('ul', { className: 'aide-list' },
+        children || React.createElement('li', { className: 'aide-collection-empty' }, 'No items yet.')
+      )
+    );
+  }
+
+  function TableDisplay({ entity, entityId, children }) {
+    const { entities } = useContext(EntityContext);
+    const childIds = useChildren(entityId);
+    const props = entity?.props || {};
+    const title = props.title || props.name || '';
+
+    if (childIds.length === 0) {
+      return React.createElement(CardDisplay, { entity, entityId, children });
+    }
+
+    const columns = deriveColumns(childIds, entities);
+
+    return React.createElement('div', { className: 'aide-mount-animation' },
+      title && React.createElement('h3', { className: 'aide-heading aide-heading--3' },
+        React.createElement(EditableField, { entityId, field: 'title', value: title })
+      ),
+      React.createElement('div', { className: 'aide-table-wrap' },
+        React.createElement('table', { className: 'aide-table' },
+          React.createElement('thead', null,
+            React.createElement('tr', null,
+              columns.map(col =>
+                React.createElement('th', { key: col, className: 'aide-table__th' }, humanize(col))
+              )
+            )
+          ),
+          React.createElement('tbody', null,
+            childIds.map(cid => {
+              const child = entities[cid];
+              const cp = child?.props || {};
+              return React.createElement('tr', { key: cid, className: 'aide-mount-animation' },
+                columns.map(col =>
+                  React.createElement('td', { key: col, className: 'aide-table__td aide-table__td--' + inferType(cp[col]) },
+                    React.createElement(EditableField, { entityId: cid, field: col, value: cp[col], type: inferType(cp[col]) })
+                  )
+                )
+              );
+            })
+          )
+        )
+      )
+    );
+  }
+
+  function ChecklistDisplay({ entity, entityId, children }) {
+    const { entities } = useContext(EntityContext);
+    const childIds = useChildren(entityId);
+    const props = entity?.props || {};
+    const title = props.title || props.name || '';
+
+    if (childIds.length === 0) {
+      return React.createElement(CardDisplay, { entity, entityId, children });
+    }
+
+    const completed = childIds.filter(cid => {
+      const cp = entities[cid]?.props || {};
+      return cp.done === true || cp.checked === true || cp.completed === true;
+    }).length;
+
+    return React.createElement('div', { className: 'aide-mount-animation' },
+      title && React.createElement('h3', { className: 'aide-heading aide-heading--3' },
+        React.createElement(EditableField, { entityId, field: 'title', value: title })
+      ),
+      React.createElement('div', { className: 'aide-checklist' },
+        childIds.map(cid => {
+          const child = entities[cid];
+          const cp = child?.props || {};
+          const done = cp.done === true || cp.checked === true || cp.completed === true;
+          const label = cp.task || cp.label || cp.name || cid;
+          const labelField = cp.task !== undefined ? 'task' : (cp.label !== undefined ? 'label' : 'name');
+
+          return React.createElement('div', { key: cid, className: 'aide-checklist__item aide-mount-animation' },
+            React.createElement(EditableField, { entityId: cid, field: 'done', value: done, type: 'boolean' }),
+            React.createElement('span', {
+              className: 'aide-checklist__label' + (done ? ' aide-checklist__label--done' : '')
+            },
+              React.createElement(EditableField, { entityId: cid, field: labelField, value: label })
+            )
+          );
+        })
+      ),
+      React.createElement('div', { className: 'aide-checklist__summary' },
+        completed + ' of ' + childIds.length + ' complete'
+      )
+    );
+  }
+
+  function MetricDisplay({ entity, entityId }) {
+    const props = entity?.props || {};
+    const value = props.value ?? props.count ?? props.total ?? '';
+    const label = props.label || props.name || '';
+    const styles = applyStyles(entity?._styles);
+
+    return React.createElement('div', { className: 'aide-metric aide-mount-animation', style: styles },
+      React.createElement('span', { className: 'aide-metric__label' }, label),
+      React.createElement('span', { className: 'aide-metric__value' },
+        React.createElement(EditableField, { entityId, field: 'value', value, type: inferType(value) })
+      )
+    );
+  }
+
+  function TextDisplay({ entity, entityId }) {
+    const props = entity?.props || {};
+    const text = props.text || props.content || props.body || '';
+    const field = props.text !== undefined ? 'text' : (props.content !== undefined ? 'content' : 'body');
+
+    return React.createElement('p', { className: 'aide-text aide-mount-animation' },
+      React.createElement(EditableField, { entityId, field, value: text })
+    );
+  }
+
+  function ImageDisplay({ entity, entityId }) {
+    const props = entity?.props || {};
+    const src = props.src || props.url || '';
+    const caption = props.caption || '';
+
+    return React.createElement('figure', { className: 'aide-image aide-mount-animation' },
+      src && React.createElement('img', { src, alt: caption, loading: 'lazy' }),
+      caption && React.createElement('figcaption', { className: 'aide-image__caption' },
+        React.createElement(EditableField, { entityId, field: 'caption', value: caption })
+      )
+    );
+  }
+
+  function FallbackDisplay({ entity, entityId, children }) {
+    const props = entity?.props || {};
+    const displayProps = Object.entries(props).filter(([k]) => !k.startsWith('_'));
+
+    return React.createElement('div', { className: 'aide-card aide-mount-animation' },
+      displayProps.map(([key, value]) =>
+        React.createElement('div', { key, className: 'aide-card__field' },
+          React.createElement('span', { className: 'aide-card__label' }, humanize(key)),
+          React.createElement(EditableField, { entityId, field: key, value, type: inferType(value) })
+        )
+      ),
+      children
+    );
+  }
+
+  // ── Display Resolution ─────────────────────────────────
+  const DISPLAY_COMPONENTS = {
+    page: PageDisplay,
+    section: SectionDisplay,
+    card: CardDisplay,
+    list: ListDisplay,
+    table: TableDisplay,
+    checklist: ChecklistDisplay,
+    metric: MetricDisplay,
+    text: TextDisplay,
+    image: ImageDisplay
+  };
+
+  function resolveDisplay(entity, childIds, entities) {
+    const hint = (entity?.display || '').toLowerCase();
+    if (DISPLAY_COMPONENTS[hint]) return DISPLAY_COMPONENTS[hint];
+
+    // Heuristics based on props and children
+    const props = entity?.props || {};
+
+    // Image
+    if (props.src || props.url) return ImageDisplay;
+
+    // Checklist items have done/checked/completed - leaf nodes
+    if (typeof props.done === 'boolean' || typeof props.checked === 'boolean' || typeof props.completed === 'boolean') {
       return CardDisplay;
     }
 
-    // ── AideEntity (recursive renderer) ────────────────────
-    function AideEntity({ entityId }) {
-      const { entities } = useContext(EntityContext);
-      const entity = useEntity(entityId);
-      const childIds = useChildren(entityId);
-      const Component = resolveDisplay(entity, childIds, entities);
-
-      if (!entity || entity._removed) return null;
-
-      // For table/checklist displays, don't recursively render children
-      // - the component handles its own child rendering
-      const shouldPassChildren = Component !== TableDisplay && Component !== ChecklistDisplay;
-      const children = (shouldPassChildren && childIds.length > 0)
-        ? childIds.map(id => React.createElement(AideEntity, { key: id, entityId: id }))
-        : null;
-
-      return React.createElement(Component, { entity, entityId }, children);
+    // Metric (few fields with value/count)
+    if ((props.value !== undefined || props.count !== undefined) && Object.keys(props).filter(k => !k.startsWith('_')).length <= 3) {
+      return MetricDisplay;
     }
 
-    // ── PreviewApp (root) ──────────────────────────────────
-    function PreviewApp() {
-      const meta = useMeta();
-      const rootIds = useRootIds();
-
-      return React.createElement('main', { className: 'aide-page' },
-        meta.title && React.createElement('h1', { className: 'aide-heading aide-heading--1' }, meta.title),
-        rootIds.length > 0
-          ? rootIds.map(id => React.createElement(AideEntity, { key: id, entityId: id }))
-          : React.createElement('p', { className: 'aide-empty' }, 'Send a message to get started.')
-      );
+    // Text block
+    if (props.text && Object.keys(props).filter(k => !k.startsWith('_')).length === 1) {
+      return TextDisplay;
     }
-  `;
 
-  function buildPreviewHtml() {
-    const css = document.getElementById('renderer-css-template').textContent;
+    // If entity has multiple children, render as table or checklist
+    if (childIds && childIds.length > 0 && entities) {
+      const firstChild = entities[childIds[0]];
+      const cp = firstChild?.props || {};
+      // Check if children are checklist items
+      if (typeof cp.done === 'boolean' || typeof cp.checked === 'boolean' || typeof cp.completed === 'boolean') {
+        return ChecklistDisplay;
+      }
+      // Multiple children with props → table
+      return TableDisplay;
+    }
 
-    // Serialize entity store for React
-    const entitiesJson = JSON.stringify(entityStore.entities);
-    const metaJson = JSON.stringify(entityStore.meta);
-    const rootIdsJson = JSON.stringify(entityStore.rootIds);
-
-    return `<!DOCTYPE html>
-<html><head><meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"><` + `/script>
-<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"><` + `/script>
-<style>${css}</style>
-</head><body>
-<div id="root"></div>
-<script>
-const INITIAL_ENTITIES = ${entitiesJson};
-const INITIAL_META = ${metaJson};
-const INITIAL_ROOT_IDS = ${rootIdsJson};
-
-${REACT_COMPONENTS_TEMPLATE}
-
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(
-  React.createElement(EntityContext.Provider, {
-    value: { entities: INITIAL_ENTITIES, meta: INITIAL_META, rootIds: INITIAL_ROOT_IDS }
-  },
-    React.createElement(PreviewApp)
-  )
-);
-<` + `/script>
-</body></html>`;
+    return CardDisplay;
   }
+
+  // ── AideEntity (recursive renderer) ────────────────────
+  function AideEntity({ entityId }) {
+    const { entities } = useContext(EntityContext);
+    const entity = useEntity(entityId);
+    const childIds = useChildren(entityId);
+    const Component = resolveDisplay(entity, childIds, entities);
+
+    if (!entity || entity._removed) return null;
+
+    // For table/checklist displays, don't recursively render children
+    // - the component handles its own child rendering
+    const shouldPassChildren = Component !== TableDisplay && Component !== ChecklistDisplay;
+    const children = (shouldPassChildren && childIds.length > 0)
+      ? childIds.map(id => React.createElement(AideEntity, { key: id, entityId: id }))
+      : null;
+
+    return React.createElement(Component, { entity, entityId }, children);
+  }
+
+  // ── PreviewApp (root) ──────────────────────────────────
+  function PreviewApp() {
+    const meta = useMeta();
+    const rootIds = useRootIds();
+
+    return React.createElement('main', { className: 'aide-page' },
+      meta.title && React.createElement('h1', { className: 'aide-heading aide-heading--1' }, meta.title),
+      rootIds.length > 0
+        ? rootIds.map(id => React.createElement(AideEntity, { key: id, entityId: id }))
+        : React.createElement('p', { className: 'aide-empty' }, 'Send a message to get started.')
+    );
+  }
+
+  // Inject renderer CSS into main document for inline preview styling
+  (function injectRendererCss() {
+    const rendererCss = document.getElementById('renderer-css-template').textContent;
+    const styleEl = document.createElement('style');
+    styleEl.id = 'renderer-css-injected';
+    styleEl.textContent = rendererCss;
+    document.head.appendChild(styleEl);
+  })();
 
   function refreshEntityPreview() {
     const root = document.getElementById('preview-root');
@@ -2328,6 +2023,11 @@ root.render(
     clearImagePreview();
     document.getElementById('message-input').value = '';
 
+    // Always reset entity store when opening editor (new or existing aide)
+    // This clears stale data from previous aide before WebSocket hydration
+    entityStore.reset();
+    refreshEntityPreview();
+
     if (aideId) {
       // Update URL to include aide ID (for refresh persistence)
       history.replaceState({}, '', `?aide=${aideId}`);
@@ -2343,9 +2043,6 @@ root.render(
       } catch (e) {
         console.error('Failed to load conversation history:', e);
       }
-    } else {
-      // New AIde - entityStore will be empty, refreshEntityPreview() shows placeholder
-      entityStore.reset();
     }
 
     showScreen('editor');

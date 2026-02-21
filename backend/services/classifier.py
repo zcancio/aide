@@ -23,11 +23,13 @@ class ClassificationResult:
     reason: str
 
 
-# Model mapping
+# Model mapping - uses settings for configurable models
+from backend.config import settings
+
 TIER_MODELS = {
-    "L2": "claude-haiku-4-5-20251001",
-    "L3": "claude-sonnet-4-5-20250929",
-    "L4": "claude-opus-4-5-20251101",
+    "L2": settings.L2_MODEL,
+    "L3": settings.L3_MODEL,
+    "L4": settings.L3_MODEL,  # L4 uses same as L3 for now
 }
 
 # Cache TTLs (seconds)

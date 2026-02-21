@@ -319,61 +319,73 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
             try:
                 if use_real_llm:
                     # Use real Anthropic API streaming
-                    orchestrator = StreamingOrchestrator(
-                        aide_id=aide_id,
-                        snapshot=snapshot,
-                        conversation=[],  # TODO: Load conversation history
-                        api_key=settings.ANTHROPIC_API_KEY,
-                    )
+                    try:
+                        orchestrator = StreamingOrchestrator(
+                            aide_id=aide_id,
+                            snapshot=snapshot,
+                            conversation=[],  # TODO: Load conversation history
+                            api_key=settings.ANTHROPIC_API_KEY,
+                        )
 
-                    async for result in orchestrator.process_message(content):
-                        # Check for interrupt request
-                        if interrupt_requested:
-                            logger.info("ws: stream interrupted message_id=%s", message_id)
-                            break
+                        async for result in orchestrator.process_message(content):
+                            # Check for interrupt request
+                            if interrupt_requested:
+                                logger.info("ws: stream interrupted message_id=%s", message_id)
+                                break
 
-                        result_type = result.get("type")
+                            result_type = result.get("type")
 
-                        # Classification metadata
-                        if result_type == "meta.classification":
-                            logger.info(
-                                "ws: tier=%s model=%s reason=%s",
-                                result.get("tier"),
-                                result.get("model"),
-                                result.get("reason"),
+                            # Classification metadata
+                            if result_type == "meta.classification":
+                                logger.info(
+                                    "ws: tier=%s model=%s reason=%s",
+                                    result.get("tier"),
+                                    result.get("model"),
+                                    result.get("reason"),
+                                )
+                                continue
+
+                            # Voice events
+                            if result_type == "voice":
+                                await websocket.send_text(json.dumps({"type": "voice", "text": result.get("text", "")}))
+                                continue
+
+                            # Event processed
+                            if result_type == "event":
+                                event = result.get("event", {})
+                                snapshot = result.get("snapshot", snapshot)
+                                event_type = event.get("t", "")
+
+                                if ttfc is None:
+                                    ttfc = (time.monotonic() - start_time) * 1000
+
+                                if event_type in _ENTITY_TYPES:
+                                    entity_id = event.get("id")
+                                    delta = _make_delta(event_type, entity_id, snapshot)
+                                    await websocket.send_text(json.dumps(delta))
+                                elif event_type in _META_TYPES:
+                                    # Send meta update to client
+                                    meta = snapshot.get("meta", {})
+                                    await websocket.send_text(json.dumps({"type": "meta.update", "data": meta}))
+                                continue
+
+                            # Rejection
+                            if result_type == "rejection":
+                                logger.debug("ws: event rejected reason=%s", result.get("reason"))
+                                continue
+
+                    except Exception as e:
+                        # Log the error and send error message to client
+                        logger.error("ws: real LLM failed: %s", e)
+                        try:
+                            await websocket.send_text(
+                                json.dumps({"type": "stream.error", "error": "Anthropic API is temporarily unavailable. Please try again."})
                             )
-                            continue
+                        except RuntimeError:
+                            pass
+                        continue  # Skip to next message, don't process this one
 
-                        # Voice events
-                        if result_type == "voice":
-                            await websocket.send_text(json.dumps({"type": "voice", "text": result.get("text", "")}))
-                            continue
-
-                        # Event processed
-                        if result_type == "event":
-                            event = result.get("event", {})
-                            snapshot = result.get("snapshot", snapshot)
-                            event_type = event.get("t", "")
-
-                            if ttfc is None:
-                                ttfc = (time.monotonic() - start_time) * 1000
-
-                            if event_type in _ENTITY_TYPES:
-                                entity_id = event.get("id")
-                                delta = _make_delta(event_type, entity_id, snapshot)
-                                await websocket.send_text(json.dumps(delta))
-                            elif event_type in _META_TYPES:
-                                # Send meta update to client
-                                meta = snapshot.get("meta", {})
-                                await websocket.send_text(json.dumps({"type": "meta.update", "data": meta}))
-                            continue
-
-                        # Rejection
-                        if result_type == "rejection":
-                            logger.debug("ws: event rejected reason=%s", result.get("reason"))
-                            continue
-
-                else:
+                if not use_real_llm:
                     # Use mock LLM (Phase 1-3: static golden files)
                     scenario = _pick_scenario(content)
                     async for line in mock_llm.stream(scenario, profile=current_profile):
