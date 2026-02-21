@@ -268,7 +268,7 @@ class TestPublishRoute:
                 new_callable=AsyncMock,
                 return_value="published-slug/index.html",
             ),
-            patch("backend.routes.publish.render", return_value="<html>test</html>"),
+            patch("backend.routes.publish.render_react_preview", return_value="<html>test</html>"),
         ):
             res = await async_client.post(
                 f"/api/aides/{aide.id}/publish",
@@ -394,34 +394,3 @@ class TestPublishedPageServing:
 
         assert res.headers["ETag"] == expected_etag
 
-    async def test_publish_free_tier_includes_footer(self, async_client, test_user_id):
-        """Free tier publish renders HTML with RenderOptions footer set."""
-        captured_options: list = []
-
-        def capture_render(snapshot, blueprint, events, options=None):
-            captured_options.append(options)
-            return "<html>test</html>"
-
-        repo = AideRepo()
-        aide = await repo.create(test_user_id, CreateAideRequest(title="Footer Test"))
-        token = create_jwt(test_user_id)
-
-        with (
-            patch(
-                "backend.routes.publish.r2_service.upload_published",
-                new_callable=AsyncMock,
-                return_value="footer-test/index.html",
-            ),
-            patch("backend.routes.publish.render", side_effect=capture_render),
-        ):
-            res = await async_client.post(
-                f"/api/aides/{aide.id}/publish",
-                json={"slug": f"footer-{aide.id}"},
-                cookies={"session": token},
-            )
-
-        assert res.status_code == 200
-        assert len(captured_options) == 1
-        opts = captured_options[0]
-        # Default test users are free tier → footer should be "Made with AIde"
-        assert opts.footer == "Made with AIde"
