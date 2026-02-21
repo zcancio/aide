@@ -184,7 +184,7 @@ class TestCreateGraduationGolden:
     def test_graduation_sets_styles(self):
         events = load_golden_file("create_graduation.jsonl")
         snapshot = replay(events)
-        assert snapshot["styles"]["global"]["primary_color"] == "#2d3748"
+        assert snapshot["styles"]["global"]["primary_color"] == "#2D2D2A"
         assert snapshot["styles"]["global"]["font_family"] == "Inter"
         assert snapshot["styles"]["global"]["density"] == "comfortable"
 

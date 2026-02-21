@@ -546,7 +546,7 @@ class TestPokerLeagueWalkthrough:
         step(
             "style.set",
             {
-                "primary_color": "#2d3748",
+                "primary_color": "#2D2D2A",
                 "font_family": "Inter",
                 "density": "comfortable",
             },
@@ -605,7 +605,7 @@ class TestPokerLeagueWalkthrough:
         assert root_children == ["block_title", "block_next", "block_roster", "block_schedule"]
 
         # Styles
-        assert snapshot["styles"]["primary_color"] == "#2d3748"
+        assert snapshot["styles"]["primary_color"] == "#2D2D2A"
 
         # Meta
         assert snapshot["meta"]["title"] == "Poker League — Spring 2026"
@@ -970,7 +970,7 @@ class TestBudgetTrackerWalkthrough:
             "style.set",
             {
                 "primary_color": "#1a365d",
-                "font_family": "IBM Plex Sans",
+                "font_family": "DM Sans",
             },
         )
 

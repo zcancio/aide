@@ -16,5 +16,5 @@
 {"t":"entity.create","id":"rotation_section","parent":"poker_league","display":"section","p":{"title":"Rotation"}}
 {"t":"entity.create","id":"host_rotation","parent":"rotation_section","display":"list","p":{"title":"Host Order","items":["Alex","Blake","Casey","Devon","Ellis","Finley","Gray","Harper"]}}
 {"t":"entity.create","id":"snack_rotation","parent":"rotation_section","display":"list","p":{"title":"Snack Order","items":["Alex","Blake","Casey","Devon","Ellis","Finley","Gray","Harper"]}}
-{"t":"style.set","p":{"primary_color":"#2d3748","font_family":"Inter","density":"comfortable"}}
+{"t":"style.set","p":{"primary_color":"#2D2D2A","font_family":"Inter","density":"comfortable"}}
 {"t":"voice","text":"Poker league ready. Set the first host to lock in Jan 23."}

@@ -193,7 +193,7 @@ _Let people give you money._
 _The thing people see before they sign up._
 
 ### 4.1 Landing Page (toaide.com)
-- [ ] Hero: "For what you're running." + one-line explainer
+- [ ] Hero: "For what you're living." + one-line explainer
 - [ ] Demo: auto-playing conversation → live page building
 - [ ] Use cases: 3-4 examples with screenshots (poker league, wedding, grocery list, trip)
 - [ ] Signal angle: "Update your page from a text message"

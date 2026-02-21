@@ -30,7 +30,7 @@ async def send_magic_link(email: str, token: str) -> None:
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Sign in to AIde</title>
+        <title>Sign in to aide</title>
         <style>
             body {{
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -111,12 +111,12 @@ async def send_magic_link(email: str, token: str) -> None:
     <body>
         <div class="container">
             <div class="header">
-                <h1>AIde</h1>
+                <h1>aide</h1>
             </div>
             <div class="content">
                 <p>Hello,</p>
-                <p>Click the button below to sign in to AIde. This link will expire in 15 minutes.</p>
-                <a href="{magic_link_url}" class="button">Sign in to AIde</a>
+                <p>Click the button below to sign in to aide. This link will expire in 15 minutes.</p>
+                <a href="{magic_link_url}" class="button">Sign in to aide</a>
                 <div class="fallback">
                     <p>If the button doesn't work, copy and paste this link into your browser:</p>
                     <code>{magic_link_url}</code>
@@ -132,9 +132,9 @@ async def send_magic_link(email: str, token: str) -> None:
 
     # Plain text fallback
     text_content = f"""
-    Sign in to AIde
+    Sign in to aide
 
-    Click this link to sign in to AIde:
+    Click this link to sign in to aide:
     {magic_link_url}
 
     This link will expire in 15 minutes.
@@ -146,7 +146,7 @@ async def send_magic_link(email: str, token: str) -> None:
     params = {
         "from": config.settings.EMAIL_FROM,
         "to": [email],
-        "subject": "Sign in to AIde",
+        "subject": "Sign in to aide",
         "html": html_content,
         "text": text_content,
     }

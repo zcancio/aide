@@ -215,7 +215,7 @@ aide-plugin/
 │       {
 │         "name": "aide",
 │         "version": "1.0.0",
-│         "description": "Build and maintain living pages for what you're running.",
+│         "description": "Build and maintain living pages for what you're living.",
 │         "author": "Bantay LLC"
 │       }
 ├── .mcp.json                 ← connects to toaide.com/mcp

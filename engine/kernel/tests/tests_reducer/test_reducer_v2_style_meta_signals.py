@@ -35,11 +35,11 @@ class TestStyleSet:
     def test_sets_global_styles(self, empty):
         result = reduce(
             empty,
-            {"t": "style.set", "p": {"primary_color": "#2d3748", "font_family": "Inter", "density": "comfortable"}},
+            {"t": "style.set", "p": {"primary_color": "#2D2D2A", "font_family": "Inter", "density": "comfortable"}},
         )
         assert result.accepted
         styles = result.snapshot["styles"]["global"]
-        assert styles["primary_color"] == "#2d3748"
+        assert styles["primary_color"] == "#2D2D2A"
         assert styles["font_family"] == "Inter"
         assert styles["density"] == "comfortable"
 

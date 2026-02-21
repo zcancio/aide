@@ -269,7 +269,7 @@ def poker_league_events():
     e(
         "style.set",
         {
-            "primary_color": "#2d3748",
+            "primary_color": "#2D2D2A",
             "font_family": "Inter",
             "density": "comfortable",
         },
@@ -696,7 +696,7 @@ class TestFullSnapshotRoundTrip:
         assert root_children == ["block_title", "block_metric", "block_roster", "block_schedule"]
 
         # Styles
-        assert restored["styles"]["primary_color"] == "#2d3748"
+        assert restored["styles"]["primary_color"] == "#2D2D2A"
 
         # Meta
         assert restored["meta"]["title"] == "Poker League — Spring 2026"

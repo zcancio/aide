@@ -356,10 +356,10 @@ def poker_league_events():
     e(
         "style.set",
         {
-            "primary_color": "#2d3748",
+            "primary_color": "#2D2D2A",
             "font_family": "Inter",
             "density": "comfortable",
-            "bg_color": "#fafaf9",
+            "bg_color": "#F7F5F2",
         },
     )
 

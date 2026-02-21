@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Flight Recorder - AIde</title>
+  <title>Flight Recorder - aide</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -12,7 +12,7 @@
     body {
       font-family: system-ui, -apple-system, sans-serif;
       background: #0f0f17;
-      color: #e2e8f0;
+      color: #E0DDD8;
       overflow: hidden;
     }
     #root { height: 100vh; width: 100vw; }
@@ -105,11 +105,11 @@
               padding: "10px 14px",
               borderRadius: isUser ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
               background: isUser ? "#1a1a2e" : "#ffffff",
-              color: isUser ? "#e2e8f0" : "#2d3748",
+              color: isUser ? "#E0DDD8" : "#2D2D2A",
               fontSize: 14,
               lineHeight: 1.5,
               fontFamily: "system-ui, -apple-system, sans-serif",
-              border: isUser ? "none" : "1px solid #e2e8f0",
+              border: isUser ? "none" : "1px solid #E0DDD8",
               whiteSpace: "pre-wrap",
             }}
           >
@@ -314,7 +314,7 @@
             display: "flex",
             flexDirection: "column",
             background: "#0f0f17",
-            color: "#e2e8f0",
+            color: "#E0DDD8",
             fontFamily: "system-ui, -apple-system, sans-serif",
             overflow: "hidden",
           }}
@@ -664,7 +664,7 @@
                 style={{
                   padding: "8px 16px",
                   background: "#f8fafc",
-                  borderBottom: "1px solid #e2e8f0",
+                  borderBottom: "1px solid #E0DDD8",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
@@ -686,7 +686,7 @@
               </div>
               <iframe
                 ref={iframeRef}
-                title="AIde Preview"
+                title="aide Preview"
                 style={{
                   flex: 1,
                   border: "none",
@@ -741,7 +741,7 @@
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: "#e2e8f0" }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: "#E0DDD8" }}>
                       Replay Comparison
                     </span>
                     <span style={{ fontSize: 12, color: "#64748b" }}>
@@ -808,7 +808,7 @@
                             borderRadius: 4,
                             padding: 12,
                             fontSize: 13,
-                            color: "#e2e8f0",
+                            color: "#E0DDD8",
                             lineHeight: 1.5,
                           }}
                         >
@@ -954,7 +954,7 @@
                                 borderRadius: 4,
                                 padding: 12,
                                 fontSize: 13,
-                                color: "#e2e8f0",
+                                color: "#E0DDD8",
                                 lineHeight: 1.5,
                               }}
                             >
@@ -1205,7 +1205,7 @@
                     style={{
                       background: playSpeed === sp ? "#1e293b" : "transparent",
                       border: playSpeed === sp ? "1px solid #334155" : "1px solid transparent",
-                      color: playSpeed === sp ? "#e2e8f0" : "#64748b",
+                      color: playSpeed === sp ? "#E0DDD8" : "#64748b",
                       cursor: "pointer",
                       fontSize: 11,
                       padding: "3px 8px",

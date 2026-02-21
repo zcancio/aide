@@ -9,5 +9,5 @@
 {"t":"entity.create","id":"participants_list","parent":"participants_section","display":"table","p":{"headers":["Name","Squares Owned","Amount Paid","Status"]}}
 {"t":"entity.create","id":"rules_section","parent":"page","display":"section","p":{"title":"Rules & Payouts","collapsed":true}}
 {"t":"entity.create","id":"rules_text","parent":"rules_section","display":"text","p":{"content":"Standard squares pool rules: numbers drawn randomly after all squares sold. Payouts typically 20% each quarter (1st, 2nd, 3rd) and 40% final score. Winners determined by last digit of each team's score at end of each quarter."}}
-{"t":"style.set","p":{"primary_color":"#2d3748","font_family":"Inter","density":"comfortable"}}
+{"t":"style.set","p":{"primary_color":"#2D2D2A","font_family":"Inter","density":"comfortable"}}
 {"t":"voice","text":"Squares pool ready. Add participants as they buy squares."}

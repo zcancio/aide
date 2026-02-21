@@ -1,6 +1,6 @@
 {"t":"meta.set","p":{"title":"Cabo Trip - March 15-20","identity":"group_trip_planner"}}
 {"t":"entity.create","id":"page","display":"page","p":{}}
-{"t":"style.set","p":{"primary_color":"#2d3748","font_family":"Inter","density":"comfortable"}}
+{"t":"style.set","p":{"primary_color":"#2D2D2A","font_family":"Inter","density":"comfortable"}}
 {"t":"entity.create","id":"trip_overview","parent":"page","display":"card","p":{"destination":"Cabo","dates":"March 15-20, 2025","group_size":8,"budget_per_person":1500,"total_budget":12000}}
 {"t":"entity.create","id":"friends_section","parent":"page","display":"section","p":{"title":"Friends"}}
 {"t":"entity.create","id":"friends_list","parent":"friends_section","display":"table","p":{}}

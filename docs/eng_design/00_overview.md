@@ -10,7 +10,7 @@
 
 An aide is a living object. The user describes what they're coordinating — a graduation party, a poker league, a group trip — and AIde brings it to life as a shareable page that stays current through natural language conversation. The page is the object's body. The chat is how you talk to it. No account needed to view.
 
-The tagline: **For what you're running.**
+The tagline: **For what you're living.**
 
 ### Why Not Just a Chat?
 

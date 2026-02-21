@@ -19,5 +19,5 @@
 {"t":"entity.create","id":"task_invites","parent":"tasks","display":"card","p":{"task":"Send invitations","done":false}}
 {"t":"entity.create","id":"task_lodging","parent":"tasks","display":"card","p":{"task":"Reserve hotel blocks","done":false}}
 {"t":"entity.create","id":"task_decorations","parent":"tasks","display":"card","p":{"task":"Plan decorations","done":false}}
-{"t":"style.set","p":{"primary_color":"#2d3748","font_family":"Inter","density":"comfortable"}}
+{"t":"style.set","p":{"primary_color":"#2D2D2A","font_family":"Inter","density":"comfortable"}}
 {"t":"voice","text":"Graduation party page ready. Add guests and food items to start coordinating."}

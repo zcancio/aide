@@ -139,7 +139,7 @@ def grocery_state(empty):
     apply(
         "style.set",
         {
-            "primary_color": "#2d3748",
+            "primary_color": "#2D2D2A",
             "font_family": "Inter",
         },
     )
@@ -618,7 +618,7 @@ class TestStyleSetIdempotent:
             make_event(
                 seq=seq + 1,
                 type="style.set",
-                payload={"primary_color": "#2d3748", "font_family": "Inter"},
+                payload={"primary_color": "#2D2D2A", "font_family": "Inter"},
             ),
         )
         assert result.applied
@@ -634,7 +634,7 @@ class TestStyleSetIdempotent:
             make_event(
                 seq=seq + 1,
                 type="style.set",
-                payload={"primary_color": "#2d3748", "font_family": "Inter"},
+                payload={"primary_color": "#2D2D2A", "font_family": "Inter"},
             ),
         )
 
@@ -651,13 +651,13 @@ class TestStyleSetIdempotent:
                 seq=seq + 1,
                 type="style.set",
                 payload={
-                    "primary_color": "#2d3748",  # Same
+                    "primary_color": "#2D2D2A",  # Same
                     "density": "compact",  # New
                 },
             ),
         )
         assert result.applied
-        assert result.snapshot["styles"]["primary_color"] == "#2d3748"
+        assert result.snapshot["styles"]["primary_color"] == "#2D2D2A"
         assert result.snapshot["styles"]["font_family"] == "Inter"  # Preserved
         assert result.snapshot["styles"]["density"] == "compact"  # Added
 
