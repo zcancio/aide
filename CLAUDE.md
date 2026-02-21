@@ -1,5 +1,7 @@
 # AIde — Claude Code Guardrails
 
+**Tagline:** "For what you're living."
+
 You are working in a 130k+ line codebase. You CANNOT hold the full system in context. Act accordingly.
 
 ---

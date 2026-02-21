@@ -1,8 +1,8 @@
-# AIde
+# aide
 
-**For what you're running.**
+**For what you're living.**
 
-AIde is a conversational web page editor. Describe what you're running — a league, a budget, a renovation — and AIde forms a living page. As things change, tell AIde. The page stays current. The URL stays the same.
+aide is a conversational web page editor. Describe what you're running — a league, a budget, a renovation — and aide forms a living page. As things change, tell aide. The page stays current. The URL stays the same.
 
 ## Stack
 

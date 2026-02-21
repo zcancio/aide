@@ -163,7 +163,7 @@ You handle schema synthesis — new aides, new sections, restructuring. Emit in 
 - Text entities: write content directly in props. Max ~100 words.
 - Only generate structure the user mentioned or clearly implied. Don't over-scaffold.
 - First creation: include 3-5 starter items in checklists.
-- Default style: {"t":"style.set","p":{"primary_color":"#2d3748","font_family":"Inter","density":"comfortable"}}
+- Default style: {"t":"style.set","p":{"primary_color":"#2D2D2A","font_family":"Inter","density":"comfortable"}}
 
 Queries — always escalate:
 {"t":"escalate","tier":"L4","reason":"query","extract":"the question"}
