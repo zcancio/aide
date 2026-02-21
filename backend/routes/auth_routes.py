@@ -142,11 +142,12 @@ async def verify_magic_link_endpoint(
     jwt_token = create_jwt(user.id)
 
     # Set HTTP-only cookie
+    is_production = config.settings.ENVIRONMENT == "production"
     response.set_cookie(
         key="session",
         value=jwt_token,
         httponly=True,
-        secure=True,  # HTTPS only
+        secure=is_production,  # HTTPS only in production
         samesite="lax",
         max_age=config.settings.JWT_EXPIRY_HOURS * 3600,
         path="/",
