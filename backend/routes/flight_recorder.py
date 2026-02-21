@@ -18,8 +18,7 @@ from backend.repos.aide_repo import AideRepo
 from backend.services.flight_recorder_reader import flight_recorder_reader
 from backend.services.flight_recorder_uploader import flight_recorder_uploader
 from backend.services.orchestrator import orchestrator
-from engine.kernel.renderer import render
-from engine.kernel.types import Blueprint
+from engine.kernel.react_preview import render_react_preview
 
 router = APIRouter(prefix="/api/flight-recorder", tags=["flight-recorder"])
 aide_repo = AideRepo()
@@ -104,8 +103,8 @@ async def render_turn(
 
     # Render the snapshot_after
     snapshot = turn.get("snapshot_after", {})
-    blueprint = Blueprint(identity=aide.title)
-    html_content = render(snapshot, blueprint=blueprint, events=[])
+    title = snapshot.get("meta", {}).get("title") or aide.title
+    html_content = render_react_preview(snapshot, title=title)
 
     return HTMLResponse(content=html_content)
 

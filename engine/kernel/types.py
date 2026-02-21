@@ -290,17 +290,6 @@ class Blueprint:
 
 
 @dataclass
-class RenderOptions:
-    """Options controlling what the renderer includes in output."""
-
-    include_events: bool = True
-    include_blueprint: bool = True
-    include_fonts: bool = True
-    footer: str | None = None  # "Made with AIde" for free tier
-    base_url: str = "https://toaide.com"
-
-
-@dataclass
 class AideFile:
     """In-memory representation of a loaded aide HTML file."""
 
