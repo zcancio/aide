@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AIde</title>
+  <title>aide</title>
   <!-- Fonts for renderer display components -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -591,26 +591,46 @@
   <!-- CSS from renderer.py (source of truth for styling) -->
   <script id="renderer-css-template" type="text/template">
 /* Import fonts for shadow DOM */
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
 
 /* CSS custom properties - scoped to preview root */
 :host {
   /* Design system defaults */
-  --font-serif: 'Cormorant Garamond', Georgia, serif;
-  --font-sans: 'IBM Plex Sans', -apple-system, sans-serif;
-  --text-primary: #1a1a1a;
-  --text-secondary: #4a4a4a;
-  --text-tertiary: #8a8a8a;
-  --text-slate: #374151;
-  --bg-primary: #fafaf9;
-  --bg-cream: #f5f1eb;
-  --accent-navy: #1f2a44;
-  --accent-steel: #5a6e8a;
-  --accent-forest: #2d5a3d;
-  --border: #d4d0c8;
-  --border-light: #e8e4dc;
-  --radius-sm: 4px;
-  --radius-md: 8px;
+  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-heading: 'Instrument Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --text-primary: #2D2D2A;
+  --text-secondary: #6B6963;
+  --text-tertiary: #A8A5A0;
+  --text-inverse: #F7F5F2;
+  --bg-primary: #F7F5F2;
+  --bg-secondary: #EFECEA;
+  --bg-tertiary: #E6E3DF;
+  --bg-elevated: #FFFFFF;
+  /* Sage accent scale */
+  --sage-50: #F0F3ED;
+  --sage-100: #DDE4D7;
+  --sage-200: #C2CCB8;
+  --sage-300: #A3B394;
+  --sage-400: #8B9E7C;
+  --sage-500: #7C8C6E;
+  --sage-600: #667358;
+  --sage-700: #515C46;
+  --sage-800: #3C4534;
+  --sage-900: #282E23;
+  --accent: var(--sage-500);
+  --accent-hover: var(--sage-600);
+  --accent-subtle: var(--sage-50);
+  --accent-muted: var(--sage-100);
+  --border-subtle: #E0DDD8;
+  --border-default: #D4D1CC;
+  --border-strong: #A8A5A0;
+  --border: var(--border-default);
+  --border-light: var(--border-subtle);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 999px;
   /* Spacing scale */
   --space-0: 0px;
   --space-1: 4px;
@@ -637,7 +657,7 @@
 :host {
   font-family: var(--font-sans);
   font-size: 16px;
-  font-weight: 300;
+  font-weight: 400;
   line-height: 1.65;
   color: var(--text-primary);
   background: var(--bg-primary);
@@ -667,22 +687,22 @@
 :host .aide-heading { margin-bottom: var(--space-4); }
 :host .aide-heading--1 {
   font-family: var(--font-serif);
-  font-size: clamp(32px, 4.5vw, 42px);
-  font-weight: 400;
+  font-size: clamp(36px, 4.5vw, 42px);
+  font-weight: 700;
   line-height: 1.2;
   color: var(--text-primary);
 }
 :host .aide-heading--2 {
   font-family: var(--font-serif);
-  font-size: clamp(24px, 3.5vw, 32px);
-  font-weight: 400;
+  font-size: clamp(28px, 3.5vw, 32px);
+  font-weight: 700;
   line-height: 1.25;
   color: var(--text-primary);
 }
 :host .aide-heading--3 {
-  font-family: var(--font-sans);
+  font-family: var(--font-heading);
   font-size: 18px;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.4;
   color: var(--text-primary);
 }
@@ -691,19 +711,19 @@
 :host .aide-text {
   font-family: var(--font-sans);
   font-size: 16px;
-  font-weight: 300;
+  font-weight: 400;
   line-height: 1.65;
   color: var(--text-secondary);
   margin-bottom: var(--space-4);
 }
 :host .aide-text a {
-  color: var(--accent-steel);
+  color: var(--accent);
   text-decoration: underline;
   text-decoration-color: var(--border);
   text-underline-offset: 2px;
 }
 :host .aide-text a:hover {
-  text-decoration-color: var(--accent-steel);
+  text-decoration-color: var(--accent);
 }
 
 /* ── Metric ── */
@@ -745,14 +765,14 @@
 
 /* ── Callout ── */
 :host .aide-callout {
-  background: var(--bg-cream);
+  background: var(--bg-secondary);
   border-left: 3px solid var(--border);
   padding: var(--space-4) var(--space-5);
   margin: var(--space-4) 0;
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   font-size: 15px;
   line-height: 1.55;
-  color: var(--text-slate);
+  color: var(--text-secondary);
 }
 
 /* ── Columns ── */
@@ -781,7 +801,7 @@
 
 /* ── Highlight ── */
 :host .aide-highlight {
-  background-color: rgba(31, 42, 68, 0.04);
+  background-color: var(--accent-subtle);
 }
 
 /* ── List view ── */
@@ -832,7 +852,7 @@
 :host .aide-table__td {
   padding: var(--space-3);
   border-bottom: 1px solid var(--border-light);
-  color: var(--text-slate);
+  color: var(--text-secondary);
   vertical-align: top;
 }
 :host .aide-table__td--bool { text-align: center; }
@@ -860,7 +880,7 @@
   vertical-align: middle;
 }
 :host .aide-grid__cell--filled {
-  background: var(--bg-cream);
+  background: var(--bg-secondary);
   color: var(--text-primary);
   font-weight: 500;
 }
@@ -891,7 +911,7 @@
 :host .aide-annotation:last-child { border-bottom: none; }
 :host .aide-annotation__text {
   font-size: 15px;
-  color: var(--text-slate);
+  color: var(--text-secondary);
   line-height: 1.5;
 }
 :host .aide-annotation__meta {
@@ -900,7 +920,7 @@
   margin-left: var(--space-3);
 }
 :host .aide-annotation--pinned {
-  border-left: 3px solid var(--accent-navy);
+  border-left: 3px solid var(--accent);
   padding-left: var(--space-4);
 }
 
@@ -923,7 +943,7 @@
 
 /* ── Card (React component) ── */
 :host .aide-card {
-  background: #fff;
+  background: var(--bg-elevated);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   padding: var(--space-4);
@@ -975,8 +995,8 @@
 }
 :host .aide-section__title {
   font-family: var(--font-serif);
-  font-size: clamp(24px, 3.5vw, 32px);
-  font-weight: 400;
+  font-size: clamp(28px, 3.5vw, 32px);
+  font-weight: 700;
   line-height: 1.25;
   color: var(--text-primary);
 }
@@ -1007,7 +1027,7 @@
   width: 16px;
   height: 16px;
   cursor: pointer;
-  accent-color: var(--accent-navy);
+  accent-color: var(--accent);
   flex-shrink: 0;
   margin-top: 2px;
 }
@@ -1042,9 +1062,9 @@
 :host .editable-input {
   font: inherit;
   color: inherit;
-  background: #fff;
-  border: 1px solid var(--accent-steel);
-  border-radius: 2px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
   padding: 1px 4px;
   margin: -2px -5px;
   outline: none;
@@ -1085,7 +1105,7 @@
 }
 :host .fb-id {
   font-weight: 600;
-  color: var(--text-slate);
+  color: var(--text-secondary);
   font-size: 12px;
 }
 :host .fb-display {
@@ -1101,7 +1121,7 @@
 }
 :host dt {
   font-weight: 500;
-  color: var(--text-slate);
+  color: var(--text-secondary);
 }
 :host dd {
   color: var(--text-secondary);
@@ -1118,7 +1138,7 @@
 <div id="auth-screen">
   <div class="auth-card">
     <div>
-      <div class="auth-title">AIde</div>
+      <div class="auth-title">aide</div>
       <div class="auth-subtitle">Sign in to continue.</div>
     </div>
     <div id="auth-send-form" class="auth-form">
@@ -1135,13 +1155,13 @@
 <!-- Dashboard -->
 <div id="dashboard">
   <div class="dashboard-header">
-    <h1>AIde</h1>
-    <button id="new-aide-btn" class="btn btn-primary">+ New AIde</button>
+    <h1>aide</h1>
+    <button id="new-aide-btn" class="btn btn-primary">+ New aide</button>
   </div>
   <div id="aide-grid" class="aide-grid"></div>
   <div id="empty-state" class="empty-state" style="display:none;">
     <p>Nothing yet.</p>
-    <button class="btn btn-ghost" onclick="startNewAide()">Create your first AIde</button>
+    <button class="btn btn-ghost" onclick="startNewAide()">Create your first aide</button>
   </div>
 </div>
 
@@ -1165,7 +1185,7 @@
         <textarea
           id="message-input"
           rows="1"
-          placeholder="Tell AIde what you're running…"
+          placeholder="Tell aide what you're living…"
         ></textarea>
         <div class="input-actions">
           <button id="image-btn" class="action-btn" title="Attach image">
@@ -1922,7 +1942,7 @@
     input.type = 'text';
     input.value = currentValue;
     input.className = 'editable-input';
-    input.style.cssText = 'font: inherit; color: inherit; background: #fff; border: 1px solid var(--accent-steel, #5a6e8a); border-radius: 2px; padding: 1px 4px; margin: -2px -5px; outline: none; min-width: 60px; width: 100%;';
+    input.style.cssText = 'font: inherit; color: inherit; background: var(--bg-elevated, #fff); border: 1px solid var(--accent, #7C8C6E); border-radius: var(--radius-sm, 6px); padding: 1px 4px; margin: -2px -5px; outline: none; min-width: 60px; width: 100%;';
 
     // Replace content with input
     element.textContent = '';

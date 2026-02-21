@@ -96,11 +96,11 @@ SIMPLE_FIELD_TYPES: set[str] = {
 
 # Known style tokens and their defaults
 DEFAULT_STYLES: dict[str, str] = {
-    "primary_color": "#2d3748",
-    "bg_color": "#fafaf9",
-    "text_color": "#1a1a1a",
-    "font_family": "Inter",
-    "heading_font": "Cormorant Garamond",
+    "primary_color": "#2D2D2A",
+    "bg_color": "#F7F5F2",
+    "text_color": "#2D2D2A",
+    "font_family": "DM Sans",
+    "heading_font": "Playfair Display",
     "density": "comfortable",
 }
 
@@ -287,17 +287,6 @@ class Blueprint:
             voice=d.get("voice", "No first person. State reflections only."),
             prompt=d.get("prompt", ""),
         )
-
-
-@dataclass
-class RenderOptions:
-    """Options controlling what the renderer includes in output."""
-
-    include_events: bool = True
-    include_blueprint: bool = True
-    include_fonts: bool = True
-    footer: str | None = None  # "Made with AIde" for free tier
-    base_url: str = "https://toaide.com"
 
 
 @dataclass

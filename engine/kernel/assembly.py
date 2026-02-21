@@ -21,8 +21,8 @@ import uuid
 from typing import Any
 
 from engine.kernel.primitives import validate_primitive
+from engine.kernel.react_preview import render_react_preview
 from engine.kernel.reducer import empty_state, reduce
-from engine.kernel.renderer import render
 from engine.kernel.types import (
     AideFile,
     ApplyResult,
@@ -30,7 +30,6 @@ from engine.kernel.types import (
     Event,
     ParsedAide,
     ReduceResult,
-    RenderOptions,
     Warning,
 )
 
@@ -272,11 +271,8 @@ class AideAssembly:
 
         # Re-render if anything changed
         if applied:
-            aide_file.html = render(
-                snapshot,
-                aide_file.blueprint,
-                aide_file.events,
-            )
+            title = snapshot.get("meta", {}).get("title")
+            aide_file.html = render_react_preview(snapshot, title=title)
             aide_file.size_bytes = len(aide_file.html.encode("utf-8"))
 
         return ApplyResult(
@@ -312,7 +308,8 @@ class AideAssembly:
             title = identity.split(".")[0].strip()[:100]
             snapshot["meta"]["title"] = title
 
-        html = render(snapshot, blueprint, events=[])
+        title = snapshot.get("meta", {}).get("title")
+        html = render_react_preview(snapshot, title=title)
 
         return AideFile(
             aide_id=aide_id,
@@ -341,19 +338,8 @@ class AideAssembly:
         if slug is None:
             slug = uuid.uuid4().hex[:8]
 
-        footer = "Made with AIde" if is_free_tier else None
-        options = RenderOptions(
-            include_events=len(aide_file.events) <= 500,
-            include_blueprint=True,
-            footer=footer,
-        )
-
-        published_html = render(
-            aide_file.snapshot,
-            aide_file.blueprint,
-            aide_file.events if options.include_events else None,
-            options,
-        )
+        title = aide_file.snapshot.get("meta", {}).get("title")
+        published_html = render_react_preview(aide_file.snapshot, title=title)
 
         await self._storage.put_published(slug, published_html)
         return f"https://toaide.com/p/{slug}"
@@ -384,7 +370,8 @@ class AideAssembly:
 
         snapshot["annotations"] = []
 
-        html = render(snapshot, source.blueprint, events=[])
+        title = snapshot.get("meta", {}).get("title")
+        html = render_react_preview(snapshot, title=title)
 
         return AideFile(
             aide_id=new_id,
@@ -418,7 +405,8 @@ class AideAssembly:
 
         aide_file.snapshot = replay(aide_file.events)
         aide_file.snapshot["version"] = 1
-        aide_file.html = render(aide_file.snapshot, aide_file.blueprint, aide_file.events)
+        title = aide_file.snapshot.get("meta", {}).get("title")
+        aide_file.html = render_react_preview(aide_file.snapshot, title=title)
         aide_file.size_bytes = len(aide_file.html.encode("utf-8"))
         return aide_file
 
@@ -433,10 +421,7 @@ class AideAssembly:
             return aide_file
 
         aide_file.events = aide_file.events[-keep_recent:]
-        aide_file.html = render(
-            aide_file.snapshot,
-            aide_file.blueprint,
-            aide_file.events,
-        )
+        title = aide_file.snapshot.get("meta", {}).get("title")
+        aide_file.html = render_react_preview(aide_file.snapshot, title=title)
         aide_file.size_bytes = len(aide_file.html.encode("utf-8"))
         return aide_file

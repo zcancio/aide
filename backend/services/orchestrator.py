@@ -18,10 +18,10 @@ from backend.services.grid_resolver import resolve_primitives
 from backend.services.l2_compiler import l2_compiler
 from backend.services.l3_synthesizer import l3_synthesizer
 from backend.services.r2 import r2_service
+from engine.kernel.react_preview import render_react_preview
 from engine.kernel.reducer_v2 import empty_snapshot as empty_v2_snapshot
 from engine.kernel.reducer_v2 import reduce
-from engine.kernel.renderer import render
-from engine.kernel.types import Blueprint, Event, ReduceResult, Snapshot
+from engine.kernel.types import Event, ReduceResult, Snapshot
 
 
 class Orchestrator:
@@ -256,8 +256,8 @@ class Orchestrator:
         print(f"Orchestrator: {applied_count}/{len(v2_events)} events applied successfully")
 
         # 5. Render HTML
-        blueprint = Blueprint(identity=aide.title if hasattr(aide, "title") else "AIde")
-        html_content = render(new_snapshot, blueprint=blueprint, events=events)
+        title = new_snapshot.get("meta", {}).get("title") or (aide.title if hasattr(aide, "title") else "AIde")
+        html_content = render_react_preview(new_snapshot, title=title)
 
         # 6. Save state to DB
         serialized_events = [
