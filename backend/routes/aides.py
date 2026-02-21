@@ -11,6 +11,7 @@ from backend.auth import get_current_user
 from backend.models.aide import (
     AideResponse,
     CreateAideRequest,
+    HydrateResponse,
     SaveConversationRequest,
     SaveStateRequest,
     SaveStateResponse,
@@ -21,6 +22,7 @@ from backend.models.user import User
 from backend.repos.aide_repo import AideRepo
 from backend.repos.conversation_repo import ConversationRepo
 from backend.services.r2 import r2_service
+from backend.utils.snapshot_hash import hash_snapshot
 
 router = APIRouter(prefix="/api/aides", tags=["aides"])
 aide_repo = AideRepo()
@@ -54,6 +56,64 @@ async def get_aide(
     if not aide:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aide not found.")
     return AideResponse.from_model(aide)
+
+
+@router.get("/{aide_id}/hydrate", status_code=200)
+async def hydrate_aide(
+    aide_id: UUID,
+    user: User = Depends(get_current_user),
+) -> HydrateResponse:
+    """
+    Cold load hydration endpoint.
+
+    Returns the complete state needed to initialize the editor client:
+    - snapshot: current reduced state (already reduced, ready to render)
+    - events: full event log (for audit trail + published embed)
+    - blueprint: identity, voice, prompt metadata
+    - messages: conversation history
+    - snapshot_hash: checksum for reconciliation
+
+    No replay is needed - the snapshot is the current state, persisted
+    after each turn by the server.
+    """
+    # Verify user owns this aide
+    aide = await aide_repo.get(user.id, aide_id)
+    if not aide:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aide not found.")
+
+    # Get conversation history
+    conversation = await conversation_repo.get_for_aide(user.id, aide_id)
+    messages = []
+    if conversation:
+        messages = [
+            {"role": m.role, "content": m.content, "timestamp": m.timestamp.isoformat()}
+            for m in conversation.messages
+            if m.role in ("user", "assistant")
+        ]
+
+    # Build blueprint from aide metadata
+    blueprint = {
+        "identity": aide.title or "Untitled",
+        "voice": "declarative",  # Default voice rules from CLAUDE.md
+        "prompt": "",  # Could be extended with custom system prompts later
+    }
+
+    # Snapshot is already reduced and ready to render
+    snapshot = aide.state or {}
+
+    # Events from the event log
+    events = aide.event_log or []
+
+    # Compute snapshot hash for reconciliation
+    snapshot_hash_value = hash_snapshot(snapshot)
+
+    return HydrateResponse(
+        snapshot=snapshot,
+        events=events,
+        blueprint=blueprint,
+        messages=messages,
+        snapshot_hash=snapshot_hash_value,
+    )
 
 
 @router.patch("/{aide_id}", status_code=200)
