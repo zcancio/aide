@@ -14,7 +14,7 @@ in a :root block within the <style> element.
 Token → CSS variable mapping (from spec):
   primary_color → --text-primary
   bg_color      → --bg-primary
-  text_color    → --text-slate
+  text_color    → --text-secondary
   font_family   → --font-sans
   heading_font  → --font-serif
   density       → adjusts spacing scale
@@ -167,22 +167,22 @@ class TestBgColorToken:
 
 
 # ============================================================================
-# text_color → --text-slate
+# text_color → --text-secondary
 # ============================================================================
 
 
 class TestTextColorToken:
     """
-    text_color maps to --text-slate CSS variable.
-    Per spec: style token 'text_color' → CSS variable '--text-slate'.
+    text_color maps to --text-secondary CSS variable.
+    Per spec: style token 'text_color' → CSS variable '--text-secondary'.
     """
 
-    def test_text_color_sets_text_slate(self):
-        """Setting text_color emits --text-slate override."""
+    def test_text_color_sets_text_secondary(self):
+        """Setting text_color emits --text-secondary override."""
         snapshot = make_snapshot_with_styles({"text_color": "#333333"})
         html = render(snapshot, make_blueprint())
 
-        assert_css_contains(html, "--text-slate: #333333")
+        assert_css_contains(html, "--text-secondary: #333333")
 
 
 # ============================================================================
@@ -319,7 +319,7 @@ class TestMultipleTokensCombined:
             html,
             "--text-primary: #1a365d",
             "--bg-primary: #fffff0",
-            "--text-slate: #2a2a2a",
+            "--text-secondary: #2a2a2a",
         )
 
     def test_fonts_and_colors_together(self):
@@ -355,7 +355,7 @@ class TestMultipleTokensCombined:
             html,
             "--text-primary: #2d3748",
             "--bg-primary: #fafaf9",
-            "--text-slate: #1a1a1a",
+            "--text-secondary: #1a1a1a",
         )
         assert_css_contains(html, "Inter")
         assert_css_contains(html, "Cormorant Garamond")

@@ -105,8 +105,9 @@ def render(
         parts.append('  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>')
         parts.append(
             '  <link href="https://fonts.googleapis.com/css2?'
-            "family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400"
-            '&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">'
+            "family=Playfair+Display:wght@400;500;600;700"
+            "&family=Instrument+Sans:wght@400;500;600;700"
+            '&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">'
         )
 
     # CSS
@@ -231,21 +232,41 @@ def _render_css(snapshot: dict) -> str:
     # CSS custom properties (defaults + overrides)
     parts.append(":root {")
     parts.append("  /* Design system defaults */")
-    parts.append("  --font-serif: 'Cormorant Garamond', Georgia, serif;")
-    parts.append("  --font-sans: 'IBM Plex Sans', -apple-system, sans-serif;")
-    parts.append("  --text-primary: #1a1a1a;")
-    parts.append("  --text-secondary: #4a4a4a;")
-    parts.append("  --text-tertiary: #8a8a8a;")
-    parts.append("  --text-slate: #374151;")
-    parts.append("  --bg-primary: #fafaf9;")
-    parts.append("  --bg-cream: #f5f1eb;")
-    parts.append("  --accent-navy: #1f2a44;")
-    parts.append("  --accent-steel: #5a6e8a;")
-    parts.append("  --accent-forest: #2d5a3d;")
-    parts.append("  --border: #d4d0c8;")
-    parts.append("  --border-light: #e8e4dc;")
-    parts.append("  --radius-sm: 4px;")
-    parts.append("  --radius-md: 8px;")
+    parts.append("  --font-serif: 'Playfair Display', Georgia, serif;")
+    parts.append("  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;")
+    parts.append("  --font-heading: 'Instrument Sans', -apple-system, BlinkMacSystemFont, sans-serif;")
+    parts.append("  --text-primary: #2D2D2A;")
+    parts.append("  --text-secondary: #6B6963;")
+    parts.append("  --text-tertiary: #A8A5A0;")
+    parts.append("  --text-inverse: #F7F5F2;")
+    parts.append("  --bg-primary: #F7F5F2;")
+    parts.append("  --bg-secondary: #EFECEA;")
+    parts.append("  --bg-tertiary: #E6E3DF;")
+    parts.append("  --bg-elevated: #FFFFFF;")
+    parts.append("  /* Sage accent scale */")
+    parts.append("  --sage-50: #F0F3ED;")
+    parts.append("  --sage-100: #DDE4D7;")
+    parts.append("  --sage-200: #C2CCB8;")
+    parts.append("  --sage-300: #A3B394;")
+    parts.append("  --sage-400: #8B9E7C;")
+    parts.append("  --sage-500: #7C8C6E;")
+    parts.append("  --sage-600: #667358;")
+    parts.append("  --sage-700: #515C46;")
+    parts.append("  --sage-800: #3C4534;")
+    parts.append("  --sage-900: #282E23;")
+    parts.append("  --accent: var(--sage-500);")
+    parts.append("  --accent-hover: var(--sage-600);")
+    parts.append("  --accent-subtle: var(--sage-50);")
+    parts.append("  --accent-muted: var(--sage-100);")
+    parts.append("  --border-subtle: #E0DDD8;")
+    parts.append("  --border-default: #D4D1CC;")
+    parts.append("  --border-strong: #A8A5A0;")
+    parts.append("  --border: var(--border-default);")
+    parts.append("  --border-light: var(--border-subtle);")
+    parts.append("  --radius-sm: 6px;")
+    parts.append("  --radius-md: 10px;")
+    parts.append("  --radius-lg: 16px;")
+    parts.append("  --radius-full: 999px;")
     # Spacing scale
     for i, px in enumerate([0, 4, 8, 12, 16, 20, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160]):
         parts.append(f"  --space-{i}: {px}px;")
@@ -256,9 +277,9 @@ def _render_css(snapshot: dict) -> str:
     if styles.get("bg_color"):
         parts.append(f"  --bg-primary: {styles['bg_color']};")
     if styles.get("text_color"):
-        parts.append(f"  --text-slate: {styles['text_color']};")
+        parts.append(f"  --text-secondary: {styles['text_color']};")
     if styles.get("font_family"):
-        parts.append(f"  --font-sans: '{styles['font_family']}', -apple-system, sans-serif;")
+        parts.append(f"  --font-sans: '{styles['font_family']}', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;")
     if styles.get("heading_font"):
         parts.append(f"  --font-serif: '{styles['heading_font']}', Georgia, serif;")
 
@@ -1210,7 +1231,7 @@ BASE_CSS = """
 body {
   font-family: var(--font-sans);
   font-size: 16px;
-  font-weight: 300;
+  font-weight: 400;
   line-height: 1.65;
   color: var(--text-primary);
   background: var(--bg-primary);
@@ -1242,22 +1263,22 @@ BLOCK_CSS = """
 .aide-heading { margin-bottom: var(--space-4); }
 .aide-heading--1 {
   font-family: var(--font-serif);
-  font-size: clamp(32px, 4.5vw, 42px);
-  font-weight: 400;
+  font-size: clamp(36px, 4.5vw, 42px);
+  font-weight: 700;
   line-height: 1.2;
   color: var(--text-primary);
 }
 .aide-heading--2 {
   font-family: var(--font-serif);
-  font-size: clamp(24px, 3.5vw, 32px);
-  font-weight: 400;
+  font-size: clamp(28px, 3.5vw, 32px);
+  font-weight: 700;
   line-height: 1.25;
   color: var(--text-primary);
 }
 .aide-heading--3 {
-  font-family: var(--font-sans);
+  font-family: var(--font-heading);
   font-size: 18px;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.4;
   color: var(--text-primary);
 }
@@ -1266,19 +1287,19 @@ BLOCK_CSS = """
 .aide-text {
   font-family: var(--font-sans);
   font-size: 16px;
-  font-weight: 300;
+  font-weight: 400;
   line-height: 1.65;
   color: var(--text-secondary);
   margin-bottom: var(--space-4);
 }
 .aide-text a {
-  color: var(--accent-steel);
+  color: var(--accent);
   text-decoration: underline;
   text-decoration-color: var(--border);
   text-underline-offset: 2px;
 }
 .aide-text a:hover {
-  text-decoration-color: var(--accent-steel);
+  text-decoration-color: var(--accent);
 }
 
 /* ── Metric ── */
@@ -1320,14 +1341,14 @@ BLOCK_CSS = """
 
 /* ── Callout ── */
 .aide-callout {
-  background: var(--bg-cream);
+  background: var(--bg-secondary);
   border-left: 3px solid var(--border);
   padding: var(--space-4) var(--space-5);
   margin: var(--space-4) 0;
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   font-size: 15px;
   line-height: 1.55;
-  color: var(--text-slate);
+  color: var(--text-secondary);
 }
 
 /* ── Columns ── */
@@ -1356,7 +1377,7 @@ BLOCK_CSS = """
 
 /* ── Highlight ── */
 .aide-highlight {
-  background-color: rgba(31, 42, 68, 0.04);
+  background-color: var(--accent-subtle);
 }
 """
 
@@ -1408,7 +1429,7 @@ VIEW_CSS = """
 .aide-table__td {
   padding: var(--space-3);
   border-bottom: 1px solid var(--border-light);
-  color: var(--text-slate);
+  color: var(--text-secondary);
   vertical-align: top;
 }
 .aide-table__td--bool { text-align: center; }
@@ -1436,7 +1457,7 @@ VIEW_CSS = """
   vertical-align: middle;
 }
 .aide-grid__cell--filled {
-  background: var(--bg-cream);
+  background: var(--bg-secondary);
   color: var(--text-primary);
   font-weight: 500;
 }
@@ -1467,7 +1488,7 @@ VIEW_CSS = """
 .aide-annotation:last-child { border-bottom: none; }
 .aide-annotation__text {
   font-size: 15px;
-  color: var(--text-slate);
+  color: var(--text-secondary);
   line-height: 1.5;
 }
 .aide-annotation__meta {
@@ -1476,7 +1497,7 @@ VIEW_CSS = """
   margin-left: var(--space-3);
 }
 .aide-annotation--pinned {
-  border-left: 3px solid var(--accent-navy);
+  border-left: 3px solid var(--accent);
   padding-left: var(--space-4);
 }
 

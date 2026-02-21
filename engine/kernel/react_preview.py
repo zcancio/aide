@@ -58,7 +58,7 @@ def render_react_preview(
 <title>{_escape_html(page_title)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <style>
@@ -105,21 +105,41 @@ PREVIEW_CSS = '''
 /* CSS custom properties - exact copy from renderer.py */
 :root {
   /* Design system defaults */
-  --font-serif: 'Cormorant Garamond', Georgia, serif;
-  --font-sans: 'IBM Plex Sans', -apple-system, sans-serif;
-  --text-primary: #1a1a1a;
-  --text-secondary: #4a4a4a;
-  --text-tertiary: #8a8a8a;
-  --text-slate: #374151;
-  --bg-primary: #fafaf9;
-  --bg-cream: #f5f1eb;
-  --accent-navy: #1f2a44;
-  --accent-steel: #5a6e8a;
-  --accent-forest: #2d5a3d;
-  --border: #d4d0c8;
-  --border-light: #e8e4dc;
-  --radius-sm: 4px;
-  --radius-md: 8px;
+  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-heading: 'Instrument Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --text-primary: #2D2D2A;
+  --text-secondary: #6B6963;
+  --text-tertiary: #A8A5A0;
+  --text-inverse: #F7F5F2;
+  --bg-primary: #F7F5F2;
+  --bg-secondary: #EFECEA;
+  --bg-tertiary: #E6E3DF;
+  --bg-elevated: #FFFFFF;
+  /* Sage accent scale */
+  --sage-50: #F0F3ED;
+  --sage-100: #DDE4D7;
+  --sage-200: #C2CCB8;
+  --sage-300: #A3B394;
+  --sage-400: #8B9E7C;
+  --sage-500: #7C8C6E;
+  --sage-600: #667358;
+  --sage-700: #515C46;
+  --sage-800: #3C4534;
+  --sage-900: #282E23;
+  --accent: var(--sage-500);
+  --accent-hover: var(--sage-600);
+  --accent-subtle: var(--sage-50);
+  --accent-muted: var(--sage-100);
+  --border-subtle: #E0DDD8;
+  --border-default: #D4D1CC;
+  --border-strong: #A8A5A0;
+  --border: var(--border-default);
+  --border-light: var(--border-subtle);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 999px;
   /* Spacing scale */
   --space-0: 0px;
   --space-1: 4px;
@@ -146,7 +166,7 @@ PREVIEW_CSS = '''
 body {
   font-family: var(--font-sans);
   font-size: 16px;
-  font-weight: 300;
+  font-weight: 400;
   line-height: 1.65;
   color: var(--text-primary);
   background: var(--bg-primary);
@@ -176,22 +196,22 @@ body {
 .aide-heading { margin-bottom: var(--space-4); }
 .aide-heading--1 {
   font-family: var(--font-serif);
-  font-size: clamp(32px, 4.5vw, 42px);
-  font-weight: 400;
+  font-size: clamp(36px, 4.5vw, 42px);
+  font-weight: 700;
   line-height: 1.2;
   color: var(--text-primary);
 }
 .aide-heading--2 {
   font-family: var(--font-serif);
-  font-size: clamp(24px, 3.5vw, 32px);
-  font-weight: 400;
+  font-size: clamp(28px, 3.5vw, 32px);
+  font-weight: 700;
   line-height: 1.25;
   color: var(--text-primary);
 }
 .aide-heading--3 {
-  font-family: var(--font-sans);
+  font-family: var(--font-heading);
   font-size: 18px;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.4;
   color: var(--text-primary);
 }
@@ -200,19 +220,19 @@ body {
 .aide-text {
   font-family: var(--font-sans);
   font-size: 16px;
-  font-weight: 300;
+  font-weight: 400;
   line-height: 1.65;
   color: var(--text-secondary);
   margin-bottom: var(--space-4);
 }
 .aide-text a {
-  color: var(--accent-steel);
+  color: var(--accent);
   text-decoration: underline;
   text-decoration-color: var(--border);
   text-underline-offset: 2px;
 }
 .aide-text a:hover {
-  text-decoration-color: var(--accent-steel);
+  text-decoration-color: var(--accent);
 }
 
 /* ── Metric ── */
@@ -254,14 +274,14 @@ body {
 
 /* ── Callout ── */
 .aide-callout {
-  background: var(--bg-cream);
+  background: var(--bg-secondary);
   border-left: 3px solid var(--border);
   padding: var(--space-4) var(--space-5);
   margin: var(--space-4) 0;
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   font-size: 15px;
   line-height: 1.55;
-  color: var(--text-slate);
+  color: var(--text-secondary);
 }
 
 /* ── Columns ── */
@@ -290,7 +310,7 @@ body {
 
 /* ── Highlight ── */
 .aide-highlight {
-  background-color: rgba(31, 42, 68, 0.04);
+  background-color: var(--accent-subtle);
 }
 
 /* ── List view ── */
@@ -340,7 +360,7 @@ body {
 .aide-table__td {
   padding: var(--space-3);
   border-bottom: 1px solid var(--border-light);
-  color: var(--text-slate);
+  color: var(--text-secondary);
   vertical-align: top;
 }
 .aide-table__td--bool { text-align: center; }
@@ -368,7 +388,7 @@ body {
   vertical-align: middle;
 }
 .aide-grid__cell--filled {
-  background: var(--bg-cream);
+  background: var(--bg-secondary);
   color: var(--text-primary);
   font-weight: 500;
 }
@@ -399,7 +419,7 @@ body {
 .aide-annotation:last-child { border-bottom: none; }
 .aide-annotation__text {
   font-size: 15px;
-  color: var(--text-slate);
+  color: var(--text-secondary);
   line-height: 1.5;
 }
 .aide-annotation__meta {
@@ -408,7 +428,7 @@ body {
   margin-left: var(--space-3);
 }
 .aide-annotation--pinned {
-  border-left: 3px solid var(--accent-navy);
+  border-left: 3px solid var(--accent);
   padding-left: var(--space-4);
 }
 
@@ -515,7 +535,7 @@ body {
   width: 16px;
   height: 16px;
   cursor: pointer;
-  accent-color: var(--accent-navy);
+  accent-color: var(--accent);
   flex-shrink: 0;
   margin-top: 2px;
 }
@@ -550,9 +570,9 @@ body {
 .editable-input {
   font: inherit;
   color: inherit;
-  background: #fff;
-  border: 1px solid var(--accent-steel);
-  border-radius: 2px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
   padding: 1px 4px;
   margin: -2px -5px;
   outline: none;

@@ -583,19 +583,19 @@ class TestGoogleFonts:
         assert_contains(html, 'href="https://fonts.gstatic.com"')
         assert_contains(html, "crossorigin")
 
-    def test_cormorant_garamond_loaded(self, html):
-        """Cormorant Garamond font stylesheet linked."""
-        assert_contains(html, "Cormorant+Garamond")
+    def test_playfair_display_loaded(self, html):
+        """Playfair Display font stylesheet linked."""
+        assert_contains(html, "Playfair+Display")
 
-    def test_ibm_plex_sans_loaded(self, html):
-        """IBM Plex Sans font stylesheet linked."""
-        assert_contains(html, "IBM+Plex+Sans")
+    def test_dm_sans_loaded(self, html):
+        """DM Sans font stylesheet linked."""
+        assert_contains(html, "DM+Sans")
 
     def test_fonts_in_head(self, html):
         """Font links are inside <head>."""
         head_start = html.find("<head>")
         head_end = html.find("</head>")
-        fonts_pos = html.find("Cormorant+Garamond")
+        fonts_pos = html.find("Playfair+Display")
         assert head_start < fonts_pos < head_end
 
     def test_include_fonts_false(self):
@@ -606,7 +606,7 @@ class TestGoogleFonts:
             options=RenderOptions(include_fonts=False),
         )
         assert_not_contains(html, "fonts.googleapis.com")
-        assert_not_contains(html, "Cormorant+Garamond")
+        assert_not_contains(html, "Playfair+Display")
 
 
 # ============================================================================

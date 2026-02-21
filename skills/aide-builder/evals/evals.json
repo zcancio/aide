@@ -16,7 +16,7 @@
         "No first person language anywhere in rendered HTML",
         "No emojis anywhere",
         "No encouragement ('Great!', 'Nice!', etc.)",
-        "Uses Cormorant Garamond for headings and IBM Plex Sans for body",
+        "Uses Playfair Display for headings and DM Sans for body",
         "Has 'Made with AIde' footer",
         "Has OG meta tags for title",
         "No JavaScript in the output",

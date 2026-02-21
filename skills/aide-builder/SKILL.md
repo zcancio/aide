@@ -202,8 +202,9 @@ The prompt field should include:
 Produce a single, self-contained HTML file. Follow the AIde design system:
 
 **Typography:**
-- Headings: Cormorant Garamond (serif), 400 weight
-- Body: IBM Plex Sans, 300 weight
+- H1/H2: Playfair Display (serif), 700 weight
+- H3: Instrument Sans, 600 weight
+- Body: DM Sans, 400 weight
 - Google Fonts linked via `<link>` tags
 
 **Layout:**
@@ -212,13 +213,13 @@ Produce a single, self-contained HTML file. Follow the AIde design system:
 - Clean vertical rhythm with consistent spacing
 
 **Colors (defaults):**
-- `--text-primary: #2d3748`
-- `--bg-primary: #fafaf9`
-- `--text-secondary: #4a5568`
-- `--text-tertiary: #a0aec0`
-- `--border: #e2e8f0`
-- `--border-light: #edf2f7`
-- `--accent-steel: #4a6fa5`
+- `--text-primary: #2D2D2A`
+- `--bg-primary: #F7F5F2`
+- `--text-secondary: #6B6963`
+- `--text-tertiary: #A8A5A0`
+- `--border: #D4D1CC`
+- `--border-light: #E0DDD8`
+- `--accent: #7C8C6E` (sage)
 
 **Tables:** Clean, no visible borders, alternating row hints via subtle background, header row with overline styling (11px uppercase letter-spaced).
 
@@ -317,7 +318,7 @@ Before producing the final HTML file, verify:
 - [ ] **Correct event order**: Collections before entities, views after collections, blocks reference existing views.
 - [ ] **Snapshot matches events**: The snapshot is what the reducer would produce from replaying the event log.
 - [ ] **No JavaScript**: The page is static HTML + CSS only.
-- [ ] **Typography**: Cormorant Garamond for headings, IBM Plex Sans for body. Google Fonts linked.
+- [ ] **Typography**: Playfair Display for headings, DM Sans for body. Google Fonts linked.
 - [ ] **Responsive**: Works on mobile (max-width: 720px, responsive padding).
 - [ ] **OG tags**: Title and description meta tags for link previews.
 - [ ] **Footer**: "Made with AIde" footer with current date.
@@ -332,5 +333,5 @@ Before producing the final HTML file, verify:
 - **Don't over-schema.** If they said "poker league with 8 guys every other Thursday," you need a roster and a schedule. You don't need a payments collection, a chat history, or an analytics dashboard.
 - **Don't use placeholder data.** Only structure what was explicitly stated. If they named 3 players, create 3 players. Don't invent the other 5.
 - **Don't add JavaScript.** The page is static HTML + CSS.
-- **Don't use Inter, Roboto, or system fonts.** Use the AIde design system: Cormorant Garamond + IBM Plex Sans.
+- **Don't use Inter, Roboto, or system fonts.** Use the aide design system: Playfair Display + DM Sans.
 - **Don't add encouragement, emojis, or personality.** The page is infrastructure.

@@ -219,7 +219,7 @@ Connect a view to the page with a `collection_view` block: `{ "type": "collectio
 
 **style.set** — Set global style tokens.
 ```json
-{ "primary_color": "#2d3748", "density": "compact" }
+{ "primary_color": "#2D2D2A", "density": "compact" }
 ```
 
 **style.set_entity** — Style override on a specific entity.
@@ -288,10 +288,11 @@ The identity is a one-line description. The voice is the constraint set. The pro
 
 ## Design Typography
 
-- Headings: Cormorant Garamond (serif), 400 weight
-- Body/labels: IBM Plex Sans, 300 weight
-- Metrics: IBM Plex Sans, 500 weight
-- Colors: slate palette (#2d3748 primary, #4a5568 secondary, #a0aec0 tertiary)
-- Background: warm white (#fafaf9)
+- H1/H2: Playfair Display (serif), 700 weight
+- H3: Instrument Sans, 600 weight
+- Body/labels: DM Sans, 400 weight
+- Metrics: DM Sans, 500 weight
+- Colors: warm grayscale (#2D2D2A primary, #6B6963 secondary, #A8A5A0 tertiary) + sage accent (#7C8C6E)
+- Background: warm ivory (#F7F5F2)
 - Max width: 720px, centered
-- "Made with AIde" footer (free tier)
+- "Made with aide" footer (free tier)

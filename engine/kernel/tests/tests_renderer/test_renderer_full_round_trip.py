@@ -487,8 +487,8 @@ class TestGroceryListFullRender:
     def test_google_fonts_linked(self, html):
         """Google Fonts preconnect and stylesheet links present."""
         assert_contains(html, "fonts.googleapis.com")
-        assert_contains(html, "Cormorant+Garamond")
-        assert_contains(html, "IBM+Plex+Sans")
+        assert_contains(html, "Playfair+Display")
+        assert_contains(html, "DM+Sans")
 
     # -- No JavaScript --
 

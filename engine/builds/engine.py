@@ -73,6 +73,9 @@ PRIMITIVE_TYPES: set[str] = {
     "collection.create",
     "collection.update",
     "collection.remove",
+    # Grid (batch entity creation, query)
+    "grid.create",
+    "grid.query",
     # Field (7-9)
     "field.add",
     "field.update",
@@ -118,21 +121,26 @@ VIEW_TYPES: set[str] = {
 
 # Field types — simple string types and their nullable variants
 SIMPLE_FIELD_TYPES: set[str] = {
-    "string", "string?",
-    "int", "int?",
-    "float", "float?",
+    "string",
+    "string?",
+    "int",
+    "int?",
+    "float",
+    "float?",
     "bool",
-    "date", "date?",
-    "datetime", "datetime?",
+    "date",
+    "date?",
+    "datetime",
+    "datetime?",
 }
 
 # Known style tokens and their defaults
 DEFAULT_STYLES: dict[str, str] = {
-    "primary_color": "#2d3748",
-    "bg_color": "#fafaf9",
-    "text_color": "#1a1a1a",
-    "font_family": "Inter",
-    "heading_font": "Cormorant Garamond",
+    "primary_color": "#2D2D2A",
+    "bg_color": "#F7F5F2",
+    "text_color": "#2D2D2A",
+    "font_family": "DM Sans",
+    "heading_font": "Playfair Display",
     "density": "comfortable",
 }
 
@@ -169,12 +177,64 @@ ESCALATION_REASONS: set[str] = {
 # Data classes
 # ---------------------------------------------------------------------------
 
+
+@dataclass
+class Snapshot:
+    """
+    The aide's current state — matches the reducer's expected structure.
+
+    Note: Entities are stored INSIDE each collection as collection["entities"],
+    not at the top level. This matches how the reducer processes state.
+    """
+
+    version: int = 1
+    meta: dict[str, Any] = field(default_factory=dict)
+    collections: dict[str, Any] = field(default_factory=dict)  # Each collection has "entities" inside
+    relationships: list[dict[str, Any]] = field(default_factory=list)
+    relationship_types: dict[str, Any] = field(default_factory=dict)
+    constraints: list[dict[str, Any]] = field(default_factory=list)
+    blocks: dict[str, Any] = field(default_factory=lambda: {"block_root": {"type": "root", "children": []}})
+    views: dict[str, Any] = field(default_factory=dict)
+    styles: dict[str, Any] = field(default_factory=dict)
+    annotations: list[dict[str, Any]] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "version": self.version,
+            "meta": self.meta,
+            "collections": self.collections,
+            "relationships": self.relationships,
+            "relationship_types": self.relationship_types,
+            "constraints": self.constraints,
+            "blocks": self.blocks,
+            "views": self.views,
+            "styles": self.styles,
+            "annotations": self.annotations,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> Snapshot:
+        return cls(
+            version=d.get("version", 1),
+            meta=d.get("meta", {}),
+            collections=d.get("collections", {}),
+            relationships=d.get("relationships", []),
+            relationship_types=d.get("relationship_types", {}),
+            constraints=d.get("constraints", []),
+            blocks=d.get("blocks", {"block_root": {"type": "root", "children": []}}),
+            views=d.get("views", {}),
+            styles=d.get("styles", {}),
+            annotations=d.get("annotations", []),
+        )
+
+
 @dataclass
 class Event:
     """
     Wraps a primitive with metadata for the append-only event log.
     The reducer reads only `type` and `payload`.
     """
+
     id: str
     sequence: int
     timestamp: str  # ISO 8601 UTC
@@ -223,6 +283,7 @@ class Event:
 @dataclass
 class Warning:
     """A non-fatal issue encountered during reduction."""
+
     code: str
     message: str
     details: dict[str, Any] | None = None
@@ -234,6 +295,7 @@ class ReduceResult:
     Result of applying one event to a snapshot.
     The reducer never throws — it always returns one of these.
     """
+
     snapshot: dict[str, Any]  # AideState
     applied: bool
     warnings: list[Warning] = field(default_factory=list)
@@ -246,6 +308,7 @@ class Blueprint:
     The aide's DNA — identity, voice rules, and LLM system prompt.
     Embedded in the HTML file for portability.
     """
+
     identity: str
     voice: str = "No first person. State reflections only."
     prompt: str = ""
@@ -269,6 +332,7 @@ class Blueprint:
 @dataclass
 class RenderOptions:
     """Options controlling what the renderer includes in output."""
+
     include_events: bool = True
     include_blueprint: bool = True
     include_fonts: bool = True
@@ -279,6 +343,7 @@ class RenderOptions:
 @dataclass
 class AideFile:
     """In-memory representation of a loaded aide HTML file."""
+
     aide_id: str
     snapshot: dict[str, Any]  # AideState
     events: list[Event]
@@ -292,6 +357,7 @@ class AideFile:
 @dataclass
 class ApplyResult:
     """Result of applying a batch of events through the assembly layer."""
+
     aide_file: AideFile
     applied: list[Event]
     rejected: list[tuple[Event, str]]  # (event, error_reason)
@@ -301,6 +367,7 @@ class ApplyResult:
 @dataclass
 class ParsedAide:
     """Result of parsing an existing aide HTML file."""
+
     blueprint: Blueprint | None
     snapshot: dict[str, Any] | None
     events: list[Event]
@@ -310,6 +377,7 @@ class ParsedAide:
 @dataclass
 class Escalation:
     """Signal from L2 when it can't compile a user message into primitives."""
+
     reason: str
     user_message: str
     context: str
@@ -328,6 +396,7 @@ class Escalation:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def parse_ref(ref: str) -> tuple[str, str]:
     """Parse 'collection_id/entity_id' into (collection_id, entity_id)."""
@@ -412,6 +481,7 @@ from typing import Any
 # Public API
 # ---------------------------------------------------------------------------
 
+
 def validate_primitive(type: str, payload: dict[str, Any]) -> list[str]:
     """
     Validate a primitive's type and payload structure.
@@ -451,6 +521,7 @@ def validate_primitive(type: str, payload: dict[str, Any]) -> list[str]:
 # Per-primitive validators
 # ---------------------------------------------------------------------------
 
+
 def _validate_entity_create(p: dict) -> list[str]:
     errors: list[str] = []
     if "collection" not in p:
@@ -473,11 +544,12 @@ def _validate_entity_update(p: dict) -> list[str]:
     errors: list[str] = []
     has_ref = "ref" in p
     has_filter = "filter" in p
+    has_cell_ref = "cell_ref" in p  # Grid cell reference (resolved by backend)
 
-    if not has_ref and not has_filter:
-        errors.append("entity.update requires 'ref' or 'filter'")
-    elif has_ref and has_filter:
-        errors.append("entity.update: provide 'ref' or 'filter', not both")
+    if not has_ref and not has_filter and not has_cell_ref:
+        errors.append("entity.update requires 'ref', 'filter', or 'cell_ref'")
+    elif sum([has_ref, has_filter, has_cell_ref]) > 1:
+        errors.append("entity.update: provide only one of 'ref', 'filter', or 'cell_ref'")
 
     if has_ref and not is_valid_ref(p["ref"]):
         errors.append(f"Invalid ref: {p['ref']}")
@@ -488,6 +560,12 @@ def _validate_entity_update(p: dict) -> list[str]:
             errors.append("'filter' must be an object")
         elif "collection" not in f:
             errors.append("filter requires 'collection'")
+
+    if has_cell_ref:
+        if not isinstance(p["cell_ref"], str):
+            errors.append("'cell_ref' must be a string")
+        if "collection" not in p:
+            errors.append("cell_ref requires 'collection'")
 
     if "fields" not in p:
         errors.append("entity.update requires 'fields'")
@@ -542,6 +620,43 @@ def _validate_collection_remove(p: dict) -> list[str]:
         errors.append("collection.remove requires 'id'")
     elif not is_valid_id(p["id"]):
         errors.append(f"Invalid collection ID: {p['id']}")
+    return errors
+
+
+def _validate_grid_create(p: dict) -> list[str]:
+    """Validate grid.create primitive for batch entity creation."""
+    errors: list[str] = []
+    if "collection" not in p:
+        errors.append("grid.create requires 'collection'")
+    elif not is_valid_id(p["collection"]):
+        errors.append(f"Invalid collection ID: {p['collection']}")
+
+    if "rows" not in p:
+        errors.append("grid.create requires 'rows'")
+    elif not isinstance(p["rows"], int) or p["rows"] < 1:
+        errors.append("'rows' must be a positive integer")
+
+    if "cols" not in p:
+        errors.append("grid.create requires 'cols'")
+    elif not isinstance(p["cols"], int) or p["cols"] < 1:
+        errors.append("'cols' must be a positive integer")
+
+    return errors
+
+
+def _validate_grid_query(p: dict) -> list[str]:
+    """Validate grid.query primitive for cell lookups."""
+    errors: list[str] = []
+    if "cell_ref" not in p:
+        errors.append("grid.query requires 'cell_ref'")
+    elif not isinstance(p["cell_ref"], str):
+        errors.append("'cell_ref' must be a string")
+
+    if "collection" not in p:
+        errors.append("grid.query requires 'collection'")
+    elif not is_valid_id(p["collection"]):
+        errors.append(f"Invalid collection ID: {p['collection']}")
+
     return errors
 
 
@@ -772,6 +887,8 @@ _VALIDATORS: dict[str, Any] = {
     "collection.create": _validate_collection_create,
     "collection.update": _validate_collection_update,
     "collection.remove": _validate_collection_remove,
+    "grid.create": _validate_grid_create,
+    "grid.query": _validate_grid_query,
     "field.add": _validate_field_add,
     "field.update": _validate_field_update,
     "field.remove": _validate_field_remove,
@@ -817,6 +934,7 @@ from typing import Any
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def empty_state() -> dict[str, Any]:
     """
@@ -876,6 +994,7 @@ def replay(events: list[Event]) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _reject(snap: dict, code: str, msg: str) -> ReduceResult:
     return ReduceResult(snapshot=snap, applied=False, error=f"{code}: {msg}")
@@ -1101,6 +1220,7 @@ def _check_constraints(snap: dict, event: Event, warnings: list[Warning]) -> boo
 # Primitive handlers
 # ---------------------------------------------------------------------------
 
+
 def _handle_entity_create(snap: dict, event: Event) -> ReduceResult:
     p = event.payload
     coll_id = p["collection"]
@@ -1144,10 +1264,12 @@ def _handle_entity_create(snap: dict, event: Event) -> ReduceResult:
     # Warn about extra fields not in schema
     for key in fields:
         if key not in schema:
-            warnings.append(Warning(
-                code="UNKNOWN_FIELD_IGNORED",
-                message=f"Field '{key}' not in schema, ignored",
-            ))
+            warnings.append(
+                Warning(
+                    code="UNKNOWN_FIELD_IGNORED",
+                    message=f"Field '{key}' not in schema, ignored",
+                )
+            )
 
     # 5. Store entity
     entity_fields["_removed"] = False
@@ -1214,10 +1336,12 @@ def _handle_entity_update(snap: dict, event: Event) -> ReduceResult:
                 entity["_updated_seq"] = event.sequence
                 count += 1
 
-        warnings.append(Warning(
-            code="ENTITIES_AFFECTED",
-            message=f"{count} entities updated",
-        ))
+        warnings.append(
+            Warning(
+                code="ENTITIES_AFFECTED",
+                message=f"{count} entities updated",
+            )
+        )
 
     # Check constraints
     if not _check_constraints(snap, event, warnings):
@@ -1323,8 +1447,7 @@ def _handle_collection_remove(snap: dict, event: Event) -> ReduceResult:
 
     # Exclude relationships involving entities in this collection
     for rel in snap["relationships"]:
-        if (rel.get("from", "").startswith(f"{coll_id}/") or
-                rel.get("to", "").startswith(f"{coll_id}/")):
+        if rel.get("from", "").startswith(f"{coll_id}/") or rel.get("to", "").startswith(f"{coll_id}/"):
             rel["_excluded"] = True
 
     # Remove views sourced from this collection
@@ -1353,6 +1476,51 @@ def _handle_collection_remove(snap: dict, event: Event) -> ReduceResult:
     return _ok(snap, warnings)
 
 
+def _handle_grid_create(snap: dict, event: Event) -> ReduceResult:
+    """
+    Create a grid of entities in one operation.
+    Payload: { collection, rows, cols, defaults? }
+    Creates rows × cols entities with row/col fields.
+    """
+    p = event.payload
+    coll_id = p["collection"]
+    rows = p["rows"]
+    cols = p["cols"]
+    defaults = p.get("defaults", {})
+
+    coll = _get_collection(snap, coll_id)
+    if coll is None:
+        return _reject(snap, "COLLECTION_NOT_FOUND", coll_id)
+
+    schema = coll.get("schema", {})
+
+    # Verify schema has row and col fields
+    if "row" not in schema or "col" not in schema:
+        return _reject(snap, "SCHEMA_MISMATCH", "Grid requires 'row' and 'col' fields in schema")
+
+    # Create all grid entities
+    for row in range(rows):
+        for col in range(cols):
+            entity_id = f"cell_{row}_{col}"
+
+            # Build entity fields from schema
+            entity_fields: dict[str, Any] = {"row": row, "col": col}
+            for field_name, field_type in schema.items():
+                if field_name in ("row", "col"):
+                    continue
+                if field_name in defaults:
+                    entity_fields[field_name] = defaults[field_name]
+                elif is_nullable_type(field_type):
+                    entity_fields[field_name] = None
+                # Required fields without defaults will fail - but grid.create assumes nullable fields
+
+            entity_fields["_removed"] = False
+            entity_fields["_created_seq"] = event.sequence
+            coll["entities"][entity_id] = entity_fields
+
+    return _ok(snap)
+
+
 def _handle_field_add(snap: dict, event: Event) -> ReduceResult:
     p = event.payload
     coll_id = p["collection"]
@@ -1370,8 +1538,7 @@ def _handle_field_add(snap: dict, event: Event) -> ReduceResult:
     # Required field without default → reject (unless collection is empty)
     has_entities = any(not e.get("_removed") for e in coll["entities"].values())
     if not is_nullable_type(field_type) and "default" not in p and has_entities:
-        return _reject(snap, "REQUIRED_FIELD_NO_DEFAULT",
-                        f"Can't add required field '{field_name}' without default")
+        return _reject(snap, "REQUIRED_FIELD_NO_DEFAULT", f"Can't add required field '{field_name}' without default")
 
     schema[field_name] = field_type
 
@@ -1409,8 +1576,7 @@ def _handle_field_update(snap: dict, event: Event) -> ReduceResult:
         # Handle bare "list" string (should be {"list": "type"})
         if new_type == "list" or (isinstance(new_type, dict) and "list" in new_type):
             if old_base in ("string", "bool", "date", "datetime", "int", "float", "enum"):
-                return _reject(snap, "INCOMPATIBLE_TYPE_CHANGE",
-                               f"Cannot convert {old_base} to list")
+                return _reject(snap, "INCOMPATIBLE_TYPE_CHANGE", f"Cannot convert {old_base} to list")
 
         if not is_valid_field_type(new_type):
             return _reject(snap, "TYPE_MISMATCH", f"Invalid type: {new_type}")
@@ -1429,22 +1595,22 @@ def _handle_field_update(snap: dict, event: Event) -> ReduceResult:
         # Check compatibility based on type transition
         if old_base == "enum" and new_base not in ("enum", "string"):
             # enum → anything other than string is rejected
-            return _reject(snap, "INCOMPATIBLE_TYPE_CHANGE",
-                           f"Cannot convert enum to {new_base}")
+            return _reject(snap, "INCOMPATIBLE_TYPE_CHANGE", f"Cannot convert enum to {new_base}")
 
         if old_base == "list":
             # list → anything else is rejected
-            return _reject(snap, "INCOMPATIBLE_TYPE_CHANGE",
-                           f"Cannot convert list to {new_base}")
+            return _reject(snap, "INCOMPATIBLE_TYPE_CHANGE", f"Cannot convert list to {new_base}")
 
         if old_base == "float" and new_base == "int" and existing_values:
             # float → int: check for lossy conversion
             for val in existing_values:
                 if isinstance(val, float) and val != int(val):
-                    warnings.append(Warning(
-                        code="LOSSY_TYPE_CONVERSION",
-                        message="Converting float to int will truncate decimal values",
-                    ))
+                    warnings.append(
+                        Warning(
+                            code="LOSSY_TYPE_CONVERSION",
+                            message="Converting float to int will truncate decimal values",
+                        )
+                    )
                     break
 
         if old_base == "string" and new_base == "int" and existing_values:
@@ -1454,8 +1620,7 @@ def _handle_field_update(snap: dict, event: Event) -> ReduceResult:
                     try:
                         int(val)
                     except ValueError:
-                        return _reject(snap, "INCOMPATIBLE_TYPE_CHANGE",
-                                       f"Cannot convert '{val}' to int")
+                        return _reject(snap, "INCOMPATIBLE_TYPE_CHANGE", f"Cannot convert '{val}' to int")
 
         if old_base == "string" and new_base == "enum" and existing_values:
             # string → enum: check all values are in enum
@@ -1463,20 +1628,18 @@ def _handle_field_update(snap: dict, event: Event) -> ReduceResult:
                 allowed = set(new_type["enum"])
                 for val in existing_values:
                     if val not in allowed:
-                        return _reject(snap, "INCOMPATIBLE_TYPE_CHANGE",
-                                       f"Value '{val}' not in enum {new_type['enum']}")
+                        return _reject(
+                            snap, "INCOMPATIBLE_TYPE_CHANGE", f"Value '{val}' not in enum {new_type['enum']}"
+                        )
 
         if old_base in ("string", "bool", "date", "datetime") and new_base == "list":
-            return _reject(snap, "INCOMPATIBLE_TYPE_CHANGE",
-                           f"Cannot convert {old_base} to list")
+            return _reject(snap, "INCOMPATIBLE_TYPE_CHANGE", f"Cannot convert {old_base} to list")
 
         if old_base == "date" and new_base == "int":
-            return _reject(snap, "INCOMPATIBLE_TYPE_CHANGE",
-                           "Cannot convert date to int")
+            return _reject(snap, "INCOMPATIBLE_TYPE_CHANGE", "Cannot convert date to int")
 
         if old_base == "bool" and new_base == "float":
-            return _reject(snap, "INCOMPATIBLE_TYPE_CHANGE",
-                           "Cannot convert bool to float")
+            return _reject(snap, "INCOMPATIBLE_TYPE_CHANGE", "Cannot convert bool to float")
 
         schema[field_name] = new_type
 
@@ -1521,13 +1684,21 @@ def _handle_field_remove(snap: dict, event: Event) -> ReduceResult:
         for config_key in ("show_fields", "hide_fields"):
             if field_name in config.get(config_key, []):
                 config[config_key] = [f for f in config[config_key] if f != field_name]
-                warnings.append(Warning(code="VIEW_FIELD_MISSING",
-                                        message=f"View '{view['id']}' referenced removed field '{field_name}'"))
+                warnings.append(
+                    Warning(
+                        code="VIEW_FIELD_MISSING",
+                        message=f"View '{view['id']}' referenced removed field '{field_name}'",
+                    )
+                )
         for config_key in ("sort_by", "group_by"):
             if config.get(config_key) == field_name:
                 config.pop(config_key, None)
-                warnings.append(Warning(code="VIEW_FIELD_MISSING",
-                                        message=f"View '{view['id']}' referenced removed field '{field_name}'"))
+                warnings.append(
+                    Warning(
+                        code="VIEW_FIELD_MISSING",
+                        message=f"View '{view['id']}' referenced removed field '{field_name}'",
+                    )
+                )
 
     # Check constraints (e.g., required_fields referencing this field)
     _check_constraints(snap, event, warnings)
@@ -1566,26 +1737,32 @@ def _handle_relationship_set(snap: dict, event: Event) -> ReduceResult:
     if stored_cardinality == "many_to_one":
         # Remove existing relationships from this source of this type (each source has one target)
         snap["relationships"] = [
-            r for r in snap["relationships"]
+            r
+            for r in snap["relationships"]
             if not (r["from"] == from_ref and r["type"] == rel_type and not r.get("_excluded"))
         ]
     elif stored_cardinality == "one_to_one":
         # Remove both sides
         snap["relationships"] = [
-            r for r in snap["relationships"]
-            if not ((r["from"] == from_ref and r["type"] == rel_type and not r.get("_excluded")) or
-                    (r["to"] == to_ref and r["type"] == rel_type and not r.get("_excluded")))
+            r
+            for r in snap["relationships"]
+            if not (
+                (r["from"] == from_ref and r["type"] == rel_type and not r.get("_excluded"))
+                or (r["to"] == to_ref and r["type"] == rel_type and not r.get("_excluded"))
+            )
         ]
     # many_to_many: no auto-removal
 
     # Append new relationship
-    snap["relationships"].append({
-        "from": from_ref,
-        "to": to_ref,
-        "type": rel_type,
-        "data": data,
-        "_seq": event.sequence,
-    })
+    snap["relationships"].append(
+        {
+            "from": from_ref,
+            "to": to_ref,
+            "type": rel_type,
+            "data": data,
+            "_seq": event.sequence,
+        }
+    )
 
     warnings: list[Warning] = []
     if not _check_constraints(snap, event, warnings):
@@ -1743,8 +1920,7 @@ def _handle_block_reorder(snap: dict, event: Event) -> ReduceResult:
         if cid in current_children:
             valid_order.append(cid)
         else:
-            warnings.append(Warning(code="UNKNOWN_FIELD_IGNORED",
-                                     message=f"'{cid}' is not a child of '{parent_id}'"))
+            warnings.append(Warning(code="UNKNOWN_FIELD_IGNORED", message=f"'{cid}' is not a child of '{parent_id}'"))
 
     # Append any current children not in the provided order
     for cid in parent["children"]:
@@ -1774,8 +1950,9 @@ def _handle_view_create(snap: dict, event: Event) -> ReduceResult:
     for field_ref_key in ("show_fields", "hide_fields"):
         for f in config.get(field_ref_key, []):
             if f not in schema:
-                warnings.append(Warning(code="VIEW_FIELD_MISSING",
-                                        message=f"View '{view_id}' references field '{f}' not in schema"))
+                warnings.append(
+                    Warning(code="VIEW_FIELD_MISSING", message=f"View '{view_id}' references field '{f}' not in schema")
+                )
 
     snap["views"][view_id] = {
         "id": view_id,
@@ -1821,8 +1998,11 @@ def _handle_view_remove(snap: dict, event: Event) -> ReduceResult:
             props = block.get("props", {})
             if props.get("view") == view_id:
                 props["view"] = None
-                warnings.append(Warning(code="BLOCK_VIEW_MISSING",
-                                        message=f"Block '{block['id']}' referenced removed view '{view_id}'"))
+                warnings.append(
+                    Warning(
+                        code="BLOCK_VIEW_MISSING", message=f"Block '{block['id']}' referenced removed view '{view_id}'"
+                    )
+                )
 
     return _ok(snap, warnings)
 
@@ -1863,12 +2043,14 @@ def _handle_meta_update(snap: dict, event: Event) -> ReduceResult:
 
 def _handle_meta_annotate(snap: dict, event: Event) -> ReduceResult:
     p = event.payload
-    snap["annotations"].append({
-        "note": p["note"],
-        "pinned": p.get("pinned", False),
-        "seq": event.sequence,
-        "timestamp": event.timestamp,
-    })
+    snap["annotations"].append(
+        {
+            "note": p["note"],
+            "pinned": p.get("pinned", False),
+            "seq": event.sequence,
+            "timestamp": event.timestamp,
+        }
+    )
     return _ok(snap)
 
 
@@ -1922,8 +2104,12 @@ def _handle_meta_constrain(snap: dict, event: Event) -> ReduceResult:
                         continue
                     val = ent.get(field_name)
                     if val is not None and val in seen:
-                        warnings.append(Warning(code="CONSTRAINT_VIOLATED",
-                                                message=p.get("message", f"Duplicate value for '{field_name}'")))
+                        warnings.append(
+                            Warning(
+                                code="CONSTRAINT_VIOLATED",
+                                message=p.get("message", f"Duplicate value for '{field_name}'"),
+                            )
+                        )
                         break
                     if val is not None:
                         seen.add(val)
@@ -1942,6 +2128,7 @@ _HANDLERS: dict[str, Any] = {
     "collection.create": _handle_collection_create,
     "collection.update": _handle_collection_update,
     "collection.remove": _handle_collection_remove,
+    "grid.create": _handle_grid_create,
     "field.add": _handle_field_add,
     "field.update": _handle_field_update,
     "field.remove": _handle_field_remove,
@@ -1995,6 +2182,7 @@ from typing import Any
 # Public API
 # ---------------------------------------------------------------------------
 
+
 def render_block(block_id: str, snapshot: dict[str, Any]) -> str:
     """
     Render a single block and its children recursively.
@@ -2015,6 +2203,13 @@ def render(
     Returns a UTF-8 HTML string.
     Pure function. No side effects. No IO.
     """
+    # For v2 snapshots (entity tree), use React-based rendering
+    # This ensures pixel-perfect consistency with streaming preview
+    if snapshot.get("entities"):
+        title = snapshot.get("meta", {}).get("title")
+        return render_react_preview(snapshot, title=title)
+
+    # Fall back to v1 Python rendering for legacy snapshots
     opts = options or RenderOptions()
     events = events or []
 
@@ -2028,7 +2223,7 @@ def render(
     parts.append('  <meta name="viewport" content="width=device-width, initial-scale=1">')
 
     # Title
-    title = escape(snapshot.get("meta", {}).get("title", "AIde"))
+    title = escape(snapshot.get("meta", {}).get("title") or "AIde")
     parts.append(f"  <title>{title}</title>")
 
     # OG tags
@@ -2060,8 +2255,9 @@ def render(
         parts.append('  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>')
         parts.append(
             '  <link href="https://fonts.googleapis.com/css2?'
-            'family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400'
-            '&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">'
+            "family=Playfair+Display:wght@400;500;600;700"
+            "&family=Instrument+Sans:wght@400;500;600;700"
+            '&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">'
         )
 
     # CSS
@@ -2076,9 +2272,34 @@ def render(
     # Block tree
     body_html = _render_block_tree(snapshot)
     if body_html:
+        # Page title (from meta.title) - only render if there's content
+        page_title = snapshot.get("meta", {}).get("title")
+        if page_title:
+            parts.append(f'    <h1 class="aide-heading aide-heading--1">{escape(page_title)}</h1>')
         parts.append(body_html)
     else:
-        parts.append('    <p class="aide-empty">This page is empty.</p>')
+        # Check for v2 entities (entity tree with parent relationships)
+        if snapshot.get("entities"):
+            auto_html = _auto_render_v2_entities(snapshot)
+            if auto_html:
+                # Page title (from meta.title) - only render if there's content
+                page_title = snapshot.get("meta", {}).get("title")
+                if page_title:
+                    parts.append(f'    <h1 class="aide-heading aide-heading--1">{escape(page_title)}</h1>')
+                parts.append(auto_html)
+            else:
+                parts.append('    <p class="aide-empty">This page is empty.</p>')
+        else:
+            # Fallback to v1 collections
+            auto_html = _auto_render_collections(snapshot)
+            if auto_html:
+                # Page title (from meta.title) - only render if there's content
+                page_title = snapshot.get("meta", {}).get("title")
+                if page_title:
+                    parts.append(f'    <h1 class="aide-heading aide-heading--1">{escape(page_title)}</h1>')
+                parts.append(auto_html)
+            else:
+                parts.append('    <p class="aide-empty">This page is empty.</p>')
 
     # Annotations
     annotations_html = _render_annotations(snapshot)
@@ -2101,6 +2322,7 @@ def render(
 # HTML escaping
 # ---------------------------------------------------------------------------
 
+
 def escape(text: str) -> str:
     """HTML-escape user content."""
     return _html_escape(text, quote=True)
@@ -2110,8 +2332,9 @@ def escape(text: str) -> str:
 # OG tags
 # ---------------------------------------------------------------------------
 
+
 def _render_og_tags(snapshot: dict) -> str:
-    title = escape(snapshot.get("meta", {}).get("title", "AIde"))
+    title = escape(snapshot.get("meta", {}).get("title") or "AIde")
     description = escape(_derive_description(snapshot))
 
     return (
@@ -2143,12 +2366,13 @@ def _derive_description(snapshot: dict) -> str:
         return f"{name}: {count} items"
 
     # Strategy 3: title
-    return snapshot.get("meta", {}).get("title", "A living page")
+    return snapshot.get("meta", {}).get("title") or "A living page"
 
 
 # ---------------------------------------------------------------------------
 # CSS generation
 # ---------------------------------------------------------------------------
+
 
 def _render_css(snapshot: dict) -> str:
     """Generate the full CSS block: base + style token overrides."""
@@ -2158,21 +2382,41 @@ def _render_css(snapshot: dict) -> str:
     # CSS custom properties (defaults + overrides)
     parts.append(":root {")
     parts.append("  /* Design system defaults */")
-    parts.append("  --font-serif: 'Cormorant Garamond', Georgia, serif;")
-    parts.append("  --font-sans: 'IBM Plex Sans', -apple-system, sans-serif;")
-    parts.append("  --text-primary: #1a1a1a;")
-    parts.append("  --text-secondary: #4a4a4a;")
-    parts.append("  --text-tertiary: #8a8a8a;")
-    parts.append("  --text-slate: #374151;")
-    parts.append("  --bg-primary: #fafaf9;")
-    parts.append("  --bg-cream: #f5f1eb;")
-    parts.append("  --accent-navy: #1f2a44;")
-    parts.append("  --accent-steel: #5a6e8a;")
-    parts.append("  --accent-forest: #2d5a3d;")
-    parts.append("  --border: #d4d0c8;")
-    parts.append("  --border-light: #e8e4dc;")
-    parts.append("  --radius-sm: 4px;")
-    parts.append("  --radius-md: 8px;")
+    parts.append("  --font-serif: 'Playfair Display', Georgia, serif;")
+    parts.append("  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;")
+    parts.append("  --font-heading: 'Instrument Sans', -apple-system, BlinkMacSystemFont, sans-serif;")
+    parts.append("  --text-primary: #2D2D2A;")
+    parts.append("  --text-secondary: #6B6963;")
+    parts.append("  --text-tertiary: #A8A5A0;")
+    parts.append("  --text-inverse: #F7F5F2;")
+    parts.append("  --bg-primary: #F7F5F2;")
+    parts.append("  --bg-secondary: #EFECEA;")
+    parts.append("  --bg-tertiary: #E6E3DF;")
+    parts.append("  --bg-elevated: #FFFFFF;")
+    parts.append("  /* Sage accent scale */")
+    parts.append("  --sage-50: #F0F3ED;")
+    parts.append("  --sage-100: #DDE4D7;")
+    parts.append("  --sage-200: #C2CCB8;")
+    parts.append("  --sage-300: #A3B394;")
+    parts.append("  --sage-400: #8B9E7C;")
+    parts.append("  --sage-500: #7C8C6E;")
+    parts.append("  --sage-600: #667358;")
+    parts.append("  --sage-700: #515C46;")
+    parts.append("  --sage-800: #3C4534;")
+    parts.append("  --sage-900: #282E23;")
+    parts.append("  --accent: var(--sage-500);")
+    parts.append("  --accent-hover: var(--sage-600);")
+    parts.append("  --accent-subtle: var(--sage-50);")
+    parts.append("  --accent-muted: var(--sage-100);")
+    parts.append("  --border-subtle: #E0DDD8;")
+    parts.append("  --border-default: #D4D1CC;")
+    parts.append("  --border-strong: #A8A5A0;")
+    parts.append("  --border: var(--border-default);")
+    parts.append("  --border-light: var(--border-subtle);")
+    parts.append("  --radius-sm: 6px;")
+    parts.append("  --radius-md: 10px;")
+    parts.append("  --radius-lg: 16px;")
+    parts.append("  --radius-full: 999px;")
     # Spacing scale
     for i, px in enumerate([0, 4, 8, 12, 16, 20, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160]):
         parts.append(f"  --space-{i}: {px}px;")
@@ -2183,9 +2427,9 @@ def _render_css(snapshot: dict) -> str:
     if styles.get("bg_color"):
         parts.append(f"  --bg-primary: {styles['bg_color']};")
     if styles.get("text_color"):
-        parts.append(f"  --text-slate: {styles['text_color']};")
+        parts.append(f"  --text-secondary: {styles['text_color']};")
     if styles.get("font_family"):
-        parts.append(f"  --font-sans: '{styles['font_family']}', -apple-system, sans-serif;")
+        parts.append(f"  --font-sans: '{styles['font_family']}', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;")
     if styles.get("heading_font"):
         parts.append(f"  --font-serif: '{styles['heading_font']}', Georgia, serif;")
 
@@ -2206,6 +2450,408 @@ def _render_css(snapshot: dict) -> str:
 # ---------------------------------------------------------------------------
 # Block tree rendering
 # ---------------------------------------------------------------------------
+
+
+def _auto_render_v2_entities(snapshot: dict) -> str:
+    """
+    Auto-render v2 entity tree snapshots.
+    Entities have 'parent' field for tree structure and 'display' hint.
+    """
+    entities = snapshot.get("entities", {})
+    if not entities:
+        return ""
+
+    # Find root entities (parent is "root" or missing)
+    root_ids = [
+        eid for eid, e in entities.items()
+        if not e.get("_removed") and e.get("parent") in (None, "root", "")
+    ]
+
+    if not root_ids:
+        return ""
+
+    parts: list[str] = []
+    for root_id in root_ids:
+        html = _render_v2_entity(root_id, entities, snapshot.get("meta", {}))
+        if html:
+            parts.append(html)
+
+    return "\n".join(parts)
+
+
+def _render_v2_entity(entity_id: str, entities: dict, meta: dict) -> str:
+    """Render a single v2 entity and its children recursively."""
+    entity = entities.get(entity_id)
+    if not entity or entity.get("_removed"):
+        return ""
+
+    display = (entity.get("display") or "").lower()
+    props = entity.get("props", {})
+
+    # Get children
+    child_ids = [
+        eid for eid, e in entities.items()
+        if not e.get("_removed") and e.get("parent") == entity_id
+    ]
+
+    # Determine display type with heuristics if not specified
+    if not display:
+        if props.get("src") or props.get("url"):
+            display = "image"
+        elif props.get("value") is not None or props.get("count") is not None:
+            if len([k for k in props if not k.startswith("_")]) <= 3:
+                display = "metric"
+        elif child_ids:
+            # Check if children are checklist items
+            first_child = entities.get(child_ids[0], {})
+            cp = first_child.get("props", {})
+            if isinstance(cp.get("done"), bool) or isinstance(cp.get("checked"), bool):
+                display = "checklist"
+            else:
+                display = "table"
+        else:
+            display = "card"
+
+    # Render based on display type
+    if display == "section":
+        return _render_v2_section(entity_id, entity, child_ids, entities, meta)
+    elif display == "table":
+        return _render_v2_table(entity_id, entity, child_ids, entities)
+    elif display == "checklist":
+        return _render_v2_checklist(entity_id, entity, child_ids, entities)
+    elif display == "metric":
+        return _render_v2_metric(entity_id, entity)
+    elif display == "image":
+        return _render_v2_image(entity_id, entity)
+    elif display == "text":
+        return _render_v2_text(entity_id, entity)
+    else:
+        # Default: card or recurse children
+        return _render_v2_card(entity_id, entity, child_ids, entities, meta)
+
+
+def _render_v2_section(entity_id: str, entity: dict, child_ids: list, entities: dict, meta: dict) -> str:
+    """Render a section with title and children."""
+    props = entity.get("props", {})
+    title = props.get("title") or props.get("name") or "Section"
+
+    parts = [f'    <section class="aide-section">']
+    parts.append(f'      <h2 class="aide-heading aide-heading--2">{escape(title)}</h2>')
+
+    if child_ids:
+        for cid in child_ids:
+            child_html = _render_v2_entity(cid, entities, meta)
+            if child_html:
+                parts.append(child_html)
+    else:
+        parts.append('      <p class="aide-collection-empty">No items yet.</p>')
+
+    parts.append("    </section>")
+    return "\n".join(parts)
+
+
+def _render_v2_table(entity_id: str, entity: dict, child_ids: list, entities: dict) -> str:
+    """Render children as a table."""
+    props = entity.get("props", {})
+    title = props.get("title") or props.get("name") or ""
+
+    if not child_ids:
+        return _render_v2_card(entity_id, entity, [], entities, {})
+
+    # Derive columns from children
+    skip_keys = {"_pos", "_schema", "_shape", "_removed", "_styles"}
+    columns: list[str] = []
+    for cid in child_ids:
+        child = entities.get(cid, {})
+        cp = child.get("props", {})
+        for k in cp:
+            if k not in skip_keys and not k.startswith("_") and k not in columns:
+                columns.append(k)
+
+    parts: list[str] = []
+    if title:
+        parts.append(f'    <h3 class="aide-heading aide-heading--3">{escape(title)}</h3>')
+
+    parts.append('    <div class="aide-table-wrap">')
+    parts.append('      <table class="aide-table">')
+    parts.append("        <thead>")
+    parts.append("          <tr>")
+    for col in columns:
+        display_name = escape(col.replace("_", " ").title())
+        parts.append(f'            <th class="aide-table__th">{display_name}</th>')
+    parts.append("          </tr>")
+    parts.append("        </thead>")
+    parts.append("        <tbody>")
+
+    for cid in child_ids:
+        child = entities.get(cid, {})
+        cp = child.get("props", {})
+        parts.append("          <tr>")
+        for col in columns:
+            value = cp.get(col)
+            formatted = _format_value(value, "string")
+            parts.append(f'            <td class="aide-table__td">{formatted}</td>')
+        parts.append("          </tr>")
+
+    parts.append("        </tbody>")
+    parts.append("      </table>")
+    parts.append("    </div>")
+    return "\n".join(parts)
+
+
+def _render_v2_checklist(entity_id: str, entity: dict, child_ids: list, entities: dict) -> str:
+    """Render children as a checklist."""
+    props = entity.get("props", {})
+    title = props.get("title") or props.get("name") or ""
+
+    parts: list[str] = []
+    if title:
+        parts.append(f'    <h3 class="aide-heading aide-heading--3">{escape(title)}</h3>')
+
+    parts.append('    <ul class="aide-list">')
+
+    completed = 0
+    for cid in child_ids:
+        child = entities.get(cid, {})
+        cp = child.get("props", {})
+        done = cp.get("done") is True or cp.get("checked") is True or cp.get("completed") is True
+        if done:
+            completed += 1
+        label = cp.get("task") or cp.get("label") or cp.get("name") or cid
+        check = "\u2713" if done else "\u25cb"
+        done_class = " aide-list__field--bool" if done else " aide-list__field--bool-false"
+        strike = " style=\"text-decoration: line-through; color: var(--text-tertiary);\"" if done else ""
+        parts.append(f'      <li class="aide-list__item">')
+        parts.append(f'        <span class="{done_class}">{check}</span>')
+        parts.append(f'        <span class="aide-list__field--primary"{strike}>{escape(str(label))}</span>')
+        parts.append("      </li>")
+
+    parts.append("    </ul>")
+    parts.append(f'    <p class="aide-collection-empty" style="font-size:13px;">{completed} of {len(child_ids)} complete</p>')
+    return "\n".join(parts)
+
+
+def _render_v2_metric(entity_id: str, entity: dict) -> str:
+    """Render a metric display."""
+    props = entity.get("props", {})
+    value = props.get("value") or props.get("count") or props.get("total") or ""
+    label = props.get("label") or props.get("name") or ""
+
+    return (
+        f'    <div class="aide-metric">\n'
+        f'      <span class="aide-metric__label">{escape(str(label))}</span>\n'
+        f'      <span class="aide-metric__value">{escape(str(value))}</span>\n'
+        f"    </div>"
+    )
+
+
+def _render_v2_image(entity_id: str, entity: dict) -> str:
+    """Render an image."""
+    props = entity.get("props", {})
+    src = props.get("src") or props.get("url") or ""
+    caption = props.get("caption") or ""
+
+    parts = ['    <figure class="aide-image">']
+    if src:
+        parts.append(f'      <img src="{escape(src)}" alt="{escape(caption)}" loading="lazy">')
+    if caption:
+        parts.append(f'      <figcaption class="aide-image__caption">{escape(caption)}</figcaption>')
+    parts.append("    </figure>")
+    return "\n".join(parts)
+
+
+def _render_v2_text(entity_id: str, entity: dict) -> str:
+    """Render a text block."""
+    props = entity.get("props", {})
+    text = props.get("text") or props.get("content") or props.get("body") or ""
+    return f'    <p class="aide-text">{escape(str(text))}</p>'
+
+
+def _render_v2_card(entity_id: str, entity: dict, child_ids: list, entities: dict, meta: dict) -> str:
+    """Render as a card with key-value fields."""
+    props = entity.get("props", {})
+    title = props.get("title") or props.get("name") or ""
+    skip_keys = {"title", "name", "_pos", "_schema", "_shape", "_removed", "_styles"}
+
+    parts = ['    <div class="aide-card" style="background:#fff;border:1px solid var(--border-light);border-radius:var(--radius-md);padding:var(--space-4);margin-bottom:var(--space-3);">']
+
+    if title:
+        parts.append(f'      <div style="font-size:15px;font-weight:500;color:var(--text-primary);margin-bottom:var(--space-2);">{escape(str(title))}</div>')
+
+    for key, value in props.items():
+        if key in skip_keys or key.startswith("_"):
+            continue
+        label = key.replace("_", " ").title()
+        formatted = _format_value(value, "string")
+        parts.append(f'      <div style="display:flex;justify-content:space-between;padding:var(--space-1) 0;border-bottom:1px solid var(--border-light);">')
+        parts.append(f'        <span style="color:var(--text-tertiary);font-size:12px;">{escape(label)}</span>')
+        parts.append(f'        <span>{formatted}</span>')
+        parts.append("      </div>")
+
+    # Render children if any
+    for cid in child_ids:
+        child_html = _render_v2_entity(cid, entities, meta)
+        if child_html:
+            parts.append(child_html)
+
+    parts.append("    </div>")
+    return "\n".join(parts)
+
+
+def _auto_render_collections(snapshot: dict) -> str:
+    """
+    Auto-render all collections when no explicit blocks exist.
+    Creates a heading + appropriate view for each non-removed collection.
+    Detects grid patterns (row/col fields) and renders as grid.
+    """
+    collections = snapshot.get("collections", {})
+    parts: list[str] = []
+
+    for coll_id, coll in collections.items():
+        if coll.get("_removed"):
+            continue
+
+        # Collection heading
+        name = coll.get("name", coll_id)
+        parts.append(f'    <h2 class="aide-heading aide-heading--2">{escape(name)}</h2>')
+
+        # Get non-removed entities
+        entities = [
+            {**e, "_id": eid}
+            for eid, e in coll.get("entities", {}).items()
+            if not e.get("_removed")
+        ]
+
+        if not entities:
+            parts.append('    <p class="aide-collection-empty">No items yet.</p>')
+            continue
+
+        schema = coll.get("schema", {})
+
+        # Detect grid pattern: has row and col integer fields
+        has_row = schema.get("row") in ("int", "int?")
+        has_col = schema.get("col") in ("int", "int?")
+
+        if has_row and has_col:
+            # Render as grid (pass meta for team names)
+            meta = snapshot.get("meta", {})
+            parts.append(_render_auto_grid(entities, schema, meta))
+        else:
+            # Render as table view
+            parts.append(_render_table_view(entities, schema, {}, {}))
+
+    return "\n".join(parts)
+
+
+def _render_auto_grid(entities: list[dict], schema: dict, meta: dict | None = None) -> str:
+    """
+    Render entities with row/col fields as a visual grid.
+    Used for Super Bowl squares, bingo cards, seating charts, etc.
+    """
+    meta = meta or {}
+
+    # Find grid dimensions
+    rows = set()
+    cols = set()
+    grid_map: dict[tuple[int, int], dict] = {}
+
+    for entity in entities:
+        row = entity.get("row")
+        col = entity.get("col")
+        if row is not None and col is not None:
+            rows.add(row)
+            cols.add(col)
+            grid_map[(row, col)] = entity
+
+    if not rows or not cols:
+        return '    <p class="aide-collection-empty">No grid data.</p>'
+
+    row_list = sorted(rows)
+    col_list = sorted(cols)
+
+    # Determine what to show in each cell (first non-row/col field, or owner)
+    display_field = None
+    for field in schema:
+        if field not in ("row", "col") and not field.startswith("_"):
+            display_field = field
+            break
+
+    # Get axis labels from meta (for Super Bowl squares, seating charts, etc.)
+    # row_label/col_label: single string label for the axis (e.g., team name)
+    # row_labels/col_labels: array of labels to replace numeric indices
+    row_label = meta.get("row_label", "")
+    col_label = meta.get("col_label", "")
+    row_labels = meta.get("row_labels", [])  # e.g., ["A", "B", "C", ...]
+    col_labels = meta.get("col_labels", [])  # e.g., ["1", "2", "3", ...]
+
+    parts = ['    <div class="aide-grid-wrap" style="display:flex;justify-content:center;padding:16px;overflow-x:auto;">']
+    parts.append('      <table class="aide-grid" style="border-collapse:collapse;text-align:center;width:100%;min-width:288px;max-width:500px;table-layout:fixed;">')
+
+    parts.append("        <thead>")
+
+    # Column label header (if set)
+    if col_label:
+        parts.append("          <tr>")
+        # Empty corner cells: 1 for row numbers, plus 1 if row_label exists
+        if row_label:
+            parts.append('            <th style="padding:4px;"></th>')  # Row label column
+        parts.append('            <th style="padding:4px;"></th>')  # Row numbers column
+        parts.append(f'            <th colspan="{len(col_list)}" style="padding:6px 4px;font-weight:700;color:#222;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #333;">{escape(col_label)}</th>')
+        parts.append("          </tr>")
+
+    # Header row with column numbers/labels
+    parts.append("          <tr>")
+    # Empty cells: 1 for row numbers, plus 1 if row_label exists
+    if row_label:
+        parts.append('            <th style="padding:4px;"></th>')  # Row label column
+    parts.append('            <th style="padding:4px;"></th>')  # Row numbers column
+    for idx, col in enumerate(col_list):
+        # Use custom col_labels if provided, otherwise use numeric index
+        col_display = col_labels[idx] if idx < len(col_labels) else col
+        parts.append(f'            <th style="padding:4px;font-weight:600;color:#444;font-size:11px;">{escape(str(col_display))}</th>')
+    parts.append("          </tr>")
+    parts.append("        </thead>")
+
+    # Grid rows - with row label spanning all rows on the left
+    parts.append("        <tbody>")
+    for i, row in enumerate(row_list):
+        parts.append("          <tr>")
+        # Add vertical row label on first row, spanning all rows
+        if i == 0 and row_label:
+            parts.append(f'            <th rowspan="{len(row_list)}" style="padding:6px 4px;font-weight:700;color:#222;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;writing-mode:vertical-lr;transform:rotate(180deg);border-right:2px solid #333;text-align:center;">{escape(row_label)}</th>')
+        # Note: when row_label exists and i > 0, we skip because rowspan covers it
+        # Row number/label - use custom row_labels if provided
+        row_display = row_labels[i] if i < len(row_labels) else row
+        parts.append(f'            <th style="padding:4px;font-weight:600;color:#444;font-size:11px;">{escape(str(row_display))}</th>')
+        for col in col_list:
+            entity = grid_map.get((row, col))
+            if entity and display_field:
+                value = entity.get(display_field)
+                if value:
+                    cell_content = escape(str(value))
+                    cell_bg = "background:#e8f4e8;"
+                else:
+                    cell_content = ""
+                    cell_bg = ""
+            else:
+                cell_content = ""
+                cell_bg = ""
+            # Use inner div with aspect-ratio since it doesn't work on td elements
+            # Wrap text in span for ellipsis (doesn't work directly on flex container)
+            td_style = "padding:0;border:1px solid #ddd;vertical-align:middle;"
+            div_style = f"aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:11px;padding:2px;{cell_bg}"
+            span_style = "overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;"
+            if cell_content:
+                parts.append(f'            <td style="{td_style}"><div style="{div_style}"><span style="{span_style}">{cell_content}</span></div></td>')
+            else:
+                parts.append(f'            <td style="{td_style}"><div style="{div_style}"></div></td>')
+        parts.append("          </tr>")
+    parts.append("        </tbody>")
+    parts.append("      </table>")
+    parts.append("    </div>")
+
+    return "\n".join(parts)
+
 
 def _render_block_tree(snapshot: dict) -> str:
     """Walk the block tree depth-first from block_root, emit HTML."""
@@ -2259,6 +2905,7 @@ def _render_block(block_id: str, snapshot: dict) -> str:
 # Block type renderers
 # ---------------------------------------------------------------------------
 
+
 def _render_heading(block: dict, snapshot: dict) -> str:
     props = block.get("props", {})
     level = props.get("level", 1)
@@ -2282,7 +2929,7 @@ def _render_metric(block: dict, snapshot: dict) -> str:
         f'    <div class="aide-metric">\n'
         f'      <span class="aide-metric__label">{label}</span>\n'
         f'      <span class="aide-metric__value">{value}</span>\n'
-        f'    </div>'
+        f"    </div>"
     )
 
 
@@ -2301,11 +2948,7 @@ def _render_collection_view_block(block: dict, snapshot: dict) -> str:
         return ""
 
     # Get non-removed entities
-    entities = [
-        {**e, "_id": eid}
-        for eid, e in collection.get("entities", {}).items()
-        if not e.get("_removed")
-    ]
+    entities = [{**e, "_id": eid} for eid, e in collection.get("entities", {}).items() if not e.get("_removed")]
 
     if not entities:
         return '    <p class="aide-collection-empty">No items yet.</p>'
@@ -2366,7 +3009,7 @@ def _render_column(block: dict, snapshot: dict) -> str:
     props = block.get("props", {})
     width = props.get("width")
     if width and "%" in str(width):
-        style = f'flex: 0 0 {width}'
+        style = f"flex: 0 0 {width}"
     else:
         style = "flex: 1"
     return f'    <div class="aide-column" style="{style}">\n<!--children-->\n    </div>'
@@ -2374,7 +3017,7 @@ def _render_column(block: dict, snapshot: dict) -> str:
 
 def _render_root(block: dict, snapshot: dict) -> str:
     """Root block - container for all children."""
-    return '<!--children-->'
+    return "<!--children-->"
 
 
 _BLOCK_RENDERERS = {
@@ -2394,6 +3037,7 @@ _BLOCK_RENDERERS = {
 # ---------------------------------------------------------------------------
 # View renderers
 # ---------------------------------------------------------------------------
+
 
 def _render_list_view(entities: list[dict], schema: dict, config: dict, styles: dict) -> str:
     show_fields = _visible_fields(schema, config)
@@ -2486,7 +3130,8 @@ def _render_grid_view(entities: list[dict], schema: dict, config: dict, styles: 
             if entity:
                 cell_content = ", ".join(
                     _format_value(entity.get(f), schema.get(f, "string"))
-                    for f in show_fields if entity.get(f) is not None
+                    for f in show_fields
+                    if entity.get(f) is not None
                 ) or escape(str(entity.get("_id", "")))
                 parts.append(f'            <td class="aide-grid__cell aide-grid__cell--filled">{cell_content}</td>')
             else:
@@ -2509,6 +3154,7 @@ _VIEW_RENDERERS = {
 # ---------------------------------------------------------------------------
 # Sort / Filter / Group
 # ---------------------------------------------------------------------------
+
 
 def _apply_sort(entities: list[dict], config: dict) -> list[dict]:
     sort_by = config.get("sort_by")
@@ -2546,6 +3192,7 @@ def _apply_filter(entities: list[dict], config: dict) -> list[dict]:
 # Value formatting
 # ---------------------------------------------------------------------------
 
+
 def _format_value(value: Any, field_type: str | dict) -> str:
     """Format a field value for display."""
     if value is None:
@@ -2554,7 +3201,7 @@ def _format_value(value: Any, field_type: str | dict) -> str:
     bt = _base_type_str(field_type)
 
     if bt == "bool":
-        return "\u2713" if value else "\u25CB"
+        return "\u2713" if value else "\u25cb"
     if bt == "date" and isinstance(value, str):
         return _format_date(value)
     if bt == "datetime" and isinstance(value, str):
@@ -2599,16 +3246,16 @@ def _format_inline(text: str) -> str:
 
     # Links: [text](url) — must be http/https
     text = re.sub(
-        r'\[([^\]]+)\]\((https?://[^)]+)\)',
+        r"\[([^\]]+)\]\((https?://[^)]+)\)",
         r'<a href="\2">\1</a>',
         text,
     )
 
     # Bold: **text**
-    text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
+    text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
 
     # Italic: *text*
-    text = re.sub(r'\*(.+?)\*', r'<em>\1</em>', text)
+    text = re.sub(r"\*(.+?)\*", r"<em>\1</em>", text)
 
     return text
 
@@ -2616,6 +3263,7 @@ def _format_inline(text: str) -> str:
 # ---------------------------------------------------------------------------
 # Field helpers
 # ---------------------------------------------------------------------------
+
 
 def _visible_fields(schema: dict, config: dict) -> list[str]:
     """Determine which fields to show and in what order."""
@@ -2675,6 +3323,7 @@ def _entity_inline_style(entity: dict) -> str:
 # Annotations
 # ---------------------------------------------------------------------------
 
+
 def _render_annotations(snapshot: dict) -> str:
     annotations = snapshot.get("annotations", [])
     if not annotations:
@@ -2712,11 +3361,12 @@ def _render_annotations(snapshot: dict) -> str:
 # Footer
 # ---------------------------------------------------------------------------
 
+
 def _render_footer(text: str) -> str:
     return (
         '  <footer class="aide-footer">\n'
         f'    <a href="https://toaide.com" class="aide-footer__link">{escape(text)}</a>\n'
-        '  </footer>'
+        "  </footer>"
     )
 
 
@@ -2731,7 +3381,7 @@ BASE_CSS = """
 body {
   font-family: var(--font-sans);
   font-size: 16px;
-  font-weight: 300;
+  font-weight: 400;
   line-height: 1.65;
   color: var(--text-primary);
   background: var(--bg-primary);
@@ -2763,22 +3413,22 @@ BLOCK_CSS = """
 .aide-heading { margin-bottom: var(--space-4); }
 .aide-heading--1 {
   font-family: var(--font-serif);
-  font-size: clamp(32px, 4.5vw, 42px);
-  font-weight: 400;
+  font-size: clamp(36px, 4.5vw, 42px);
+  font-weight: 700;
   line-height: 1.2;
   color: var(--text-primary);
 }
 .aide-heading--2 {
   font-family: var(--font-serif);
-  font-size: clamp(24px, 3.5vw, 32px);
-  font-weight: 400;
+  font-size: clamp(28px, 3.5vw, 32px);
+  font-weight: 700;
   line-height: 1.25;
   color: var(--text-primary);
 }
 .aide-heading--3 {
-  font-family: var(--font-sans);
+  font-family: var(--font-heading);
   font-size: 18px;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.4;
   color: var(--text-primary);
 }
@@ -2787,19 +3437,19 @@ BLOCK_CSS = """
 .aide-text {
   font-family: var(--font-sans);
   font-size: 16px;
-  font-weight: 300;
+  font-weight: 400;
   line-height: 1.65;
   color: var(--text-secondary);
   margin-bottom: var(--space-4);
 }
 .aide-text a {
-  color: var(--accent-steel);
+  color: var(--accent);
   text-decoration: underline;
   text-decoration-color: var(--border);
   text-underline-offset: 2px;
 }
 .aide-text a:hover {
-  text-decoration-color: var(--accent-steel);
+  text-decoration-color: var(--accent);
 }
 
 /* ── Metric ── */
@@ -2841,14 +3491,14 @@ BLOCK_CSS = """
 
 /* ── Callout ── */
 .aide-callout {
-  background: var(--bg-cream);
+  background: var(--bg-secondary);
   border-left: 3px solid var(--border);
   padding: var(--space-4) var(--space-5);
   margin: var(--space-4) 0;
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   font-size: 15px;
   line-height: 1.55;
-  color: var(--text-slate);
+  color: var(--text-secondary);
 }
 
 /* ── Columns ── */
@@ -2877,7 +3527,7 @@ BLOCK_CSS = """
 
 /* ── Highlight ── */
 .aide-highlight {
-  background-color: rgba(31, 42, 68, 0.04);
+  background-color: var(--accent-subtle);
 }
 """
 
@@ -2929,7 +3579,7 @@ VIEW_CSS = """
 .aide-table__td {
   padding: var(--space-3);
   border-bottom: 1px solid var(--border-light);
-  color: var(--text-slate);
+  color: var(--text-secondary);
   vertical-align: top;
 }
 .aide-table__td--bool { text-align: center; }
@@ -2957,7 +3607,7 @@ VIEW_CSS = """
   vertical-align: middle;
 }
 .aide-grid__cell--filled {
-  background: var(--bg-cream);
+  background: var(--bg-secondary);
   color: var(--text-primary);
   font-weight: 500;
 }
@@ -2988,7 +3638,7 @@ VIEW_CSS = """
 .aide-annotation:last-child { border-bottom: none; }
 .aide-annotation__text {
   font-size: 15px;
-  color: var(--text-slate);
+  color: var(--text-secondary);
   line-height: 1.5;
 }
 .aide-annotation__meta {
@@ -2997,7 +3647,7 @@ VIEW_CSS = """
   margin-left: var(--space-3);
 }
 .aide-annotation--pinned {
-  border-left: 3px solid var(--accent-navy);
+  border-left: 3px solid var(--accent);
   padding-left: var(--space-4);
 }
 
@@ -3053,24 +3703,29 @@ from typing import Any
 # Exceptions
 # ---------------------------------------------------------------------------
 
+
 class AideNotFound(Exception):
     """Aide does not exist in storage."""
+
     pass
 
 
 class ParseError(Exception):
     """HTML file exists but embedded JSON is malformed."""
+
     pass
 
 
 class VersionNotSupported(Exception):
     """Snapshot version is from a future format."""
+
     pass
 
 
 # ---------------------------------------------------------------------------
 # Storage protocol
 # ---------------------------------------------------------------------------
+
 
 class AideStorage:
     """
@@ -3118,6 +3773,7 @@ class MemoryStorage(AideStorage):
 # ---------------------------------------------------------------------------
 # HTML Parsing
 # ---------------------------------------------------------------------------
+
 
 def parse_aide_html(html: str) -> ParsedAide:
     """
@@ -3178,6 +3834,7 @@ def parse_aide_html(html: str) -> ParsedAide:
 # ---------------------------------------------------------------------------
 # Assembly class
 # ---------------------------------------------------------------------------
+
 
 class AideAssembly:
     """
@@ -3524,18 +4181,20 @@ def assign_metadata(
 
     for i, primitive in enumerate(events):
         seq = start_sequence + i
-        result.append(Event(
-            id=f"evt_{ts[:10].replace('-', '')}_{seq:03d}",
-            sequence=seq,
-            timestamp=ts,
-            actor=actor,
-            source=source,
-            type=primitive["type"],
-            payload=primitive["payload"],
-            intent=primitive.get("intent"),
-            message=message if i == 0 else None,  # attach message to first event only
-            message_id=message_id if i == 0 else None,
-        ))
+        result.append(
+            Event(
+                id=f"evt_{ts[:10].replace('-', '')}_{seq:03d}",
+                sequence=seq,
+                timestamp=ts,
+                actor=actor,
+                source=source,
+                type=primitive["type"],
+                payload=primitive["payload"],
+                intent=primitive.get("intent"),
+                message=message if i == 0 else None,  # attach message to first event only
+                message_id=message_id if i == 0 else None,
+            )
+        )
 
     return result
 
