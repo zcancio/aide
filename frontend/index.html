@@ -186,6 +186,7 @@
       overflow-y: auto;
       background: #fff;
       position: relative;
+      padding-bottom: 100px;
     }
 
     /* Floating chat overlay */
@@ -456,6 +457,51 @@
 
     #publish-btn-floating.visible { display: flex; }
     #publish-btn-floating:hover { background: rgba(30, 30, 30, 0.95); }
+
+    /* ── FAB (floating action button) ── */
+    .fab {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: #e8e8e8;
+      border: none;
+      color: #0f0f0f;
+      font-size: 24px;
+      font-weight: 300;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      transition: background 0.15s ease, transform 0.15s ease;
+      z-index: 50;
+    }
+
+    .fab:hover {
+      background: #ffffff;
+      transform: scale(1.05);
+    }
+
+    #new-aide-fab {
+      display: none;
+    }
+
+    #dashboard.active #new-aide-fab {
+      display: flex;
+    }
+
+    @media (max-width: 767px) {
+      .fab {
+        bottom: 20px;
+        right: 16px;
+        width: 48px;
+        height: 48px;
+        font-size: 22px;
+      }
+    }
 
     /* ── AUTH ───────────────────────────────────────── */
     #auth-screen {
@@ -1156,13 +1202,13 @@
 <div id="dashboard">
   <div class="dashboard-header">
     <h1>aide</h1>
-    <button id="new-aide-btn" class="btn btn-primary">+ New aide</button>
   </div>
   <div id="aide-grid" class="aide-grid"></div>
   <div id="empty-state" class="empty-state" style="display:none;">
     <p>Nothing yet.</p>
     <button class="btn btn-ghost" onclick="startNewAide()">Create your first aide</button>
   </div>
+  <button id="new-aide-fab" class="fab" onclick="startNewAide()" title="New aide">+</button>
 </div>
 
 <!-- Editor -->
@@ -2313,7 +2359,7 @@
     openEditor(null);
   }
 
-  document.getElementById('new-aide-btn').addEventListener('click', startNewAide);
+  document.getElementById('new-aide-fab').addEventListener('click', startNewAide);
 
   // ── Editor ─────────────────────────────────────────
   async function openEditor(aideId) {
