@@ -1869,20 +1869,35 @@
   }
 
   function renderChecklist(entity, childIds) {
+    const props = entity.props || {};
+    const title = props.title || props.name || '';
+    const titleField = props.title !== undefined ? 'title' : 'name';
+
     const items = childIds.map(id => {
       const child = entityStore.entities[id];
       if (!child) return '';
       const cp = child.props || {};
       const done = cp.done || cp.checked || false;
       const doneField = cp.done !== undefined ? 'done' : 'checked';
-      const label = cp.label || cp.name || cp.title || '';
-      const labelField = cp.label !== undefined ? 'label' : (cp.name !== undefined ? 'name' : 'title');
+      const label = cp.task || cp.label || cp.name || cp.title || '';
+      const labelField = cp.task !== undefined ? 'task' : (cp.label !== undefined ? 'label' : (cp.name !== undefined ? 'name' : 'title'));
       return `<li class="aide-checklist__item">
         <input type="checkbox" class="aide-checklist__checkbox" ${done ? 'checked' : ''} data-entity-id="${id}" data-field="${doneField}" data-type="boolean">
         <span class="aide-checklist__label ${done ? 'aide-checklist__label--done' : ''} editable-field" data-entity-id="${id}" data-field="${labelField}">${escapeHtml(label)}</span>
       </li>`;
     }).join('');
-    return `<ul class="aide-checklist">${items}</ul>`;
+
+    const completed = childIds.filter(id => {
+      const child = entityStore.entities[id];
+      const cp = child?.props || {};
+      return cp.done === true || cp.checked === true;
+    }).length;
+
+    return `<div class="aide-checklist-container">
+      ${title ? `<h3 class="aide-heading aide-heading--3 editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</h3>` : ''}
+      <ul class="aide-checklist">${items}</ul>
+      <div class="aide-checklist__summary">${completed} of ${childIds.length} complete</div>
+    </div>`;
   }
 
   function renderTable(entity, childIds) {
@@ -2359,7 +2374,7 @@
     openEditor(null);
   }
 
-  document.getElementById('new-aide-fab').addEventListener('click', startNewAide);
+  // FAB already has onclick="startNewAide()" in HTML — no duplicate listener needed
 
   // ── Editor ─────────────────────────────────────────
   async function openEditor(aideId) {
