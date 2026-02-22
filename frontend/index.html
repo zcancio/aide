@@ -1314,6 +1314,7 @@
     getChildren(parentId) {
       return Object.entries(this.entities)
         .filter(([, e]) => e.parent === parentId)
+        .sort(([, a], [, b]) => (a._created_seq || 0) - (b._created_seq || 0))
         .map(([id]) => id);
     },
 
@@ -1736,13 +1737,23 @@
 
   // ── PreviewApp (root) ──────────────────────────────────
   function PreviewApp() {
+    const { entities } = useContext(EntityContext);
     const meta = useMeta();
     const rootIds = useRootIds();
 
+    // Sort rootIds by _created_seq
+    const sortedRootIds = useMemo(() => {
+      return [...rootIds].sort((a, b) => {
+        const seqA = entities[a]?._created_seq || 0;
+        const seqB = entities[b]?._created_seq || 0;
+        return seqA - seqB;
+      });
+    }, [rootIds, entities]);
+
     return React.createElement('main', { className: 'aide-page' },
       meta.title && React.createElement('h1', { className: 'aide-heading aide-heading--1' }, meta.title),
-      rootIds.length > 0
-        ? rootIds.map(id => React.createElement(AideEntity, { key: id, entityId: id }))
+      sortedRootIds.length > 0
+        ? sortedRootIds.map(id => React.createElement(AideEntity, { key: id, entityId: id }))
         : React.createElement('p', { className: 'aide-empty' }, 'Send a message to get started.')
     );
   }
@@ -1769,6 +1780,7 @@
   function getChildren(parentId) {
     return Object.entries(entityStore.entities)
       .filter(([, e]) => e.parent === parentId && !e._removed)
+      .sort(([, a], [, b]) => (a._created_seq || 0) - (b._created_seq || 0))
       .map(([id]) => id);
   }
 
@@ -1977,8 +1989,14 @@
     if (entityStore.rootIds.length === 0 && Object.keys(entityStore.meta).length === 0) {
       return '<div class="aide-page"><p class="aide-empty">Send a message to get started.</p></div>';
     }
+    // Sort rootIds by _created_seq before rendering
+    const sortedRootIds = [...entityStore.rootIds].sort((a, b) => {
+      const seqA = entityStore.entities[a]?._created_seq || 0;
+      const seqB = entityStore.entities[b]?._created_seq || 0;
+      return seqA - seqB;
+    });
     // Always wrap in .aide-page for consistent padding/layout
-    const content = entityStore.rootIds.map(id => renderEntity(id)).join('');
+    const content = sortedRootIds.map(id => renderEntity(id)).join('');
     // Check if content already has a page wrapper
     if (content.trim().startsWith('<div class="aide-page">')) {
       return content;

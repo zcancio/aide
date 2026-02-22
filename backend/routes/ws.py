@@ -241,8 +241,12 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
     if entities:
         # Send snapshot.start to signal hydration beginning
         await websocket.send_text(json.dumps({"type": "snapshot.start"}))
-        # Send each entity as entity.create
-        for entity_id, entity_data in entities.items():
+        # Send each entity as entity.create, sorted by _created_seq
+        sorted_entities = sorted(
+            entities.items(),
+            key=lambda x: x[1].get("_created_seq", 0)
+        )
+        for entity_id, entity_data in sorted_entities:
             delta = {"type": "entity.create", "id": entity_id, "data": entity_data}
             await websocket.send_text(json.dumps(delta))
         # Send meta if present
