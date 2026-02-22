@@ -2404,6 +2404,12 @@
 
   document.getElementById('editor-back').addEventListener('click', () => {
     currentAideId = null;
+    // Close WebSocket so reopening the same aide triggers fresh hydration
+    if (aideWs) {
+      aideWs.close();
+      aideWs = null;
+      wsConnectedAideId = null;
+    }
     history.replaceState({}, '', '/');
     loadDashboard();
   });
