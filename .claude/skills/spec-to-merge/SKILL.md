@@ -1,6 +1,6 @@
 ---
 name: spec-to-merge
-description: Two-phase development pipeline with manual testing in between. Phase 1 (/spec-to-pr): reads a spec, creates a GitHub issue, implements code, pushes a PR, and notifies you it's ready to test. Phase 2 (/ship-it): after you've tested the branch locally, runs lint/test checks and enables auto-merge. Use when the user says "implement this spec", "ship this", "run the pipeline", references a spec doc, says a spec was updated, or says "ship it" / "merge it" for an existing PR.
+description: Two-phase development pipeline with manual testing in between. Phase 1 (/spec-to-pr): reads a spec, creates a GitHub issue, and triggers the Claude GitHub Action to implement it asynchronously. Phase 2 (/ship-it): after you've tested the branch locally, runs lint/test checks and enables auto-merge. Use when the user says "implement this spec", "ship this", "run the pipeline", references a spec doc, says a spec was updated, or says "ship it" / "merge it" for an existing PR.
 ---
 
 # Spec-to-Merge Pipeline
@@ -8,29 +8,30 @@ description: Two-phase development pipeline with manual testing in between. Phas
 Two-phase pipeline with a manual testing gap in the middle.
 
 ```
-PHASE 1: /spec-to-pr                YOU                    PHASE 2: /ship-it
-─────────────────────               ───                    ──────────────────
-Read spec                           
-Create issue                        
-Branch                              
-Implement                           
-Push PR                             
-  "PR #43 ready to test" ──────→  checkout branch         
-                                  poke around              
-                                  manual test              
-                                  "looks good" ─────────→  local checks
-                                                           push any fixes
-                                                           auto-merge
-                                                             → CI (async)
-                                                             → merge (async)
-                                                             → deploy (async)
+PHASE 1: /spec-to-pr       GITHUB ACTION              YOU                    PHASE 2: /ship-it
+─────────────────────      ─────────────              ───                    ──────────────────
+Read spec
+Create issue
+Trigger @claude ─────────→ checkout repo
+                           create branch
+                           implement spec
+                           push PR
+                             "PR ready" ────────────→ checkout branch
+                                                     poke around
+                                                     manual test
+                                                     "looks good" ─────────→  local checks
+                                                                              push any fixes
+                                                                              auto-merge
+                                                                                → CI (async)
+                                                                                → merge (async)
+                                                                                → deploy (async)
 ```
 
 ---
 
 ## Phase 1: `/spec-to-pr`
 
-Takes a spec and produces a testable PR. Claude Code is free after push.
+Creates a GitHub issue and triggers the Claude GitHub Action to implement it. **No local code changes.**
 
 ### Stage 0: Read and Confirm
 
@@ -39,11 +40,12 @@ Takes a spec and produces a testable PR. Claude Code is free after push.
 3. **Ask the user to confirm.**
 
 ```
-I'll implement the engine refactor from docs/engine_refactor_instructions.md.
+I'll create an issue to implement the engine refactor from docs/engine_refactor_instructions.md.
 
-Branch: feature/engine-strip-renderer
 Scope: engine.ts, engine.js — strip renderer, promote 6 exports
 Tests: existing reducer tests should pass unchanged
+
+The Claude GitHub Action will implement this on a branch and open a PR.
 
 Proceed?
 ```
@@ -51,6 +53,8 @@ Proceed?
 **HALT if:** Spec not found. User says no.
 
 ### Stage 1: Create GitHub Issue
+
+Include the **full spec content** in the issue body so the GitHub Action has everything it needs.
 
 ```bash
 gh issue create \
@@ -66,6 +70,9 @@ gh issue create \
 ## Spec
 <path to spec file>
 
+## Full Spec Content
+<paste entire spec content here>
+
 ## Pipeline
 Phase 1: spec-to-pr | Phase 2: ship-it" \
   --label "spec-to-merge"
@@ -75,82 +82,53 @@ Capture `ISSUE_NUM`.
 
 **HALT if:** `gh issue create` fails.
 
-### Stage 2: Create Branch
+### Stage 2: Trigger Claude GitHub Action
+
+Add a comment to the issue that triggers the Claude workflow:
 
 ```bash
-git checkout main
-git pull origin main
-BRANCH="feature/issue-${ISSUE_NUM}-<slug>"
-git checkout -b "$BRANCH"
+gh issue comment $ISSUE_NUM --body "@claude implement this spec"
 ```
 
-**HALT if:** Git fails.
+The workflow (`.github/workflows/claude.yml`) will:
+- Check out the repo
+- Create branch `claude/issue-${ISSUE_NUM}`
+- Run Claude Code to implement the spec
+- Commit, push, and create a PR
 
-### Stage 3: Implement
-
-Follow the spec literally. Don't add scope.
-
-- If ambiguous, **HALT and ask.**
-- Commit with meaningful messages:
-  ```bash
-  git add -A
-  git commit -m "feat: <what changed> (#${ISSUE_NUM})"
-  ```
-- If updating from a changed spec, implement only the delta.
-
-**HALT if:** Contradictions or impossible requirements.
-
-### Stage 4: Push + Create PR
-
-```bash
-git push origin "$BRANCH"
-
-gh pr create \
-  --title "$(gh issue view $ISSUE_NUM --json title -q '.title')" \
-  --body "Closes #${ISSUE_NUM}
-
-## Changes
-<bulleted list from commits>
-
-## Status
-Ready for manual testing. Run \`/ship-it <PR_NUM>\` when satisfied.
-
-Spec: <path>" \
-  --head "$BRANCH" \
-  --base main
-```
-
-**HALT if:** Push or PR creation fails.
+**HALT if:** Comment fails.
 
 ### Done — Notify
 
 ```
-✓ PR ready for testing.
+✓ Issue created and Claude Action triggered.
 
 Issue:   #42 — Engine refactor: strip renderer
-Branch:  feature/issue-42-engine-strip-renderer
-PR:      #43
+Action:  GitHub Action is implementing...
 
-To test locally:
-  git checkout feature/issue-42-engine-strip-renderer
+Watch progress:
+  gh run list --workflow=claude.yml
 
-When ready to ship:
-  /ship-it 43
+When the PR is ready, you'll see it at:
+  gh pr list --state open --head claude/issue-42
+
+After testing, run:
+  /ship-it <PR_NUM>
 ```
 
-Phase 1 is done. Claude Code is free.
+Phase 1 is done. Claude Code is free. Implementation happens asynchronously in GitHub Actions.
 
 ---
 
 ## Manual Testing (You)
 
-Between phases, you test on the branch however you want:
+Once the GitHub Action completes and creates a PR, test on the branch:
 
 ```bash
-git checkout feature/issue-42-engine-strip-renderer
+git checkout claude/issue-42
 
 # poke around, run the app, check the UI, whatever
-# if you want changes, just tell Claude Code on that branch
+# if you want changes, comment @claude on the PR with instructions
 ```
 
 No time pressure. The PR sits there until you're ready.
@@ -242,7 +220,7 @@ When the user says "I updated the spec, run it again":
    ```bash
    gh pr list --state open --label "spec-to-merge" --search "<spec keywords>"
    ```
-2. **Open PR exists:** Check out that branch, implement the delta, push. Tell user to re-test and `/ship-it` again.
+2. **Open PR exists:** Comment on the PR with `@claude the spec was updated, implement the delta` to trigger the Action again.
 3. **No open PR:** Full Phase 1 from scratch.
 
 ---
@@ -251,8 +229,8 @@ When the user says "I updated the spec, run it again":
 
 | User says | Action |
 |---|---|
-| "continue" | Resume Phase 1 from failed stage |
-| "CI failed on #43, fix it" | Check out branch, read CI logs via `gh pr checks 43`, fix, push. Auto-merge retries automatically. |
+| "continue" | Resume Phase 1 from failed stage (issue creation or triggering action) |
+| "CI failed on #43, fix it" | Comment on the PR with `@claude fix the CI failure` to trigger the Action |
 | "abort" | `gh pr close <PR> --delete-branch` |
 | "I made changes on the branch, re-run checks" | Jump to Phase 2 Stage 1 |
 

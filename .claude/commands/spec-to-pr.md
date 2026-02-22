@@ -2,8 +2,14 @@
 
 Read `.claude/skills/spec-to-merge/SKILL.md` and execute **Phase 1** only.
 
-Takes a spec, creates a GitHub issue, implements it on a branch, pushes a PR, and tells the user it's ready to test. Do NOT run local checks or merge — that's Phase 2.
+**Important:** Do NOT implement code locally. Phase 1 only:
+1. Reads the spec
+2. Summarizes and confirms with user
+3. Creates a GitHub issue with the full spec content
+4. Adds a comment `@claude implement this spec` to trigger the Claude GitHub Action
 
-End by telling the user the branch name and PR number, and that they can run `/ship-it <PR_NUM>` when they've tested.
+The implementation happens asynchronously in GitHub Actions, not in this Claude Code session.
+
+End by telling the user the issue number and how to watch progress.
 
 Spec reference: $ARGUMENTS
