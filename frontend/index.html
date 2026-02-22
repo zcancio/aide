@@ -74,8 +74,8 @@
     }
 
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn-primary { background: var(--accent); color: #000; }
-    .btn-primary:hover:not(:disabled) { background: #ddd; }
+    .btn-primary { background: #7C8C6E; color: #F7F5F2; }
+    .btn-primary:hover:not(:disabled) { background: #667358; }
     .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
     .btn-ghost:hover { background: var(--surface); color: var(--text); }
     .btn-danger { background: transparent; color: #e55; border: 1px solid #e55; }
@@ -186,6 +186,7 @@
       overflow-y: auto;
       background: #fff;
       position: relative;
+      padding-bottom: 100px;
     }
 
     /* Floating chat overlay */
@@ -369,12 +370,12 @@
     .action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
     #send-btn {
-      background: var(--accent);
-      color: #000;
+      background: #7C8C6E;         /* sage-500 */
+      color: #F7F5F2;              /* warm white */
       border-radius: 8px;
     }
 
-    #send-btn:hover:not(:disabled) { background: #ddd; }
+    #send-btn:hover:not(:disabled) { background: #667358; }  /* sage-600 */
 
     /* Thinking indicator */
     #thinking-indicator {
@@ -456,6 +457,51 @@
 
     #publish-btn-floating.visible { display: flex; }
     #publish-btn-floating:hover { background: rgba(30, 30, 30, 0.95); }
+
+    /* ── FAB (floating action button) ── */
+    .fab {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: #7C8C6E;          /* sage-500 */
+      border: none;
+      color: #F7F5F2;               /* text-inverse (warm white) */
+      font-size: 24px;
+      font-weight: 300;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      transition: background 0.15s ease, transform 0.15s ease;
+      z-index: 50;
+    }
+
+    .fab:hover {
+      background: #667358;          /* sage-600 */
+      transform: scale(1.05);
+    }
+
+    #new-aide-fab {
+      display: none;
+    }
+
+    #dashboard.active #new-aide-fab {
+      display: flex;
+    }
+
+    @media (max-width: 767px) {
+      .fab {
+        bottom: 20px;
+        right: 16px;
+        width: 48px;
+        height: 48px;
+        font-size: 22px;
+      }
+    }
 
     /* ── AUTH ───────────────────────────────────────── */
     #auth-screen {
@@ -1156,13 +1202,13 @@
 <div id="dashboard">
   <div class="dashboard-header">
     <h1>aide</h1>
-    <button id="new-aide-btn" class="btn btn-primary">+ New aide</button>
   </div>
   <div id="aide-grid" class="aide-grid"></div>
   <div id="empty-state" class="empty-state" style="display:none;">
     <p>Nothing yet.</p>
     <button class="btn btn-ghost" onclick="startNewAide()">Create your first aide</button>
   </div>
+  <button id="new-aide-fab" class="fab" onclick="startNewAide()" title="New aide">+</button>
 </div>
 
 <!-- Editor -->
@@ -2313,7 +2359,7 @@
     openEditor(null);
   }
 
-  document.getElementById('new-aide-btn').addEventListener('click', startNewAide);
+  document.getElementById('new-aide-fab').addEventListener('click', startNewAide);
 
   // ── Editor ─────────────────────────────────────────
   async function openEditor(aideId) {
