@@ -37,10 +37,7 @@ def render_react_preview(
     meta = snapshot.get("meta", {})
 
     # Compute root IDs (entities with parent "root" or no parent)
-    root_ids = [
-        eid for eid, e in entities.items()
-        if not e.get("_removed") and e.get("parent") in (None, "root", "")
-    ]
+    root_ids = [eid for eid, e in entities.items() if not e.get("_removed") and e.get("parent") in (None, "root", "")]
 
     # Use meta title or provided title
     page_title = title or meta.get("title") or "AIde"
@@ -50,7 +47,7 @@ def render_react_preview(
     meta_json = json.dumps(meta, ensure_ascii=False)
     root_ids_json = json.dumps(root_ids, ensure_ascii=False)
 
-    return f'''<!DOCTYPE html>
+    return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -58,7 +55,9 @@ def render_react_preview(
 <title>{_escape_html(page_title)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700\
+&family=Instrument+Sans:wght@400;500;600;700\
+&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <style>
@@ -79,85 +78,68 @@ root.render(
   React.createElement(EntityContext.Provider, {{
     value: {{ entities: INITIAL_ENTITIES, meta: INITIAL_META, rootIds: INITIAL_ROOT_IDS }}
   }},
-    React.createElement(PreviewApp)
+    React.createElement(AppRoot)
   )
 );
 </script>
 </body>
-</html>'''
+</html>"""
 
 
 def _escape_html(text: str) -> str:
     """HTML-escape text for safe embedding."""
-    return (
-        text.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace('"', "&quot;")
-    )
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CSS - Exact copy from frontend/index.html renderer-css-template
 # ─────────────────────────────────────────────────────────────────────────────
 
-PREVIEW_CSS = '''
-/* CSS custom properties - exact copy from renderer.py */
+PREVIEW_CSS = """
+/* CSS custom properties - design tokens per spec */
 :root {
-  /* Design system defaults */
+  /* Typography */
   --font-serif: 'Playfair Display', Georgia, serif;
   --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-heading: 'Instrument Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Light mode (default) */
   --text-primary: #2D2D2A;
   --text-secondary: #6B6963;
   --text-tertiary: #A8A5A0;
   --text-inverse: #F7F5F2;
   --bg-primary: #F7F5F2;
-  --bg-secondary: #EFECEA;
-  --bg-tertiary: #E6E3DF;
+  --bg-card: #FFFFFF;
   --bg-elevated: #FFFFFF;
-  /* Sage accent scale */
-  --sage-50: #F0F3ED;
-  --sage-100: #DDE4D7;
-  --sage-200: #C2CCB8;
-  --sage-300: #A3B394;
-  --sage-400: #8B9E7C;
-  --sage-500: #7C8C6E;
-  --sage-600: #667358;
-  --sage-700: #515C46;
-  --sage-800: #3C4534;
-  --sage-900: #282E23;
-  --accent: var(--sage-500);
-  --accent-hover: var(--sage-600);
-  --accent-subtle: var(--sage-50);
-  --accent-muted: var(--sage-100);
   --border-subtle: #E0DDD8;
   --border-default: #D4D1CC;
   --border-strong: #A8A5A0;
+  --sage-accent: #7C8C6E;
+  --sage-hover: #667358;
+
+  /* Derived */
   --border: var(--border-default);
   --border-light: var(--border-subtle);
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --radius-full: 999px;
-  /* Spacing scale */
-  --space-0: 0px;
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-7: 32px;
-  --space-8: 40px;
-  --space-9: 48px;
-  --space-10: 56px;
-  --space-11: 64px;
-  --space-12: 80px;
-  --space-13: 96px;
-  --space-14: 112px;
-  --space-15: 128px;
-  --space-16: 160px;
+  --accent: var(--sage-accent);
+
+  /* Spacing */
+  --nav-height: 44px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text-primary: #E6E3DF;
+    --text-secondary: #A8A5A0;
+    --text-tertiary: #6B6963;
+    --bg-primary: #1A1A18;
+    --bg-card: #242422;
+    --bg-elevated: #2D2D2A;
+    --border-light: #2F2F2B;
+    --border-default: #3A3A36;
+    --border-strong: #4A4A44;
+    --sage-accent: #7C8C6E;
+    --sage-hover: #8FA07E;
+  }
 }
 
 /* ── Base ── */
@@ -165,24 +147,18 @@ PREVIEW_CSS = '''
 
 body {
   font-family: var(--font-sans);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 400;
-  line-height: 1.65;
+  line-height: 1.55;
   color: var(--text-primary);
   background: var(--bg-primary);
   -webkit-font-smoothing: antialiased;
 }
 
 .aide-page {
-  max-width: 720px;
+  max-width: 520px;
   margin: 0 auto;
-  padding: var(--space-12) var(--space-8);
-}
-
-@media (max-width: 640px) {
-  .aide-page {
-    padding: var(--space-8) var(--space-5);
-  }
+  padding: 64px 20px 48px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -192,414 +168,448 @@ body {
   }
 }
 
-/* ── Headings ── */
-.aide-heading { margin-bottom: var(--space-4); }
-.aide-heading--1 {
-  font-family: var(--font-serif);
-  font-size: clamp(36px, 4.5vw, 42px);
-  font-weight: 700;
-  line-height: 1.2;
+/* ── Nav Bar ── */
+.aide-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--nav-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: rgba(247, 245, 242, 0.9);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border-light);
+  z-index: 200;
+}
+
+@media (prefers-color-scheme: dark) {
+  .aide-nav {
+    background: rgba(26, 26, 24, 0.9);
+  }
+}
+
+.aide-nav__back,
+.aide-nav__share {
+  font-size: 14px;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 8px;
+  transition: color 0.15s;
+}
+
+.aide-nav__back:hover,
+.aide-nav__share:hover {
   color: var(--text-primary);
 }
-.aide-heading--2 {
-  font-family: var(--font-serif);
-  font-size: clamp(28px, 3.5vw, 32px);
-  font-weight: 700;
-  line-height: 1.25;
-  color: var(--text-primary);
-}
-.aide-heading--3 {
-  font-family: var(--font-heading);
-  font-size: 18px;
+
+.aide-nav__title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 14px;
   font-weight: 600;
-  line-height: 1.4;
+  max-width: 55%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Sticky Section Pill ── */
+.aide-pill-container {
+  position: fixed;
+  top: 50px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 150;
+}
+
+.aide-pill {
+  background: rgba(239, 236, 234, 0.94);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 3px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: auto;
+  animation: pill-enter 0.15s ease-out;
+}
+
+@media (prefers-color-scheme: dark) {
+  .aide-pill {
+    background: rgba(36, 36, 34, 0.94);
+  }
+}
+
+@keyframes pill-enter {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Pencil FAB ── */
+.aide-fab {
+  position: fixed;
+  bottom: 22px;
+  right: 22px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--sage-accent);
+  border: none;
+  color: var(--text-inverse);
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: all 0.15s;
+  z-index: 50;
+}
+
+.aide-fab:hover {
+  background: var(--sage-hover);
+  transform: scale(1.06);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+.aide-fab-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+}
+
+.aide-fab-backdrop {
+  position: absolute;
+  inset: 0;
+  background: transparent;
+}
+
+.aide-fab-input-bar {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(480px, calc(100vw - 32px));
+  background: var(--bg-card);
+  border-radius: 14px;
+  padding: 12px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  animation: slide-up 0.15s ease-out;
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.aide-fab-textarea {
+  flex: 1;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
   color: var(--text-primary);
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  max-height: 100px;
+  overflow-y: auto;
+}
+
+.aide-fab-textarea::placeholder {
+  color: var(--text-tertiary);
+}
+
+.aide-fab-send {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: none;
+  background: var(--bg-elevated);
+  color: var(--text-tertiary);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.aide-fab-send--active {
+  background: var(--sage-accent);
+  color: var(--text-inverse);
+}
+
+.aide-fab-send:hover:not(:disabled) {
+  background: var(--sage-hover);
+  color: var(--text-inverse);
+}
+
+.aide-fab-send:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* ── Section ── */
+.aide-section {
+  margin-bottom: 14px;
+}
+
+.aide-section__title {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--text-primary);
+  margin-bottom: 14px;
+}
+
+.aide-section__content {
+  margin-top: 6px;
+}
+
+.aide-collection-empty {
+  color: var(--text-tertiary);
+  font-size: 14px;
 }
 
 /* ── Text ── */
 .aide-text {
   font-family: var(--font-sans);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 400;
-  line-height: 1.65;
+  line-height: 1.55;
   color: var(--text-secondary);
-  margin-bottom: var(--space-4);
-}
-.aide-text a {
-  color: var(--accent);
-  text-decoration: underline;
-  text-decoration-color: var(--border);
-  text-underline-offset: 2px;
-}
-.aide-text a:hover {
-  text-decoration-color: var(--accent);
+  margin-bottom: 8px;
 }
 
 /* ── Metric ── */
 .aide-metric {
-  display: flex;
+  display: inline-flex;
   align-items: baseline;
-  gap: var(--space-2);
-  padding: var(--space-3) 0;
+  gap: 4px;
+  margin-right: 16px;
 }
 .aide-metric__label {
-  font-family: var(--font-sans);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 400;
   color: var(--text-secondary);
 }
 .aide-metric__label::after { content: ':'; }
 .aide-metric__value {
-  font-family: var(--font-sans);
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-/* ── Divider ── */
-.aide-divider {
-  border: none;
-  border-top: 1px solid var(--border-light);
-  margin: var(--space-6) 0;
-}
-
-/* ── Image ── */
-.aide-image { margin: var(--space-6) 0; }
-.aide-image img { max-width: 100%; height: auto; border-radius: var(--radius-sm); }
-.aide-image__caption {
-  font-size: 13px;
-  color: var(--text-tertiary);
-  margin-top: var(--space-2);
-}
-
-/* ── Callout ── */
-.aide-callout {
-  background: var(--bg-secondary);
-  border-left: 3px solid var(--border);
-  padding: var(--space-4) var(--space-5);
-  margin: var(--space-4) 0;
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  font-size: 15px;
-  line-height: 1.55;
-  color: var(--text-secondary);
-}
-
-/* ── Columns ── */
-.aide-columns {
-  display: flex;
-  gap: var(--space-6);
-}
-@media (max-width: 640px) {
-  .aide-columns {
-    flex-direction: column;
-  }
-}
-
-/* ── Empty states ── */
-.aide-empty {
-  color: var(--text-tertiary);
-  font-size: 15px;
-  padding: var(--space-16) 0;
-  text-align: center;
-}
-.aide-collection-empty {
-  color: var(--text-tertiary);
   font-size: 14px;
-  padding: var(--space-4) 0;
-}
-
-/* ── Highlight ── */
-.aide-highlight {
-  background-color: var(--accent-subtle);
-}
-
-/* ── List view ── */
-.aide-list {
-  list-style: none;
-  padding: 0;
-}
-.aide-list__item {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--border-light);
-  font-size: 15px;
-  line-height: 1.5;
-}
-.aide-list__item:last-child { border-bottom: none; }
-.aide-list__field--primary {
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
 }
-.aide-list__field {
-  color: var(--text-secondary);
+
+
+/* ── Table ── */
+.aide-table-container {
+  margin-bottom: 12px;
 }
 
-/* ── Table view ── */
+.aide-subsection-title {
+  font-family: var(--font-heading);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
 .aide-table-wrap {
   overflow-x: auto;
-  margin: var(--space-4) 0;
+  margin: 4px 0;
 }
+
 .aide-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 15px;
+  font-size: 14px;
 }
+
 .aide-table__th {
   font-family: var(--font-sans);
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-tertiary);
   text-align: left;
-  padding: var(--space-2) var(--space-3);
-  border-bottom: 2px solid var(--border);
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border-strong);
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s;
 }
+
+.aide-table__th:hover {
+  color: var(--text-secondary);
+}
+
+.aide-table__th--active {
+  color: var(--text-primary);
+}
+
+.aide-table__th--numeric {
+  text-align: right;
+}
+
+.aide-table__sort-arrow {
+  font-size: 10px;
+  opacity: 1;
+}
+
+.aide-table__sort-arrow--inactive {
+  opacity: 0.3;
+}
+
 .aide-table__td {
-  padding: var(--space-3);
+  padding: 5px 8px;
   border-bottom: 1px solid var(--border-light);
   color: var(--text-secondary);
   vertical-align: top;
 }
-.aide-table__td--bool { text-align: center; }
-.aide-table__td--int,
-.aide-table__td--float { text-align: right; font-variant-numeric: tabular-nums; }
 
-/* ── Grid view ── */
-.aide-grid {
-  border-collapse: collapse;
-  font-size: 13px;
-}
-.aide-grid__col-label,
-.aide-grid__row-label {
-  font-weight: 500;
-  color: var(--text-tertiary);
-  padding: var(--space-2);
-  text-align: center;
-}
-.aide-grid__cell {
-  border: 1px solid var(--border-light);
-  padding: var(--space-2);
-  text-align: center;
-  min-width: 48px;
-  min-height: 48px;
-  vertical-align: middle;
-}
-.aide-grid__cell--filled {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  font-weight: 500;
-}
-.aide-grid__cell--empty {
-  color: var(--text-tertiary);
+.aide-table__td--numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
-/* ── Group headers ── */
-.aide-group { margin-bottom: var(--space-6); }
-.aide-group__header {
-  font-family: var(--font-sans);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-  margin-bottom: var(--space-3);
-  padding-bottom: var(--space-2);
-  border-bottom: 1px solid var(--border-light);
-}
-
-/* ── Annotations ── */
-.aide-annotations { margin-top: var(--space-10); }
-.aide-annotation {
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--border-light);
-}
-.aide-annotation:last-child { border-bottom: none; }
-.aide-annotation__text {
-  font-size: 15px;
-  color: var(--text-secondary);
-  line-height: 1.5;
-}
-.aide-annotation__meta {
-  font-size: 12px;
-  color: var(--text-tertiary);
-  margin-left: var(--space-3);
-}
-.aide-annotation--pinned {
-  border-left: 3px solid var(--accent);
-  padding-left: var(--space-4);
-}
 
 /* ── Footer ── */
 .aide-footer {
-  margin-top: var(--space-16);
-  padding-top: var(--space-6);
+  margin-top: 48px;
+  padding-top: 12px;
   border-top: 1px solid var(--border-light);
   font-size: 12px;
   color: var(--text-tertiary);
   text-align: center;
 }
-.aide-footer__link {
-  color: var(--text-tertiary);
-  text-decoration: none;
-}
-.aide-footer__link:hover {
-  color: var(--text-secondary);
+
+/* ── Card ── */
+.aide-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
 }
 
-/* ── Card (React component) ── */
-.aide-card {
-  background: #fff;
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
-  padding: var(--space-4);
-  margin-bottom: var(--space-3);
-}
 .aide-card__title {
-  font-size: 15px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: var(--space-2);
+  margin-bottom: 6px;
 }
+
 .aide-card__field {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  padding: var(--space-1) 0;
+  padding: 4px 0;
   border-bottom: 1px solid var(--border-light);
-  gap: var(--space-3);
+  gap: 12px;
 }
-.aide-card__field:last-child { border-bottom: none; }
+
+.aide-card__field:last-child {
+  border-bottom: none;
+}
+
 .aide-card__label {
   color: var(--text-tertiary);
   font-size: 12px;
-  text-transform: capitalize;
+  text-transform: uppercase;
   flex-shrink: 0;
 }
 
-/* ── Section (React component) ── */
-.aide-section {
-  margin-bottom: var(--space-6);
-}
-.aide-section__header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  cursor: pointer;
-  padding: var(--space-1) 0;
-  user-select: none;
-}
-.aide-section__icon {
-  color: var(--text-tertiary);
-  font-size: 12px;
-  width: 14px;
-  text-align: center;
-  transition: transform 0.2s;
-}
-.aide-section__icon--collapsed {
-  transform: rotate(-90deg);
-}
-.aide-section__title {
-  font-family: var(--font-serif);
-  font-size: clamp(24px, 3.5vw, 32px);
-  font-weight: 400;
-  line-height: 1.25;
+.aide-card__value {
   color: var(--text-primary);
-}
-.aide-section__content {
-  margin-top: var(--space-3);
-}
-.aide-section__content--collapsed {
-  display: none;
+  font-size: 14px;
 }
 
-/* ── Checklist (React component) ── */
+
+/* ── Checklist ── */
+.aide-checklist-container {
+  margin-bottom: 12px;
+}
+
+.aide-checklist__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
 .aide-checklist {
   list-style: none;
   padding: 0;
-  margin-bottom: var(--space-4);
 }
+
 .aide-checklist__item {
   display: flex;
   align-items: flex-start;
-  gap: var(--space-3);
-  padding: var(--space-3) 0;
+  gap: 8px;
+  padding: 5px 0;
   border-bottom: 1px solid var(--border-light);
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.5;
 }
-.aide-checklist__item:last-child { border-bottom: none; }
-.aide-checklist__checkbox {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-  accent-color: var(--accent);
-  flex-shrink: 0;
-  margin-top: 2px;
+
+.aide-checklist__item:last-child {
+  border-bottom: none;
 }
+
+.aide-checklist__checkbox {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: var(--sage-accent);
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
 .aide-checklist__label {
   font-weight: 500;
   color: var(--text-primary);
 }
+
 .aide-checklist__label--done {
   text-decoration: line-through;
   color: var(--text-tertiary);
 }
-.aide-checklist__summary {
-  font-size: 13px;
+
+.aide-checklist__counter {
+  font-size: 12px;
   color: var(--text-tertiary);
-  padding-top: var(--space-2);
+  padding-top: 6px;
 }
 
-/* ── Editable field (React component) ── */
-.editable-field {
-  cursor: text;
-  border-radius: 2px;
-  padding: 1px 2px;
-  margin: -1px -2px;
-  transition: background-color 0.15s;
-}
-.editable-field:hover {
-  background-color: rgba(0, 0, 0, 0.04);
-}
-.editable-field--empty {
-  color: var(--text-tertiary);
-}
-.editable-input {
-  font: inherit;
-  color: inherit;
-  background: var(--bg-elevated);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius-sm);
-  padding: 1px 4px;
-  margin: -2px -5px;
-  outline: none;
-  min-width: 60px;
-}
-}
-
-/* ── Mount animation ── */
-@keyframes aide-fade-in {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.aide-mount-animation {
-  animation: aide-fade-in 0.2s ease-out;
-}
-'''
+"""
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # React Components - Exact copy from frontend/index.html REACT_COMPONENTS_TEMPLATE
 # ─────────────────────────────────────────────────────────────────────────────
 
-REACT_COMPONENTS = '''
-const { useState, useContext, createContext, useMemo } = React;
+REACT_COMPONENTS = """
+const { useState, useContext, createContext, useMemo, useCallback, useRef, useEffect } = React;
 
 // ── Entity Context ────────────────────────────────────
 const EntityContext = createContext({ entities: {}, meta: {}, rootIds: [] });
+
+// ── Section Registry Context (for scroll tracking) ───
+const SectionRegistryContext = createContext({ register: () => {}, unregister: () => {}, activeSection: null });
 
 function useEntity(id) {
   const { entities } = useContext(EntityContext);
@@ -609,7 +619,7 @@ function useEntity(id) {
 function useChildren(parentId) {
   const { entities } = useContext(EntityContext);
   return Object.entries(entities)
-    .filter(([, e]) => e.parent === parentId)
+    .filter(([, e]) => e.parent === parentId && !e._removed)
     .map(([id]) => id);
 }
 
@@ -629,9 +639,9 @@ function humanize(str) {
   return str.replace(/_/g, ' ').replace(/\\b\\w/g, c => c.toUpperCase());
 }
 
-function getDisplayableProps(props) {
+function displayProps(props) {
   if (!props) return {};
-  const skip = new Set(['title', 'name', '_removed', '_styles', '_pos', '_schema', '_shape']);
+  const skip = new Set(['title', 'name']);
   return Object.fromEntries(
     Object.entries(props).filter(([k]) => !k.startsWith('_') && !skip.has(k))
   );
@@ -658,11 +668,11 @@ function formatValue(value, type) {
 
 function deriveColumns(children, entities) {
   const cols = new Set();
-  const skip = new Set(['_pos', '_schema', '_shape']);
   children.forEach(id => {
     const entity = entities[id];
     const props = entity?.props || {};
-    Object.keys(props).filter(k => !k.startsWith('_') && !skip.has(k)).forEach(k => cols.add(k));
+    const displayed = displayProps(props);
+    Object.keys(displayed).forEach(k => cols.add(k));
   });
   return Array.from(cols);
 }
@@ -675,164 +685,174 @@ function applyStyles(styles) {
   return css;
 }
 
-// ── EditableField ──────────────────────────────────────
-function EditableField({ entityId, field, value, type = 'string', className = '' }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value ?? '');
+// ── Auto-table promotion detection ────────────────────
+function shouldAutoTable(childIds, entities) {
+  if (childIds.length < 2) return false;
 
-  const emitUpdate = (newValue) => {
-    window.parent.postMessage({
-      type: 'direct_edit',
-      entity_id: entityId,
-      field: field,
-      value: newValue
-    }, '*');
-  };
-
-  // Booleans toggle immediately
-  if (type === 'boolean') {
-    return React.createElement('input', {
-      type: 'checkbox',
-      className: 'aide-checklist__checkbox',
-      checked: !!value,
-      onChange: () => emitUpdate(!value)
-    });
-  }
-
-  if (!editing) {
-    const displayValue = formatValue(value, type);
-    const isEmpty = value === null || value === undefined || value === '';
-    return React.createElement('span', {
-      className: 'editable-field ' + (isEmpty ? 'editable-field--empty ' : '') + className,
-      onClick: () => { setDraft(value ?? ''); setEditing(true); }
-    }, displayValue);
-  }
-
-  return React.createElement('input', {
-    type: type === 'number' ? 'number' : type === 'date' ? 'date' : 'text',
-    className: 'editable-input',
-    value: draft,
-    autoFocus: true,
-    onChange: (e) => setDraft(e.target.value),
-    onBlur: () => {
-      setEditing(false);
-      if (draft !== value) {
-        const coerced = type === 'number' ? Number(draft) : draft;
-        emitUpdate(coerced);
-      }
-    },
-    onKeyDown: (e) => {
-      if (e.key === 'Enter') e.target.blur();
-      if (e.key === 'Escape') { setDraft(value ?? ''); setEditing(false); }
-    }
+  const fieldSets = childIds.map(id => {
+    const e = entities[id];
+    if (!e || e.display) return null; // skip explicit display hints
+    const p = e.props || {};
+    if (typeof p.done === 'boolean' || typeof p.checked === 'boolean') return null; // skip checklist items
+    const fields = Object.keys(displayProps(p));
+    return fields.length >= 2 ? new Set(fields) : null;
   });
+
+  if (fieldSets.some(s => s === null)) return false;
+
+  const first = fieldSets[0];
+  const shared = [...first].filter(f => fieldSets.every(s => s.has(f)));
+  return shared.length >= 2;
+}
+
+// ── Sorted Rows Hook (for Table/AutoTable) ────────────
+function useSortedRows(childIds, entities) {
+  const [sortCol, setSortCol] = useState(null);
+  const [sortDir, setSortDir] = useState('asc');
+
+  const onSort = useCallback((col) => {
+    if (sortCol === col) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortCol(col);
+      setSortDir('asc');
+    }
+  }, [sortCol]);
+
+  const sorted = useMemo(() => {
+    if (!sortCol) return childIds;
+    return [...childIds].sort((a, b) => {
+      const av = entities[a]?.props?.[sortCol];
+      const bv = entities[b]?.props?.[sortCol];
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      let cmp = typeof av === 'number' && typeof bv === 'number'
+        ? av - bv
+        : String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: 'base' });
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+  }, [childIds, entities, sortCol, sortDir]);
+
+  return { sorted, sortCol, sortDir, onSort };
 }
 
 // ── Display Components ─────────────────────────────────
 
-function PageDisplay({ entity, entityId, children }) {
-  const props = entity?.props || {};
-  const title = props.title || props.name || '';
-  return React.createElement('div', { className: 'aide-page aide-mount-animation' },
-    title && React.createElement('h1', { className: 'aide-heading aide-heading--1' },
-      React.createElement(EditableField, { entityId, field: 'title', value: title })
-    ),
-    children || React.createElement('p', { className: 'aide-empty' }, 'Say something to get started.')
-  );
-}
 
-function SectionDisplay({ entity, entityId, children }) {
-  const [collapsed, setCollapsed] = useState(false);
+function SectionDisplay({ entity, entityId }) {
+  const { entities } = useContext(EntityContext);
+  const { register, unregister } = useContext(SectionRegistryContext);
   const props = entity?.props || {};
   const title = props.title || props.name || 'Section';
+  const childIds = useChildren(entityId);
+  const sectionRef = useRef(null);
 
-  return React.createElement('div', { className: 'aide-section aide-mount-animation' },
-    React.createElement('div', {
-      className: 'aide-section__header',
-      onClick: () => setCollapsed(!collapsed)
-    },
-      React.createElement('span', {
-        className: 'aide-section__icon' + (collapsed ? ' aide-section__icon--collapsed' : '')
-      }, '▾'),
-      React.createElement('span', { className: 'aide-section__title' },
-        React.createElement(EditableField, { entityId, field: 'title', value: title })
-      )
-    ),
-    React.createElement('div', {
-      className: 'aide-section__content' + (collapsed ? ' aide-section__content--collapsed' : '')
-    }, children || React.createElement('p', { className: 'aide-collection-empty' }, 'No items yet.'))
-  );
-}
+  // Register section for scroll tracking
+  useEffect(() => {
+    if (sectionRef.current) {
+      register(entityId, title, sectionRef.current);
+      return () => unregister(entityId);
+    }
+  }, [entityId, title, register, unregister]);
 
-function CardDisplay({ entity, entityId, children }) {
-  const props = entity?.props || {};
-  const title = props.title || props.name || '';
-  const displayProps = getDisplayableProps(props);
-  const styles = applyStyles(entity?._styles);
+  // Check for auto-table promotion
+  const useAutoTable = shouldAutoTable(childIds, entities);
 
-  return React.createElement('div', { className: 'aide-card aide-mount-animation', style: styles },
-    title && React.createElement('div', { className: 'aide-card__title' },
-      React.createElement(EditableField, { entityId, field: props.title !== undefined ? 'title' : 'name', value: title })
-    ),
-    Object.entries(displayProps).map(([key, value]) =>
-      React.createElement('div', { key, className: 'aide-card__field' },
-        React.createElement('span', { className: 'aide-card__label' }, humanize(key)),
-        React.createElement(EditableField, { entityId, field: key, value, type: inferType(value) })
-      )
-    ),
-    children
-  );
-}
+  let children;
+  if (useAutoTable) {
+    children = React.createElement(AutoTable, { childIds });
+  } else if (childIds.length > 0) {
+    children = childIds.map(id => React.createElement(AideEntity, { key: id, entityId: id }));
+  } else {
+    children = null;
+  }
 
-function ListDisplay({ entity, entityId, children }) {
-  const props = entity?.props || {};
-  const title = props.title || props.name || '';
-
-  return React.createElement('div', { className: 'aide-mount-animation' },
-    title && React.createElement('h3', { className: 'aide-heading aide-heading--3' },
-      React.createElement(EditableField, { entityId, field: 'title', value: title })
-    ),
-    React.createElement('ul', { className: 'aide-list' },
-      children || React.createElement('li', { className: 'aide-collection-empty' }, 'No items yet.')
+  return React.createElement('div', {
+    className: 'aide-section',
+    ref: sectionRef
+  },
+    React.createElement('h2', { className: 'aide-section__title' }, title),
+    React.createElement('div', { className: 'aide-section__content' },
+      children || React.createElement('p', { className: 'aide-collection-empty' }, 'No items yet.')
     )
   );
 }
 
-function TableDisplay({ entity, entityId, children }) {
+function CardDisplay({ entity, entityId }) {
+  const props = entity?.props || {};
+  const title = props.title || props.name || '';
+  const displayedProps = displayProps(props);
+  const styles = applyStyles(entity?._styles);
+
+  return React.createElement('div', { className: 'aide-card', style: styles },
+    title && React.createElement('div', { className: 'aide-card__title' }, title),
+    Object.entries(displayedProps).map(([key, value]) =>
+      React.createElement('div', { key, className: 'aide-card__field' },
+        React.createElement('span', { className: 'aide-card__label' }, humanize(key)),
+        React.createElement('span', { className: 'aide-card__value' }, formatValue(value, inferType(value)))
+      )
+    )
+  );
+}
+
+
+function TableDisplay({ entity, entityId }) {
   const { entities } = useContext(EntityContext);
   const childIds = useChildren(entityId);
   const props = entity?.props || {};
   const title = props.title || props.name || '';
 
   if (childIds.length === 0) {
-    return React.createElement(CardDisplay, { entity, entityId, children });
+    return React.createElement(CardDisplay, { entity, entityId });
   }
 
   const columns = deriveColumns(childIds, entities);
+  const { sorted, sortCol, sortDir, onSort } = useSortedRows(childIds, entities);
 
-  return React.createElement('div', { className: 'aide-mount-animation' },
-    title && React.createElement('h3', { className: 'aide-heading aide-heading--3' },
-      React.createElement(EditableField, { entityId, field: 'title', value: title })
-    ),
+  return React.createElement('div', { className: 'aide-table-container' },
+    title && React.createElement('h3', { className: 'aide-subsection-title' }, title),
     React.createElement('div', { className: 'aide-table-wrap' },
       React.createElement('table', { className: 'aide-table' },
         React.createElement('thead', null,
           React.createElement('tr', null,
-            columns.map(col =>
-              React.createElement('th', { key: col, className: 'aide-table__th' }, humanize(col))
-            )
+            columns.map(col => {
+              const isActive = sortCol === col;
+              const isNumeric = childIds.some(id => typeof entities[id]?.props?.[col] === 'number');
+              const thClass = 'aide-table__th' +
+                (isActive ? ' aide-table__th--active' : '') +
+                (isNumeric ? ' aide-table__th--numeric' : '');
+              return React.createElement('th', {
+                key: col,
+                className: thClass,
+                onClick: () => onSort(col)
+              },
+                humanize(col),
+                ' ',
+                isActive
+                  ? React.createElement('span', { className: 'aide-table__sort-arrow' },
+                      sortDir === 'asc' ? '▲' : '▼')
+                  : React.createElement('span', {
+                      className: 'aide-table__sort-arrow aide-table__sort-arrow--inactive'
+                    }, '▲')
+              );
+            })
           )
         ),
         React.createElement('tbody', null,
-          childIds.map(cid => {
+          sorted.map(cid => {
             const child = entities[cid];
             const cp = child?.props || {};
-            return React.createElement('tr', { key: cid, className: 'aide-mount-animation' },
-              columns.map(col =>
-                React.createElement('td', { key: col, className: 'aide-table__td aide-table__td--' + inferType(cp[col]) },
-                  React.createElement(EditableField, { entityId: cid, field: col, value: cp[col], type: inferType(cp[col]) })
-                )
-              )
+            return React.createElement('tr', { key: cid },
+              columns.map(col => {
+                const type = inferType(cp[col]);
+                return React.createElement('td', {
+                  key: col,
+                  className: 'aide-table__td' + (type === 'number' ? ' aide-table__td--numeric' : '')
+                },
+                  formatValue(cp[col], type)
+                );
+              })
             );
           })
         )
@@ -841,45 +861,107 @@ function TableDisplay({ entity, entityId, children }) {
   );
 }
 
-function ChecklistDisplay({ entity, entityId, children }) {
+function AutoTable({ childIds }) {
+  const { entities } = useContext(EntityContext);
+  const columns = deriveColumns(childIds, entities);
+  const { sorted, sortCol, sortDir, onSort } = useSortedRows(childIds, entities);
+
+  return React.createElement('div', { className: 'aide-table-wrap' },
+    React.createElement('table', { className: 'aide-table' },
+      React.createElement('thead', null,
+        React.createElement('tr', null,
+          columns.map(col => {
+            const isActive = sortCol === col;
+            const isNumeric = childIds.some(id => typeof entities[id]?.props?.[col] === 'number');
+            const thClass = 'aide-table__th' +
+              (isActive ? ' aide-table__th--active' : '') +
+              (isNumeric ? ' aide-table__th--numeric' : '');
+            return React.createElement('th', {
+              key: col,
+              className: thClass,
+              onClick: () => onSort(col)
+            },
+              humanize(col),
+              ' ',
+              isActive
+                ? React.createElement('span', { className: 'aide-table__sort-arrow' },
+                    sortDir === 'asc' ? '▲' : '▼')
+                : React.createElement('span', {
+                    className: 'aide-table__sort-arrow aide-table__sort-arrow--inactive'
+                  }, '▲')
+            );
+          })
+        )
+      ),
+      React.createElement('tbody', null,
+        sorted.map(cid => {
+          const child = entities[cid];
+          const cp = child?.props || {};
+          return React.createElement('tr', { key: cid },
+            columns.map(col => {
+              const type = inferType(cp[col]);
+              return React.createElement('td', {
+                key: col,
+                className: 'aide-table__td' + (type === 'number' ? ' aide-table__td--numeric' : '')
+              },
+                formatValue(cp[col], type)
+              );
+            })
+          );
+        })
+      )
+    )
+  );
+}
+
+function ChecklistDisplay({ entity, entityId }) {
   const { entities } = useContext(EntityContext);
   const childIds = useChildren(entityId);
   const props = entity?.props || {};
   const title = props.title || props.name || '';
+  const [checkedItems, setCheckedItems] = useState({});
 
   if (childIds.length === 0) {
-    return React.createElement(CardDisplay, { entity, entityId, children });
+    return React.createElement(CardDisplay, { entity, entityId });
   }
 
-  const completed = childIds.filter(cid => {
+  const done = childIds.filter(cid => {
     const cp = entities[cid]?.props || {};
-    return cp.done === true || cp.checked === true || cp.completed === true;
+    const localChecked = checkedItems[cid];
+    return localChecked !== undefined ? localChecked : (cp.done === true || cp.checked === true);
   }).length;
 
-  return React.createElement('div', { className: 'aide-mount-animation' },
-    title && React.createElement('h3', { className: 'aide-heading aide-heading--3' },
-      React.createElement(EditableField, { entityId, field: 'title', value: title })
-    ),
+  const total = childIds.length;
+
+  return React.createElement('div', { className: 'aide-checklist-container' },
+    title && React.createElement('h3', { className: 'aide-checklist__title' }, title),
     React.createElement('div', { className: 'aide-checklist' },
       childIds.map(cid => {
         const child = entities[cid];
         const cp = child?.props || {};
-        const done = cp.done === true || cp.checked === true || cp.completed === true;
+        const isChecked = checkedItems[cid] !== undefined
+          ? checkedItems[cid]
+          : (cp.done === true || cp.checked === true);
         const label = cp.task || cp.label || cp.name || cid;
-        const labelField = cp.task !== undefined ? 'task' : (cp.label !== undefined ? 'label' : 'name');
 
-        return React.createElement('div', { key: cid, className: 'aide-checklist__item aide-mount-animation' },
-          React.createElement(EditableField, { entityId: cid, field: 'done', value: done, type: 'boolean' }),
+        return React.createElement('div', { key: cid, className: 'aide-checklist__item' },
+          React.createElement('input', {
+            type: 'checkbox',
+            className: 'aide-checklist__checkbox',
+            checked: isChecked,
+            onChange: (e) => {
+              const newState = { ...checkedItems, [cid]: e.target.checked };
+              setCheckedItems(newState);
+            }
+          }),
           React.createElement('span', {
-            className: 'aide-checklist__label' + (done ? ' aide-checklist__label--done' : '')
-          },
-            React.createElement(EditableField, { entityId: cid, field: labelField, value: label })
-          )
+            className: 'aide-checklist__label' + (isChecked ? ' aide-checklist__label--done' : '')
+          }, label)
         );
       })
     ),
-    React.createElement('div', { className: 'aide-checklist__summary' },
-      completed + ' of ' + childIds.length + ' complete'
+    React.createElement('div', { className: 'aide-checklist__counter' },
+      done + '/' + total
     )
   );
 }
@@ -890,102 +972,65 @@ function MetricDisplay({ entity, entityId }) {
   const label = props.label || props.name || '';
   const styles = applyStyles(entity?._styles);
 
-  return React.createElement('div', { className: 'aide-metric aide-mount-animation', style: styles },
+  return React.createElement('div', { className: 'aide-metric', style: styles },
     React.createElement('span', { className: 'aide-metric__label' }, label),
-    React.createElement('span', { className: 'aide-metric__value' },
-      React.createElement(EditableField, { entityId, field: 'value', value, type: inferType(value) })
-    )
+    ' ',
+    React.createElement('span', { className: 'aide-metric__value' }, String(value))
   );
 }
 
 function TextDisplay({ entity, entityId }) {
   const props = entity?.props || {};
   const text = props.text || props.content || props.body || '';
-  const field = props.text !== undefined ? 'text' : (props.content !== undefined ? 'content' : 'body');
 
-  return React.createElement('p', { className: 'aide-text aide-mount-animation' },
-    React.createElement(EditableField, { entityId, field, value: text })
-  );
-}
-
-function ImageDisplay({ entity, entityId }) {
-  const props = entity?.props || {};
-  const src = props.src || props.url || '';
-  const caption = props.caption || '';
-
-  return React.createElement('figure', { className: 'aide-image aide-mount-animation' },
-    src && React.createElement('img', { src, alt: caption, loading: 'lazy' }),
-    caption && React.createElement('figcaption', { className: 'aide-image__caption' },
-      React.createElement(EditableField, { entityId, field: 'caption', value: caption })
-    )
-  );
-}
-
-function FallbackDisplay({ entity, entityId, children }) {
-  const props = entity?.props || {};
-  const displayProps = Object.entries(props).filter(([k]) => !k.startsWith('_'));
-
-  return React.createElement('div', { className: 'aide-card aide-mount-animation' },
-    displayProps.map(([key, value]) =>
-      React.createElement('div', { key, className: 'aide-card__field' },
-        React.createElement('span', { className: 'aide-card__label' }, humanize(key)),
-        React.createElement(EditableField, { entityId, field: key, value, type: inferType(value) })
-      )
-    ),
-    children
-  );
+  return React.createElement('p', { className: 'aide-text' }, text);
 }
 
 // ── Display Resolution ─────────────────────────────────
 const DISPLAY_COMPONENTS = {
-  page: PageDisplay,
   section: SectionDisplay,
-  card: CardDisplay,
-  list: ListDisplay,
   table: TableDisplay,
   checklist: ChecklistDisplay,
   metric: MetricDisplay,
   text: TextDisplay,
-  image: ImageDisplay
+  card: CardDisplay
 };
 
 function resolveDisplay(entity, childIds, entities) {
+  // 1. Explicit display hint
   const hint = (entity?.display || '').toLowerCase();
   if (DISPLAY_COMPONENTS[hint]) return DISPLAY_COMPONENTS[hint];
 
-  // Heuristics based on props and children
+  // 2. Heuristic detection
   const props = entity?.props || {};
+  const displayedProps = displayProps(props);
+  const propCount = Object.keys(displayedProps).length;
 
-  // Image
-  if (props.src || props.url) return ImageDisplay;
-
-  // Checklist items have done/checked/completed - leaf nodes
-  if (typeof props.done === 'boolean' || typeof props.checked === 'boolean' || typeof props.completed === 'boolean') {
-    return CardDisplay;
-  }
-
-  // Metric (few fields with value/count)
-  if ((props.value !== undefined || props.count !== undefined) && Object.keys(props).filter(k => !k.startsWith('_')).length <= 3) {
+  // 2a. Has value or count prop, ≤3 display props → Metric
+  if ((props.value !== undefined || props.count !== undefined) && propCount <= 3) {
     return MetricDisplay;
   }
 
-  // Text block
-  if (props.text && Object.keys(props).filter(k => !k.startsWith('_')).length === 1) {
+  // 2b. Has text prop, ≤1 display prop → Text
+  if (props.text !== undefined && propCount <= 1) {
     return TextDisplay;
   }
 
-  // If entity has multiple children, render as table or checklist
+  // 2c. Has children where first child has done or checked boolean → Checklist
   if (childIds && childIds.length > 0 && entities) {
     const firstChild = entities[childIds[0]];
     const cp = firstChild?.props || {};
-    // Check if children are checklist items
-    if (typeof cp.done === 'boolean' || typeof cp.checked === 'boolean' || typeof cp.completed === 'boolean') {
+    if (typeof cp.done === 'boolean' || typeof cp.checked === 'boolean') {
       return ChecklistDisplay;
     }
-    // Multiple children with props → table
+
+    // 2d. Has children with 2+ shared fields → Table (auto-promotion)
+    // Note: auto-table promotion is handled at Section level
+    // For explicit table display with children
     return TableDisplay;
   }
 
+  // 2e. Fallback → Card
   return CardDisplay;
 }
 
@@ -998,9 +1043,10 @@ function AideEntity({ entityId }) {
 
   if (!entity || entity._removed) return null;
 
-  // For table/checklist displays, don't recursively render children
-  // - the component handles its own child rendering
-  const shouldPassChildren = Component !== TableDisplay && Component !== ChecklistDisplay;
+  // Section and Table/Checklist handle their own children
+  const shouldPassChildren = Component !== SectionDisplay &&
+    Component !== TableDisplay &&
+    Component !== ChecklistDisplay;
   const children = (shouldPassChildren && childIds.length > 0)
     ? childIds.map(id => React.createElement(AideEntity, { key: id, entityId: id }))
     : null;
@@ -1008,16 +1054,167 @@ function AideEntity({ entityId }) {
   return React.createElement(Component, { entity, entityId }, children);
 }
 
+// ── Nav Bar ─────────────────────────────────────────────
+function NavBar({ title }) {
+  return React.createElement('nav', { className: 'aide-nav' },
+    React.createElement('button', { className: 'aide-nav__back' },
+      React.createElement('span', null, '← Back')
+    ),
+    React.createElement('div', { className: 'aide-nav__title' }, title),
+    React.createElement('button', { className: 'aide-nav__share' },
+      React.createElement('span', null, 'Share ↑')
+    )
+  );
+}
+
+// ── Sticky Section Pill ─────────────────────────────────
+function StickyPill({ sectionTitle }) {
+  if (!sectionTitle) return null;
+  return React.createElement('div', { className: 'aide-pill-container' },
+    React.createElement('div', { className: 'aide-pill' }, sectionTitle)
+  );
+}
+
+// ── Pencil FAB ─────────────────────────────────────────
+function PencilFAB() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const handleSend = () => {
+    if (message.trim()) {
+      // In a real implementation, this would send the message
+      console.log('Send message:', message);
+      setMessage('');
+      setIsOpen(false);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    } else if (e.key === 'Escape') {
+      setIsOpen(false);
+      setMessage('');
+    }
+  };
+
+  if (isOpen) {
+    return React.createElement('div', { className: 'aide-fab-overlay' },
+      React.createElement('div', {
+        className: 'aide-fab-backdrop',
+        onClick: () => { setIsOpen(false); setMessage(''); }
+      }),
+      React.createElement('div', { className: 'aide-fab-input-bar' },
+        React.createElement('textarea', {
+          className: 'aide-fab-textarea',
+          placeholder: 'Ask or edit...',
+          value: message,
+          autoFocus: true,
+          onChange: (e) => setMessage(e.target.value),
+          onKeyDown: handleKeyDown
+        }),
+        React.createElement('button', {
+          className: 'aide-fab-send' + (message.trim() ? ' aide-fab-send--active' : ''),
+          onClick: handleSend,
+          disabled: !message.trim()
+        }, '→')
+      )
+    );
+  }
+
+  return React.createElement('button', {
+    className: 'aide-fab',
+    onClick: () => setIsOpen(true)
+  }, '✎');
+}
+
+// ── Footer ─────────────────────────────────────────────
+function Footer() {
+  return React.createElement('footer', { className: 'aide-footer' },
+    'Made with aide'
+  );
+}
+
+// ── Section Registry Provider ──────────────────────────
+function SectionRegistry({ children }) {
+  const [sections, setSections] = useState(new Map());
+  const [activeSection, setActiveSection] = useState(null);
+
+  const register = useCallback((id, title, ref) => {
+    setSections(prev => new Map(prev).set(id, { title, ref }));
+  }, []);
+
+  const unregister = useCallback((id) => {
+    setSections(prev => {
+      const next = new Map(prev);
+      next.delete(id);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    let rafId;
+    const NAV_HEIGHT = 44;
+    const threshold = NAV_HEIGHT + 6;
+
+    const checkScroll = () => {
+      let current = null;
+      sections.forEach(({ title, ref }, id) => {
+        const rect = ref.getBoundingClientRect();
+        if (rect.top < threshold && rect.bottom > threshold + 24) {
+          current = title;
+        }
+      });
+      setActiveSection(current);
+    };
+
+    const handleScroll = () => {
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        checkScroll();
+        rafId = null;
+      });
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    checkScroll();
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, [sections]);
+
+  return React.createElement(SectionRegistryContext.Provider, {
+    value: { register, unregister, activeSection }
+  }, children);
+}
+
 // ── PreviewApp (root) ──────────────────────────────────
 function PreviewApp() {
   const meta = useMeta();
   const rootIds = useRootIds();
+  const { activeSection } = useContext(SectionRegistryContext);
+  const title = meta.title || 'Untitled';
 
-  return React.createElement('main', { className: 'aide-page' },
-    meta.title && React.createElement('h1', { className: 'aide-heading aide-heading--1' }, meta.title),
-    rootIds.length > 0
-      ? rootIds.map(id => React.createElement(AideEntity, { key: id, entityId: id }))
-      : React.createElement('p', { className: 'aide-empty' }, 'Send a message to get started.')
+  return React.createElement(React.Fragment, null,
+    React.createElement(NavBar, { title }),
+    React.createElement(StickyPill, { sectionTitle: activeSection }),
+    React.createElement('main', { className: 'aide-page' },
+      rootIds.length > 0
+        ? rootIds.map(id => React.createElement(AideEntity, { key: id, entityId: id }))
+        : React.createElement('p', { className: 'aide-empty' }, 'Send a message to get started.')
+    ),
+    React.createElement(Footer),
+    React.createElement(PencilFAB)
   );
 }
-'''
+
+// ── Root with Context Providers ────────────────────────
+function AppRoot() {
+  return React.createElement(SectionRegistry, null,
+    React.createElement(PreviewApp)
+  );
+}
+"""
