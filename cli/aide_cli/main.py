@@ -1,9 +1,12 @@
 """Main entry point for AIde CLI."""
+import subprocess
 import sys
 
 from aide_cli import __version__
 from aide_cli.auth import login, logout
+from aide_cli.client import ApiClient
 from aide_cli.config import Config
+from aide_cli.node_bridge import NodeBridge
 from aide_cli.repl import Repl
 
 
@@ -26,9 +29,58 @@ REPL Commands:
   /page                    - Open published page
   /info                    - Show current aide details
   /history [n]             - Show message history
+  /view                    - Render current state as text
+  /watch [on|off]          - Auto-render after each message
   /help                    - Show REPL help
   /quit                    - Exit REPL
 """)
+
+
+def check_node():
+    """Check if Node.js is available."""
+    try:
+        result = subprocess.run(
+            ["node", "--version"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        version_str = result.stdout.strip().lstrip("v")
+        major_version = int(version_str.split(".")[0])
+
+        if major_version < 18:
+            print(f"Warning: aide requires Node.js 18+. Current: {result.stdout.strip()}")
+            print("Text rendering (/view, /watch) will be disabled.")
+            return False
+
+        return True
+
+    except (FileNotFoundError, subprocess.SubprocessError, ValueError):
+        print("Warning: Node.js not found. Install from https://nodejs.org")
+        print("Text rendering (/view, /watch) will be disabled.")
+        return False
+
+
+def init_bridge(config: Config) -> NodeBridge | None:
+    """Initialize Node bridge. Returns None if unavailable."""
+    # Check Node availability
+    if not check_node():
+        return None
+
+    # Fetch engine.js
+    client = ApiClient(config.api_url, config.token)
+    if not client.fetch_engine():
+        return None
+
+    # Start bridge
+    try:
+        bridge = NodeBridge()
+        bridge.start()
+        return bridge
+    except Exception as e:
+        print(f"  Warning: Failed to start Node bridge: {e}")
+        print("  Text rendering (/view, /watch) will be disabled.")
+        return None
 
 
 def main():
@@ -44,8 +96,15 @@ def main():
             print("Not authenticated. Run 'aide login' first.")
             sys.exit(1)
 
-        repl = Repl(config)
-        repl.start()
+        # Initialize Node bridge for text rendering
+        bridge = init_bridge(config)
+
+        repl = Repl(config, bridge=bridge)
+        try:
+            repl.start()
+        finally:
+            if bridge:
+                bridge.stop()
         return
 
     cmd = args[0]
@@ -75,9 +134,16 @@ def main():
             print("Not authenticated. Run 'aide login' first.")
             sys.exit(1)
 
+        # Initialize Node bridge for text rendering
+        bridge = init_bridge(config)
+
         aide_id = args[1]
-        repl = Repl(config, aide_id=aide_id)
-        repl.start()
+        repl = Repl(config, aide_id=aide_id, bridge=bridge)
+        try:
+            repl.start()
+        finally:
+            if bridge:
+                bridge.stop()
         return
 
     else:

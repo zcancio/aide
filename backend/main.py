@@ -20,6 +20,7 @@ from backend.repos.magic_link_repo import MagicLinkRepo
 from backend.routes import aides as aide_routes
 from backend.routes import api_tokens, auth_routes, cli_auth
 from backend.routes import conversations as conversation_routes
+from backend.routes import engine as engine_routes
 from backend.routes import flight_recorder as flight_recorder_routes
 from backend.routes import pages as pages_routes
 from backend.routes import publish as publish_routes
@@ -114,6 +115,7 @@ app.include_router(publish_routes.router)
 app.include_router(pages_routes.router)
 app.include_router(flight_recorder_routes.router)
 app.include_router(ws_routes.router)
+app.include_router(engine_routes.router)
 
 
 @app.get("/health")

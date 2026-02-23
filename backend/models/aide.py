@@ -110,6 +110,7 @@ class AideResponse(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime
+    snapshot: dict[str, Any] | None = None  # Included when include_snapshot=true (CLI usage)
 
     @classmethod
     def from_model(cls, aide: Aide) -> AideResponse:
