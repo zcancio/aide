@@ -104,8 +104,8 @@ class Repl:
             # Note: This is a simplified version. The real implementation would
             # need to handle WebSocket streaming or polling for responses.
             # For now, we just send the message and show a placeholder response.
-            data = {"content": text}
-            self.client.post(f"/api/aides/{self.current_aide_id}/message", data)
+            data = {"aide_id": self.current_aide_id, "message": text}
+            self.client.post("/api/message", data)
             print("  Message sent. (Note: streaming not yet implemented in CLI)")
         except Exception as e:
             print(f"Failed to send message: {e}")
