@@ -50,7 +50,9 @@ async def test_user_id(initialize_pool):
         # Clean up test data (order matters due to foreign keys)
         # CLI auth tables may not exist if migration hasn't run yet
         tables = await conn.fetch(
-            "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename IN ('api_tokens', 'cli_auth_requests')"
+            """SELECT tablename FROM pg_tables
+               WHERE schemaname = 'public'
+               AND tablename IN ('api_tokens', 'cli_auth_requests')"""
         )
         existing_tables = {row["tablename"] for row in tables}
         if "api_tokens" in existing_tables:
@@ -86,7 +88,9 @@ async def second_user_id(initialize_pool):
         # Clean up test data (order matters due to foreign keys)
         # CLI auth tables may not exist if migration hasn't run yet
         tables = await conn.fetch(
-            "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename IN ('api_tokens', 'cli_auth_requests')"
+            """SELECT tablename FROM pg_tables
+               WHERE schemaname = 'public'
+               AND tablename IN ('api_tokens', 'cli_auth_requests')"""
         )
         existing_tables = {row["tablename"] for row in tables}
         if "api_tokens" in existing_tables:
