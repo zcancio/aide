@@ -95,7 +95,7 @@ Railway detects Python automatically via `requirements.txt`. Configure via `rail
 builder = "nixpacks"
 
 [deploy]
-startCommand = "python -m alembic upgrade head && uvicorn backend.main:app --host 0.0.0.0 --port $PORT --workers 4"
+startCommand = "DATABASE_URL=$DATABASE_URL_OWNER python -m alembic upgrade head && uvicorn backend.main:app --host 0.0.0.0 --port $PORT --workers 4"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
@@ -110,13 +110,20 @@ Set in Railway dashboard (Settings → Variables). Injected at runtime, never in
 
 **Required:**
 ```
-DATABASE_URL=postgres://user:pass@ep-xxx.us-east-1.aws.neon.tech/aidedb?sslmode=require
+DATABASE_URL=postgres://aide_app:pass@ep-xxx.us-east-1.aws.neon.tech/aidedb?sslmode=require
+DATABASE_URL_OWNER=postgres://owner:pass@ep-xxx.us-east-1.aws.neon.tech/aidedb?sslmode=require
 JWT_SECRET=xxx
 R2_ENDPOINT=https://ACCOUNT.r2.cloudflarestorage.com
 R2_ACCESS_KEY=xxx
 R2_SECRET_KEY=xxx
 ANTHROPIC_API_KEY=xxx
 ```
+
+**Database roles:**
+- `DATABASE_URL` uses `aide_app` role — restricted permissions, can only SELECT/INSERT/UPDATE/DELETE on granted tables
+- `DATABASE_URL_OWNER` uses owner role — can CREATE/DROP tables, used only for migrations
+
+Migrations run with `DATABASE_URL_OWNER`, app runs with `DATABASE_URL`. RLS is enforced via `SET LOCAL app.current_user_id` in the app layer, so both roles respect row-level security.
 
 **Optional (with defaults):**
 ```
