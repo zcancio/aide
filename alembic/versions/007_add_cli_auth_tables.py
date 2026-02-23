@@ -49,9 +49,15 @@ def upgrade():
     op.execute("ALTER TABLE api_tokens ENABLE ROW LEVEL SECURITY")
 
     # RLS policy: users can only see/revoke their own tokens
+    # Matches pattern from 005_fix_rls_subquery_uuid_cast.py
     op.execute("""
         CREATE POLICY api_tokens_user_policy ON api_tokens
-            USING (user_id = current_setting('app.current_user_id')::uuid)
+            USING (
+                CASE
+                    WHEN NULLIF(current_setting('app.user_id', true), '') IS NULL THEN true
+                    ELSE user_id = current_setting('app.user_id', true)::uuid
+                END
+            )
     """)
 
     # Grant permissions to aide_app
