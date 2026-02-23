@@ -697,6 +697,25 @@
   --space-16: 160px;
 }
 
+/* Dark mode design tokens */
+@media (prefers-color-scheme: dark) {
+  :host {
+    --text-primary: #E6E3DF;
+    --text-secondary: #A8A5A0;
+    --text-tertiary: #6B6963;
+    --bg-primary: #1A1A18;
+    --bg-secondary: #242422;
+    --bg-tertiary: #2D2D2A;
+    --bg-elevated: #242422;
+    --border-subtle: #2F2F2B;
+    --border-default: #3A3A36;
+    --border-strong: #4A4A44;
+    --border: var(--border-default);
+    --border-light: var(--border-subtle);
+    --accent-hover: #8FA07E;
+  }
+}
+
 /* ── Base ── */
 :host *, :host *::before, :host *::after { box-sizing: border-box; }
 
@@ -718,7 +737,8 @@
 
 @media (max-width: 640px) {
   :host .aide-page {
-    padding: 40px 20px;
+    max-width: 520px;
+    padding: 60px 20px;
   }
 }
 
@@ -756,11 +776,11 @@
 /* ── Text ── */
 :host .aide-text {
   font-family: var(--font-sans);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 400;
-  line-height: 1.65;
+  line-height: 1.55;
   color: var(--text-secondary);
-  margin-bottom: var(--space-4);
+  margin-bottom: 8px;
 }
 :host .aide-text a {
   color: var(--accent);
@@ -774,22 +794,22 @@
 
 /* ── Metric ── */
 :host .aide-metric {
-  display: flex;
+  display: inline-flex;
   align-items: baseline;
   gap: var(--space-2);
-  padding: var(--space-3) 0;
+  margin-right: 16px;
 }
 :host .aide-metric__label {
   font-family: var(--font-sans);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 400;
   color: var(--text-secondary);
 }
 :host .aide-metric__label::after { content: ':'; }
 :host .aide-metric__value {
   font-family: var(--font-sans);
-  font-size: 15px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
@@ -887,22 +907,37 @@
 :host .aide-table__th {
   font-family: var(--font-sans);
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-tertiary);
   text-align: left;
   padding: var(--space-2) var(--space-3);
   border-bottom: 2px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s;
+}
+:host .aide-table__th:hover {
+  color: var(--text-secondary);
+}
+:host .aide-table__th--active {
+  color: var(--text-primary);
+}
+:host .aide-table__sort-arrow {
+  opacity: 0.3;
+  margin-left: 4px;
 }
 :host .aide-table__td {
-  padding: var(--space-3);
+  padding: 5px 8px;
   border-bottom: 1px solid var(--border-light);
   color: var(--text-secondary);
   vertical-align: top;
+  font-size: 14px;
 }
 :host .aide-table__td--bool { text-align: center; }
 :host .aide-table__td--int,
+:host .aide-table__td--number,
 :host .aide-table__td--float { text-align: right; font-variant-numeric: tabular-nums; }
 
 /* ── Grid view ── */
@@ -972,8 +1007,8 @@
 
 /* ── Footer ── */
 :host .aide-footer {
-  margin-top: var(--space-16);
-  padding-top: var(--space-6);
+  margin-top: 48px;
+  padding-top: 12px;
   border-top: 1px solid var(--border-light);
   font-size: 12px;
   color: var(--text-tertiary);
@@ -991,13 +1026,13 @@
 :host .aide-card {
   background: var(--bg-elevated);
   border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
-  padding: var(--space-4);
-  margin-bottom: var(--space-3);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
 }
 :host .aide-card__title {
-  font-size: 15px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--text-primary);
   margin-bottom: var(--space-2);
 }
@@ -1013,44 +1048,24 @@
 :host .aide-card__label {
   color: var(--text-tertiary);
   font-size: 12px;
-  text-transform: capitalize;
+  text-transform: uppercase;
   flex-shrink: 0;
 }
 
 /* ── Section (React component) ── */
 :host .aide-section {
-  margin-bottom: var(--space-6);
-}
-:host .aide-section__header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  cursor: pointer;
-  padding: var(--space-1) 0;
-  user-select: none;
-}
-:host .aide-section__icon {
-  color: var(--text-tertiary);
-  font-size: 12px;
-  width: 14px;
-  text-align: center;
-  transition: transform 0.2s;
-}
-:host .aide-section__icon--collapsed {
-  transform: rotate(-90deg);
+  margin-bottom: 14px;
 }
 :host .aide-section__title {
   font-family: var(--font-serif);
-  font-size: clamp(28px, 3.5vw, 32px);
+  font-size: 20px;
   font-weight: 700;
   line-height: 1.25;
   color: var(--text-primary);
+  margin-bottom: 14px;
 }
 :host .aide-section__content {
-  margin-top: var(--space-3);
-}
-:host .aide-section__content--collapsed {
-  display: none;
+  margin-top: 6px;
 }
 
 /* ── Checklist (React component) ── */
@@ -1059,19 +1074,25 @@
   padding: 0;
   margin-bottom: var(--space-4);
 }
+:host .aide-checklist__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+}
 :host .aide-checklist__item {
   display: flex;
   align-items: flex-start;
   gap: var(--space-3);
-  padding: var(--space-3) 0;
+  padding: 5px 0;
   border-bottom: 1px solid var(--border-light);
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.5;
 }
 :host .aide-checklist__item:last-child { border-bottom: none; }
 :host .aide-checklist__checkbox {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   cursor: pointer;
   accent-color: var(--accent);
   flex-shrink: 0;
@@ -1086,7 +1107,7 @@
   color: var(--text-tertiary);
 }
 :host .aide-checklist__summary {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-tertiary);
   padding-top: var(--space-2);
 }
@@ -1468,26 +1489,41 @@
     );
   }
 
+  // Auto-table detection helper
+  function shouldAutoTable(childIds, entities) {
+    if (childIds.length < 2) return false;
+    const fieldSets = childIds.map(id => {
+      const e = entities[id];
+      if (!e || e.display) return null; // skip explicit display hints
+      const p = e.props || {};
+      if (typeof p.done === 'boolean') return null; // skip checklist items
+      const fields = Object.keys(p).filter(k => !k.startsWith('_'));
+      return fields.length >= 2 ? new Set(fields) : null;
+    });
+    if (fieldSets.some(s => s === null)) return false;
+    const first = fieldSets[0];
+    const shared = [...first].filter(f => fieldSets.every(s => s.has(f)));
+    return shared.length >= 2;
+  }
+
   function SectionDisplay({ entity, entityId, children }) {
-    const [collapsed, setCollapsed] = useState(false);
+    const { entities } = useContext(EntityContext);
+    const childIds = useChildren(entityId);
     const props = entity?.props || {};
     const title = props.title || props.name || 'Section';
 
+    // Check for auto-table promotion
+    const useAutoTable = shouldAutoTable(childIds, entities);
+
     return React.createElement('div', { className: 'aide-section aide-mount-animation' },
-      React.createElement('div', {
-        className: 'aide-section__header',
-        onClick: () => setCollapsed(!collapsed)
-      },
-        React.createElement('span', {
-          className: 'aide-section__icon' + (collapsed ? ' aide-section__icon--collapsed' : '')
-        }, '▾'),
-        React.createElement('span', { className: 'aide-section__title' },
-          React.createElement(EditableField, { entityId, field: 'title', value: title })
-        )
+      React.createElement('h2', { className: 'aide-section__title' },
+        React.createElement(EditableField, { entityId, field: 'title', value: title })
       ),
-      React.createElement('div', {
-        className: 'aide-section__content' + (collapsed ? ' aide-section__content--collapsed' : '')
-      }, children || React.createElement('p', { className: 'aide-collection-empty' }, 'No items yet.'))
+      React.createElement('div', { className: 'aide-section__content' },
+        useAutoTable
+          ? React.createElement(AutoTable, { childIds })
+          : children || React.createElement('p', { className: 'aide-collection-empty' }, 'No items yet.')
+      )
     );
   }
 
@@ -1525,6 +1561,31 @@
     );
   }
 
+  // Shared hook for sortable tables
+  const { useCallback } = React;
+  function useSortedRows(childIds, entities) {
+    const [sortCol, setSortCol] = useState(null);
+    const [sortDir, setSortDir] = useState('asc');
+    const onSort = useCallback((col) => {
+      if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+      else { setSortCol(col); setSortDir('asc'); }
+    }, [sortCol]);
+    const sorted = useMemo(() => {
+      if (!sortCol) return childIds;
+      return [...childIds].sort((a, b) => {
+        const av = entities[a]?.props?.[sortCol];
+        const bv = entities[b]?.props?.[sortCol];
+        if (av == null && bv == null) return 0;
+        if (av == null) return 1; if (bv == null) return -1;
+        let cmp = typeof av === 'number' && typeof bv === 'number'
+          ? av - bv
+          : String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: 'base' });
+        return sortDir === 'asc' ? cmp : -cmp;
+      });
+    }, [childIds, entities, sortCol, sortDir]);
+    return { sorted, sortCol, sortDir, onSort };
+  }
+
   function TableDisplay({ entity, entityId, children }) {
     const { entities } = useContext(EntityContext);
     const childIds = useChildren(entityId);
@@ -1536,6 +1597,7 @@
     }
 
     const columns = deriveColumns(childIds, entities);
+    const { sorted, sortCol, sortDir, onSort } = useSortedRows(childIds, entities);
 
     return React.createElement('div', { className: 'aide-mount-animation' },
       title && React.createElement('h3', { className: 'aide-heading aide-heading--3' },
@@ -1546,12 +1608,20 @@
           React.createElement('thead', null,
             React.createElement('tr', null,
               columns.map(col =>
-                React.createElement('th', { key: col, className: 'aide-table__th' }, humanize(col))
+                React.createElement('th', {
+                  key: col,
+                  className: 'aide-table__th' + (sortCol === col ? ' aide-table__th--active' : ''),
+                  onClick: () => onSort(col)
+                },
+                  humanize(col),
+                  ' ',
+                  sortCol === col ? (sortDir === 'asc' ? '▲' : '▼') : React.createElement('span', { className: 'aide-table__sort-arrow' }, '▲')
+                )
               )
             )
           ),
           React.createElement('tbody', null,
-            childIds.map(cid => {
+            sorted.map(cid => {
               const child = entities[cid];
               const cp = child?.props || {};
               return React.createElement('tr', { key: cid, className: 'aide-mount-animation' },
@@ -1568,6 +1638,48 @@
     );
   }
 
+  // AutoTable - table without a title, used for auto-promoted sections
+  function AutoTable({ childIds }) {
+    const { entities } = useContext(EntityContext);
+    if (childIds.length === 0) return null;
+
+    const columns = deriveColumns(childIds, entities);
+    const { sorted, sortCol, sortDir, onSort } = useSortedRows(childIds, entities);
+
+    return React.createElement('div', { className: 'aide-table-wrap' },
+      React.createElement('table', { className: 'aide-table' },
+        React.createElement('thead', null,
+          React.createElement('tr', null,
+            columns.map(col =>
+              React.createElement('th', {
+                key: col,
+                className: 'aide-table__th' + (sortCol === col ? ' aide-table__th--active' : ''),
+                onClick: () => onSort(col)
+              },
+                humanize(col),
+                ' ',
+                sortCol === col ? (sortDir === 'asc' ? '▲' : '▼') : React.createElement('span', { className: 'aide-table__sort-arrow' }, '▲')
+              )
+            )
+          )
+        ),
+        React.createElement('tbody', null,
+          sorted.map(cid => {
+            const child = entities[cid];
+            const cp = child?.props || {};
+            return React.createElement('tr', { key: cid, className: 'aide-mount-animation' },
+              columns.map(col =>
+                React.createElement('td', { key: col, className: 'aide-table__td aide-table__td--' + inferType(cp[col]) },
+                  React.createElement(EditableField, { entityId: cid, field: col, value: cp[col], type: inferType(cp[col]) })
+                )
+              )
+            );
+          })
+        )
+      )
+    );
+  }
+
   function ChecklistDisplay({ entity, entityId, children }) {
     const { entities } = useContext(EntityContext);
     const childIds = useChildren(entityId);
@@ -1578,35 +1690,36 @@
       return React.createElement(CardDisplay, { entity, entityId, children });
     }
 
-    const completed = childIds.filter(cid => {
+    const done = childIds.filter(cid => {
       const cp = entities[cid]?.props || {};
-      return cp.done === true || cp.checked === true || cp.completed === true;
+      return cp.done === true || cp.checked === true;
     }).length;
+    const total = childIds.length;
 
     return React.createElement('div', { className: 'aide-mount-animation' },
-      title && React.createElement('h3', { className: 'aide-heading aide-heading--3' },
-        React.createElement(EditableField, { entityId, field: 'title', value: title })
-      ),
       React.createElement('div', { className: 'aide-checklist' },
+        title && React.createElement('div', { className: 'aide-checklist__title' },
+          React.createElement(EditableField, { entityId, field: 'title', value: title })
+        ),
         childIds.map(cid => {
           const child = entities[cid];
           const cp = child?.props || {};
-          const done = cp.done === true || cp.checked === true || cp.completed === true;
+          const isDone = cp.done === true || cp.checked === true;
           const label = cp.task || cp.label || cp.name || cid;
           const labelField = cp.task !== undefined ? 'task' : (cp.label !== undefined ? 'label' : 'name');
 
           return React.createElement('div', { key: cid, className: 'aide-checklist__item aide-mount-animation' },
-            React.createElement(EditableField, { entityId: cid, field: 'done', value: done, type: 'boolean' }),
+            React.createElement(EditableField, { entityId: cid, field: 'done', value: isDone, type: 'boolean' }),
             React.createElement('span', {
-              className: 'aide-checklist__label' + (done ? ' aide-checklist__label--done' : '')
+              className: 'aide-checklist__label' + (isDone ? ' aide-checklist__label--done' : '')
             },
               React.createElement(EditableField, { entityId: cid, field: labelField, value: label })
             )
           );
-        })
-      ),
-      React.createElement('div', { className: 'aide-checklist__summary' },
-        completed + ' of ' + childIds.length + ' complete'
+        }),
+        React.createElement('div', { className: 'aide-checklist__summary' },
+          done + '/' + total
+        )
       )
     );
   }
@@ -1676,43 +1789,43 @@
     image: ImageDisplay
   };
 
+  // Helper to get display props count (excluding title, name, and _-prefixed)
+  function displayPropsCount(props) {
+    const skip = new Set(['title', 'name']);
+    return Object.keys(props || {}).filter(k => !k.startsWith('_') && !skip.has(k)).length;
+  }
+
   function resolveDisplay(entity, childIds, entities) {
+    // 1. Explicit display hint
     const hint = (entity?.display || '').toLowerCase();
     if (DISPLAY_COMPONENTS[hint]) return DISPLAY_COMPONENTS[hint];
 
-    // Heuristics based on props and children
+    // 2. Heuristic detection
     const props = entity?.props || {};
 
-    // Image
-    if (props.src || props.url) return ImageDisplay;
-
-    // Checklist items have done/checked/completed - leaf nodes
-    if (typeof props.done === 'boolean' || typeof props.checked === 'boolean' || typeof props.completed === 'boolean') {
-      return CardDisplay;
-    }
-
-    // Metric (few fields with value/count)
-    if ((props.value !== undefined || props.count !== undefined) && Object.keys(props).filter(k => !k.startsWith('_')).length <= 3) {
+    // a. Has value or count prop, ≤3 display props → Metric
+    if ((props.value !== undefined || props.count !== undefined) && displayPropsCount(props) <= 3) {
       return MetricDisplay;
     }
 
-    // Text block
-    if (props.text && Object.keys(props).filter(k => !k.startsWith('_')).length === 1) {
+    // b. Has text prop, ≤1 display prop → Text
+    if (props.text !== undefined && displayPropsCount(props) <= 1) {
       return TextDisplay;
     }
 
-    // If entity has multiple children, render as table or checklist
+    // c. Has children where first child has done or checked boolean → Checklist
     if (childIds && childIds.length > 0 && entities) {
       const firstChild = entities[childIds[0]];
       const cp = firstChild?.props || {};
-      // Check if children are checklist items
-      if (typeof cp.done === 'boolean' || typeof cp.checked === 'boolean' || typeof cp.completed === 'boolean') {
+      if (typeof cp.done === 'boolean' || typeof cp.checked === 'boolean') {
         return ChecklistDisplay;
       }
-      // Multiple children with props → table
+      // d. Has children with 2+ shared fields → Table (auto-promotion handled in Section)
+      // Default to Table for entities with children
       return TableDisplay;
     }
 
+    // e. Fallback → Card
     return CardDisplay;
   }
 
@@ -1735,6 +1848,13 @@
     return React.createElement(Component, { entity, entityId }, children);
   }
 
+  // ── Footer Component ──────────────────────────────────
+  function Footer() {
+    return React.createElement('footer', { className: 'aide-footer' },
+      'Made with aide'
+    );
+  }
+
   // ── PreviewApp (root) ──────────────────────────────────
   function PreviewApp() {
     const { entities } = useContext(EntityContext);
@@ -1754,7 +1874,8 @@
       meta.title && React.createElement('h1', { className: 'aide-heading aide-heading--1' }, meta.title),
       sortedRootIds.length > 0
         ? sortedRootIds.map(id => React.createElement(AideEntity, { key: id, entityId: id }))
-        : React.createElement('p', { className: 'aide-empty' }, 'Send a message to get started.')
+        : React.createElement('p', { className: 'aide-empty' }, 'Send a message to get started.'),
+      React.createElement(Footer)
     );
   }
 
