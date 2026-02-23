@@ -1,0 +1,48 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv
+venv
+ENV
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Tests
+.pytest_cache
+.coverage
+htmlcov
+
+# Build
+*.egg-info
+dist
+build
+
+# Docs
+docs/
+
+# Frontend (not needed for backend container)
+frontend/
+
+# CLI (separate package)
+cli/
+
+# Node
+node_modules
+
+# Local env
+.env
+.env.local
+
+# Claude
+.claude/

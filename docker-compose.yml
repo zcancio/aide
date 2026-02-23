@@ -1,0 +1,54 @@
+services:
+  db:
+    image: postgres:16
+    container_name: aide-db
+    environment:
+      POSTGRES_USER: aide
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: aide_test
+    ports:
+      - "5432:5432"
+    volumes:
+      - aide-pgdata:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aide -d aide_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aide-backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgres://aide_app:test@db:5432/aide_test
+      DATABASE_URL_OWNER: postgres://aide:test@db:5432/aide_test
+      JWT_SECRET: dev-secret-not-for-production-use-1234567890abcdef
+      R2_ENDPOINT: ${R2_ENDPOINT:-https://placeholder.r2.cloudflarestorage.com}
+      R2_ACCESS_KEY: ${R2_ACCESS_KEY:-placeholder}
+      R2_SECRET_KEY: ${R2_SECRET_KEY:-placeholder}
+      R2_WORKSPACE_BUCKET: ${R2_WORKSPACE_BUCKET:-aide-workspaces-dev}
+      R2_PUBLISHED_BUCKET: ${R2_PUBLISHED_BUCKET:-aide-published-dev}
+      R2_PUBLIC_URL: ${R2_PUBLIC_URL:-https://placeholder.r2.cloudflarestorage.com}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      L2_MODEL: ${L2_MODEL:-claude-sonnet-4-20250514}
+      L3_MODEL: ${L3_MODEL:-claude-sonnet-4-20250514}
+    volumes:
+      - ./backend:/app/backend
+      - ./engine:/app/engine
+      - ./frontend:/app/frontend
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "DATABASE_URL=$$DATABASE_URL_OWNER python -m alembic upgrade head &&
+             python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload"
+
+volumes:
+  aide-pgdata:
