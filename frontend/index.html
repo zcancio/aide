@@ -716,7 +716,7 @@
   --space-16: 160px;
 }
 
-/* Dark mode design tokens */
+/* Dark mode design tokens - disabled for now, always use light mode
 @media (prefers-color-scheme: dark) {
   :host {
     --text-primary: #E6E3DF;
@@ -734,6 +734,7 @@
     --accent-hover: #8FA07E;
   }
 }
+*/
 
 /* ── Base ── */
 :host *, :host *::before, :host *::after { box-sizing: border-box; }
@@ -1990,10 +1991,7 @@
     const titleField = props.title !== undefined ? 'title' : 'name';
     const children = childIds.map(id => renderEntity(id)).join('');
     return `<div class="aide-section">
-      <div class="aide-section__header">
-        <span class="aide-section__icon">▾</span>
-        <span class="aide-section__title editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</span>
-      </div>
+      <div class="aide-section__title editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</div>
       <div class="aide-section__content">${children || '<p class="aide-collection-empty">No items yet.</p>'}</div>
     </div>`;
   }
