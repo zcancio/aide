@@ -237,7 +237,7 @@ async def save_aide_state(
     This endpoint persists the state that was streamed via WebSocket.
     No LLM call - just saves what the frontend already has.
     """
-    from engine.kernel.react_preview import render_react_preview
+    from backend.services.renderer import render_html
 
     # Verify user owns this aide
     aide = await aide_repo.get(user.id, aide_id)
@@ -258,7 +258,7 @@ async def save_aide_state(
     await aide_repo.update_state(user.id, aide_id, snapshot, event_log=[], title=title)
 
     # Render HTML and upload to R2
-    html_content = render_react_preview(snapshot, title=title)
+    html_content = render_html(snapshot, title=title)
     await r2_service.upload_html(str(aide_id), html_content)
 
     # Save conversation history if provided

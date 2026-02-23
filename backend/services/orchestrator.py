@@ -18,7 +18,7 @@ from backend.services.grid_resolver import resolve_primitives
 from backend.services.l2_compiler import l2_compiler
 from backend.services.l3_synthesizer import l3_synthesizer
 from backend.services.r2 import r2_service
-from engine.kernel.react_preview import render_react_preview
+from backend.services.renderer import render_html
 from engine.kernel.reducer_v2 import empty_snapshot as empty_v2_snapshot
 from engine.kernel.reducer_v2 import reduce
 from engine.kernel.types import Event, ReduceResult
@@ -258,7 +258,7 @@ class Orchestrator:
 
         # 5. Render HTML
         title = new_snapshot.get("meta", {}).get("title") or (aide.title if hasattr(aide, "title") else "AIde")
-        html_content = render_react_preview(new_snapshot, title=title)
+        html_content = render_html(new_snapshot, title=title)
 
         # 6. Save state to DB
         serialized_events = [

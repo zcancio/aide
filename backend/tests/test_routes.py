@@ -268,7 +268,7 @@ class TestPublishRoute:
                 new_callable=AsyncMock,
                 return_value="published-slug/index.html",
             ),
-            patch("backend.routes.publish.render_react_preview", return_value="<html>test</html>"),
+            patch("backend.routes.publish.render_html", return_value="<html>test</html>"),
         ):
             res = await async_client.post(
                 f"/api/aides/{aide.id}/publish",
