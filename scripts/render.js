@@ -18,7 +18,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Load display.js module
-const display = require(path.join(__dirname, '../static/display.js'));
+const display = require(path.join(__dirname, '../frontend/display.js'));
 
 // Read JSON input from stdin
 let inputData = '';
@@ -32,8 +32,13 @@ process.stdin.on('end', () => {
   try {
     const input = JSON.parse(inputData);
 
-    // Extract parameters
-    const store = input.state || { entities: {}, rootIds: [], meta: {} };
+    // Extract parameters with defaults for missing properties
+    const rawState = input.state || {};
+    const store = {
+      entities: rawState.entities || {},
+      rootIds: rawState.rootIds || [],
+      meta: rawState.meta || {}
+    };
     const options = {
       title: input.title || store.meta.title || 'AIde',
       description: input.description || '',
