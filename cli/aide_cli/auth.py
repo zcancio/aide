@@ -12,7 +12,7 @@ def generate_device_code(length: int = 6) -> str:
     """Generate a random device code."""
     chars = string.ascii_uppercase + string.digits
     # Exclude ambiguous characters
-    chars = chars.replace("O", "").replace("0", "").replace("I", "").replace("1")
+    chars = chars.replace("O", "").replace("0", "").replace("I", "").replace("1", "")
     return "".join(secrets.choice(chars) for _ in range(length))
 
 
