@@ -90,7 +90,7 @@ class Repl:
         if not self.current_aide:
             # Create new aide with first message
             try:
-                data = {"name": text[:50], "is_archived": False}
+                data = {"title": text[:50]}
                 aide = self.client.post("/api/aides", data)
                 self.current_aide_id = aide["id"]
                 self.current_aide = aide
