@@ -90,7 +90,7 @@ async def test_device_auth_flow_success(async_client: AsyncClient, test_user, in
 
 async def test_device_auth_duplicate_code(async_client: AsyncClient, initialize_pool):
     """Test that duplicate device codes are rejected."""
-    device_code = "DUP123"
+    device_code = f"DUP{uuid4().hex[:6].upper()}"
 
     # Start auth flow
     res = await async_client.post(
@@ -119,7 +119,7 @@ async def test_device_auth_unknown_code(async_client: AsyncClient, initialize_po
 
 async def test_device_auth_expired_code(async_client: AsyncClient, initialize_pool):
     """Test behavior with expired device code."""
-    device_code = "EXP123"
+    device_code = f"EXP{uuid4().hex[:6].upper()}"
 
     # Create expired auth request directly
     async with system_conn() as conn:
@@ -138,7 +138,7 @@ async def test_device_auth_expired_code(async_client: AsyncClient, initialize_po
 
 async def test_device_auth_already_approved(async_client: AsyncClient, test_user, initialize_pool):
     """Test confirming an already-approved request."""
-    device_code = "APPROVED123"
+    device_code = f"APR{uuid4().hex[:6].upper()}"
     token = create_jwt(test_user.id)
 
     # Start and approve
