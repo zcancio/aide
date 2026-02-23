@@ -55,7 +55,8 @@ def render_react_preview(
 <title>{_escape_html(page_title)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap"
+      rel="stylesheet">
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <style>
@@ -580,6 +581,113 @@ body {
 .aide-mount-animation {
   animation: aide-fade-in 0.2s ease-out;
 }
+
+/* ── Nav Bar ── */
+.aide-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 44px;
+  background: rgba(26,26,24,0.9);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-5);
+  z-index: 200;
+}
+
+.aide-nav__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.aide-nav__back:hover {
+  color: var(--text-primary);
+}
+
+.aide-nav__title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 55%;
+}
+
+.aide-nav__share {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  border-radius: 6px;
+}
+
+.aide-nav__share:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+/* ── Sticky Pill ── */
+.aide-pill-container {
+  position: fixed;
+  top: 50px;
+  left: 0;
+  right: 0;
+  z-index: 190;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.aide-pill {
+  background: rgba(36,36,34,0.94);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 3px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  box-shadow: 0 1px 8px rgba(0,0,0,0.2);
+  white-space: nowrap;
+  pointer-events: auto;
+  animation: pillIn 0.15s ease-out;
+}
+
+@keyframes pillIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Content offset for nav bar ── */
+.aide-page-with-nav {
+  padding-top: 44px;
+}
 """
 
 
@@ -588,7 +696,7 @@ body {
 # ─────────────────────────────────────────────────────────────────────────────
 
 REACT_COMPONENTS = """
-const { useState, useContext, createContext, useMemo } = React;
+const { useState, useContext, createContext, useMemo, useEffect, useRef, useCallback } = React;
 
 // ── Entity Context ────────────────────────────────────
 const EntityContext = createContext({ entities: {}, meta: {}, rootIds: [] });
@@ -614,6 +722,9 @@ function useRootIds() {
   const { rootIds } = useContext(EntityContext);
   return rootIds;
 }
+
+// ── Section Registry Context ──────────────────────────
+const SectionRegistry = createContext({ register: () => {}, unregister: () => {} });
 
 // ── Helpers ────────────────────────────────────────────
 function humanize(str) {
@@ -735,10 +846,22 @@ function PageDisplay({ entity, entityId, children }) {
 
 function SectionDisplay({ entity, entityId, children }) {
   const [collapsed, setCollapsed] = useState(false);
+  const ref = useRef(null);
+  const { register, unregister } = useContext(SectionRegistry);
   const props = entity?.props || {};
   const title = props.title || props.name || 'Section';
 
-  return React.createElement('div', { className: 'aide-section aide-mount-animation' },
+  useEffect(() => {
+    if (ref.current) {
+      register(entityId, title, ref.current);
+    }
+    return () => unregister(entityId);
+  }, [entityId, title, register, unregister]);
+
+  return React.createElement('div', {
+    ref: ref,
+    className: 'aide-section aide-mount-animation'
+  },
     React.createElement('div', {
       className: 'aide-section__header',
       onClick: () => setCollapsed(!collapsed)
@@ -764,7 +887,11 @@ function CardDisplay({ entity, entityId, children }) {
 
   return React.createElement('div', { className: 'aide-card aide-mount-animation', style: styles },
     title && React.createElement('div', { className: 'aide-card__title' },
-      React.createElement(EditableField, { entityId, field: props.title !== undefined ? 'title' : 'name', value: title })
+      React.createElement(EditableField, {
+        entityId,
+        field: props.title !== undefined ? 'title' : 'name',
+        value: title
+      })
     ),
     Object.entries(displayProps).map(([key, value]) =>
       React.createElement('div', { key, className: 'aide-card__field' },
@@ -820,11 +947,20 @@ function TableDisplay({ entity, entityId, children }) {
             const child = entities[cid];
             const cp = child?.props || {};
             return React.createElement('tr', { key: cid, className: 'aide-mount-animation' },
-              columns.map(col =>
-                React.createElement('td', { key: col, className: 'aide-table__td aide-table__td--' + inferType(cp[col]) },
-                  React.createElement(EditableField, { entityId: cid, field: col, value: cp[col], type: inferType(cp[col]) })
-                )
-              )
+              columns.map(col => {
+                const colType = inferType(cp[col]);
+                return React.createElement('td', {
+                  key: col,
+                  className: 'aide-table__td aide-table__td--' + colType
+                },
+                  React.createElement(EditableField, {
+                    entityId: cid,
+                    field: col,
+                    value: cp[col],
+                    type: colType
+                  })
+                );
+              })
             );
           })
         )
@@ -957,7 +1093,9 @@ function resolveDisplay(entity, childIds, entities) {
   }
 
   // Metric (few fields with value/count)
-  if ((props.value !== undefined || props.count !== undefined) && Object.keys(props).filter(k => !k.startsWith('_')).length <= 3) {
+  const hasValue = props.value !== undefined || props.count !== undefined;
+  const propCount = Object.keys(props).filter(k => !k.startsWith('_')).length;
+  if (hasValue && propCount <= 3) {
     return MetricDisplay;
   }
 
@@ -1000,16 +1138,127 @@ function AideEntity({ entityId }) {
   return React.createElement(Component, { entity, entityId }, children);
 }
 
+// ── NavBar Component ───────────────────────────────────
+function NavBar({ pageTitle }) {
+  return React.createElement('nav', { className: 'aide-nav' },
+    React.createElement('button', {
+      className: 'aide-nav__back',
+      onClick: () => window.history.back()
+    },
+      React.createElement('svg', {
+        width: 16,
+        height: 16,
+        viewBox: '0 0 24 24',
+        fill: 'none',
+        stroke: 'currentColor',
+        strokeWidth: 1.5,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round'
+      },
+        React.createElement('path', { d: 'M19 12H5' }),
+        React.createElement('path', { d: 'M12 19l-7-7 7-7' })
+      ),
+      'Back'
+    ),
+    React.createElement('div', { className: 'aide-nav__title' }, pageTitle),
+    React.createElement('button', {
+      className: 'aide-nav__share',
+      onClick: () => {
+        if (navigator.share) {
+          navigator.share({ title: pageTitle, url: window.location.href });
+        } else {
+          navigator.clipboard.writeText(window.location.href);
+          alert('Link copied to clipboard');
+        }
+      }
+    },
+      React.createElement('svg', {
+        width: 14,
+        height: 14,
+        viewBox: '0 0 24 24',
+        fill: 'none',
+        stroke: 'currentColor',
+        strokeWidth: 1.5,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round'
+      },
+        React.createElement('path', { d: 'M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8' }),
+        React.createElement('polyline', { points: '16 6 12 2 8 6' }),
+        React.createElement('line', { x1: 12, y1: 2, x2: 12, y2: 15 })
+      ),
+      'Share'
+    )
+  );
+}
+
+// ── StickyPill Component ───────────────────────────────
+function StickyPill({ title }) {
+  if (!title) return null;
+  return React.createElement('div', { className: 'aide-pill-container' },
+    React.createElement('div', { className: 'aide-pill' }, title)
+  );
+}
+
 // ── PreviewApp (root) ──────────────────────────────────
 function PreviewApp() {
   const meta = useMeta();
   const rootIds = useRootIds();
+  const sectionsRef = useRef({});
+  const [activeTitle, setActiveTitle] = useState(null);
+  const prevTitleRef = useRef(null);
+  const rafRef = useRef(null);
 
-  return React.createElement('main', { className: 'aide-page' },
-    meta.title && React.createElement('h1', { className: 'aide-heading aide-heading--1' }, meta.title),
-    rootIds.length > 0
-      ? rootIds.map(id => React.createElement(AideEntity, { key: id, entityId: id }))
-      : React.createElement('p', { className: 'aide-empty' }, 'Send a message to get started.')
+  const register = useCallback((id, title, el) => {
+    sectionsRef.current[id] = { title, el };
+  }, []);
+
+  const unregister = useCallback((id) => {
+    delete sectionsRef.current[id];
+  }, []);
+
+  useEffect(() => {
+    const NAV_HEIGHT = 44;
+    const onScroll = () => {
+      if (rafRef.current) return;
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        const threshold = NAV_HEIGHT + 10;
+        let current = null;
+
+        for (const { title, el } of Object.values(sectionsRef.current)) {
+          const rect = el.getBoundingClientRect();
+          if (rect.top < threshold && rect.bottom > threshold + 24) {
+            current = title;
+          }
+        }
+
+        if (current !== prevTitleRef.current) {
+          prevTitleRef.current = current;
+          setActiveTitle(current);
+        }
+      });
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  const pageTitle = meta.title || 'AIde';
+
+  return React.createElement(SectionRegistry.Provider, {
+    value: { register, unregister }
+  },
+    React.createElement(NavBar, { pageTitle }),
+    React.createElement(StickyPill, { title: activeTitle }),
+    React.createElement('main', { className: 'aide-page aide-page-with-nav' },
+      meta.title && React.createElement('h1', { className: 'aide-heading aide-heading--1' }, meta.title),
+      rootIds.length > 0
+        ? rootIds.map(id => React.createElement(AideEntity, { key: id, entityId: id }))
+        : React.createElement('p', { className: 'aide-empty' }, 'Send a message to get started.')
+    )
   );
 }
 """

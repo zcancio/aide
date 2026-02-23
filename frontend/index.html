@@ -412,52 +412,6 @@
       40% { transform: scale(1); opacity: 1; }
     }
 
-    /* Back button (editor toolbar) */
-    #editor-back {
-      position: fixed;
-      top: 14px;
-      left: 14px;
-      z-index: 200;
-      background: rgba(20, 20, 20, 0.9);
-      border: none;
-      border-radius: var(--radius);
-      width: 36px;
-      height: 36px;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 0;
-      color: var(--text);
-      cursor: pointer;
-      font-size: 16px;
-      transition: background 0.15s;
-    }
-
-    #editor-back.visible { display: flex; }
-    #editor-back:hover { background: rgba(30, 30, 30, 0.95); }
-
-    /* Publish button (editor toolbar) */
-    #publish-btn-floating {
-      position: fixed;
-      top: 14px;
-      right: 14px;
-      z-index: 200;
-      background: rgba(20, 20, 20, 0.9);
-      border: none;
-      border-radius: var(--radius);
-      padding: 8px 16px;
-      color: var(--text);
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 500;
-      display: none;
-      align-items: center;
-      transition: background 0.15s;
-    }
-
-    #publish-btn-floating.visible { display: flex; }
-    #publish-btn-floating:hover { background: rgba(30, 30, 30, 0.95); }
-
     /* ── FAB (floating action button) ── */
     .fab {
       position: fixed;
@@ -1167,6 +1121,114 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* ── Nav Bar ── */
+:host .aide-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 44px;
+  background: var(--bg-elevated);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border-default);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-5);
+  z-index: 200;
+}
+
+:host .aide-nav__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+:host .aide-nav__back:hover {
+  color: var(--text-primary);
+}
+
+:host .aide-nav__title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 55%;
+}
+
+:host .aide-nav__share {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  border-radius: 6px;
+}
+
+:host .aide-nav__share:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+/* ── Sticky Pill ── */
+:host .aide-pill-container {
+  position: fixed;
+  top: 50px;
+  left: 0;
+  right: 0;
+  z-index: 190;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+:host .aide-pill {
+  background: var(--bg-elevated);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  padding: 3px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  white-space: nowrap;
+  pointer-events: auto;
+  animation: pillIn 0.15s ease-out;
+}
+
+@keyframes pillIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Content offset for nav bar ── */
+:host .aide-page-with-nav {
+  padding-top: 44px;
+}
+
 /* ── Legacy editable support (for vanilla JS fallback) ── */
 :host .editable-value {
   cursor: pointer;
@@ -1253,9 +1315,6 @@
 </div>
 
 <!-- Editor -->
-<button id="editor-back">←</button>
-<button id="publish-btn-floating">Publish</button>
-
 <div id="editor">
   <!-- Inline preview div - replaces iframe for real-time React rendering -->
   <div id="preview-root"></div>
@@ -1375,10 +1434,13 @@
 
   // ── React Display Components (inline preview) ─────────────────────────────
   // Matches docs/eng_design/04_display_components.md
-  const { useState, useContext, createContext, useMemo } = React;
+  const { useState, useContext, createContext, useMemo, useEffect, useRef, useCallback } = React;
 
   // ── Entity Context ────────────────────────────────────
   const EntityContext = createContext({ entities: {}, meta: {}, rootIds: [] });
+
+  // ── Section Registry Context ─────────────────────────
+  const SectionRegistry = createContext({ register: () => {}, unregister: () => {} });
 
   function useEntity(id) {
     const { entities } = useContext(EntityContext);
@@ -1535,14 +1597,24 @@
 
   function SectionDisplay({ entity, entityId, children }) {
     const { entities } = useContext(EntityContext);
+    const { register, unregister } = useContext(SectionRegistry);
+    const ref = useRef(null);
     const childIds = useChildren(entityId);
     const props = entity?.props || {};
     const title = props.title || props.name || 'Section';
 
+    // Register section for scroll tracking
+    useEffect(() => {
+      if (ref.current) {
+        register(entityId, title, ref.current);
+      }
+      return () => unregister(entityId);
+    }, [entityId, title, register, unregister]);
+
     // Check for auto-table promotion
     const useAutoTable = shouldAutoTable(childIds, entities);
 
-    return React.createElement('div', { className: 'aide-section aide-mount-animation' },
+    return React.createElement('div', { ref, className: 'aide-section aide-mount-animation' },
       React.createElement('h2', { className: 'aide-section__title' },
         React.createElement(EditableField, { entityId, field: 'title', value: title })
       ),
@@ -1589,7 +1661,6 @@
   }
 
   // Shared hook for sortable tables
-  const { useCallback } = React;
   function useSortedRows(childIds, entities) {
     const [sortCol, setSortCol] = useState(null);
     const [sortDir, setSortDir] = useState('asc');
@@ -1882,11 +1953,117 @@
     );
   }
 
+  // ── NavBar Component ─────────────────────────────────
+  function NavBar({ pageTitle }) {
+    return React.createElement('nav', { className: 'aide-nav' },
+      React.createElement('button', {
+        className: 'aide-nav__back',
+        onClick: () => window.history.back()
+      },
+        React.createElement('svg', {
+          width: 16,
+          height: 16,
+          viewBox: '0 0 24 24',
+          fill: 'none',
+          stroke: 'currentColor',
+          strokeWidth: 1.5,
+          strokeLinecap: 'round',
+          strokeLinejoin: 'round'
+        },
+          React.createElement('path', { d: 'M19 12H5' }),
+          React.createElement('path', { d: 'M12 19l-7-7 7-7' })
+        ),
+        'Back'
+      ),
+      React.createElement('div', { className: 'aide-nav__title' }, pageTitle),
+      React.createElement('button', {
+        className: 'aide-nav__share',
+        onClick: () => {
+          if (navigator.share) {
+            navigator.share({ title: pageTitle, url: window.location.href });
+          } else {
+            navigator.clipboard.writeText(window.location.href);
+            alert('Link copied to clipboard');
+          }
+        }
+      },
+        React.createElement('svg', {
+          width: 14,
+          height: 14,
+          viewBox: '0 0 24 24',
+          fill: 'none',
+          stroke: 'currentColor',
+          strokeWidth: 1.5,
+          strokeLinecap: 'round',
+          strokeLinejoin: 'round'
+        },
+          React.createElement('path', { d: 'M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8' }),
+          React.createElement('polyline', { points: '16 6 12 2 8 6' }),
+          React.createElement('line', { x1: 12, y1: 2, x2: 12, y2: 15 })
+        ),
+        'Share'
+      )
+    );
+  }
+
+  // ── StickyPill Component ─────────────────────────────
+  function StickyPill({ title }) {
+    if (!title) return null;
+    return React.createElement('div', { className: 'aide-pill-container' },
+      React.createElement('div', { className: 'aide-pill' }, title)
+    );
+  }
+
   // ── PreviewApp (root) ──────────────────────────────────
   function PreviewApp() {
     const { entities } = useContext(EntityContext);
     const meta = useMeta();
     const rootIds = useRootIds();
+
+    // Section registry for scroll tracking
+    const sectionsRef = useRef({});
+    const [activeTitle, setActiveTitle] = useState(null);
+    const prevTitleRef = useRef(null);
+    const rafRef = useRef(null);
+
+    const register = useCallback((id, title, el) => {
+      sectionsRef.current[id] = { title, el };
+    }, []);
+
+    const unregister = useCallback((id) => {
+      delete sectionsRef.current[id];
+    }, []);
+
+    // Scroll tracking for sticky pill
+    useEffect(() => {
+      const NAV_HEIGHT = 44;
+      const onScroll = () => {
+        if (rafRef.current) return;
+        rafRef.current = requestAnimationFrame(() => {
+          rafRef.current = null;
+          const threshold = NAV_HEIGHT + 10;
+          let current = null;
+
+          for (const { title, el } of Object.values(sectionsRef.current)) {
+            const rect = el.getBoundingClientRect();
+            if (rect.top < threshold && rect.bottom > threshold + 24) {
+              current = title;
+            }
+          }
+
+          if (current !== prevTitleRef.current) {
+            prevTitleRef.current = current;
+            setActiveTitle(current);
+          }
+        });
+      };
+
+      window.addEventListener('scroll', onScroll, { passive: true });
+      return () => {
+        window.removeEventListener('scroll', onScroll);
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      };
+    }, []);
 
     // Sort rootIds by _created_seq
     const sortedRootIds = useMemo(() => {
@@ -1897,12 +2074,20 @@
       });
     }, [rootIds, entities]);
 
-    return React.createElement('main', { className: 'aide-page' },
-      meta.title && React.createElement('h1', { className: 'aide-heading aide-heading--1' }, meta.title),
-      sortedRootIds.length > 0
-        ? sortedRootIds.map(id => React.createElement(AideEntity, { key: id, entityId: id }))
-        : React.createElement('p', { className: 'aide-empty' }, 'Send a message to get started.'),
-      React.createElement(Footer)
+    const pageTitle = meta.title || 'AIde';
+
+    return React.createElement(SectionRegistry.Provider, {
+      value: { register, unregister }
+    },
+      React.createElement(NavBar, { pageTitle }),
+      React.createElement(StickyPill, { title: activeTitle }),
+      React.createElement('main', { className: 'aide-page aide-page-with-nav' },
+        meta.title && React.createElement('h1', { className: 'aide-heading aide-heading--1' }, meta.title),
+        sortedRootIds.length > 0
+          ? sortedRootIds.map(id => React.createElement(AideEntity, { key: id, entityId: id }))
+          : React.createElement('p', { className: 'aide-empty' }, 'Send a message to get started.'),
+        React.createElement(Footer)
+      )
     );
   }
 
@@ -2130,9 +2315,33 @@
     </div>`;
   }
 
+  function buildNavBarHtml(pageTitle) {
+    return `<nav class="aide-nav">
+      <button class="aide-nav__back" onclick="history.replaceState({}, '', '/'); location.reload();">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/>
+        </svg>
+        Back
+      </button>
+      <div class="aide-nav__title">${escapeHtml(pageTitle)}</div>
+      <button class="aide-nav__share" onclick="navigator.clipboard.writeText(window.location.href).then(() => alert('Link copied'))">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+          <polyline points="16 6 12 2 8 6"/>
+          <line x1="12" y1="2" x2="12" y2="15"/>
+        </svg>
+        Share
+      </button>
+    </nav>`;
+  }
+
   function buildPreviewHtml() {
+    const pageTitle = entityStore.meta.title || 'AIde';
+    const navBar = buildNavBarHtml(pageTitle);
+    const stickyPill = '<div class="aide-pill-container" id="sticky-pill" style="display:none;"><div class="aide-pill"></div></div>';
+
     if (entityStore.rootIds.length === 0 && Object.keys(entityStore.meta).length === 0) {
-      return '<div class="aide-page"><p class="aide-empty">Send a message to get started.</p></div>';
+      return navBar + stickyPill + '<div class="aide-page aide-page-with-nav"><p class="aide-empty">Send a message to get started.</p></div>';
     }
     // Sort rootIds by _created_seq before rendering
     const sortedRootIds = [...entityStore.rootIds].sort((a, b) => {
@@ -2144,9 +2353,10 @@
     const content = sortedRootIds.map(id => renderEntity(id)).join('');
     // Check if content already has a page wrapper
     if (content.trim().startsWith('<div class="aide-page">')) {
-      return content;
+      // Insert nav bar and add padding class
+      return navBar + stickyPill + content.replace('class="aide-page"', 'class="aide-page aide-page-with-nav"');
     }
-    return `<div class="aide-page">${content}</div>`;
+    return navBar + stickyPill + `<div class="aide-page aide-page-with-nav">${content}</div>`;
   }
 
   let activeEditElement = null;
@@ -2255,6 +2465,48 @@
           sendDirectEdit(entityId, field, checkbox.checked);
         }
       });
+
+      // Scroll tracking for sticky section pill
+      let rafPending = false;
+      let prevPillTitle = null;
+      host.addEventListener('scroll', () => {
+        if (rafPending) return;
+        rafPending = true;
+        requestAnimationFrame(() => {
+          rafPending = false;
+          const NAV_HEIGHT = 44;
+          const threshold = NAV_HEIGHT + 10;
+          let currentTitle = null;
+
+          // Find all section headers
+          const sections = shadowRoot.querySelectorAll('.aide-section');
+          for (const section of sections) {
+            const rect = section.getBoundingClientRect();
+            // Use viewport coordinates since nav bar is fixed to viewport
+            if (rect.top < threshold && rect.bottom > threshold + 24) {
+              const titleEl = section.querySelector('.aide-section__title');
+              if (titleEl) {
+                currentTitle = titleEl.textContent.trim();
+              }
+            }
+          }
+
+          // Update pill if title changed
+          if (currentTitle !== prevPillTitle) {
+            prevPillTitle = currentTitle;
+            const pill = shadowRoot.getElementById('sticky-pill');
+            if (pill) {
+              const pillInner = pill.querySelector('.aide-pill');
+              if (currentTitle && pillInner) {
+                pill.style.display = 'flex';
+                pillInner.textContent = currentTitle;
+              } else {
+                pill.style.display = 'none';
+              }
+            }
+          }
+        });
+      }, { passive: true });
     }
 
     // Save scroll position
@@ -2434,8 +2686,6 @@
     document.getElementById('auth-screen').classList.toggle('active', name === 'auth');
     document.getElementById('dashboard').classList.toggle('active', name === 'dashboard');
     document.getElementById('editor').classList.toggle('active', name === 'editor');
-    document.getElementById('editor-back').classList.toggle('visible', name === 'editor');
-    document.getElementById('publish-btn-floating').classList.toggle('visible', name === 'editor');
   }
 
   // ── Auth ───────────────────────────────────────────
@@ -2614,46 +2864,8 @@
     connectWebSocket(aideId);
   }
 
-  document.getElementById('editor-back').addEventListener('click', () => {
-    currentAideId = null;
-    // Close WebSocket so reopening the same aide triggers fresh hydration
-    if (aideWs) {
-      aideWs.close();
-      aideWs = null;
-      wsConnectedAideId = null;
-    }
-    history.replaceState({}, '', '/');
-    loadDashboard();
-  });
-
   // FAB pencil click - show chat overlay
   document.getElementById('editor-fab').addEventListener('click', showChatOverlay);
-
-  // ── Publish ────────────────────────────────────────
-  document.getElementById('publish-btn-floating').addEventListener('click', async () => {
-    if (!currentAideId) return;
-
-    const slug = await promptModal('Publish', 'Enter a URL slug for your page:', 'my-page');
-    if (!slug) return;
-
-    try {
-      const res = await fetch(`/api/aides/${currentAideId}/publish`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        await alertModal('Published', `Your page is live at: ${data.url}`);
-      } else {
-        const data = await res.json();
-        await alertModal('Error', data.detail || 'Could not publish.');
-      }
-    } catch {
-      await alertModal('Error', 'Network error.');
-    }
-  });
 
   // ── Sending messages ───────────────────────────────
   async function sendMessage() {
