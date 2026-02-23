@@ -493,29 +493,6 @@
       display: flex;
     }
 
-    /* Editor FAB pencil - shown when aide has content */
-    #editor-fab {
-      display: none;
-    }
-
-    #editor.active #editor-fab {
-      display: none;  /* Hidden by default, JS controls visibility */
-    }
-
-    #editor.active #editor-fab.visible {
-      display: flex;
-    }
-
-    #editor-fab svg {
-      width: 24px;
-      height: 24px;
-    }
-
-    /* Chat overlay visibility control */
-    #chat-overlay.collapsed {
-      display: none;
-    }
-
     @media (max-width: 767px) {
       .fab {
         bottom: 20px;
@@ -524,6 +501,25 @@
         height: 48px;
         font-size: 22px;
       }
+    }
+
+    /* Editor FAB pencil - hidden by default, shown via JS when aide has content */
+    #editor-fab {
+      display: none;
+    }
+
+    #editor-fab.visible {
+      display: flex;
+    }
+
+    #editor-fab svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    /* Chat overlay collapse state */
+    #chat-overlay.collapsed {
+      display: none;
     }
 
     /* ── AUTH ───────────────────────────────────────── */
