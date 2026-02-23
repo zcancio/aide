@@ -11,6 +11,7 @@ Two-phase pipeline with a manual testing gap in the middle.
 PHASE 1: /spec-to-pr       GITHUB ACTION              YOU                    PHASE 2: /ship-it
 ─────────────────────      ─────────────              ───                    ──────────────────
 Read spec
+Commit spec to main
 Create issue
 Trigger @claude ─────────→ checkout repo
                            create branch
@@ -51,6 +52,27 @@ Proceed?
 ```
 
 **HALT if:** Spec not found. User says no.
+
+### Stage 0.5: Commit Spec to Main
+
+The GitHub Action needs to read the spec file from the repo. If the spec file is untracked or has uncommitted changes, commit and push it to main first.
+
+```bash
+# Check if spec file needs to be committed
+git status --porcelain <spec_file>
+```
+
+If the file shows as untracked (`??`) or modified (`M`):
+
+```bash
+git add <spec_file>
+git commit -m "docs: add <spec name> spec
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+git push origin main
+```
+
+**HALT if:** Push fails (e.g., branch protection on main).
 
 ### Stage 1: Create GitHub Issue
 
