@@ -12,7 +12,7 @@ from backend.models.aide import AideResponse, PublishRequest, PublishResponse
 from backend.models.user import User
 from backend.repos.aide_repo import AideRepo
 from backend.services.r2 import r2_service
-from engine.kernel.react_preview import render_react_preview
+from backend.services.renderer import render_html
 
 router = APIRouter(tags=["publish"])
 aide_repo = AideRepo()
@@ -34,9 +34,12 @@ async def publish_aide(
     if not aide:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aide not found.")
 
-    # Render current state to HTML using React preview
+    # Render current state to HTML using display.js
     title = aide.state.get("meta", {}).get("title") or aide.title
-    html_content = render_react_preview(aide.state, title=title)
+    try:
+        html_content = render_html(aide.state, title=title)
+    except RuntimeError as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
     # Upload to public R2 bucket
     await r2_service.upload_published(req.slug, html_content)

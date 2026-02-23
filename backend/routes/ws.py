@@ -22,9 +22,9 @@ from backend.config import settings
 from backend.models.telemetry import TelemetryEvent
 from backend.repos import telemetry_repo
 from backend.repos.aide_repo import AideRepo
+from backend.services.renderer import render_html
 from backend.services.streaming_orchestrator import StreamingOrchestrator
 from engine.kernel.mock_llm import MockLLM
-from engine.kernel.react_preview import render_react_preview
 from engine.kernel.reducer_v2 import empty_snapshot, reduce
 
 logger = logging.getLogger(__name__)
@@ -94,7 +94,7 @@ async def _save_snapshot(user_id: UUID | None, aide_id: str, snapshot: dict[str,
         # Also render and upload to R2
         from backend.services.r2 import r2_service
 
-        html_content = render_react_preview(snapshot, title=title)
+        html_content = render_html(snapshot, title=title)
         await r2_service.upload_html(aide_id, html_content)
 
         logger.info("ws: saved %d entities for aide_id=%s", len(snapshot.get("entities", {})), aide_id)
