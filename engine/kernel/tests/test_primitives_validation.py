@@ -5,10 +5,7 @@ Tests for primitive payload validation (structural checks).
 The validator checks if payloads are well-formed before they reach the reducer.
 """
 
-import pytest
-
 from engine.kernel.primitives import validate_primitive
-
 
 # ============================================================================
 # grid.create Validation Tests
