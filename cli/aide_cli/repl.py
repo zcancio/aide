@@ -120,9 +120,9 @@ class Repl:
 
             print("  Aides:")
             for i, aide in enumerate(aides[:10], 1):
-                name = aide.get("name", "Untitled")
+                title = aide.get("title", "Untitled")
                 # TODO: Add last activity timestamp when available
-                print(f"  {i}. {name}")
+                print(f"  {i}. {title}")
 
         except Exception as e:
             print(f"Failed to list aides: {e}")
@@ -138,7 +138,7 @@ class Repl:
                 self.current_aide_id = aide["id"]
                 self.current_aide = aide
                 self.config.default_aide_id = aide["id"]
-                print(f"  Switched to: {aide.get('name', 'Untitled')}")
+                print(f"  Switched to: {aide.get('title', 'Untitled')}")
             else:
                 print("  Invalid index. Use /list to see aides.")
 
@@ -184,7 +184,7 @@ class Repl:
 
         try:
             aide = self.client.get(f"/api/aides/{self.current_aide_id}")
-            name = aide.get("name", "Untitled")
+            name = aide.get("title", "Untitled")
             created = aide.get("created_at", "Unknown")
             slug = aide.get("published_slug")
 
