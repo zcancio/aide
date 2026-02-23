@@ -493,6 +493,29 @@
       display: flex;
     }
 
+    /* Editor FAB pencil - shown when aide has content */
+    #editor-fab {
+      display: none;
+    }
+
+    #editor.active #editor-fab {
+      display: none;  /* Hidden by default, JS controls visibility */
+    }
+
+    #editor.active #editor-fab.visible {
+      display: flex;
+    }
+
+    #editor-fab svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    /* Chat overlay visibility control */
+    #chat-overlay.collapsed {
+      display: none;
+    }
+
     @media (max-width: 767px) {
       .fab {
         bottom: 20px;
@@ -1239,6 +1262,13 @@
 <div id="editor">
   <!-- Inline preview div - replaces iframe for real-time React rendering -->
   <div id="preview-root"></div>
+
+  <!-- FAB pencil - shown when aide has content, click to open chat -->
+  <button id="editor-fab" class="fab" title="Edit">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+    </svg>
+  </button>
 
   <div id="chat-overlay">
     <div id="history-panel"></div>
@@ -2169,6 +2199,32 @@
     });
   }
 
+  // Show/hide chat overlay vs FAB pencil based on content
+  function updateChatVisibility() {
+    const fab = document.getElementById('editor-fab');
+    const chatOverlay = document.getElementById('chat-overlay');
+    const hasContent = Object.keys(entityStore.entities).length > 0;
+
+    if (hasContent) {
+      // Aide has content: show FAB, hide chat
+      fab.classList.add('visible');
+      chatOverlay.classList.add('collapsed');
+    } else {
+      // Empty aide: show chat, hide FAB
+      fab.classList.remove('visible');
+      chatOverlay.classList.remove('collapsed');
+    }
+  }
+
+  // Show chat overlay (called when FAB is clicked)
+  function showChatOverlay() {
+    const fab = document.getElementById('editor-fab');
+    const chatOverlay = document.getElementById('chat-overlay');
+    fab.classList.remove('visible');
+    chatOverlay.classList.remove('collapsed');
+    document.getElementById('message-input').focus();
+  }
+
   function refreshEntityPreview() {
     const host = document.getElementById('preview-root');
     if (!host) return;
@@ -2266,6 +2322,8 @@
           isHydrating = false;
           refreshEntityPreview();
           console.log('[WS] Snapshot hydrated:', Object.keys(entityStore.entities).length, 'entities');
+          // Show FAB pencil and hide chat if aide has content
+          updateChatVisibility();
         } else if (msg.type === 'stream.start') {
           // Don't reset entityStore - keep existing entities for follow-up messages
           // Only reset voice accumulator for new stream
@@ -2531,6 +2589,12 @@
     entityStore.reset();
     refreshEntityPreview();
 
+    // Reset chat visibility - show chat for new aides, let snapshot.end handle existing aides
+    const fab = document.getElementById('editor-fab');
+    const chatOverlay = document.getElementById('chat-overlay');
+    fab.classList.remove('visible');
+    chatOverlay.classList.remove('collapsed');
+
     if (aideId) {
       // Update URL to include aide ID (for refresh persistence)
       history.replaceState({}, '', `?aide=${aideId}`);
@@ -2567,6 +2631,9 @@
     history.replaceState({}, '', '/');
     loadDashboard();
   });
+
+  // FAB pencil click - show chat overlay
+  document.getElementById('editor-fab').addEventListener('click', showChatOverlay);
 
   // ── Publish ────────────────────────────────────────
   document.getElementById('publish-btn-floating').addEventListener('click', async () => {
