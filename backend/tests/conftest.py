@@ -48,8 +48,15 @@ async def test_user_id(initialize_pool):
 
     async with db.system_conn() as conn:
         # Clean up test data (order matters due to foreign keys)
-        await conn.execute("DELETE FROM api_tokens WHERE user_id = $1", user_id)
-        await conn.execute("DELETE FROM cli_auth_requests WHERE user_id = $1", user_id)
+        # CLI auth tables may not exist if migration hasn't run yet
+        tables = await conn.fetch(
+            "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename IN ('api_tokens', 'cli_auth_requests')"
+        )
+        existing_tables = {row["tablename"] for row in tables}
+        if "api_tokens" in existing_tables:
+            await conn.execute("DELETE FROM api_tokens WHERE user_id = $1", user_id)
+        if "cli_auth_requests" in existing_tables:
+            await conn.execute("DELETE FROM cli_auth_requests WHERE user_id = $1", user_id)
         await conn.execute("DELETE FROM signal_mappings WHERE user_id = $1", user_id)
         await conn.execute(
             "DELETE FROM conversations WHERE aide_id IN (SELECT id FROM aides WHERE user_id = $1)",
@@ -77,8 +84,15 @@ async def second_user_id(initialize_pool):
 
     async with db.system_conn() as conn:
         # Clean up test data (order matters due to foreign keys)
-        await conn.execute("DELETE FROM api_tokens WHERE user_id = $1", user_id)
-        await conn.execute("DELETE FROM cli_auth_requests WHERE user_id = $1", user_id)
+        # CLI auth tables may not exist if migration hasn't run yet
+        tables = await conn.fetch(
+            "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename IN ('api_tokens', 'cli_auth_requests')"
+        )
+        existing_tables = {row["tablename"] for row in tables}
+        if "api_tokens" in existing_tables:
+            await conn.execute("DELETE FROM api_tokens WHERE user_id = $1", user_id)
+        if "cli_auth_requests" in existing_tables:
+            await conn.execute("DELETE FROM cli_auth_requests WHERE user_id = $1", user_id)
         await conn.execute("DELETE FROM signal_mappings WHERE user_id = $1", user_id)
         await conn.execute(
             "DELETE FROM conversations WHERE aide_id IN (SELECT id FROM aides WHERE user_id = $1)",

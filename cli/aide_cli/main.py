@@ -1,6 +1,5 @@
 """Main entry point for AIde CLI."""
 import sys
-from typing import Optional
 
 from aide_cli import __version__
 from aide_cli.auth import login, logout

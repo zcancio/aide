@@ -1,12 +1,13 @@
 """HTTP client for AIde API."""
+from typing import Any
+
 import httpx
-from typing import Any, Optional
 
 
 class ApiClient:
     """HTTP client for AIde API."""
 
-    def __init__(self, api_url: str, token: Optional[str] = None):
+    def __init__(self, api_url: str, token: str | None = None):
         self.api_url = api_url.rstrip("/")
         self.token = token
         self.client = httpx.Client(timeout=30.0)

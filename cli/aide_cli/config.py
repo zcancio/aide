@@ -1,7 +1,6 @@
 """Configuration management for AIde CLI."""
 import json
 from pathlib import Path
-from typing import Optional
 
 
 class Config:
@@ -29,7 +28,7 @@ class Config:
             json.dump(self._data, f, indent=2)
 
     @property
-    def token(self) -> Optional[str]:
+    def token(self) -> str | None:
         """Get API token."""
         return self._data.get("token")
 
@@ -40,7 +39,7 @@ class Config:
         self._save()
 
     @property
-    def email(self) -> Optional[str]:
+    def email(self) -> str | None:
         """Get user email."""
         return self._data.get("email")
 
@@ -51,7 +50,7 @@ class Config:
         self._save()
 
     @property
-    def default_aide_id(self) -> Optional[str]:
+    def default_aide_id(self) -> str | None:
         """Get default aide ID."""
         return self._data.get("default_aide_id")
 

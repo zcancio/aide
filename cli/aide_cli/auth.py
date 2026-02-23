@@ -1,9 +1,8 @@
 """Authentication flow for AIde CLI."""
-import random
+import secrets
 import string
 import time
 import webbrowser
-from typing import Optional
 
 from aide_cli.client import ApiClient
 from aide_cli.config import Config
@@ -14,7 +13,7 @@ def generate_device_code(length: int = 6) -> str:
     chars = string.ascii_uppercase + string.digits
     # Exclude ambiguous characters
     chars = chars.replace("O", "").replace("0", "").replace("I", "").replace("1")
-    return "".join(random.choice(chars) for _ in range(length))
+    return "".join(secrets.choice(chars) for _ in range(length))
 
 
 def login(config: Config) -> bool:
@@ -28,7 +27,7 @@ def login(config: Config) -> bool:
 
     try:
         # Start auth flow
-        print(f"Starting device authorization...")
+        print("Starting device authorization...")
         start_res = client.post(
             "/api/cli/auth/start", {"device_code": device_code}
         )

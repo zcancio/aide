@@ -1,6 +1,5 @@
 """REPL for AIde CLI."""
 import webbrowser
-from typing import Optional
 
 from aide_cli.client import ApiClient
 from aide_cli.config import Config
@@ -9,7 +8,7 @@ from aide_cli.config import Config
 class Repl:
     """Interactive REPL for AIde."""
 
-    def __init__(self, config: Config, aide_id: Optional[str] = None):
+    def __init__(self, config: Config, aide_id: str | None = None):
         self.config = config
         self.client = ApiClient(config.api_url, config.token)
         self.current_aide_id = aide_id or config.default_aide_id
@@ -141,7 +140,7 @@ class Repl:
                 self.config.default_aide_id = aide["id"]
                 print(f"  Switched to: {aide.get('name', 'Untitled')}")
             else:
-                print(f"  Invalid index. Use /list to see aides.")
+                print("  Invalid index. Use /list to see aides.")
 
         except ValueError:
             print("  Invalid number.")
@@ -204,7 +203,7 @@ class Repl:
             return
 
         # TODO: Implement when message history endpoint is available
-        print(f"  (Message history not yet implemented)")
+        print("  (Message history not yet implemented)")
 
     def _show_help(self):
         """Show help message."""
