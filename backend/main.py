@@ -18,7 +18,7 @@ from backend import db
 from backend.middleware.rate_limit import rate_limiter
 from backend.repos.magic_link_repo import MagicLinkRepo
 from backend.routes import aides as aide_routes
-from backend.routes import auth_routes
+from backend.routes import api_tokens, auth_routes, cli_auth
 from backend.routes import conversations as conversation_routes
 from backend.routes import flight_recorder as flight_recorder_routes
 from backend.routes import pages as pages_routes
@@ -106,6 +106,8 @@ app = FastAPI(
 
 # Register routes
 app.include_router(auth_routes.router)
+app.include_router(cli_auth.router)
+app.include_router(api_tokens.router)
 app.include_router(aide_routes.router)
 app.include_router(conversation_routes.router)
 app.include_router(publish_routes.router)
@@ -135,3 +137,8 @@ if _FRONTEND.is_dir():
     async def serve_flight_recorder():
         """Serve the flight recorder replay page."""
         return FileResponse(str(_FRONTEND / "flight-recorder.html"))
+
+    @app.get("/cli/auth")
+    async def serve_cli_auth():
+        """Serve the CLI authorization page."""
+        return FileResponse(str(_FRONTEND / "cli-auth.html"))
