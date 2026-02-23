@@ -16,7 +16,8 @@ async def get_engine():
     The CLI fetches this on startup to ensure it's always running
     the latest engine version.
     """
-    engine_path = Path(__file__).parent.parent.parent / "engine" / "engine.min.js"
+    # display.js contains both reducer (reduce, replay) and renderer (renderText, renderHtml)
+    engine_path = Path(__file__).parent.parent.parent / "frontend" / "display.js"
 
     if not engine_path.exists():
         return {"error": "Engine not found"}, 404

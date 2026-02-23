@@ -20,7 +20,7 @@ try {
   process.exit(1);
 }
 
-const { reduce, replay, emptyState, renderText } = engine;
+const { reduce, replay, emptyState, renderTextCli } = engine;
 
 const rl = readline.createInterface({ input: process.stdin });
 
@@ -31,7 +31,7 @@ rl.on("line", (line) => {
 
     switch (req.method) {
       case "renderText":
-        result = renderText(req.params.snapshot);
+        result = renderTextCli(req.params.snapshot);
         break;
 
       case "reduce":
