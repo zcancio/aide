@@ -9,22 +9,27 @@ from backend.services.orchestrator import Orchestrator
 
 @pytest.fixture
 def mock_aide():
-    """Mock aide from database with empty state matching reducer's expected structure."""
+    """Mock aide from database with empty v2 state."""
     return {
         "id": "aide_123",
         "user_id": "user_abc",
         "title": "Test Aide",
         "state": {
-            "version": 1,
-            "meta": {},
-            "collections": {},
+            "meta": {
+                "title": None,
+                "identity": None,
+                "annotations": [],
+                "constraints": {},
+            },
+            "entities": {},
             "relationships": [],
-            "relationship_types": {},
-            "constraints": [],
-            "blocks": {"block_root": {"type": "root", "children": []}},
-            "views": {},
-            "styles": {},
-            "annotations": [],
+            "rel_cardinalities": {},
+            "rel_constraints": {},
+            "styles": {
+                "global": {},
+                "entities": {},
+            },
+            "_sequence": 0,
         },
     }
 
@@ -41,50 +46,39 @@ def mock_conversation():
 
 @pytest.fixture
 def mock_grocery_aide():
-    """Mock aide with grocery list schema (entities nested inside collection)."""
+    """Mock aide with grocery list v2 state (flat entities)."""
     return {
         "id": "aide_456",
         "user_id": "user_abc",
         "title": "Grocery List",
         "state": {
-            "version": 1,
             "meta": {"title": "Grocery List"},
-            "collections": {
-                "grocery_list": {
-                    "id": "grocery_list",
-                    "name": "Grocery List",
-                    "schema": {
-                        "name": "string",
-                        "checked": "bool",
-                        "store": "string?",
-                    },
-                    "entities": {
-                        "item_milk": {
-                            "id": "item_milk",
-                            "fields": {
-                                "name": "Milk",
-                                "checked": False,
-                                "store": "Whole Foods",
-                            },
-                        },
-                        "item_eggs": {
-                            "id": "item_eggs",
-                            "fields": {
-                                "name": "Eggs",
-                                "checked": False,
-                                "store": "Whole Foods",
-                            },
-                        },
-                    },
-                }
+            "entities": {
+                "item_milk": {
+                    "_id": "item_milk",
+                    "_type": "item",
+                    "_schema": "grocery_item",
+                    "name": "Milk",
+                    "checked": False,
+                    "store": "Whole Foods",
+                },
+                "item_eggs": {
+                    "_id": "item_eggs",
+                    "_type": "item",
+                    "_schema": "grocery_item",
+                    "name": "Eggs",
+                    "checked": False,
+                    "store": "Whole Foods",
+                },
             },
             "relationships": [],
-            "relationship_types": {},
-            "constraints": [],
-            "blocks": {"block_root": {"type": "root", "children": []}},
-            "views": {},
-            "styles": {},
-            "annotations": [],
+            "rel_cardinalities": {},
+            "rel_constraints": {},
+            "styles": {
+                "global": {},
+                "entities": {},
+            },
+            "_sequence": 0,
         },
     }
 

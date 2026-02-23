@@ -21,7 +21,7 @@ from backend.services.r2 import r2_service
 from engine.kernel.react_preview import render_react_preview
 from engine.kernel.reducer_v2 import empty_snapshot as empty_v2_snapshot
 from engine.kernel.reducer_v2 import reduce
-from engine.kernel.types import Event, ReduceResult, Snapshot
+from engine.kernel.types import Event, ReduceResult
 
 
 class Orchestrator:
@@ -62,8 +62,8 @@ class Orchestrator:
             raise ValueError(f"Aide {aide_id} not found")
 
         # Parse state JSON
-        snapshot = self._parse_snapshot(aide.state)
-        snapshot_before = snapshot.to_dict()
+        snapshot = aide.state
+        snapshot_before = snapshot
 
         # Load or create conversation for this aide
         conversation = await self.conv_repo.get_for_aide(user_id, aide_id)
@@ -91,9 +91,11 @@ class Orchestrator:
 
         try:
             # Check if image input or empty snapshot → route to L3
-            if image_data or not snapshot.collections:
+            # v2 snapshot has "entities" not "collections"
+            is_empty = not snapshot.get("entities")
+            if image_data or is_empty:
                 # Route to L3 (production model)
-                print(f"Routing to L3 (image={bool(image_data)}, empty_snapshot={not snapshot.collections})")
+                print(f"Routing to L3 (image={bool(image_data)}, empty_snapshot={is_empty})")
                 l3_result = await self._call_l3(
                     recorder=recorder,
                     message=message,
@@ -190,8 +192,7 @@ class Orchestrator:
             }
 
         # 3.5. Resolve any grid cell references in primitives
-        snapshot_dict = snapshot.to_dict()
-        resolve_result = resolve_primitives(primitives, snapshot_dict)
+        resolve_result = resolve_primitives(primitives, snapshot)
         if resolve_result.error:
             # Grid resolution failed — record failed turn and return error
             print(f"Grid resolution error: {resolve_result.error}")
@@ -235,13 +236,13 @@ class Orchestrator:
         events = self._wrap_primitives(primitives, str(user_id), source, message)
 
         # Start with empty v2 snapshot if current one is empty/v1 format
-        if not snapshot_dict.get("entities"):
+        if not snapshot.get("entities"):
             new_snapshot = empty_v2_snapshot()
             # Copy over meta if present
-            if snapshot_dict.get("meta"):
-                new_snapshot["meta"] = snapshot_dict["meta"]
+            if snapshot.get("meta"):
+                new_snapshot["meta"] = snapshot["meta"]
         else:
-            new_snapshot = snapshot_dict
+            new_snapshot = snapshot
 
         applied_count = 0
         for v2_event in v2_events:
@@ -321,7 +322,7 @@ class Orchestrator:
         self,
         recorder: FlightRecorder,
         message: str,
-        snapshot: Snapshot,
+        snapshot: dict[str, Any],
         recent_events: list[Event],
         shadow: bool,
     ) -> dict[str, Any]:
@@ -379,7 +380,7 @@ class Orchestrator:
         self,
         recorder: FlightRecorder,
         message: str,
-        snapshot: Snapshot,
+        snapshot: dict[str, Any],
         recent_events: list[Event],
         image_data: bytes | None,
         shadow: bool,
@@ -436,7 +437,7 @@ class Orchestrator:
         self,
         recorder: FlightRecorder,
         message: str,
-        snapshot: Snapshot,
+        snapshot: dict[str, Any],
         recent_events: list[Event],
     ) -> None:
         """Run shadow L2 call. Never raises — failures are logged and recorded."""
@@ -455,7 +456,7 @@ class Orchestrator:
         self,
         recorder: FlightRecorder,
         message: str,
-        snapshot: Snapshot,
+        snapshot: dict[str, Any],
         recent_events: list[Event],
         image_data: bytes | None,
     ) -> None:
@@ -524,14 +525,6 @@ class Orchestrator:
             }
         except json.JSONDecodeError:
             return {"primitives": [], "response": "", "_raw_response": content}
-
-    def _parse_snapshot(self, state_json: dict[str, Any]) -> Snapshot:
-        """Parse snapshot from DB JSON."""
-        return Snapshot.from_dict(state_json)
-
-    def _serialize_snapshot(self, snapshot: Snapshot) -> dict[str, Any]:
-        """Serialize snapshot to DB JSON."""
-        return snapshot.to_dict()
 
     def _load_recent_events(self, messages: list[Message]) -> list[Event]:
         """Load recent events from conversation messages."""
@@ -694,7 +687,7 @@ class Orchestrator:
         source = turn_data.get("source", "web")
 
         # Parse snapshot
-        snapshot = Snapshot.from_dict(snapshot_before)
+        snapshot = snapshot_before
 
         # Build empty recent events (replay in isolation)
         recent_events: list[Event] = []
@@ -718,7 +711,7 @@ class Orchestrator:
         escalated = False
 
         try:
-            if not snapshot.collections:
+            if not snapshot.get("entities"):
                 # Route to L3
                 route = "L3"
                 l3_result = await self._call_l3(

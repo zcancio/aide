@@ -37,10 +37,7 @@ def render_react_preview(
     meta = snapshot.get("meta", {})
 
     # Compute root IDs (entities with parent "root" or no parent)
-    root_ids = [
-        eid for eid, e in entities.items()
-        if not e.get("_removed") and e.get("parent") in (None, "root", "")
-    ]
+    root_ids = [eid for eid, e in entities.items() if not e.get("_removed") and e.get("parent") in (None, "root", "")]
 
     # Use meta title or provided title
     page_title = title or meta.get("title") or "AIde"
@@ -50,7 +47,7 @@ def render_react_preview(
     meta_json = json.dumps(meta, ensure_ascii=False)
     root_ids_json = json.dumps(root_ids, ensure_ascii=False)
 
-    return f'''<!DOCTYPE html>
+    return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -84,24 +81,19 @@ root.render(
 );
 </script>
 </body>
-</html>'''
+</html>"""
 
 
 def _escape_html(text: str) -> str:
     """HTML-escape text for safe embedding."""
-    return (
-        text.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace('"', "&quot;")
-    )
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CSS - Exact copy from frontend/index.html renderer-css-template
 # ─────────────────────────────────────────────────────────────────────────────
 
-PREVIEW_CSS = '''
+PREVIEW_CSS = """
 /* CSS custom properties - exact copy from renderer.py */
 :root {
   /* Design system defaults */
@@ -588,14 +580,14 @@ body {
 .aide-mount-animation {
   animation: aide-fade-in 0.2s ease-out;
 }
-'''
+"""
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # React Components - Exact copy from frontend/index.html REACT_COMPONENTS_TEMPLATE
 # ─────────────────────────────────────────────────────────────────────────────
 
-REACT_COMPONENTS = '''
+REACT_COMPONENTS = """
 const { useState, useContext, createContext, useMemo } = React;
 
 // ── Entity Context ────────────────────────────────────
@@ -1020,4 +1012,4 @@ function PreviewApp() {
       : React.createElement('p', { className: 'aide-empty' }, 'Send a message to get started.')
   );
 }
-'''
+"""

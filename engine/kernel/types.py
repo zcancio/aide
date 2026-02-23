@@ -1,8 +1,7 @@
 """
 AIde Kernel — Shared Types
 
-Data classes used across primitives, reducer, renderer, and assembly.
-These are the contracts that bind the kernel together.
+Data classes and constants used across primitives and reducer_v2.
 """
 
 from __future__ import annotations
@@ -139,56 +138,6 @@ ESCALATION_REASONS: set[str] = {
 
 
 @dataclass
-class Snapshot:
-    """
-    The aide's current state — matches the reducer's expected structure.
-
-    Note: Entities are stored INSIDE each collection as collection["entities"],
-    not at the top level. This matches how the reducer processes state.
-    """
-
-    version: int = 1
-    meta: dict[str, Any] = field(default_factory=dict)
-    collections: dict[str, Any] = field(default_factory=dict)  # Each collection has "entities" inside
-    relationships: list[dict[str, Any]] = field(default_factory=list)
-    relationship_types: dict[str, Any] = field(default_factory=dict)
-    constraints: list[dict[str, Any]] = field(default_factory=list)
-    blocks: dict[str, Any] = field(default_factory=lambda: {"block_root": {"type": "root", "children": []}})
-    views: dict[str, Any] = field(default_factory=dict)
-    styles: dict[str, Any] = field(default_factory=dict)
-    annotations: list[dict[str, Any]] = field(default_factory=list)
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "version": self.version,
-            "meta": self.meta,
-            "collections": self.collections,
-            "relationships": self.relationships,
-            "relationship_types": self.relationship_types,
-            "constraints": self.constraints,
-            "blocks": self.blocks,
-            "views": self.views,
-            "styles": self.styles,
-            "annotations": self.annotations,
-        }
-
-    @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> Snapshot:
-        return cls(
-            version=d.get("version", 1),
-            meta=d.get("meta", {}),
-            collections=d.get("collections", {}),
-            relationships=d.get("relationships", []),
-            relationship_types=d.get("relationship_types", {}),
-            constraints=d.get("constraints", []),
-            blocks=d.get("blocks", {"block_root": {"type": "root", "children": []}}),
-            views=d.get("views", {}),
-            styles=d.get("styles", {}),
-            annotations=d.get("annotations", []),
-        )
-
-
-@dataclass
 class Event:
     """
     Wraps a primitive with metadata for the append-only event log.
@@ -252,94 +201,15 @@ class Warning:
 @dataclass
 class ReduceResult:
     """
-    Result of applying one event to a snapshot.
+    Result of applying one event to a snapshot (v1 reducer format).
     The reducer never throws — it always returns one of these.
+    Note: reducer_v2 has its own ReduceResult class.
     """
 
     snapshot: dict[str, Any]  # AideState
     applied: bool
     warnings: list[Warning] = field(default_factory=list)
     error: str | None = None
-
-
-@dataclass
-class Blueprint:
-    """
-    The aide's DNA — identity, voice rules, and LLM system prompt.
-    Embedded in the HTML file for portability.
-    """
-
-    identity: str
-    voice: str = "No first person. State reflections only."
-    prompt: str = ""
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "identity": self.identity,
-            "voice": self.voice,
-            "prompt": self.prompt,
-        }
-
-    @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> Blueprint:
-        return cls(
-            identity=d.get("identity", ""),
-            voice=d.get("voice", "No first person. State reflections only."),
-            prompt=d.get("prompt", ""),
-        )
-
-
-@dataclass
-class AideFile:
-    """In-memory representation of a loaded aide HTML file."""
-
-    aide_id: str
-    snapshot: dict[str, Any]  # AideState
-    events: list[Event]
-    blueprint: Blueprint
-    html: str
-    last_sequence: int
-    size_bytes: int
-    loaded_from: str  # "r2" or "new"
-
-
-@dataclass
-class ApplyResult:
-    """Result of applying a batch of events through the assembly layer."""
-
-    aide_file: AideFile
-    applied: list[Event]
-    rejected: list[tuple[Event, str]]  # (event, error_reason)
-    warnings: list[Warning]
-
-
-@dataclass
-class ParsedAide:
-    """Result of parsing an existing aide HTML file."""
-
-    blueprint: Blueprint | None
-    snapshot: dict[str, Any] | None
-    events: list[Event]
-    parse_errors: list[str]
-
-
-@dataclass
-class Escalation:
-    """Signal from L2 when it can't compile a user message into primitives."""
-
-    reason: str
-    user_message: str
-    context: str
-    attempted: dict[str, Any] | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "type": "escalation",
-            "reason": self.reason,
-            "user_message": self.user_message,
-            "context": self.context,
-            "attempted": self.attempted,
-        }
 
 
 # ---------------------------------------------------------------------------

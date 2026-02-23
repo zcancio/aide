@@ -6,7 +6,7 @@ from typing import Any
 
 from backend.services.ai_provider import ai_provider
 from engine.kernel.primitives import validate_primitive
-from engine.kernel.types import Event, Snapshot
+from engine.kernel.types import Event
 
 
 class L3Synthesizer:
@@ -21,7 +21,7 @@ class L3Synthesizer:
     async def synthesize(
         self,
         message: str,
-        snapshot: Snapshot,
+        snapshot: dict[str, Any],
         recent_events: list[Event],
         image_data: bytes | None = None,
     ) -> dict[str, Any]:
@@ -212,7 +212,7 @@ class L3Synthesizer:
 
         return {"type": event_type, "payload": payload}
 
-    def _build_user_message(self, message: str, snapshot: Snapshot, recent_events: list[Event]) -> str:
+    def _build_user_message(self, message: str, snapshot: dict[str, Any], recent_events: list[Event]) -> str:
         """Build user message with snapshot and event context."""
         # Serialize snapshot
         snapshot_json = json.dumps(snapshot.to_dict(), indent=2)
