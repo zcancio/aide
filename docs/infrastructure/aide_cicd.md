@@ -130,7 +130,7 @@ Configuration is one file:
 builder = "nixpacks"
 
 [deploy]
-startCommand = "python -m alembic upgrade head && uvicorn backend.main:app --host 0.0.0.0 --port $PORT --workers 4"
+startCommand = "DATABASE_URL=$DATABASE_URL_OWNER python -m alembic upgrade head && uvicorn backend.main:app --host 0.0.0.0 --port $PORT --workers 4"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"

@@ -7,9 +7,12 @@ from __future__ import annotations
 import os
 from uuid import uuid4
 
+import httpx
 import pytest_asyncio
 
 from backend import db
+from backend.main import app
+from backend.models.user import User
 
 # Set test environment variables before importing config
 os.environ.setdefault("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/aide_test")
@@ -45,6 +48,17 @@ async def test_user_id(initialize_pool):
 
     async with db.system_conn() as conn:
         # Clean up test data (order matters due to foreign keys)
+        # CLI auth tables may not exist if migration hasn't run yet
+        tables = await conn.fetch(
+            """SELECT tablename FROM pg_tables
+               WHERE schemaname = 'public'
+               AND tablename IN ('api_tokens', 'cli_auth_requests')"""
+        )
+        existing_tables = {row["tablename"] for row in tables}
+        if "api_tokens" in existing_tables:
+            await conn.execute("DELETE FROM api_tokens WHERE user_id = $1", user_id)
+        if "cli_auth_requests" in existing_tables:
+            await conn.execute("DELETE FROM cli_auth_requests WHERE user_id = $1", user_id)
         await conn.execute("DELETE FROM signal_mappings WHERE user_id = $1", user_id)
         await conn.execute(
             "DELETE FROM conversations WHERE aide_id IN (SELECT id FROM aides WHERE user_id = $1)",
@@ -72,6 +86,17 @@ async def second_user_id(initialize_pool):
 
     async with db.system_conn() as conn:
         # Clean up test data (order matters due to foreign keys)
+        # CLI auth tables may not exist if migration hasn't run yet
+        tables = await conn.fetch(
+            """SELECT tablename FROM pg_tables
+               WHERE schemaname = 'public'
+               AND tablename IN ('api_tokens', 'cli_auth_requests')"""
+        )
+        existing_tables = {row["tablename"] for row in tables}
+        if "api_tokens" in existing_tables:
+            await conn.execute("DELETE FROM api_tokens WHERE user_id = $1", user_id)
+        if "cli_auth_requests" in existing_tables:
+            await conn.execute("DELETE FROM cli_auth_requests WHERE user_id = $1", user_id)
         await conn.execute("DELETE FROM signal_mappings WHERE user_id = $1", user_id)
         await conn.execute(
             "DELETE FROM conversations WHERE aide_id IN (SELECT id FROM aides WHERE user_id = $1)",
@@ -79,3 +104,28 @@ async def second_user_id(initialize_pool):
         )
         await conn.execute("DELETE FROM aides WHERE user_id = $1", user_id)
         await conn.execute("DELETE FROM users WHERE id = $1", user_id)
+
+
+@pytest_asyncio.fixture(loop_scope="session")
+async def async_client():
+    """Async HTTP client against the ASGI app."""
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        yield client
+
+
+@pytest_asyncio.fixture(loop_scope="session")
+async def test_user(test_user_id, initialize_pool):
+    """Return a User object for the test user."""
+    async with db.system_conn() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT id, email, name, tier, stripe_customer_id, stripe_sub_id,
+                   turn_count, turn_week_start, created_at
+            FROM users WHERE id = $1
+            """,
+            test_user_id,
+        )
+        return User(**dict(row))

@@ -37,6 +37,12 @@ class Settings:
     MAGIC_LINK_RATE_LIMIT_PER_EMAIL: int = 5  # per hour
     MAGIC_LINK_RATE_LIMIT_PER_IP: int = 20  # per hour
 
+    # CLI Auth
+    CLI_TOKEN_EXPIRY_DAYS: int = 90
+    CLI_AUTH_CODE_EXPIRY_MINUTES: int = 10
+    CLI_AUTH_START_RATE_LIMIT_PER_IP: int = 10  # per hour
+    CLI_AUTH_POLL_RATE_LIMIT_PER_CODE: int = 30  # per minute
+
     # Stripe
     STRIPE_SECRET_KEY: str = os.environ.get("STRIPE_SECRET_KEY", "")
     STRIPE_WEBHOOK_SECRET: str = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
