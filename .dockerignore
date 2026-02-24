@@ -31,8 +31,7 @@ build
 # Docs
 docs/
 
-# Frontend (not needed for backend container)
-frontend/
+# Frontend display.js is needed for /api/engine.js endpoint
 
 # CLI (separate package)
 cli/
