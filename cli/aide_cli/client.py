@@ -1,8 +1,10 @@
 """HTTP client for AIde API."""
+
 import asyncio
 import json
+from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import Any, AsyncIterator
+from typing import Any
 
 import httpx
 
@@ -37,9 +39,15 @@ class ApiClient:
         res.raise_for_status()
         return res.json()
 
-    async def stream_message(
-        self, aide_id: str, message: str
-    ) -> AsyncIterator[tuple[str, dict]]:
+    def send_message(self, aide_id: str, message: str) -> dict:
+        """
+        Send message to aide (non-streaming).
+
+        Returns {"response_text": "...", "page_url": "...", "state": {...}, "aide_id": "..."}
+        """
+        return self.post("/api/message", {"aide_id": aide_id, "message": message})
+
+    async def stream_message(self, aide_id: str, message: str) -> AsyncIterator[tuple[str, dict]]:
         """
         Send message and stream response via SSE.
 

@@ -1,6 +1,5 @@
 """REPL for AIde CLI."""
-import asyncio
-import sys
+
 import webbrowser
 
 from aide_cli.client import ApiClient
@@ -49,7 +48,7 @@ class Repl:
                     self._handle_command(line)
                 else:
                     # Send message with streaming
-                    asyncio.run(self._send_message_async(line))
+                    self._send_message(line)
 
             except (EOFError, KeyboardInterrupt):
                 print()
@@ -97,8 +96,8 @@ class Repl:
             print(f"Unknown command: {cmd}")
             print("Type /help for available commands.")
 
-    async def _send_message_async(self, text: str):
-        """Send a message to current aide with streaming."""
+    def _send_message(self, text: str):
+        """Send a message to current aide."""
         if not self.current_aide:
             # Create new aide with first message
             try:
@@ -111,22 +110,11 @@ class Repl:
                 print(f"Failed to create aide: {e}")
                 return
 
-        # Send message with streaming
+        # Send message
         try:
-            print("  ", end="", flush=True)  # Indent for response
-
-            full_response = ""
-            async for event_type, data in self.client.stream_message(
-                self.current_aide_id, text
-            ):
-                if event_type == "voice":
-                    text_chunk = data.get("text", "")
-                    print(text_chunk, end="", flush=True)
-                    full_response += text_chunk
-
-                elif event_type == "done":
-                    print()  # Newline after streaming completes
-                    break
+            result = self.client.send_message(self.current_aide_id, text)
+            response_text = result.get("response_text", "")
+            print(f"  \033[32maide:\033[0m {response_text}")
 
             # If watch mode is on, render the state
             if self.watch_mode and self.bridge:
@@ -136,7 +124,6 @@ class Repl:
             print()  # Clean newline on interrupt
             print("  (Interrupted)")
         except Exception as e:
-            print()
             print(f"  Error: {e}")
 
     def _list_aides(self):
@@ -276,10 +263,7 @@ class Repl:
 
         try:
             # Fetch aide with snapshot
-            aide = self.client.get(
-                f"/api/aides/{self.current_aide_id}",
-                params={"include_snapshot": "true"}
-            )
+            aide = self.client.get(f"/api/aides/{self.current_aide_id}", params={"include_snapshot": "true"})
             snapshot = aide.get("snapshot")
 
             if not snapshot:
@@ -316,10 +300,7 @@ class Repl:
             print()
 
             # Fetch and render
-            aide = self.client.get(
-                f"/api/aides/{self.current_aide_id}",
-                params={"include_snapshot": "true"}
-            )
+            aide = self.client.get(f"/api/aides/{self.current_aide_id}", params={"include_snapshot": "true"})
             snapshot = aide.get("snapshot")
 
             if snapshot:
