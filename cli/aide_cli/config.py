@@ -1,5 +1,26 @@
-"""Configuration management for AIde CLI."""
+"""
+Configuration management for AIde CLI.
+
+Multi-environment support:
+  The CLI resolves the API URL in this order:
+  1. AIDE_API_URL environment variable (for local dev: export AIDE_API_URL=http://localhost:8000)
+  2. api_url in ~/.aide/config.json (persisted from previous session)
+  3. Default: https://get.toaide.com (production)
+
+Engine fetch startup sequence:
+  1. Resolve api_url using the priority above
+  2. Fetch engine.js from {api_url}/api/engine.js
+  3. Cache to ~/.aide/engine.js
+  4. Spawn Node bridge with cached engine
+
+Local development:
+  export AIDE_API_URL=http://localhost:8000
+  aide login
+  aide
+"""
+
 import json
+import os
 from pathlib import Path
 
 
@@ -62,7 +83,19 @@ class Config:
 
     @property
     def api_url(self) -> str:
-        """Get API URL."""
+        """
+        Get API URL.
+
+        Resolution order:
+        1. AIDE_API_URL environment variable
+        2. api_url in config file
+        3. Default: https://get.toaide.com
+        """
+        # Environment variable takes precedence (for local dev)
+        env_url = os.environ.get("AIDE_API_URL")
+        if env_url:
+            return env_url.rstrip("/")
+
         return self._data.get("api_url", "https://get.toaide.com")
 
     @api_url.setter
