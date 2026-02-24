@@ -215,7 +215,7 @@ class L3Synthesizer:
     def _build_user_message(self, message: str, snapshot: dict[str, Any], recent_events: list[Event]) -> str:
         """Build user message with snapshot and event context."""
         # Serialize snapshot
-        snapshot_json = json.dumps(snapshot.to_dict(), indent=2)
+        snapshot_json = json.dumps(snapshot, indent=2)
 
         # Serialize recent events (last 10)
         events_json = json.dumps(
