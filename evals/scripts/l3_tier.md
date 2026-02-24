@@ -102,6 +102,24 @@ When the user sends an image (receipt, screenshot, whiteboard):
 Receipt photo → entities with name/price/quantity props under a table section.
 Whiteboard photo → entities matching whatever structure is visible.
 
+### Relationships
+
+When the domain has roles that transfer between entities — hosting, assigned_to, current_turn — model them as relationships, not boolean props. The reducer enforces cardinality atomically.
+
+Set up the relationship type on first use. Cardinality is set once and persisted:
+
+{"t":"rel.set","from":"player_tom","to":"game_feb27","type":"hosting","cardinality":"one_to_one"}
+
+After this, any future `rel.set` with `type:"hosting"` auto-removes the old link. L2 can then do reassignments with a single line.
+
+Common patterns:
+- hosting (one_to_one): one host per game, one game per host
+- assigned_to (many_to_one): many tasks assigned to one person
+- bringing (many_to_one): each dish brought by one person, person can bring many
+- seated_at (many_to_one): each guest at one table
+
+Don't use relationships for simple attributes. Use props for static facts (name, rsvp status, score). Use relationships for connections that transfer or link across branches of the entity tree.
+
 ### Query Escalation
 
 Never answer questions yourself. Escalate to L4:

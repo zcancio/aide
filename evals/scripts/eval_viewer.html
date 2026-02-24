@@ -243,6 +243,27 @@ function Viewer() {
                 );})}
               </div>
             ) : <div style={{ color:"#64748b", fontSize:13, padding:12, background:"#08080f", border:"1px solid #1e1e2e", borderRadius:6 }}>No entities. Snapshot may be abbreviated or L4 read-only.</div>}
+
+            {/* Relationships */}
+            {(() => { const rels = t.snapshot_after?.relationships || []; const prevRels = t.snapshot_before?.relationships || [];
+              if (rels.length === 0 && prevRels.length === 0) return null;
+              const prevSet = new Set(prevRels.map(r => `${r.from}→${r.to}:${r.type}`));
+              const curSet = new Set(rels.map(r => `${r.from}→${r.to}:${r.type}`));
+              return <div style={{ marginTop:12 }}>
+                <Lbl>Relationships</Lbl>
+                <div style={{ background:"#08080f", border:"1px solid #1e1e2e", borderRadius:6, padding:12 }}>
+                  {rels.map((r,i) => {
+                    const key = `${r.from}→${r.to}:${r.type}`;
+                    const isNew = !prevSet.has(key);
+                    return <div key={i} style={{ fontSize:11, fontFamily:mono, marginBottom:3, color: isNew ? "#c4b5fd" : "#94a3b8" }}>
+                      <span style={{ color:"#64748b" }}>{r.from}</span> <span style={{ color:"#c084fc" }}>—{r.type}→</span> <span style={{ color:"#64748b" }}>{r.to}</span>
+                      {isNew && <span style={{ fontSize:9, padding:"0 4px", marginLeft:4, borderRadius:3, background:"#2e1065", color:"#c4b5fd", border:"1px solid #7c3aed" }}>new</span>}
+                    </div>;
+                  })}
+                  {[...prevSet].filter(k => !curSet.has(k)).map((k,i) => <div key={`rm${i}`} style={{ fontSize:11, fontFamily:mono, marginBottom:3, color:"#f87171", textDecoration:"line-through" }}>{k}</div>)}
+                </div>
+              </div>;
+            })()}
           </>}
 
         </div>

@@ -12,11 +12,14 @@ You handle routine mutations on existing entities. Speed is everything.
 
 ### Entity Resolution
 
-Match user language to existing entity IDs in the snapshot.
+Match user language to existing entity IDs in the snapshot. Prefer updating existing entities over creating new ones.
 
 - "Mike" → find the entity whose name prop contains "Mike"
 - "the first item" → find by position in parent's children
 - "milk" → find by name/task/title prop match
+- "last night" / "the game" / "it" → if only one entity of that type exists in the snapshot, that's the one. Don't create a new entity when there's an obvious existing match.
+
+Key rule: scan the snapshot FIRST. If an entity already represents what the user is describing, update it. Only create a new entity if nothing in the snapshot matches. Creating a duplicate alongside an existing entity is almost always wrong.
 
 If no entity matches, escalate — don't create a new one.
 
@@ -94,3 +97,9 @@ User: "actually maria's doing fruit platter, bob is handling drinks now"
 {"t":"entity.update","ref":"food_drinks","p":{"provider":"Uncle Bob"}}
 {"t":"entity.create","id":"food_fruit_platter","parent":"food","display":"row","p":{"dish":"Fruit platter","provider":"Maria Garcia"}}
 (Note: ref must match the snapshot — food_drinks, not food_maria. Check IDs before emitting.)
+
+User: "tom hosted last night"
+(Hosting is exclusive — use rel.set. Also update correlated props like location.)
+{"t":"entity.update","ref":"game_feb27","p":{"location":"Tom's"}}
+{"t":"rel.set","from":"player_tom","to":"game_feb27","type":"hosting","cardinality":"one_to_one"}
+(rel.set swaps the host atomically. But props correlated with the host — like location — need a separate entity.update. Think through what else changes when a relationship changes.)

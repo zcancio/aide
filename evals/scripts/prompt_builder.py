@@ -88,7 +88,7 @@ def build_system_blocks(tier: str, snapshot: dict[str, Any]) -> list[dict[str, A
     Returns:
         List of content blocks for system parameter.
     """
-    prefix = _shared_prefix().replace("{{current_date}}", date.today().strftime("%B %d, %Y"))
+    prefix = _shared_prefix().replace("{{current_date}}", date.today().strftime("%A, %B %d, %Y"))
     tier_file = {"L2": "l2_tier", "L3": "l3_tier", "L4": "l4_tier"}[tier]
     tier_text = _load(tier_file)
     snapshot_json = json.dumps(snapshot, indent=2)

@@ -53,7 +53,7 @@ def load_prompt(name: str) -> str:
 
 def build_system_blocks(tier: str, snapshot: dict | None) -> list[dict]:
     prefix = load_prompt("shared_prefix").replace(
-        "{{current_date}}", date.today().strftime("%B %d, %Y")
+        "{{current_date}}", date.today().strftime("%A, %B %d, %Y")  # e.g. "Tuesday, February 24, 2026"
     )
     tier_text = load_prompt({"L2": "l2_tier", "L3": "l3_tier", "L4": "l4_tier"}[tier])
     blocks = [
@@ -113,6 +113,8 @@ def apply_output_to_snapshot(snapshot: dict, output_text: str, tier: str) -> dic
     working = json.loads(json.dumps(snapshot))
     entities = working.get("entities", {})
     meta = working.get("meta", {})
+    relationships = working.get("relationships", [])
+    rel_types = working.get("relationship_types", {})  # type → cardinality
 
     for event in parsed:
         t = event.get("t", "")
@@ -147,9 +149,40 @@ def apply_output_to_snapshot(snapshot: dict, output_text: str, tier: str) -> dic
                 if "parent" in event:
                     entities[ref]["parent"] = event["parent"]
 
+        elif t == "rel.set":
+            frm = event.get("from", "")
+            to = event.get("to", "")
+            rtype = event.get("type", "")
+            card = event.get("cardinality", "many_to_one")
+
+            # Register type cardinality on first use
+            if rtype and rtype not in rel_types:
+                rel_types[rtype] = card
+
+            # Enforce cardinality
+            stored_card = rel_types.get(rtype, card)
+            if stored_card == "many_to_one":
+                # Source can link to ONE target of this type — remove old
+                relationships = [r for r in relationships
+                                 if not (r["from"] == frm and r["type"] == rtype)]
+            elif stored_card == "one_to_one":
+                # Both sides exclusive — remove source's old AND target's old
+                relationships = [r for r in relationships
+                                 if not (r["from"] == frm and r["type"] == rtype)
+                                 and not (r["to"] == to and r["type"] == rtype)]
+
+            relationships.append({"from": frm, "to": to, "type": rtype})
+
+        elif t == "rel.remove":
+            frm = event.get("from", "")
+            to = event.get("to", "")
+            rtype = event.get("type", "")
+            relationships = [r for r in relationships
+                             if not (r["from"] == frm and r["to"] == to and r["type"] == rtype)]
+
         # Signals (voice, escalate, batch) — no state change
 
-    return {"meta": meta, "entities": entities}
+    return {"meta": meta, "entities": entities, "relationships": relationships, "relationship_types": rel_types}
 
 
 # ---------------------------------------------------------------------------
@@ -382,6 +415,7 @@ def run_multiturn_scenario(
                 output_tokens=result["output_tokens"],
                 latency_ms=result["ttc_ms"],
                 snapshot=snapshot,
+                user_message=message,
             )
 
             # Update snapshot from clean output (fences stripped)

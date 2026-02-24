@@ -41,6 +41,22 @@ Relationships:
 - rel.set: {"t":"rel.set","from":"...","to":"...","type":"...","cardinality":"many_to_one"}
 - rel.remove: {"t":"rel.remove","from":"...","to":"...","type":"..."}
 
+Cardinality (set once per relationship type, enforced by the reducer):
+- many_to_one: source can link to ONE target. Re-linking auto-removes the old.
+  Example: "Seat Linda at table 5" → auto-removes her from table 3.
+- one_to_one: both sides exclusive. Setting A→B removes A's old link AND B's old link.
+  Example: "Tom is hosting" → auto-removes Mike as host.
+- many_to_many: no auto-removal. Links accumulate.
+  Example: "Tag this item as urgent" → item can have many tags.
+
+Use relationships (not boolean props) when:
+- A role can only belong to one entity at a time (hosting, assigned_to, current_turn)
+- Reassignment is common ("now tom's hosting", "move linda to table 5")
+- You'd otherwise need to find-and-clear the old holder manually
+
+The reducer handles the swap atomically — one rel.set is all you emit.
+
+When a relationship changes, check if any props on the target entity are correlated. "Tom hosted" swaps the hosting relationship AND changes `location` from "Mike's" to "Tom's". The rel.set handles the relationship; you emit an entity.update for the correlated props.
 Style:
 - style.set: {"t":"style.set","p":{...}}
 - style.entity: {"t":"style.entity","ref":"...","p":{...}}
@@ -129,3 +145,7 @@ NEVER:
 - Assume details the user left out (dates, venues, names, prices)
 
 If the user says "need to plan something" — create the page with what they told you. Don't guess what their plan involves. They'll tell you.
+
+Every concrete data point the user provides — dollar amounts, dates, times, scores, counts — must land in a prop somewhere. If the user says "$120 pot," that number needs to be stored. Dropping stated facts is worse than over-structuring.
+
+Reassignment is a relationship, not a prop update. If "tom hosted" and Mike was the previous host, emit a single rel.set — the reducer clears Mike automatically via cardinality. Don't try to manually find-and-clear the old holder with two entity.update calls.

@@ -438,7 +438,7 @@ def score_efficiency(output_tokens: int, tier: str, scenario_hints: dict | None 
     return DimensionScore("efficiency", score, checks, notes)
 
 
-def score_fidelity(text: str, tier: str, scenario_hints: dict | None = None, snapshot: dict | None = None) -> DimensionScore:
+def score_fidelity(text: str, tier: str, scenario_hints: dict | None = None, snapshot: dict | None = None, user_message: str = "") -> DimensionScore:
     """
     Does the output actually address what the user asked?
 
@@ -446,6 +446,8 @@ def score_fidelity(text: str, tier: str, scenario_hints: dict | None = None, sna
     - Scenario-specific content markers (entity names, field values)
     - Appropriate tier behavior (L2 mutates, L3 creates, L4 answers)
     - No dangling refs (updates to non-existent entities = lost intent)
+    - Data preservation: numbers, dollar amounts, and specific values from
+      the user message should appear somewhere in the output
     """
     checks = {}
     notes = []
@@ -466,6 +468,38 @@ def score_fidelity(text: str, tier: str, scenario_hints: dict | None = None, sna
         if missing:
             notes.append(f"Missing markers: {missing[:3]}")
 
+    # Data preservation — extract concrete data points from user message
+    # and verify they appear somewhere in the output
+    if user_message and tier in ("L2", "L3"):
+        # Extract dollar amounts ($120, $5.50, etc.)
+        dollar_amounts = re.findall(r'\$[\d,]+(?:\.\d{2})?', user_message)
+        # Extract standalone numbers that look like data (not "3" in "3pm")
+        # but catch things like "120", "22", scores, quantities
+        numbers = re.findall(r'\b\d{2,}\b', user_message)
+        # Extract time patterns (10:00, 7pm, etc.)
+        times = re.findall(r'\b\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)\b', user_message)
+
+        data_points = dollar_amounts + times
+        # Add numbers that aren't part of already-found dollar amounts or times
+        for n in numbers:
+            if not any(n in dp for dp in data_points):
+                data_points.append(n)
+
+        if data_points:
+            output_text = text.lower()
+            found = 0
+            missing_data = []
+            for dp in data_points:
+                # Strip $ for matching (model might store as number not string)
+                clean = dp.replace('$', '').replace(',', '').strip()
+                if clean in output_text or dp.lower() in output_text:
+                    found += 1
+                else:
+                    missing_data.append(dp)
+            checks["data_preserved"] = found / len(data_points)
+            if missing_data:
+                notes.append(f"Data from message not in output: {missing_data}")
+
     # Dangling refs — updates to entities that don't exist mean user intent was lost
     if snapshot and tier in ("L2", "L3"):
         existing = set(snapshot.get("entities", {}).keys())
@@ -480,12 +514,58 @@ def score_fidelity(text: str, tier: str, scenario_hints: dict | None = None, sna
             if dangling:
                 notes.append(f"Dangling refs (intent lost): {dangling[:3]}")
 
+    # Check for exclusive boolean props that should be relationships.
+    # If the model sets a boolean prop to true that another sibling already has true,
+    # it should have used rel.set instead of entity.update.
+    if snapshot and tier in ("L2", "L3") and parsed:
+        entities = snapshot.get("entities", {})
+        EXCLUSIVE_PROPS = {"hosting", "active", "current", "current_turn", "assigned", "selected"}
+        for p in parsed:
+            if p.get("t") != "entity.update":
+                continue
+            props = p.get("p", {})
+            for prop_name, prop_val in props.items():
+                if prop_val is True and prop_name in EXCLUSIVE_PROPS:
+                    checks["use_rel_not_bool"] = 0.0
+                    notes.append(f"'{prop_name}' should be a relationship (rel.set), not a boolean prop")
+                    break
+
     # Tier-appropriate behavior
     if tier == "L2":
         # L2 should mutate, not create structure
         has_mutation = any(p.get("t") in ("entity.update", "entity.create", "entity.remove") for p in parsed)
         has_escalation = any(p.get("t") == "escalate" for p in parsed)
         checks["tier_appropriate"] = 1.0 if (has_mutation or has_escalation) else 0.0
+
+        # L2 duplicate-creation: if L2 creates an entity under a parent that has
+        # exactly ONE existing child with similar shape AND the parent is not a
+        # table/list/checklist (which naturally accumulate rows), the user likely
+        # meant to update the existing entity.
+        if snapshot:
+            entities = snapshot.get("entities", {})
+            creates = [p for p in parsed if p.get("t") == "entity.create"]
+            accumulating_displays = {"table", "list", "checklist"}
+            for c in creates:
+                parent = c.get("parent", "")
+                new_id = c.get("id", "")
+                new_props = set(c.get("p", {}).keys()) - {"title"}
+                if len(new_props) < 2:
+                    continue
+                # Check parent's display type — tables accumulate, don't flag
+                parent_ent = entities.get(parent, {})
+                parent_display = parent_ent.get("display", "")
+                if parent_display in accumulating_displays:
+                    continue
+                # Find existing siblings
+                siblings = [eid for eid, ent in entities.items()
+                            if ent.get("parent") == parent and eid != new_id]
+                if len(siblings) == 1:
+                    sib_id = siblings[0]
+                    sib_props = set(entities[sib_id].get("props", {}).keys()) - {"title"}
+                    overlap = new_props & sib_props
+                    if len(overlap) >= 2:
+                        checks["no_duplicate_create"] = 0.0
+                        notes.append(f"L2 created {new_id} but {sib_id} is the only sibling under non-table parent — update instead?")
 
     elif tier == "L3":
         # L3 should create entities
@@ -571,6 +651,7 @@ def score_scenario(
     latency_ms: int = 0,
     cache_hit_pct: float = 0.0,
     snapshot: dict | None = None,
+    user_message: str = "",
 ) -> ScenarioScore:
     """Score a single scenario across all dimensions."""
     hints = SCENARIO_HINTS.get(name, {})
@@ -589,7 +670,7 @@ def score_scenario(
     result.dimensions["voice"] = score_voice(output_text, tier)
     result.dimensions["structure"] = score_structure(output_text, tier, hints, snapshot)
     result.dimensions["efficiency"] = score_efficiency(output_tokens, tier, hints, output_text)
-    result.dimensions["fidelity"] = score_fidelity(output_text, tier, hints, snapshot)
+    result.dimensions["fidelity"] = score_fidelity(output_text, tier, hints, snapshot, user_message)
 
     result.compute_composite()
     return result
