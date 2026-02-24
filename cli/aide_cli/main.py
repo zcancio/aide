@@ -1,4 +1,6 @@
 """Main entry point for AIde CLI."""
+from __future__ import annotations
+
 import subprocess
 import sys
 
@@ -16,23 +18,38 @@ def print_help():
 AIde CLI v{__version__}
 
 Usage:
-  aide login               - Authenticate with device flow
-  aide logout              - Logout and clear credentials
-  aide [--aide <id>]       - Start REPL (optionally with specific aide)
-  aide --help              - Show this help
-  aide --version           - Show version
+  aide [options] [command]
+
+Commands:
+  login             Authenticate via browser
+  logout            Revoke token and clear config
+
+Options:
+  --api-url URL     Override API endpoint (default: https://get.toaide.com)
+  --aide ID         Start REPL with specific aide
+  -h, --help        Show this help
+  -v, --version     Show version
+
+Environment:
+  AIDE_API_URL      Override API endpoint (same as --api-url)
+
+Examples:
+  aide login                                    # Login to production
+  aide login --api-url http://localhost:8000    # Login to local dev
+  aide logout                                   # Logout current environment
+  aide logout --all                             # Logout all environments
 
 REPL Commands:
-  /list                    - Show all aides
-  /switch <n>              - Switch to aide
-  /new                     - Start new aide
-  /page                    - Open published page
-  /info                    - Show current aide details
-  /history [n]             - Show message history
-  /view                    - Render current state as text
-  /watch [on|off]          - Auto-render after each message
-  /help                    - Show REPL help
-  /quit                    - Exit REPL
+  /list             Show all aides
+  /switch <n>       Switch to aide
+  /new              Start new aide
+  /page             Open published page
+  /info             Show current aide details
+  /history [n]      Show message history
+  /view             Render current state as text
+  /watch [on|off]   Auto-render after each message
+  /help             Show REPL help
+  /quit             Exit REPL
 """)
 
 
@@ -83,73 +100,111 @@ def init_bridge(config: Config) -> NodeBridge | None:
         return None
 
 
-def main():
-    """Main entry point."""
-    config = Config()
+def parse_args(args: list[str]) -> dict:
+    """
+    Parse command line arguments.
 
-    # Parse args
-    args = sys.argv[1:]
+    Returns dict with:
+        command: str | None (login, logout, None for REPL)
+        api_url: str | None
+        aide_id: str | None
+        logout_all: bool
+        show_help: bool
+        show_version: bool
+    """
+    result = {
+        "command": None,
+        "api_url": None,
+        "aide_id": None,
+        "logout_all": False,
+        "show_help": False,
+        "show_version": False,
+    }
 
-    if not args:
-        # No args - start REPL
-        if not config.is_authenticated:
-            print("Not authenticated. Run 'aide login' first.")
+    i = 0
+    while i < len(args):
+        arg = args[i]
+
+        if arg == "login":
+            result["command"] = "login"
+        elif arg == "logout":
+            result["command"] = "logout"
+        elif arg == "--api-url":
+            if i + 1 < len(args):
+                result["api_url"] = args[i + 1]
+                i += 1
+            else:
+                print("Error: --api-url requires a URL")
+                sys.exit(1)
+        elif arg == "--aide":
+            if i + 1 < len(args):
+                result["aide_id"] = args[i + 1]
+                i += 1
+            else:
+                print("Error: --aide requires an ID")
+                sys.exit(1)
+        elif arg == "--all":
+            result["logout_all"] = True
+        elif arg in ("--help", "-h"):
+            result["show_help"] = True
+        elif arg in ("--version", "-v"):
+            result["show_version"] = True
+        elif arg.startswith("-"):
+            print(f"Unknown option: {arg}")
+            print("Run 'aide --help' for usage.")
+            sys.exit(1)
+        else:
+            # Unknown positional argument
+            print(f"Unknown command: {arg}")
+            print("Run 'aide --help' for usage.")
             sys.exit(1)
 
-        # Initialize Node bridge for text rendering
-        bridge = init_bridge(config)
+        i += 1
 
-        repl = Repl(config, bridge=bridge)
-        try:
-            repl.start()
-        finally:
-            if bridge:
-                bridge.stop()
-        return
+    return result
 
-    cmd = args[0]
 
-    if cmd == "login":
-        success = login(config)
-        sys.exit(0 if success else 1)
+def main():
+    """Main entry point."""
+    args = parse_args(sys.argv[1:])
 
-    elif cmd == "logout":
-        success = logout(config)
-        sys.exit(0 if success else 1)
-
-    elif cmd == "--help" or cmd == "-h":
+    # Handle help and version first
+    if args["show_help"]:
         print_help()
         return
 
-    elif cmd == "--version" or cmd == "-v":
+    if args["show_version"]:
         print(f"aide-cli {__version__}")
         return
 
-    elif cmd == "--aide":
-        if len(args) < 2:
-            print("Error: --aide requires an aide ID")
-            sys.exit(1)
+    # Create config with optional api_url override
+    config = Config(api_url_override=args["api_url"])
 
+    # Handle commands
+    if args["command"] == "login":
+        success = login(config)
+        sys.exit(0 if success else 1)
+
+    elif args["command"] == "logout":
+        success = logout(config, logout_all=args["logout_all"])
+        sys.exit(0 if success else 1)
+
+    else:
+        # No command - start REPL
         if not config.is_authenticated:
-            print("Not authenticated. Run 'aide login' first.")
+            print(f"Not authenticated to {config.api_url}")
+            print("Run 'aide login' first.")
             sys.exit(1)
 
         # Initialize Node bridge for text rendering
         bridge = init_bridge(config)
 
-        aide_id = args[1]
-        repl = Repl(config, aide_id=aide_id, bridge=bridge)
+        repl = Repl(config, aide_id=args["aide_id"], bridge=bridge)
         try:
             repl.start()
         finally:
             if bridge:
                 bridge.stop()
-        return
-
-    else:
-        print(f"Unknown command: {cmd}")
-        print("Run 'aide --help' for usage.")
-        sys.exit(1)
 
 
 if __name__ == "__main__":

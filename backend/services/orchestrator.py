@@ -126,9 +126,14 @@ class Orchestrator:
                     shadow=False,
                 )
 
-                if l2_result["escalate"]:
-                    # L2 requested escalation → route to L3
-                    print("L2 escalated to L3")
+                # Auto-escalate if L2 returned nothing useful
+                should_escalate = l2_result["escalate"] or (
+                    not l2_result["primitives"] and not l2_result["response"]
+                )
+
+                if should_escalate:
+                    # L2 requested escalation or returned empty → route to L3
+                    print("L2 escalated to L3" if l2_result["escalate"] else "L2 returned empty, auto-escalating to L3")
                     l3_result = await self._call_l3(
                         recorder=recorder,
                         message=message,

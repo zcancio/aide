@@ -320,6 +320,9 @@ Options:
   --aide ID       Start REPL with specific aide
   -h, --help      Show this help
   -v, --version   Show version
+
+Environment:
+  AIDE_API_URL    Override API endpoint (same as --api-url)
 ```
 
 ```
@@ -327,6 +330,7 @@ $ aide login --help
 Usage: aide login [options]
 
 Authenticate this CLI session via browser.
+Token is stored per environment — login to multiple environments simultaneously.
 
 Options:
   --api-url URL   Override API endpoint
@@ -378,11 +382,45 @@ Everything else is sent as a message to the current aide.
 ```json
 // ~/.aide/config.json
 {
-  "token": "aide_a1b2c3d4e5f6...",
-  "email": "zach@toaide.com",
-  "default_aide_id": "550e8400-...",
-  "api_url": "https://get.toaide.com"
+  "environments": {
+    "https://get.toaide.com": {
+      "token": "aide_a1b2c3d4e5f6...",
+      "email": "zach@toaide.com",
+      "default_aide_id": "550e8400-..."
+    },
+    "http://localhost:8000": {
+      "token": "aide_f7e8d9a0b1c2...",
+      "email": "zach@toaide.com",
+      "default_aide_id": "881a2b00-..."
+    }
+  },
+  "default_url": "https://get.toaide.com"
 }
+```
+
+**Environment resolution order:**
+1. `AIDE_API_URL` env var
+2. `--api-url` flag
+3. `default_url` from config
+
+Login is environment-scoped — each URL gets its own token:
+
+```bash
+aide login                                      # → https://get.toaide.com
+aide login --api-url http://localhost:8000       # → local dev
+aide login --api-url https://staging.toaide.com  # → staging
+```
+
+All environments coexist in the same config file. Use separate terminal sessions with `AIDE_API_URL` to work against multiple environments simultaneously:
+
+```bash
+# Terminal 1 — prod
+export AIDE_API_URL=https://get.toaide.com
+aide
+
+# Terminal 2 — dev
+export AIDE_API_URL=http://localhost:8000
+aide
 ```
 
 ### Dependencies
@@ -430,9 +468,11 @@ DELETE /api/tokens/{id}  → revoke a token
 
 | Event | Action |
 |-------|--------|
-| `aide login` | Create token (90-day expiry) |
-| `aide logout` | Revoke token + delete local config |
-| Token expires | CLI gets 401, prompts re-login |
+| `aide login` | Create token for current environment (90-day expiry) |
+| `aide login --api-url X` | Create token for environment X |
+| `aide logout` | Revoke token for current environment, remove from config |
+| `aide logout --all` | Revoke all tokens, delete entire config |
+| Token expires | CLI gets 401, prompts re-login for that environment |
 | User revokes in dashboard | CLI gets 401, prompts re-login |
 | 401 during REPL | Print "Session expired. Run `aide login`." and exit |
 
@@ -440,7 +480,7 @@ DELETE /api/tokens/{id}  → revoke a token
 
 ## Security
 
-- **Token storage:** `~/.aide/config.json` with `0600` permissions (owner-only read/write)
+- **Token storage:** `~/.aide/config.json` with `0600` permissions (owner-only read/write). Tokens keyed by environment URL — multiple environments coexist safely.
 - **Token hashing:** Raw token never stored server-side. SHA-256 hash only.
 - **Token prefix:** `aide_` prefix allows secret scanners (GitHub, GitGuardian) to flag leaked tokens
 - **Device code TTL:** 10 minutes. Expired codes cleaned up by background task.
@@ -482,7 +522,7 @@ The CLI `source` field is set to `"cli"` in orchestrator calls for telemetry seg
 | `cli/aide_cli/auth.py` | Device auth flow |
 | `cli/aide_cli/repl.py` | REPL loop + commands |
 | `cli/aide_cli/client.py` | HTTP client wrapper |
-| `cli/aide_cli/config.py` | Config file read/write |
+| `cli/aide_cli/config.py` | Multi-environment config: read/write `~/.aide/config.json`, resolve api_url from env var / flag / default, per-environment token storage |
 | `cli/pyproject.toml` | Package metadata, `aide` entry point |
 
 ## Files to Modify
@@ -508,6 +548,11 @@ The CLI `source` field is set to `"cli"` in orchestrator calls for telemetry seg
 - Token hashing: raw → SHA-256 → lookup round-trip
 - Device code generation: uniqueness, format, length
 - Config file: read/write, `0600` permissions enforcement
+- Multi-environment config: stores separate tokens per URL, resolves correct token for environment
+- Environment resolution: `AIDE_API_URL` env var overrides `--api-url` overrides `default_url`
+- Login to two environments: both tokens persist, neither overwritten
+- Logout single environment: only that environment's token removed
+- Logout `--all`: entire config cleared
 - Command routing: `/list`, `/switch`, `/new` dispatch correctly
 - Client wrapper: verifies correct endpoints called, Authorization header set
 
@@ -606,9 +651,12 @@ echo "Done."
 ### E2E (Manual — pre-launch checklist)
 
 - `aide login` → browser opens → confirm → CLI authenticated
+- `aide login --api-url http://localhost:8000` → separate token stored for dev
+- Open two terminals: `AIDE_API_URL=https://get.toaide.com aide` and `AIDE_API_URL=http://localhost:8000 aide` → both work independently
 - Send message via CLI → aide state updates → published page reflects change
 - `/list` shows aides, `/switch` changes context, `/page` opens browser
-- `aide logout` → token revoked → subsequent requests return 401
+- `aide logout` → token revoked for current environment only
+- `aide logout --all` → all tokens revoked, config cleared
 - Re-run `aide login` → fresh token works
 - Token expires (set short TTL in test) → CLI prints "Session expired" and exits
 
@@ -619,6 +667,5 @@ echo "Done."
 - **Streaming responses** — CLI prints full response after completion. Streaming adds complexity for marginal UX gain in a dev tool.
 - **Image input** — Text only. Use the web UI for images.
 - **Tab completion for aide names** — Nice-to-have, not blocking.
-- **Multiple token management in CLI** — One token per machine. `aide logout && aide login` to switch accounts.
 - **Offline mode** — Always requires network.
 - **Shell integration** — No piping stdin/stdout. Interactive REPL only.

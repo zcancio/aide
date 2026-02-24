@@ -92,22 +92,39 @@ def login(config: Config) -> bool:
         client.close()
 
 
-def logout(config: Config) -> bool:
+def logout(config: Config, logout_all: bool = False) -> bool:
     """
-    Logout and revoke token.
+    Logout and clear credentials.
+
+    Args:
+        config: Config instance
+        logout_all: If True, clear all environments. If False, only current.
 
     Returns True if successful, False otherwise.
     """
+    if logout_all:
+        # Clear all environments
+        envs = config.list_environments()
+        if not envs:
+            print("No authenticated environments.")
+            return True
+
+        for env in envs:
+            print(f"  Logging out of {env['url']} ({env.get('email', 'unknown')})")
+
+        config.clear_all()
+        print("Logged out of all environments.")
+        return True
+
+    # Single environment logout
     if not config.is_authenticated:
-        print("Not logged in.")
+        print(f"Not logged in to {config.api_url}")
         return False
 
     try:
-        # Note: We don't have a way to revoke the token from the CLI
-        # without knowing the token_id. For now, just clear local config.
-        # The token will expire after 90 days.
-        config.clear()
-        print("Logged out successfully.")
+        email = config.email or "unknown"
+        config.clear_environment()
+        print(f"Logged out of {config.api_url} ({email})")
         return True
 
     except Exception as e:

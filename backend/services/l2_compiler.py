@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from backend.config import settings
 from backend.services.ai_provider import ai_provider
 from engine.kernel.primitives import validate_primitive
 from engine.kernel.types import Event
@@ -45,7 +46,7 @@ class L2Compiler:
         messages = [{"role": "user", "content": user_content}]
 
         result = await ai_provider.call_claude(
-            model="claude-3-5-haiku-20241022",
+            model=settings.L2_MODEL,
             system=self.system_prompt,
             messages=messages,
             max_tokens=4096,
