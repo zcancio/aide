@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AIde Eval Viewer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { overflow: hidden; }
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+button:focus { outline: none; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback, useRef, useMemo } = React;
+
+const DEMO = {
+  scenario: "graduation_realistic",
+  description: "Graduation party built over 8 turns.",
+  turns: [
+    { turn: 1, message: "sophie's graduating in may, need to plan something", tier: "L3", expected_tier: "L3", classified_tier: "L3", ttc_ms: 3420, output_tokens: 387, cache_creation: 2510, cache_read: 0, score: { composite: 0.88, validity: 0.95, voice: 1.0, structure: 0.85, efficiency: 0.80, fidelity: 0.75 }, notes: "Minimal input. Should create basic page, NOT pre-create sections.", system_prompt: "# AIde Engine — Shared Prefix\n\nYou are AIde's mutation engine.\nEmit JSONL — one JSON object per line.\n\n## Voice Rules\n- No first person\n- No encouragement\n- No emoji\n\n## Primitives\n- entity.create: {t, id, parent, display, p}\n- entity.update: {t, ref, p}\n- meta.set: {t, p}\n- voice: {t, text}\n\n## Display Hints\npage, section, card, table, checklist, row\n\n# L3 — Architect\nCreate pages from scratch.\nEmit: meta -> page -> sections -> children\n\n## Current Snapshot\n{\"meta\": {}, \"entities\": {}}", output: '{"t":"meta.set","p":{"title":"Sophie\'s Graduation","identity":"Graduation party, May 2026."}}\n{"t":"voice","text":"Setting up graduation page."}\n{"t":"entity.create","id":"page","parent":"root","display":"page","p":{"title":"Sophie\'s Graduation"}}\n{"t":"entity.create","id":"details","parent":"page","display":"card","p":{"event":"Graduation","who":"Sophie","when":"May 2026"}}\n{"t":"voice","text":"Basic details captured."}', snapshot_before: { meta: {}, entities: {} }, snapshot_after: { meta: { title: "Sophie's Graduation" }, entities: { page: { id: "page", parent: "root", display: "page", props: { title: "Sophie's Graduation" } }, details: { id: "details", parent: "page", display: "card", props: { event: "Graduation", who: "Sophie", when: "May 2026" } } } } },
+    { turn: 2, message: "ceremony is may 22 at UC Davis, starts at 10", tier: "L2", expected_tier: "L2", classified_tier: "L2", ttc_ms: 739, output_tokens: 43, cache_creation: 0, cache_read: 2510, score: { composite: 0.94, validity: 1.0, voice: 1.0, structure: 0.95, efficiency: 1.0, fidelity: 0.80 }, notes: "Should update existing details entity.", system_prompt: "# L2 — Compiler\nHandle simple mutations on existing entities.\n\n## Snapshot\n{page, details}", output: '{"t":"entity.update","ref":"details","p":{"date":"2026-05-22","venue":"UC Davis","time":"10:00 AM"}}', snapshot_before: { meta: { title: "Sophie's Graduation" }, entities: { page: { id: "page", parent: "root", display: "page", props: {} }, details: { id: "details", parent: "page", display: "card", props: { when: "May 2026" } } } }, snapshot_after: { meta: { title: "Sophie's Graduation" }, entities: { page: { id: "page", parent: "root", display: "page", props: {} }, details: { id: "details", parent: "page", display: "card", props: { when: "May 2026", date: "2026-05-22", venue: "UC Davis", time: "10:00 AM" } } } } },
+    { turn: 3, message: "aunt linda and uncle bob are coming. cousin james is a maybe", tier: "L3", expected_tier: "L2", classified_tier: "L3", ttc_ms: 4200, output_tokens: 280, cache_creation: 0, cache_read: 2510, score: { composite: 0.82, validity: 0.95, voice: 0.90, structure: 0.78, efficiency: 0.70, fidelity: 0.85 }, notes: "No guest section existed. L3 escalation correct.", system_prompt: "# L3 — Architect\n\n## Snapshot\n{page, details}", output: '{"t":"voice","text":"Adding guest tracking."}\n{"t":"entity.create","id":"guests","parent":"page","display":"table","p":{"title":"Guest List"}}\n{"t":"entity.create","id":"guest_linda","parent":"guests","display":"row","p":{"name":"Aunt Linda","rsvp":"confirmed"}}\n{"t":"entity.create","id":"guest_bob","parent":"guests","display":"row","p":{"name":"Uncle Bob","rsvp":"confirmed"}}\n{"t":"entity.create","id":"guest_james","parent":"guests","display":"row","p":{"name":"Cousin James","rsvp":"maybe"}}', snapshot_before: { meta: {}, entities: { page: { id: "page", parent: "root", display: "page", props: {} }, details: { id: "details", parent: "page", display: "card", props: {} } } }, snapshot_after: { meta: {}, entities: { page: { id: "page", parent: "root", display: "page", props: {} }, details: { id: "details", parent: "page", display: "card", props: {} }, guests: { id: "guests", parent: "page", display: "table", props: { title: "Guest List" } }, guest_linda: { id: "guest_linda", parent: "guests", display: "row", props: { name: "Aunt Linda", rsvp: "confirmed" } }, guest_bob: { id: "guest_bob", parent: "guests", display: "row", props: { name: "Uncle Bob", rsvp: "confirmed" } }, guest_james: { id: "guest_james", parent: "guests", display: "row", props: { name: "Cousin James", rsvp: "maybe" } } } } },
+    { turn: 4, message: "also the garcias - maria and carlos. prob my friend dave", tier: "L2", expected_tier: "L2", classified_tier: "L2", ttc_ms: 920, output_tokens: 95, cache_creation: 0, cache_read: 2510, score: { composite: 0.91, validity: 1.0, voice: 1.0, structure: 0.90, efficiency: 0.95, fidelity: 0.75 }, notes: "'prob' = maybe for Dave.", system_prompt: "# L2 — Compiler\n\n## Snapshot\n{guests table, 3 rows}", output: '{"t":"entity.create","id":"guest_maria","parent":"guests","display":"row","p":{"name":"Maria Garcia","rsvp":"confirmed"}}\n{"t":"entity.create","id":"guest_carlos","parent":"guests","display":"row","p":{"name":"Carlos Garcia","rsvp":"confirmed"}}\n{"t":"entity.create","id":"guest_dave","parent":"guests","display":"row","p":{"name":"Dave","rsvp":"maybe"}}', snapshot_before: { meta: {}, entities: { guests: { id: "guests", parent: "page", display: "table", props: {} }, guest_linda: { id: "guest_linda", parent: "guests", display: "row", props: { name: "Aunt Linda" } }, guest_bob: { id: "guest_bob", parent: "guests", display: "row", props: { name: "Uncle Bob" } }, guest_james: { id: "guest_james", parent: "guests", display: "row", props: { name: "Cousin James" } } } }, snapshot_after: { meta: {}, entities: { guests: { id: "guests", parent: "page", display: "table", props: {} }, guest_linda: { id: "guest_linda", parent: "guests", display: "row", props: { name: "Aunt Linda" } }, guest_bob: { id: "guest_bob", parent: "guests", display: "row", props: { name: "Uncle Bob" } }, guest_james: { id: "guest_james", parent: "guests", display: "row", props: { name: "Cousin James" } }, guest_maria: { id: "guest_maria", parent: "guests", display: "row", props: { name: "Maria Garcia" } }, guest_carlos: { id: "guest_carlos", parent: "guests", display: "row", props: { name: "Carlos Garcia" } }, guest_dave: { id: "guest_dave", parent: "guests", display: "row", props: { name: "Dave", rsvp: "maybe" } } } } },
+    { turn: 5, message: "how many people is that so far?", tier: "L4", expected_tier: "L4", classified_tier: "L4", ttc_ms: 1840, output_tokens: 42, cache_creation: 0, cache_read: 2510, score: { composite: 0.92, validity: 1.0, voice: 0.85, structure: 1.0, efficiency: 1.0, fidelity: 0.90 }, notes: "L4 query. Should count 6 guests.", system_prompt: "# L4 — Analyst\nPlain text only. No JSONL.\n\n## Snapshot\n{6 guests}", output: "6 guests tracked: Aunt Linda, Uncle Bob, Cousin James, Maria Garcia, Carlos Garcia, and Dave. 4 confirmed, 2 tentative.", snapshot_before: { meta: {}, entities: {} }, snapshot_after: { meta: {}, entities: {} } },
+    { turn: 6, message: "we should do potluck. linda's bringing potato salad", tier: "L3", expected_tier: "L3", classified_tier: "L3", ttc_ms: 3800, output_tokens: 210, cache_creation: 0, cache_read: 2510, score: { composite: 0.86, validity: 0.95, voice: 0.90, structure: 0.85, efficiency: 0.75, fidelity: 0.85 }, notes: "New section (food). Link potato salad to Linda.", system_prompt: "# L3 — Architect\n\n## Snapshot\n{page, details, 6 guests}", output: '{"t":"voice","text":"Adding potluck tracking."}\n{"t":"entity.create","id":"food","parent":"page","display":"table","p":{"title":"Potluck"}}\n{"t":"entity.create","id":"food_potato","parent":"food","display":"row","p":{"item":"Potato salad","assigned":"Aunt Linda"}}', snapshot_before: { meta: {}, entities: { page: { id: "page", parent: "root", display: "page", props: {} } } }, snapshot_after: { meta: {}, entities: { page: { id: "page", parent: "root", display: "page", props: {} }, food: { id: "food", parent: "page", display: "table", props: { title: "Potluck" } }, food_potato: { id: "food_potato", parent: "food", display: "row", props: { item: "Potato salad", assigned: "Aunt Linda" } } } } },
+    { turn: 7, message: "carlos does carne asada, maria handles drinks. need dessert and sides", tier: "L2", expected_tier: "L2", classified_tier: "L2", ttc_ms: 1100, output_tokens: 130, cache_creation: 0, cache_read: 2510, score: { composite: 0.89, validity: 1.0, voice: 1.0, structure: 0.90, efficiency: 0.85, fidelity: 0.80 }, notes: "4 food items: 2 assigned, 2 TBD.", system_prompt: "# L2 — Compiler\n\n## Snapshot\n{food table, 1 item}", output: '{"t":"entity.create","id":"food_carne","parent":"food","display":"row","p":{"item":"Carne asada","assigned":"Carlos"}}\n{"t":"entity.create","id":"food_drinks","parent":"food","display":"row","p":{"item":"Drinks","assigned":"Maria"}}\n{"t":"entity.create","id":"food_dessert","parent":"food","display":"row","p":{"item":"Dessert","assigned":"TBD"}}\n{"t":"entity.create","id":"food_sides","parent":"food","display":"row","p":{"item":"Sides","assigned":"TBD"}}', snapshot_before: { meta: {}, entities: { food: { id: "food", parent: "page", display: "table", props: { title: "Potluck" } }, food_potato: { id: "food_potato", parent: "food", display: "row", props: { item: "Potato salad" } } } }, snapshot_after: { meta: {}, entities: { food: { id: "food", parent: "page", display: "table", props: { title: "Potluck" } }, food_potato: { id: "food_potato", parent: "food", display: "row", props: { item: "Potato salad" } }, food_carne: { id: "food_carne", parent: "food", display: "row", props: { item: "Carne asada", assigned: "Carlos" } }, food_drinks: { id: "food_drinks", parent: "food", display: "row", props: { item: "Drinks", assigned: "Maria" } }, food_dessert: { id: "food_dessert", parent: "food", display: "row", props: { item: "Dessert", assigned: "TBD" } }, food_sides: { id: "food_sides", parent: "food", display: "row", props: { item: "Sides", assigned: "TBD" } } } } },
+    { turn: 8, message: "scratch that - maria does fruit platter not drinks. bob handles drinks", tier: "L2", expected_tier: "L2", classified_tier: "L2", ttc_ms: 850, output_tokens: 65, cache_creation: 0, cache_read: 2510, score: { composite: 0.90, validity: 1.0, voice: 1.0, structure: 0.88, efficiency: 0.95, fidelity: 0.82 }, notes: "Correction: update, not delete+recreate.", system_prompt: "# L2 — Compiler\n\n## Snapshot\n{food table, drinks -> Maria}", output: '{"t":"entity.update","ref":"food_drinks","p":{"assigned":"Uncle Bob"}}\n{"t":"entity.create","id":"food_fruit","parent":"food","display":"row","p":{"item":"Fruit platter","assigned":"Maria"}}', snapshot_before: { meta: {}, entities: { food_drinks: { id: "food_drinks", parent: "food", display: "row", props: { item: "Drinks", assigned: "Maria" } } } }, snapshot_after: { meta: {}, entities: { food_drinks: { id: "food_drinks", parent: "food", display: "row", props: { item: "Drinks", assigned: "Uncle Bob" } }, food_fruit: { id: "food_fruit", parent: "food", display: "row", props: { item: "Fruit platter", assigned: "Maria" } } } } },
+  ],
+};
+
+const TC = { L2: { bg: "#0c4a6e", tx: "#7dd3fc", bd: "#0369a1", lb: "L2 Haiku" }, L3: { bg: "#4c1d95", tx: "#c4b5fd", bd: "#6d28d9", lb: "L3 Sonnet" }, L4: { bg: "#713f12", tx: "#fde68a", bd: "#a16207", lb: "L4 Opus" } };
+const EC = { "entity.create": { bg: "#064e3b", tx: "#6ee7b7", bd: "#047857" }, "entity.update": { bg: "#1e3a5f", tx: "#93c5fd", bd: "#2563eb" }, "meta.set": { bg: "#422006", tx: "#fdba74", bd: "#c2410c" }, voice: { bg: "#1a2e05", tx: "#bef264", bd: "#4d7c0f" } };
+const DIMS = ["validity", "voice", "structure", "efficiency", "fidelity"];
+const DLBL = { validity: "Valid", voice: "Voice", structure: "Struct", efficiency: "Effic", fidelity: "Fidel" };
+const DDESC = {
+  validity: "Can the pipeline parse this? JSON syntax, valid primitives, required fields.",
+  voice: "Follows AIde voice rules? No first person, no encouragement, no emoji.",
+  structure: "Correct emission order, display hints, entity IDs, tier behavior.",
+  efficiency: "Token economy. Output size vs expected range for this tier.",
+  fidelity: "Does the output actually do what the user asked?",
+};
+const mono = "ui-monospace, 'SF Mono', Monaco, Consolas, monospace";
+
+function parseEv(s) { if (!s) return []; const r = []; for (const l of s.split("\n")) { const x = l.trim(); if (!x || x[0]==='`') continue; try { r.push(JSON.parse(x)); } catch(e) {} } return r; }
+
+function mkTree(ents) {
+  if (!ents) return [];
+  const all = Object.values(ents).filter(e => e && e.id);
+  const ch = {};
+  all.forEach(e => { const p = e.parent || "root"; (ch[p] = ch[p] || []).push(e); });
+  const out = [];
+  const walk = (pid, d) => { (ch[pid] || []).forEach(c => { out.push({ ...c, depth: d }); walk(c.id, d + 1); }); };
+  walk("root", 0);
+  return out;
+}
+
+function eDiff(b, a) {
+  const bk = new Set(Object.keys(b || {}));
+  const ak = new Set(Object.keys(a || {}));
+  const add = [...ak].filter(k => !bk.has(k));
+  const rem = [...bk].filter(k => !ak.has(k));
+  // Detect prop changes on entities that exist in both
+  const mod = [];
+  const modDetails = {};
+  for (const k of ak) {
+    if (!bk.has(k)) continue;
+    const bp = JSON.stringify((b[k]?.props || b[k]?.p || {}));
+    const ap = JSON.stringify((a[k]?.props || a[k]?.p || {}));
+    if (bp !== ap) {
+      mod.push(k);
+      // Find which props changed
+      const bObj = b[k]?.props || b[k]?.p || {};
+      const aObj = a[k]?.props || a[k]?.p || {};
+      const changed = [];
+      const allKeys = new Set([...Object.keys(bObj), ...Object.keys(aObj)]);
+      for (const pk of allKeys) {
+        if (JSON.stringify(bObj[pk]) !== JSON.stringify(aObj[pk])) {
+          changed.push(bObj[pk] === undefined ? `+${pk}` : aObj[pk] === undefined ? `-${pk}` : `${pk}: ${JSON.stringify(bObj[pk])}→${JSON.stringify(aObj[pk])}`);
+        }
+      }
+      modDetails[k] = changed;
+    }
+  }
+  return { add, rem, mod, modDetails };
+}
+
+function Viewer() {
+  const [run, setRun] = useState(DEMO);
+  const [idx, setIdx] = useState(0);
+  const [tab, setTab] = useState("output");
+  const [playing, setPlaying] = useState(false);
+  const [expandedDim, setExpandedDim] = useState(null);
+  const fileRef = useRef(null);
+
+  const turns = useMemo(() => run.turns.map(t => {
+    // Normalize score: old format was just a float, new format is {composite, validity, ...}
+    if (typeof t.score === "number") {
+      return { ...t, score: { composite: t.score, validity: 0, voice: 0, structure: 0, efficiency: 0, fidelity: 0 } };
+    }
+    return t;
+  }), [run.turns]);
+  const N = turns.length;
+  const t = turns[idx];
+  const evts = useMemo(() => parseEv(t.output), [t.output]);
+  const tree = useMemo(() => mkTree(t.snapshot_after?.entities), [t.snapshot_after]);
+  const diff = useMemo(() => eDiff(t.snapshot_before?.entities, t.snapshot_after?.entities), [t]);
+  const isL4 = t.tier === "L4";
+  const pct = Math.round((t.score?.composite || 0) * 100);
+
+  useEffect(() => { if (!playing) return; const id = setInterval(() => setIdx(p => { if (p>=N-1) { setPlaying(false); return p; } return p+1; }), 2500); return () => clearInterval(id); }, [playing, N]);
+  useEffect(() => { const fn = e => { if (e.target.tagName==="INPUT") return; if (e.key==="ArrowRight") { setIdx(p=>Math.min(p+1,N-1)); setPlaying(false); } else if (e.key==="ArrowLeft") { setIdx(p=>Math.max(p-1,0)); setPlaying(false); } else if (e.key===" ") { e.preventDefault(); setPlaying(p=>!p); } else if (e.key>="1"&&e.key<="4") setTab(["output","prompt","snapshot","tree"][+e.key-1]); }; window.addEventListener("keydown",fn); return ()=>window.removeEventListener("keydown",fn); }, [N]);
+
+  const sc = v => v>=0.9?"#4ade80":v>=0.75?"#facc15":v>=0.6?"#fb923c":"#f87171";
+  const Bar = ({v,w,h}) => <div style={{width:w||60,height:h||5,background:"#1e293b",borderRadius:3,overflow:"hidden",display:"inline-block",verticalAlign:"middle"}}><div style={{width:`${(v||0)*100}%`,height:"100%",background:sc(v||0),borderRadius:3}}/></div>;
+  const Tier = ({tier,small}) => { const c=TC[tier]||TC.L2; return <span style={{padding:small?"1px 5px":"2px 7px",borderRadius:3,background:c.bg,border:`1px solid ${c.bd}`,color:c.tx,fontWeight:600,fontSize:small?9:11,fontFamily:mono,display:"inline-block"}}>{c.lb}</span>; };
+  const Lbl = ({children}) => <div style={{fontSize:10,textTransform:"uppercase",letterSpacing:1.5,color:"#64748b",marginBottom:8,fontWeight:700,fontFamily:mono}}>{children}</div>;
+  const Pre = ({text,mh}) => <pre style={{background:"#08080f",border:"1px solid #1e1e2e",borderRadius:6,padding:12,fontSize:12,lineHeight:1.6,fontFamily:mono,color:"#c9d1d9",overflow:"auto",maxHeight:mh||9999,whiteSpace:"pre-wrap",wordBreak:"break-word",margin:0}}>{text||"(empty)"}</pre>;
+
+  return (
+    <div style={{
+      width: "100%",
+      height: "100vh",
+      display: "grid",
+      gridTemplateRows: "44px 1fr 48px",
+      gridTemplateColumns: "280px 1fr 220px",
+      background: "#0b0b13",
+      color: "#e2e8f0",
+      fontFamily: "system-ui, sans-serif",
+      overflow: "hidden",
+    }}>
+
+      {/* ═══ TOP BAR ═══ */}
+      <div style={{ gridColumn: "1/-1", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 16px", borderBottom: "1px solid #1a1a2a", background: "#0e0e18" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width:8, height:8, borderRadius:"50%", background: playing?"#ef4444":"#4ade80" }} />
+          <span style={{ fontSize:11, fontWeight:700, letterSpacing:1, textTransform:"uppercase", color:"#64748b", fontFamily:mono }}>Eval Viewer</span>
+          <span style={{ fontSize:13, color:"#94a3b8" }}>{run.scenario}</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize:12, color:"#64748b", fontFamily:mono }}>Turn {idx+1}/{N}</span>
+          <Tier tier={t.tier} />
+          <span style={{ fontSize:11, color:"#475569", fontFamily:mono }}>{t.ttfc_ms!=null?t.ttfc_ms+"ms ttft · ":""}{t.ttc_ms}ms ttc · {t.output_tokens}tok</span>
+          <button onClick={()=>fileRef.current?.click()} style={{ padding:"3px 8px", fontSize:10, background:"#1e293b", border:"1px solid #334155", borderRadius:4, color:"#94a3b8", cursor:"pointer", fontFamily:mono }}>Load JSON</button>
+          <input ref={fileRef} type="file" accept=".json" onChange={e=>{ const f=e.target.files?.[0]; if(!f)return; const r=new FileReader(); r.onload=ev=>{ try{ const d=JSON.parse(ev.target.result); let loaded; if(d.turns) { loaded=d; } else if(d.results?.length) { const pick=d.results[0]; loaded={ scenario:pick.name||pick.scenario||"loaded", description:pick.description||`${pick.turns?.length||0} turns`, turns:pick.turns||[] }; } if(loaded?.turns?.length){loaded.scenario=loaded.scenario||loaded.name||"loaded"; setRun(loaded);setIdx(0);} }catch(err){console.error(err);} }; r.readAsText(f); }} style={{ display:"none" }} />
+        </div>
+      </div>
+
+      {/* ═══ LEFT: CHAT ═══ */}
+      <div style={{ borderRight: "1px solid #1a1a2a", overflowY: "auto", padding: 12 }}>
+        <Lbl>Conversation</Lbl>
+        {turns.slice(0, idx+1).map((tr, i) => (
+          <div key={i} onClick={()=>{setIdx(i);setPlaying(false);}} style={{ cursor:"pointer", marginBottom:12, opacity: i===idx?1:0.3 }}>
+            <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:3 }}>
+              <div style={{ maxWidth:"92%", padding:"6px 10px", borderRadius:"10px 10px 3px 10px", background:"#1a1a2e", color:"#cbd5e1", fontSize:12.5, lineHeight:1.4 }}>{tr.message}</div>
+            </div>
+            <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:2 }}>
+              <Tier tier={tr.tier} small />
+              <Bar v={tr.score?.composite} w={28} h={3} />
+              <span style={{ fontSize:9, color:"#64748b", fontFamily:mono }}>{Math.round((tr.score?.composite||0)*100)}%</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ═══ CENTER: TABS + CONTENT ═══ */}
+      <div style={{ display: "grid", gridTemplateRows: "36px 1fr", overflow: "hidden" }}>
+        {/* Tab bar */}
+        <div style={{ display:"flex", gap:3, padding:"4px 12px", borderBottom:"1px solid #1a1a2a", background:"#0e0e18", alignItems:"center" }}>
+          {["output","prompt","snapshot","tree"].map((k,i)=>(
+            <button key={k} onClick={()=>setTab(k)} style={{ padding:"4px 10px", fontSize:11, fontWeight:tab===k?600:400, fontFamily:mono, color:tab===k?"#e2e8f0":"#64748b", background:tab===k?"#1e293b":"transparent", border:tab===k?"1px solid #334155":"1px solid transparent", borderRadius:4, cursor:"pointer" }}>
+              {i+1}. {k[0].toUpperCase()+k.slice(1)}
+            </button>
+          ))}
+        </div>
+        {/* Content - key forces re-render on tab change */}
+        <div key={tab + "-" + idx} style={{ overflowY:"auto", padding:14 }}>
+
+          {tab === "output" && <>
+            {t.had_fences && <div style={{ marginBottom:10, padding:"4px 10px", background:"#422006", border:"1px solid #a16207", borderRadius:4, fontSize:11, color:"#fde68a" }}>⚠ Model wrapped output in code fences (stripped for processing)</div>}
+            {!isL4 && evts.length > 0 && <div style={{ marginBottom:14, lineHeight:2.2 }}>
+              {evts.map((e,i)=>{ const c=EC[e.t]||{bg:"#1e293b",tx:"#94a3b8",bd:"#334155"}; return <span key={i} style={{ display:"inline-block", padding:"2px 7px", borderRadius:4, background:c.bg, border:`1px solid ${c.bd}`, color:c.tx, fontSize:11, fontFamily:mono, marginRight:5, marginBottom:4 }}><b>{e.t}</b>{(e.id||e.ref)?" "+(e.id||e.ref):""}</span>; })}
+            </div>}
+            <Lbl>{isL4 ? "L4 Plain Text Response" : "Clean JSONL"}</Lbl>
+            {isL4
+              ? <div style={{ background:"#111118", border:"1px solid #1e1e2e", borderRadius:6, padding:16, fontSize:14, lineHeight:1.7, color:"#d1d5db", minHeight:40 }}>{t.output||"(empty)"}</div>
+              : <Pre text={t.output} mh={400} />}
+            {t.notes && <div style={{ marginTop:12, padding:"8px 12px", background:"#1a1a0e", border:"1px solid #333318", borderRadius:6, fontSize:12, color:"#d4d484" }}>{"📝 "}{t.notes}</div>}
+          </>}
+
+          {tab === "prompt" && <>
+            <Lbl>System Prompt Sent to Model</Lbl>
+            <Pre text={t.system_prompt} mh={600} />
+          </>}
+
+          {tab === "snapshot" && <>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+              <div><Lbl>Before</Lbl><Pre text={JSON.stringify(t.snapshot_before,null,2)} mh={360} /></div>
+              <div><Lbl>After</Lbl><Pre text={JSON.stringify(t.snapshot_after,null,2)} mh={360} /></div>
+            </div>
+            <div style={{ marginTop:14 }}>
+              <Lbl>Entity Diff</Lbl>
+              <div>
+                {diff.add.map(k=><span key={k} style={{ display:"inline-block", padding:"2px 7px", borderRadius:4, background:"#064e3b", border:"1px solid #047857", color:"#6ee7b7", fontSize:11, fontFamily:mono, marginRight:5, marginBottom:4 }}>+ {k}</span>)}
+                {diff.mod.map(k=><span key={k} style={{ display:"inline-block", padding:"2px 7px", borderRadius:4, background:"#1e3a5f", border:"1px solid #2563eb", color:"#93c5fd", fontSize:11, fontFamily:mono, marginRight:5, marginBottom:4 }} title={(diff.modDetails[k]||[]).join(", ")}>~ {k}</span>)}
+                {diff.rem.map(k=><span key={k} style={{ display:"inline-block", padding:"2px 7px", borderRadius:4, background:"#4c0519", border:"1px solid #be123c", color:"#fda4af", fontSize:11, fontFamily:mono, marginRight:5, marginBottom:4 }}>- {k}</span>)}
+                {diff.add.length===0 && diff.rem.length===0 && diff.mod.length===0 && <span style={{ fontSize:12, color:"#64748b" }}>No entity changes</span>}
+              </div>
+              {diff.mod.length > 0 && <div style={{ marginTop:8 }}>
+                {diff.mod.map(k=><div key={k} style={{ fontSize:11, fontFamily:mono, color:"#93c5fd", marginBottom:2 }}>{k}: {(diff.modDetails[k]||[]).join(", ")}</div>)}
+              </div>}
+            </div>
+          </>}
+
+          {tab === "tree" && <>
+            <Lbl>Entity Tree — Turn {t.turn}</Lbl>
+            {tree.length > 0 ? (
+              <div style={{ background:"#08080f", border:"1px solid #1e1e2e", borderRadius:6, padding:12 }}>
+                {tree.map((e,i)=>{ const nw=diff.add.includes(e.id); const md=diff.mod.includes(e.id); const clr=nw?"#6ee7b7":md?"#93c5fd":"#cbd5e1"; return (
+                  <div key={i} style={{ paddingLeft:e.depth*20, paddingTop:3, paddingBottom:3, fontSize:12, fontFamily:mono }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+                      <span style={{ color:"#475569" }}>{e.depth>0?"├─":"◆"}</span>
+                      <span style={{ color:clr, fontWeight:nw||md?700:400 }}>{e.id}</span>
+                      {nw && <span style={{ fontSize:9, padding:"0 4px", borderRadius:3, background:"#064e3b", color:"#6ee7b7", border:"1px solid #047857" }}>new</span>}
+                      {md && <span style={{ fontSize:9, padding:"0 4px", borderRadius:3, background:"#1e3a5f", color:"#93c5fd", border:"1px solid #2563eb" }}>mod</span>}
+                      {e.display && <span style={{ fontSize:10, padding:"0 4px", marginLeft:2, borderRadius:3, background:"#1e293b", color:"#94a3b8" }}>{e.display}</span>}
+                    </div>
+                    {e.props && Object.keys(e.props).length>0 && <div style={{ paddingLeft:20, fontSize:11, color:"#475569", fontFamily:mono }}>
+                      {Object.entries(e.props).slice(0,5).map(([k,v])=>{
+                        const changes = diff.modDetails[e.id] || [];
+                        const isChanged = changes.some(c => c.startsWith(k+":") || c === "+"+k);
+                        return <span key={k} style={{ marginRight:8, color:isChanged?"#93c5fd":"#475569", fontWeight:isChanged?600:400 }}>{k}={JSON.stringify(v).slice(0,24)}</span>;
+                      })}
+                    </div>}
+                  </div>
+                );})}
+              </div>
+            ) : <div style={{ color:"#64748b", fontSize:13, padding:12, background:"#08080f", border:"1px solid #1e1e2e", borderRadius:6 }}>No entities. Snapshot may be abbreviated or L4 read-only.</div>}
+          </>}
+
+        </div>
+      </div>
+
+      {/* ═══ RIGHT: SCORES ═══ */}
+      <div style={{ borderLeft: "1px solid #1a1a2a", overflowY: "auto", padding: 12 }}>
+        <Lbl>Score</Lbl>
+        <div style={{ fontSize:26, fontWeight:700, color:sc(t.score?.composite||0), fontFamily:mono }}>{pct}%</div>
+        <Bar v={t.score?.composite||0} w={170} h={6} />
+        <div style={{ fontSize:9, color:"#475569", fontFamily:mono, marginTop:4 }}>rule-based · not LLM-as-judge</div>
+
+        <div style={{ marginTop:12 }}>
+          {DIMS.map(d=>{
+            const detail = t.score_details?.[d];
+            const dimV = t.score?.[d]||0;
+            const expanded = expandedDim === d;
+            return <div key={d} style={{ marginBottom:2 }}>
+              <div onClick={()=>setExpandedDim(expanded?null:d)} style={{ display:"flex", alignItems:"center", gap:4, cursor:"pointer", padding:"3px 0" }}>
+                <span style={{ fontSize:9, color:expanded?"#e2e8f0":"#94a3b8", width:36, fontFamily:mono, fontWeight:expanded?600:400 }}>{DLBL[d]}</span>
+                <Bar v={dimV} w={62} h={4} />
+                <span style={{ fontSize:10, fontFamily:mono, color:"#64748b" }}>{Math.round(dimV*100)}</span>
+                <span style={{ fontSize:8, color:"#334155", marginLeft:"auto" }}>{expanded?"▾":"▸"}</span>
+              </div>
+              {expanded && detail && <div style={{ paddingLeft:4, paddingBottom:6, borderLeft:"2px solid #1e293b", marginLeft:2, marginBottom:4 }}>
+                <div style={{ fontSize:9, color:"#64748b", marginBottom:4, fontStyle:"italic" }}>{DDESC[d]}</div>
+                {Object.entries(detail.checks||{}).map(([ck,cv])=>(
+                  <div key={ck} style={{ display:"flex", alignItems:"center", gap:4, marginBottom:2, paddingLeft:4 }}>
+                    <span style={{ width:6, height:6, borderRadius:"50%", background:cv>=0.9?"#4ade80":cv>=0.5?"#facc15":"#f87171", flexShrink:0 }} />
+                    <span style={{ fontSize:10, color:"#94a3b8", fontFamily:mono, flex:1 }}>{ck.replace(/_/g," ")}</span>
+                    <span style={{ fontSize:10, fontFamily:mono, color:"#64748b" }}>{typeof cv==="number"?Math.round(cv*100):cv}</span>
+                  </div>
+                ))}
+                {(detail.notes||[]).length > 0 && <div style={{ marginTop:4 }}>
+                  {detail.notes.map((n,ni)=><div key={ni} style={{ fontSize:9, color:"#d4d484", paddingLeft:4, marginBottom:1, lineHeight:1.4 }}>{n}</div>)}
+                </div>}
+              </div>}
+            </div>;
+          })}
+        </div>
+
+        <div style={{ marginTop:14 }}>
+          <Lbl>Latency</Lbl>
+          {[["TTFT", t.ttfc_ms!=null?(t.ttfc_ms+"ms"):"—"], ["TTC", t.ttc_ms+"ms"]].map(([k,v])=>(
+            <div key={k} style={{ display:"flex", justifyContent:"space-between", fontSize:11, marginBottom:3 }}>
+              <span style={{ color:"#64748b" }}>{k}</span>
+              <span style={{ fontFamily:mono, color:k==="TTFT"?"#c4b5fd":"#94a3b8" }}>{v}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop:10 }}>
+          <Lbl>Tokens</Lbl>
+          {[["In", t.input_tokens], ["Out", t.output_tokens], ["Cache W", t.cache_creation], ["Cache R", t.cache_read]].map(([k,v])=>(
+            <div key={k} style={{ display:"flex", justifyContent:"space-between", fontSize:11, marginBottom:3 }}>
+              <span style={{ color:"#64748b" }}>{k}</span>
+              <span style={{ fontFamily:mono, color:k==="Cache R"&&v>0?"#4ade80":"#94a3b8" }}>{v!=null?v:"—"}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop:14 }}>
+          <Lbl>Routing</Lbl>
+          <div style={{ fontSize:11, marginBottom:3 }}>Expect <Tier tier={t.expected_tier} small /></div>
+          <div style={{ fontSize:11, marginBottom:3 }}>Class <Tier tier={t.classified_tier} small /></div>
+          <div style={{ fontSize:11 }}>Actual <Tier tier={t.tier} small /></div>
+          {t.classified_tier !== t.expected_tier && <div style={{ marginTop:4, fontSize:10, color:"#fb923c" }}>⚠ mismatch</div>}
+          {t.escalated_to && <div style={{ marginTop:4, fontSize:10, color:"#c4b5fd" }}>↗ escalated to <Tier tier={t.escalated_to} small /></div>}
+        </div>
+      </div>
+
+      {/* ═══ BOTTOM: TIMELINE ═══ */}
+      <div style={{ gridColumn:"1/-1", display:"flex", alignItems:"center", gap:8, padding:"0 16px", borderTop:"1px solid #1a1a2a", background:"#0e0e18" }}>
+        <button onClick={()=>{setIdx(p=>Math.max(p-1,0));setPlaying(false);}} style={{ background:"none", border:"none", color:"#64748b", fontSize:15, cursor:"pointer" }}>◀</button>
+        <button onClick={()=>setPlaying(p=>!p)} style={{ background:"none", border:"none", color:playing?"#ef4444":"#4ade80", fontSize:17, cursor:"pointer", width:22, textAlign:"center" }}>{playing?"⏸":"▶"}</button>
+        <button onClick={()=>{setIdx(p=>Math.min(p+1,N-1));setPlaying(false);}} style={{ background:"none", border:"none", color:"#64748b", fontSize:15, cursor:"pointer" }}>▶</button>
+        <div onClick={e=>{const r=e.currentTarget.getBoundingClientRect();const p=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));setIdx(Math.round(p*(N-1)));setPlaying(false);}} style={{ flex:1, height:28, cursor:"pointer", position:"relative", display:"flex", alignItems:"center" }}>
+          <div style={{ position:"absolute", left:0, right:0, height:3, background:"#1e293b", borderRadius:2 }} />
+          <div style={{ position:"absolute", left:0, width:`${(idx/Math.max(N-1,1))*100}%`, height:3, background:"#3b82f6", borderRadius:2 }} />
+          {turns.map((tr,i)=>{const c=TC[tr.tier]||TC.L2;const a=i===idx; return <div key={i} style={{ position:"absolute", left:`${(i/Math.max(N-1,1))*100}%`, transform:"translateX(-50%)" }}><div style={{ width:a?12:8, height:a?12:8, borderRadius:"50%", background:a?c.tx:c.bg, border:`2px solid ${c.bd}` }} /></div>;})}
+        </div>
+        <span style={{ fontSize:9, color:"#334155", fontFamily:mono }}>←→ spc 1-4</span>
+      </div>
+
+    </div>
+  );
+}
+
+ReactDOM.render(React.createElement(Viewer), document.getElementById("root"));
+</script>
+</body>
+</html>
