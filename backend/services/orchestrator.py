@@ -127,9 +127,7 @@ class Orchestrator:
                 )
 
                 # Auto-escalate if L2 returned nothing useful
-                should_escalate = l2_result["escalate"] or (
-                    not l2_result["primitives"] and not l2_result["response"]
-                )
+                should_escalate = l2_result["escalate"] or (not l2_result["primitives"] and not l2_result["response"])
 
                 if should_escalate:
                     # L2 requested escalation or returned empty → route to L3
