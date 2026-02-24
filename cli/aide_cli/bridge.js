@@ -20,6 +20,7 @@ try {
   process.exit(1);
 }
 
+// Extract available functions (not all may be present)
 const { reduce, replay, emptyState, renderTextCli } = engine;
 
 const rl = readline.createInterface({ input: process.stdin });
@@ -31,15 +32,27 @@ rl.on("line", (line) => {
 
     switch (req.method) {
       case "renderText":
-        result = renderTextCli(req.params.snapshot);
+        if (!renderTextCli) {
+          result = { error: "renderTextCli not available in engine" };
+        } else {
+          result = renderTextCli(req.params.snapshot);
+        }
         break;
 
       case "reduce":
-        result = reduce(req.params.snapshot, req.params.event);
+        if (!reduce) {
+          result = { error: "reduce not available in engine" };
+        } else {
+          result = reduce(req.params.snapshot, req.params.event);
+        }
         break;
 
       case "replay":
-        result = replay(req.params.events);
+        if (!replay) {
+          result = { error: "replay not available in engine" };
+        } else {
+          result = replay(req.params.events);
+        }
         break;
 
       case "ping":
