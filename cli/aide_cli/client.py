@@ -95,17 +95,23 @@ class ApiClient:
             res = httpx.get(url, timeout=10.0, follow_redirects=True)
             res.raise_for_status()
 
-            engine_path.write_text(res.text)
+            # Validate response is JavaScript, not error JSON
+            content = res.text
+            if content.startswith("[{") or content.startswith('{"error'):
+                raise ValueError("Server returned error instead of JavaScript")
+
+            engine_path.write_text(content)
             return True
 
         except Exception as e:
-            # If fetch fails, check if we have a cached version
+            # If fetch fails, check if we have a cached version that looks valid
             if engine_path.exists():
-                print(f"  Warning: Could not fetch engine.js, using cached version ({e})")
-                return True
-            else:
-                print(f"  Error: Could not fetch engine.js and no cached version exists ({e})")
-                return False
+                cached = engine_path.read_text()[:50]
+                if not cached.startswith("[{") and not cached.startswith('{"error'):
+                    print(f"  Warning: Could not fetch engine.js, using cached version ({e})")
+                    return True
+            print(f"  Error: Could not fetch engine.js and no valid cached version exists ({e})")
+            return False
 
     def close(self):
         """Close client."""
