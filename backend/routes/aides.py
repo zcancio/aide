@@ -49,13 +49,26 @@ async def create_aide(
 @router.get("/{aide_id}", status_code=200)
 async def get_aide(
     aide_id: UUID,
+    include_snapshot: bool = False,
     user: User = Depends(get_current_user),
 ) -> AideResponse:
-    """Get a single aide by ID."""
+    """
+    Get a single aide by ID.
+
+    If include_snapshot=true, the response will include the full snapshot.
+    This is used by the CLI for text rendering.
+    """
     aide = await aide_repo.get(user.id, aide_id)
     if not aide:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aide not found.")
-    return AideResponse.from_model(aide)
+
+    response = AideResponse.from_model(aide)
+
+    # Optionally include snapshot for CLI text rendering
+    if include_snapshot:
+        response.snapshot = aide.state
+
+    return response
 
 
 @router.get("/{aide_id}/hydrate", status_code=200)

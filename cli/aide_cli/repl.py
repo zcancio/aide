@@ -1,19 +1,24 @@
 """REPL for AIde CLI."""
+import asyncio
+import sys
 import webbrowser
 
 from aide_cli.client import ApiClient
 from aide_cli.config import Config
+from aide_cli.node_bridge import NodeBridge
 
 
 class Repl:
     """Interactive REPL for AIde."""
 
-    def __init__(self, config: Config, aide_id: str | None = None):
+    def __init__(self, config: Config, aide_id: str | None = None, bridge: NodeBridge | None = None):
         self.config = config
         self.client = ApiClient(config.api_url, config.token)
         self.current_aide_id = aide_id or config.default_aide_id
         self.current_aide = None
         self.running = True
+        self.watch_mode = False
+        self.bridge = bridge
 
     def start(self):
         """Start the REPL."""
@@ -21,7 +26,7 @@ class Repl:
         if self.current_aide_id:
             try:
                 self.current_aide = self.client.get(f"/api/aides/{self.current_aide_id}")
-                print(f"aide > {self.current_aide['name']}")
+                print(f"aide > {self.current_aide['title']}")
             except Exception as e:
                 print(f"Failed to load aide: {e}")
                 self.current_aide_id = None
@@ -43,8 +48,8 @@ class Repl:
                 if line.startswith("/"):
                     self._handle_command(line)
                 else:
-                    # Send message
-                    self._send_message(line)
+                    # Send message with streaming
+                    asyncio.run(self._send_message_async(line))
 
             except (EOFError, KeyboardInterrupt):
                 print()
@@ -77,16 +82,23 @@ class Repl:
         elif cmd == "/info":
             self._show_info()
         elif cmd == "/history":
-            n = int(arg) if arg else 10
+            n = int(arg) if arg else 20
             self._show_history(n)
+        elif cmd == "/view":
+            self._view_state()
+        elif cmd == "/watch":
+            if arg and arg.lower() in ["on", "off"]:
+                self._toggle_watch(arg.lower() == "on")
+            else:
+                self._toggle_watch(not self.watch_mode)
         elif cmd == "/help":
             self._show_help()
         else:
             print(f"Unknown command: {cmd}")
             print("Type /help for available commands.")
 
-    def _send_message(self, text: str):
-        """Send a message to current aide."""
+    async def _send_message_async(self, text: str):
+        """Send a message to current aide with streaming."""
         if not self.current_aide:
             # Create new aide with first message
             try:
@@ -99,16 +111,33 @@ class Repl:
                 print(f"Failed to create aide: {e}")
                 return
 
-        # Send message
+        # Send message with streaming
         try:
-            # Note: This is a simplified version. The real implementation would
-            # need to handle WebSocket streaming or polling for responses.
-            # For now, we just send the message and show a placeholder response.
-            data = {"aide_id": self.current_aide_id, "message": text}
-            self.client.post("/api/message", data)
-            print("  Message sent. (Note: streaming not yet implemented in CLI)")
+            print("  ", end="", flush=True)  # Indent for response
+
+            full_response = ""
+            async for event_type, data in self.client.stream_message(
+                self.current_aide_id, text
+            ):
+                if event_type == "voice":
+                    text_chunk = data.get("text", "")
+                    print(text_chunk, end="", flush=True)
+                    full_response += text_chunk
+
+                elif event_type == "done":
+                    print()  # Newline after streaming completes
+                    break
+
+            # If watch mode is on, render the state
+            if self.watch_mode and self.bridge:
+                self._render_state_after_message()
+
+        except KeyboardInterrupt:
+            print()  # Clean newline on interrupt
+            print("  (Interrupted)")
         except Exception as e:
-            print(f"Failed to send message: {e}")
+            print()
+            print(f"  Error: {e}")
 
     def _list_aides(self):
         """List all aides."""
@@ -163,9 +192,9 @@ class Repl:
         # Get published slug
         try:
             aide = self.client.get(f"/api/aides/{self.current_aide_id}")
-            slug = aide.get("published_slug")
+            slug = aide.get("slug")
 
-            if not slug:
+            if not slug or aide.get("status") != "published":
                 print("  This aide is not published yet.")
                 return
 
@@ -184,13 +213,15 @@ class Repl:
 
         try:
             aide = self.client.get(f"/api/aides/{self.current_aide_id}")
-            name = aide.get("title", "Untitled")
+            title = aide.get("title", "Untitled")
             created = aide.get("created_at", "Unknown")
-            slug = aide.get("published_slug")
+            slug = aide.get("slug")
+            status = aide.get("status", "draft")
 
-            print(f"  Name: {name}")
+            print(f"  Title: {title}")
+            print(f"  Status: {status}")
             print(f"  Created: {created}")
-            if slug:
+            if slug and status == "published":
                 print(f"  Published: {self.config.api_url}/s/{slug}")
 
         except Exception as e:
@@ -202,8 +233,104 @@ class Repl:
             print("  No current aide.")
             return
 
-        # TODO: Implement when message history endpoint is available
-        print("  (Message history not yet implemented)")
+        try:
+            response = self.client.get(f"/api/aides/{self.current_aide_id}/history")
+            messages = response.get("messages", [])
+
+            if not messages:
+                print("  No conversation history.")
+                return
+
+            # Show last n messages
+            recent = messages[-n:]
+
+            for i, msg in enumerate(recent):
+                role = msg.get("role")
+                content = msg.get("content", "")
+
+                if role == "user":
+                    prefix = "\033[90myou:\033[0m"  # Dim
+                elif role == "assistant":
+                    prefix = "\033[32maide:\033[0m"  # Green
+                else:
+                    continue  # Skip system messages
+
+                print(f"  {prefix} {content}")
+
+                # Blank line after assistant messages (end of exchange)
+                if role == "assistant" and i < len(recent) - 1:
+                    print()
+
+        except Exception as e:
+            print(f"Failed to get history: {e}")
+
+    def _view_state(self):
+        """Render current aide state as text."""
+        if not self.current_aide:
+            print("  No current aide.")
+            return
+
+        if not self.bridge:
+            print("  Text rendering unavailable. Engine not loaded.")
+            return
+
+        try:
+            # Fetch aide with snapshot
+            aide = self.client.get(
+                f"/api/aides/{self.current_aide_id}",
+                params={"include_snapshot": "true"}
+            )
+            snapshot = aide.get("snapshot")
+
+            if not snapshot:
+                print("  No state yet.")
+                return
+
+            # Render via Node bridge
+            text = self.bridge.render_text(snapshot)
+            print()
+            print(text)
+            print()
+
+        except Exception as e:
+            print(f"Failed to render state: {e}")
+
+    def _toggle_watch(self, enable: bool):
+        """Toggle watch mode."""
+        self.watch_mode = enable
+
+        if enable:
+            print("  Watch mode: showing state after each message.")
+        else:
+            print("  Watch mode: off.")
+
+    def _render_state_after_message(self):
+        """Render state after a message (used in watch mode)."""
+        if not self.bridge or not self.current_aide_id:
+            return
+
+        try:
+            # Add separator
+            print()
+            print("  " + "┄" * 50)
+            print()
+
+            # Fetch and render
+            aide = self.client.get(
+                f"/api/aides/{self.current_aide_id}",
+                params={"include_snapshot": "true"}
+            )
+            snapshot = aide.get("snapshot")
+
+            if snapshot:
+                text = self.bridge.render_text(snapshot)
+                # Indent the rendered text
+                for line in text.split("\n"):
+                    print(f"  {line}")
+            print()
+
+        except Exception as e:
+            print(f"  (Failed to render state: {e})")
 
     def _show_help(self):
         """Show help message."""
@@ -214,7 +341,9 @@ class Repl:
     /new           - Start a new aide
     /page          - Open published page in browser
     /info          - Show current aide details
-    /history [n]   - Show last n messages (default 10)
+    /history [n]   - Show last n messages (default 20)
+    /view          - Render current state in terminal
+    /watch [on|off]- Auto-render state after each message
     /help          - Show this help
     /quit          - Exit REPL
 """)
