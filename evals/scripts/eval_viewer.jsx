@@ -16,7 +16,7 @@ const DEMO = {
 };
 
 const TC = { L2: { bg: "#0c4a6e", tx: "#7dd3fc", bd: "#0369a1", lb: "L2 Haiku" }, L3: { bg: "#4c1d95", tx: "#c4b5fd", bd: "#6d28d9", lb: "L3 Sonnet" }, L4: { bg: "#713f12", tx: "#fde68a", bd: "#a16207", lb: "L4 Opus" } };
-const EC = { "entity.create": { bg: "#064e3b", tx: "#6ee7b7", bd: "#047857" }, "entity.update": { bg: "#1e3a5f", tx: "#93c5fd", bd: "#2563eb" }, "meta.set": { bg: "#422006", tx: "#fdba74", bd: "#c2410c" }, voice: { bg: "#1a2e05", tx: "#bef264", bd: "#4d7c0f" } };
+const EC = { "entity.create": { bg: "#064e3b", tx: "#6ee7b7", bd: "#047857" }, "entity.update": { bg: "#1e3a5f", tx: "#93c5fd", bd: "#2563eb" }, "meta.set": { bg: "#422006", tx: "#fdba74", bd: "#c2410c" }, voice: { bg: "#1a2e05", tx: "#bef264", bd: "#4d7c0f" }, clarify: { bg: "#4a1d96", tx: "#e9d5ff", bd: "#7c3aed" }, "rel.set": { bg: "#3b0764", tx: "#c4b5fd", bd: "#6d28d9" }, escalate: { bg: "#1e1b4b", tx: "#a5b4fc", bd: "#4338ca" } };
 const DIMS = ["validity", "voice", "structure", "efficiency", "fidelity"];
 const DLBL = { validity: "Valid", voice: "Voice", structure: "Struct", efficiency: "Effic", fidelity: "Fidel" };
 const DDESC = {
@@ -164,6 +164,13 @@ export default function Viewer() {
 
           {tab === "output" && <>
             {t.had_fences && <div style={{ marginBottom:10, padding:"4px 10px", background:"#422006", border:"1px solid #a16207", borderRadius:4, fontSize:11, color:"#fde68a" }}>⚠ Model wrapped output in code fences (stripped for processing)</div>}
+            {t.clarify && t.clarify.length > 0 && t.clarify.map((c,ci) => <div key={ci} style={{ marginBottom:10, padding:"8px 12px", background:"#2e1065", border:"1px solid #7c3aed", borderRadius:6 }}>
+              <div style={{ fontSize:11, color:"#c4b5fd", fontWeight:600, marginBottom:4 }}>❓ Clarification requested</div>
+              <div style={{ fontSize:12, color:"#e9d5ff" }}>{c.text}</div>
+              {c.options && c.options.length > 0 && <div style={{ display:"flex", gap:6, marginTop:6, flexWrap:"wrap" }}>
+                {c.options.map((o,oi) => <span key={oi} style={{ padding:"2px 8px", fontSize:10, borderRadius:4, background:"#4a1d96", border:"1px solid #7c3aed", color:"#e9d5ff" }}>{o}</span>)}
+              </div>}
+            </div>)}
             {!isL4 && evts.length > 0 && <div style={{ marginBottom:14, lineHeight:2.2 }}>
               {evts.map((e,i)=>{ const c=EC[e.t]||{bg:"#1e293b",tx:"#94a3b8",bd:"#334155"}; return <span key={i} style={{ display:"inline-block", padding:"2px 7px", borderRadius:4, background:c.bg, border:`1px solid ${c.bd}`, color:c.tx, fontSize:11, fontFamily:mono, marginRight:5, marginBottom:4 }}><b>{e.t}</b>{(e.id||e.ref)?" "+(e.id||e.ref):""}</span>; })}
             </div>}
@@ -309,6 +316,8 @@ export default function Viewer() {
           <div style={{ fontSize:11 }}>Actual <Tier tier={t.tier} small /></div>
           {t.classified_tier !== t.expected_tier && <div style={{ marginTop:4, fontSize:10, color:"#fb923c" }}>⚠ mismatch</div>}
           {t.escalated_to && <div style={{ marginTop:4, fontSize:10, color:"#c4b5fd" }}>↗ escalated to <Tier tier={t.escalated_to} small /></div>}
+          {t.retried && <div style={{ marginTop:4, fontSize:10, color:"#fb923c" }}>⟳ retried (plain text on first attempt)</div>}
+          {t.clarify && t.clarify.length > 0 && <div style={{ marginTop:4, fontSize:10, color:"#e9d5ff" }}>❓ asked clarification</div>}
         </div>
       </div>
 

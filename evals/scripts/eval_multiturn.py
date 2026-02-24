@@ -30,7 +30,7 @@ import json
 import os
 import sys
 import time
-from datetime import date, datetime
+from datetime import date, datetime, timezone, timedelta
 from pathlib import Path
 
 import anthropic
@@ -52,8 +52,29 @@ def load_prompt(name: str) -> str:
 
 
 def build_system_blocks(tier: str, snapshot: dict | None) -> list[dict]:
+    # Use Pacific time to avoid UTC date rollover mismatches
+    pacific = timezone(timedelta(hours=-8))
+    today = datetime.now(pacific).date()
+
+    # Build calendar context so the model doesn't have to do date arithmetic
+    cal_lines = []
+    mon = today - timedelta(days=today.weekday())
+    week = []
+    for i in range(7):
+        d = mon + timedelta(days=i)
+        marker = " (today)" if d == today else ""
+        week.append(f"{d.strftime('%a %b %d')}{marker}")
+    cal_lines.append("This week: " + " | ".join(week))
+    days_since_thu = (today.weekday() - 3) % 7
+    last_thu = today - timedelta(days=days_since_thu) if days_since_thu > 0 else today - timedelta(days=7)
+    this_thu = last_thu + timedelta(days=7)
+    cal_lines.append(f"Last Thursday = {last_thu.strftime('%b %d')}. This Thursday = {this_thu.strftime('%b %d')}. Two weeks from last Thursday = {(last_thu + timedelta(days=14)).strftime('%b %d')}.")
+    calendar_context = "\n".join(cal_lines)
+
     prefix = load_prompt("shared_prefix").replace(
-        "{{current_date}}", date.today().strftime("%A, %B %d, %Y")  # e.g. "Tuesday, February 24, 2026"
+        "{{current_date}}", today.strftime("%A, %B %d, %Y")
+    ).replace(
+        "{{calendar_context}}", calendar_context
     )
     tier_text = load_prompt({"L2": "l2_tier", "L3": "l3_tier", "L4": "l4_tier"}[tier])
     blocks = [
@@ -365,6 +386,23 @@ def run_multiturn_scenario(
 
             result = run_turn(client, message, actual_tier, snapshot, history)
 
+            # Retry guard: if L2/L3 produced zero parseable JSONL, it slipped
+            # into conversational mode. Retry once with explicit nudge.
+            if actual_tier in ("L2", "L3"):
+                check_parsed, _ = parse_jsonl(result["output"])
+                if not check_parsed:
+                    print(f"    ⚠ {actual_tier} produced plain text, retrying with nudge...")
+                    retry_msg = message + "\n\n[System: respond with JSONL operations only. No prose.]"
+                    retry_result = run_turn(client, retry_msg, actual_tier, snapshot, history)
+                    retry_parsed, _ = parse_jsonl(retry_result["output"])
+                    if retry_parsed:
+                        result = retry_result
+                        result["retried"] = True
+                        print(f"    ✓ Retry produced {len(retry_parsed)} operations")
+                    else:
+                        result["retried"] = True
+                        print(f"    ✗ Retry also failed — plain text output")
+
             # Check for escalation signals in L2 output
             # Production server: apply L2 mutations, then re-route to escalation tier
             escalation_result = None
@@ -416,6 +454,7 @@ def run_multiturn_scenario(
                 latency_ms=result["ttc_ms"],
                 snapshot=snapshot,
                 user_message=message,
+                turn_hints=turn_spec.get("checks", {}),
             )
 
             # Update snapshot from clean output (fences stripped)
@@ -438,7 +477,11 @@ def run_multiturn_scenario(
                 if updates:
                     parts.append(f"Updated {', '.join(updates[:3])}" + (f" +{len(updates)-3} more" if len(updates) > 3 else ""))
                 voice_lines = [e.get("text","") for e in parsed_events if e.get("t") == "voice"]
-                if voice_lines:
+                clarify_lines = [e.get("text","") for e in parsed_events if e.get("t") == "clarify"]
+                if clarify_lines:
+                    # Clarification takes priority — it's what the user sees
+                    assistant_summary = "Question: " + clarify_lines[-1]
+                elif voice_lines:
                     assistant_summary = voice_lines[-1]
                 elif parts:
                     assistant_summary = ". ".join(parts) + "."
@@ -533,6 +576,13 @@ def run_multiturn_scenario(
                 "entity_count": entity_count,
                 "entity_delta": entity_delta,
                 "escalated_to": result.get("escalated_to"),
+                "retried": result.get("retried", False),
+                # Clarification signals
+                "clarify": [
+                    {"text": e.get("text",""), "options": e.get("options",[])}
+                    for e in (parse_jsonl(result["output"])[0] if actual_tier != "L4" else [])
+                    if e.get("t") == "clarify"
+                ],
             })
 
         except Exception as e:

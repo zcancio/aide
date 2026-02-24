@@ -44,7 +44,7 @@ Code fence handling:
 from __future__ import annotations
 
 import json
-from datetime import date
+from datetime import date, datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -88,7 +88,32 @@ def build_system_blocks(tier: str, snapshot: dict[str, Any]) -> list[dict[str, A
     Returns:
         List of content blocks for system parameter.
     """
-    prefix = _shared_prefix().replace("{{current_date}}", date.today().strftime("%A, %B %d, %Y"))
+    pacific = timezone(timedelta(hours=-8))
+    today = datetime.now(pacific).date()
+
+    # Build calendar context so the model doesn't have to do date arithmetic
+    cal_lines = []
+    # This week (Mon-Sun containing today)
+    mon = today - timedelta(days=today.weekday())  # Monday of this week
+    week = []
+    for i in range(7):
+        d = mon + timedelta(days=i)
+        marker = " (today)" if d == today else ""
+        week.append(f"{d.strftime('%a %b %d')}{marker}")
+    cal_lines.append("This week: " + " | ".join(week))
+    # Key relative dates
+    # Find last/this/next for common day references
+    days_since_thu = (today.weekday() - 3) % 7
+    last_thu = today - timedelta(days=days_since_thu) if days_since_thu > 0 else today - timedelta(days=7)
+    this_thu = last_thu + timedelta(days=7)
+    cal_lines.append(f"Last Thursday = {last_thu.strftime('%b %d')}. This Thursday = {this_thu.strftime('%b %d')}. Two weeks from last Thursday = {(last_thu + timedelta(days=14)).strftime('%b %d')}.")
+    calendar_context = "\n".join(cal_lines)
+
+    prefix = _shared_prefix().replace(
+        "{{current_date}}", today.strftime("%A, %B %d, %Y")
+    ).replace(
+        "{{calendar_context}}", calendar_context
+    )
     tier_file = {"L2": "l2_tier", "L3": "l3_tier", "L4": "l4_tier"}[tier]
     tier_text = _load(tier_file)
     snapshot_json = json.dumps(snapshot, indent=2)

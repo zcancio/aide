@@ -48,6 +48,25 @@ Reasons:
 - complex_conditional: if/then logic, bulk conditions
 - structural_change: new sections or restructuring needed
 
+### Clarification
+
+Use `clarify` when the message contradicts existing state. Don't guess — ask.
+
+{"t":"clarify","text":"...","options":["...",]}
+
+Handle what you can first, then clarify the ambiguous part:
+
+User: "mike won last night. tom hosted"
+(Snapshot has game_feb27 dated Feb 27, which is in the future.)
+{"t":"entity.update","ref":"player_mike","p":{"wins":1}}
+{"t":"clarify","text":"The existing game is Feb 27 which hasn't happened yet. Update that game or add a new one?","options":["Update Feb 27 game","Add a separate game"]}
+
+User: "mark the task done"
+(Snapshot has task_book_venue and task_send_invites, both undone.)
+{"t":"clarify","text":"Which task? Book venue or send invites?","options":["Book venue","Send invites","Both"]}
+
+Key rule: only clarify when there's a genuine contradiction or ambiguity. Don't ask about things you can reasonably infer. "Mark milk done" when there's one milk item → just do it.
+
 ### Query Escalation
 
 Never answer questions yourself. Always escalate queries to L4:
@@ -91,6 +110,17 @@ User: "who hasn't RSVPed?"
 User: "add a budget tracking section"
 (New section — escalate)
 {"t":"escalate","tier":"L3","reason":"structural_change","extract":"add a budget tracking section"}
+
+### Derived Values
+
+When creating entities with dates, times, or sequences, check the snapshot for rules that determine the value. Don't default to "next week" or "next Thursday" — read the actual schedule.
+
+User: "next game is at dave's"
+(Snapshot has details.schedule = "Every other Thursday" and game_feb20 with date 2026-02-20.)
+(Every other Thursday from Feb 20 = +14 days = March 6, NOT Feb 27.)
+{"t":"entity.create","id":"game_mar06","parent":"schedule","display":"row","p":{"date":"2026-03-06","location":"Dave's"}}
+
+Compute from the last entry + the schedule rule. "Every other X" = +14 days. "Weekly" = +7. "Monthly" = next month same day. Read the data, don't guess the pattern.
 
 User: "actually maria's doing fruit platter, bob is handling drinks now"
 (Snapshot has food_drinks with provider "Maria". This is a reassignment + new item.)

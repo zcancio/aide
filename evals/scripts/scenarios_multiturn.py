@@ -216,7 +216,7 @@ POKER_REALISTIC = {
             "notes": "Adds 2 more players to existing roster.",
         },
         {
-            "message": "we should track wins and who's hosting. first game is at mike's this thursday",
+            "message": "we should track wins and who's hosting. first game was at mike's last thursday",
             "expected_tier": "L3",
             "checks": {"adds_schedule_or_fields": True},
             "accept_tiers": ["L2", "L3"],
@@ -224,10 +224,10 @@ POKER_REALISTIC = {
                      "Should create a game/schedule entry for the first game.",
         },
         {
-            "message": "mike won last night, $120 pot. tom hosted",
+            "message": "mike won, $120 pot. tom ended up hosting",
             "expected_tier": "L2",
             "checks": {"updates_game_result": True, "updates_mike_wins": True},
-            "notes": "Post-game update. Should record the result.",
+            "notes": "Post-game update on the existing game. Should UPDATE game entity, not create new one.",
         },
         {
             "message": "who's won the most so far",
@@ -350,6 +350,71 @@ RENOVATION_REALISTIC = {
 
 
 # ---------------------------------------------------------------------------
+# Roommate Chores — tests clarify signal on ambiguous references
+# ---------------------------------------------------------------------------
+
+CHORES_CLARIFY = {
+    "name": "chores_clarify",
+    "description": "Roommate chore tracker that builds enough state to create genuine ambiguity. "
+                   "Tests whether the model asks for clarification vs guessing.",
+    "turns": [
+        {
+            "message": "roommate chore tracker for me, alex, and jamie",
+            "expected_tier": "L3",
+            "checks": {"creates_page": True, "creates_roster": True},
+            "notes": "Straightforward setup. Should create page + 3 roommates.",
+        },
+        {
+            "message": "weekly chores: dishes, vacuuming, bathroom cleaning, trash, mopping",
+            "expected_tier": "L3",
+            "checks": {"creates_5_chores": True},
+            "accept_tiers": ["L2", "L3"],
+            "notes": "Creates 5 chore entities. May need L3 for new section.",
+        },
+        {
+            "message": "I'll do dishes and mopping. alex has vacuuming and trash. jamie does bathroom",
+            "expected_tier": "L2",
+            "checks": {"assigns_all": True},
+            "notes": "Clear 1:1 assignments. No ambiguity. Should NOT clarify.",
+        },
+        {
+            "message": "alex finished the vacuuming",
+            "expected_tier": "L2",
+            "checks": {"marks_done": True},
+            "notes": "Single match — one vacuuming entity. Should NOT clarify. Just mark done.",
+        },
+        {
+            "message": "swap mine and jamie's",
+            "expected_tier": "L2",
+            "checks": {"should_clarify": True},
+            "notes": "SHOULD CLARIFY. 'Mine' = dishes + mopping (two chores). Jamie's = bathroom (one). "
+                     "Swap which of my two? Both? Model can't know — must ask.",
+        },
+        {
+            "message": "add a new chore - wipe down kitchen counters. jamie can do it",
+            "expected_tier": "L2",
+            "checks": {"creates_chore": True, "assigns_jamie": True},
+            "notes": "Clear intent, clear assignment. Should NOT clarify.",
+        },
+        {
+            "message": "mark jamie's as done",
+            "expected_tier": "L2",
+            "checks": {"should_clarify": True},
+            "notes": "SHOULD CLARIFY. Jamie now has bathroom + kitchen counters. Which one is done? "
+                     "Or both? Model must ask.",
+        },
+        {
+            "message": "actually remove one of alex's chores",
+            "expected_tier": "L2",
+            "checks": {"should_clarify": True},
+            "notes": "SHOULD CLARIFY. Alex has vacuuming (done) + trash. Remove which? "
+                     "Probably the done one, but model shouldn't assume.",
+        },
+    ],
+}
+
+
+# ---------------------------------------------------------------------------
 # All multi-turn scenarios
 # ---------------------------------------------------------------------------
 
@@ -358,6 +423,7 @@ MULTI_TURN_SCENARIOS = [
     POKER_REALISTIC,
     GROCERY_REALISTIC,
     RENOVATION_REALISTIC,
+    CHORES_CLARIFY,
 ]
 
 # ---------------------------------------------------------------------------

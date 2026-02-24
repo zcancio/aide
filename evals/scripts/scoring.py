@@ -44,7 +44,7 @@ VALID_TYPES = {
     "rel.set", "rel.remove", "rel.constrain",
     "style.set", "style.entity",
     "meta.set", "meta.update", "meta.annotate", "meta.constrain",
-    "voice", "escalate", "batch.start", "batch.end",
+    "voice", "escalate", "clarify", "batch.start", "batch.end",
 }
 
 # Composite weights (must sum to 1.0)
@@ -578,6 +578,27 @@ def score_fidelity(text: str, tier: str, scenario_hints: dict | None = None, sna
         checks["has_content"] = 1.0 if len(stripped) > 10 else 0.0
         checks["not_json"] = 0.0 if stripped.startswith("{") else 1.0
 
+    # Clarify signal checks (from turn-level hints)
+    has_clarify = any(p.get("t") == "clarify" for p in parsed) if parsed else False
+    if hints.get("should_clarify"):
+        # Turn expects a clarify signal — penalize if model guessed instead
+        checks["emitted_clarify"] = 1.0 if has_clarify else 0.0
+        if not has_clarify:
+            notes.append("Expected clarify signal for ambiguous input — model guessed instead of asking")
+        else:
+            # Bonus: check clarify has text and options
+            clarifies = [p for p in parsed if p.get("t") == "clarify"]
+            has_text = all(p.get("text") for p in clarifies)
+            has_options = all(p.get("options") and len(p["options"]) >= 2 for p in clarifies)
+            if has_text and has_options:
+                checks["clarify_quality"] = 1.0
+            elif has_text:
+                checks["clarify_quality"] = 0.7
+                notes.append("Clarify has text but missing options")
+            else:
+                checks["clarify_quality"] = 0.3
+                notes.append("Clarify signal lacks text")
+
     score = sum(checks.values()) / max(len(checks), 1) if checks else 0.5
     return DimensionScore("fidelity", score, checks, notes)
 
@@ -652,9 +673,10 @@ def score_scenario(
     cache_hit_pct: float = 0.0,
     snapshot: dict | None = None,
     user_message: str = "",
+    turn_hints: dict | None = None,
 ) -> ScenarioScore:
     """Score a single scenario across all dimensions."""
-    hints = SCENARIO_HINTS.get(name, {})
+    hints = {**SCENARIO_HINTS.get(name, {}), **(turn_hints or {})}
 
     result = ScenarioScore(
         name=name,
