@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
 router = APIRouter(prefix="/api", tags=["engine"])
@@ -20,7 +20,7 @@ async def get_engine():
     engine_path = Path(__file__).parent.parent.parent / "frontend" / "display.js"
 
     if not engine_path.exists():
-        return {"error": "Engine not found"}, 404
+        raise HTTPException(status_code=404, detail=f"Engine not found at {engine_path}")
 
     return FileResponse(
         str(engine_path),
