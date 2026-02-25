@@ -339,7 +339,9 @@ GROCERY_REALISTIC = {
 
 RENOVATION_REALISTIC = {
     "name": "renovation_realistic",
-    "description": "Kitchen renovation tracking with budget, contractors, and timeline.",
+    "description": "Kitchen renovation tracking with budget, contractors, and timeline. "
+                   "Tests budget line items vs tasks distinction, vendor switching, "
+                   "timeline cascades, scope creep, and cross-entity queries.",
     "turns": [
         {
             "message": "redoing our kitchen, gonna be a project",
@@ -350,36 +352,106 @@ RENOVATION_REALISTIC = {
         {
             "message": "budget is around 35k. already spent 8k on the architect plans",
             "expected_tier": "L3",
-            "checks": {"creates_budget_section": True},
+            "checks": {"creates_budget_table": True},
             "accept_tiers": ["L2", "L3"],
-            "notes": "Should create budget tracking with total and first line item.",
+            "notes": "Should create a budget/line_items table with architect plans as the "
+                     "first row (cost: 8000, done/committed). Architect plans are an EXPENSE "
+                     "line item, not a task. Also set budget total on overview card. "
+                     "L2 acceptable — will escalate when it needs to create a new section.",
         },
         {
             "message": "got 3 quotes for the cabinets: woodworks unlimited 12k, cabinet depot 9500, custom craft 15k",
-            "expected_tier": "L2",
-            "checks": {"creates_3_quotes": True},
+            "expected_tier": "L3",
+            "checks": {"creates_quote_table": True},
             "accept_tiers": ["L2", "L3"],
-            "notes": "3 entities with vendor + price. Could be a table or list.",
+            "notes": "Structural: needs a parent table (cabinet_quotes or similar) with 3 row "
+                     "children. Three sibling entities of the same type should be grouped under "
+                     "a table, not dumped flat under page. L2 acceptable — will escalate for "
+                     "new section creation.",
         },
         {
             "message": "going with cabinet depot",
             "expected_tier": "L2",
-            "checks": {"updates_selection": True},
-            "notes": "Should mark cabinet depot as selected/chosen. Tests intent from terse message.",
+            "checks": {"uses_rel_for_selection": True},
+            "notes": "Should select cabinet depot via rel.set (one_to_one 'selected' from "
+                     "the quotes table or page to the quote entity), not a string prop like "
+                     "'cabinet_vendor'. Selection among options is a relationship — switching "
+                     "later is a single rel.set.",
         },
         {
             "message": "how much budget do we have left",
             "expected_tier": "L4",
             "checks": {"calculates_remaining": True, "plain_text": True},
-            "notes": "L4 should sum spent items (8k architect + 9.5k cabinets = 17.5k) "
-                     "and subtract from 35k = 17.5k remaining.",
+            "notes": "L4 should sum committed costs from budget line items (architect 8k + "
+                     "cabinets 9.5k = 17.5k) and subtract from 35k = 17.5k remaining.",
         },
         {
             "message": "plumber can start march 10, electrician march 3. need to get countertops measured before either",
             "expected_tier": "L3",
-            "checks": {"creates_timeline": True},
+            "checks": {"creates_tasks": True},
             "accept_tiers": ["L2", "L3"],
-            "notes": "Timeline/schedule section with dependencies. Tests temporal data.",
+            "notes": "Creates a TASKS section (checklist or table) with action items: "
+                     "measure countertops, plumber, electrician. These are things to DO, "
+                     "not expense line items. Tasks have dates and dependencies, "
+                     "not costs.",
+        },
+        {
+            "message": "cabinet depot called, price is actually 11k not 9500",
+            "expected_tier": "L2",
+            "checks": {"updates_existing": True,
+                       "expect_in_output": ["11000|11k"]},
+            "notes": "Price correction on existing quote. Must entity.update the cabinet depot "
+                     "quote — NOT create a new one. The old price (9500) doesn't need to "
+                     "appear in output — only the corrected value matters.",
+        },
+        {
+            "message": "screw it, switching to woodworks. they'll honor the 9500 price",
+            "expected_tier": "L2",
+            "checks": {"uses_rel_for_selection": True,
+                       "expect_in_output": ["woodworks", "9500"]},
+            "notes": "Vendor switch via rel.set (one_to_one — auto-drops cabinet depot). "
+                     "Also should entity.update woodworks quote price from 12k to 9500. "
+                     "Tests rel.set + correlated entity.update in one turn.",
+        },
+        {
+            "message": "also need new flooring, probably 4 to 6k. and appliances around 8k",
+            "expected_tier": "L2",
+            "checks": {"adds_budget_items": True, "budget_ceiling_intact": True},
+            "accept_tiers": ["L2", "L3"],
+            "notes": "Scope creep — adds 2 new BUDGET LINE ITEMS (not tasks). Flooring and "
+                     "appliances are expenses with cost estimates. They belong in the budget "
+                     "table alongside architect plans, not in the tasks section. "
+                     "Budget total should NOT increase — 35k is the ceiling.",
+        },
+        {
+            "message": "electrician pushed to march 17. plumber has to move too since they need electrical done first",
+            "expected_tier": "L2",
+            "checks": {"updates_dates": True,
+                       "expect_in_output": ["17"]},
+            "notes": "Timeline cascade. Electrician date changes from march 3 to march 17. "
+                     "Plumber was march 10 but depends on electrical → must move AFTER march 17. "
+                     "Both task entities need date updates. Tests dependency reasoning.",
+        },
+        {
+            "message": "what's the full breakdown looking like",
+            "expected_tier": "L4",
+            "checks": {"comprehensive_summary": True, "plain_text": True},
+            "notes": "L4 comprehensive query. Should list: budget ($35k), committed costs "
+                     "(architect $8k, cabinets $9.5k with Woodworks), estimated costs "
+                     "(flooring $4-6k, appliances $8k), remaining budget, timeline with "
+                     "updated dates, and pending tasks. Tests cross-entity synthesis.",
+        },
+        {
+            "message": "countertops are done, ended up costing 3200",
+            "expected_tier": "L2",
+            "checks": {"creates_budget_item": True,
+                       "marks_prereq_done": True,
+                       "expect_in_output": ["3200"]},
+            "accept_tiers": ["L2", "L3"],
+            "notes": "Creates a new countertops LINE ITEM in the budget table (cost: 3200, "
+                     "done/paid). Also should mark task_measure_countertops as done — if "
+                     "countertops are installed and paid for, the measurement prerequisite "
+                     "is necessarily complete. Leaving it unchecked looks wrong.",
         },
     ],
 }

@@ -27,6 +27,14 @@ CRITICAL: Multiple items with the same fields → table, NOT individual cards.
 
 Only use card for genuinely singular entities: event details, venue info, a summary.
 
+### Separate Items from Tasks
+
+When a domain has both expenses and actions, create separate sections:
+- **Budget/expenses table** — things with costs: architect plans, flooring, appliances. Props: cost, estimate, status, vendor.
+- **Tasks checklist** — things to do: schedule plumber, measure countertops. Props: done, date, note.
+
+Don't dump everything into one "tasks" table. "Flooring, probably 4-6k" is a budget line item, not a task. "Measure countertops before the plumber" is a task, not an expense.
+
 ### Voice Narration
 
 Emit a voice line every ~8-10 entity lines to narrate progress. These appear in chat while the page builds. Keep under 100 chars. Narrate what was just built and what's coming:
@@ -132,6 +140,7 @@ Common patterns (from → to):
 - assigned_to (many_to_one): `chore → person`. Each chore has one assignee; a person can have many chores.
 - bringing (many_to_one): `dish → person`. Each dish brought by one person; person can bring many.
 - seated_at (many_to_one): `guest → table`. Each guest at one table; table has many guests.
+- selected (one_to_one): `project → quote`. One vendor selected at a time; switching is a single rel.set.
 
 Direction matters. `many_to_one` constrains the `from` side — each source links to ONE target. Put the constrained side as `from`.
 

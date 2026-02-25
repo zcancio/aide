@@ -495,6 +495,42 @@ def score_fidelity(text: str, tier: str, scenario_hints: dict | None = None, sna
             if not any(n in dp for dp in data_points):
                 data_points.append(n)
 
+        # Correction-turn exception: when the user is correcting a value
+        # ("actually X not Y", "X instead of Y", "changed from Y to X"),
+        # the OLD value shouldn't be required in output.
+        if data_points:
+            msg_lower = user_message.lower()
+            old_values = set()
+            # "not <number>" / "not <dollar>" — value after "not" is the old one
+            for m in re.finditer(r'\bnot\s+\$?([\d,]+[k]?)\b', msg_lower):
+                old_values.add(m.group(1).replace(',', '').replace('k', '000'))
+            # "instead of <number>"
+            for m in re.finditer(r'instead\s+of\s+\$?([\d,]+[k]?)\b', msg_lower):
+                old_values.add(m.group(1).replace(',', '').replace('k', '000'))
+            # "was <number>" (when paired with correction context)
+            if any(w in msg_lower for w in ['actually', 'correct', 'change', 'wrong']):
+                for m in re.finditer(r'\bwas\s+\$?([\d,]+[k]?)\b', msg_lower):
+                    old_values.add(m.group(1).replace(',', '').replace('k', '000'))
+            # "from <number> to <number>" — first is old
+            for m in re.finditer(r'\bfrom\s+\$?([\d,]+[k]?)\s+to\s+', msg_lower):
+                old_values.add(m.group(1).replace(',', '').replace('k', '000'))
+
+            if old_values:
+                filtered = []
+                for dp in data_points:
+                    clean = dp.replace('$', '').replace(',', '').strip()
+                    # Expand k suffix for comparison
+                    if clean.endswith('k'):
+                        clean_expanded = clean[:-1] + '000'
+                    else:
+                        clean_expanded = clean
+                    if clean_expanded not in old_values and clean not in old_values:
+                        filtered.append(dp)
+                if len(filtered) < len(data_points):
+                    excluded = len(data_points) - len(filtered)
+                    notes.append(f"Correction turn: excluded {excluded} old value(s) from data check")
+                data_points = filtered
+
         if data_points:
             output_text = text.lower()
             found = 0
@@ -513,13 +549,15 @@ def score_fidelity(text: str, tier: str, scenario_hints: dict | None = None, sna
     # Turn-level content expectations — specific strings that MUST appear in output
     # Use for contextual data that the regex-based data_preserved can't catch
     # (temporal phrases, qualifiers, store names, etc.)
+    # Supports pipe-separated alternatives: "11000|11k" means either form counts
     expect_in = hints.get("expect_in_output", [])
     if expect_in:
         output_lower = text.lower()
         found = 0
         missing = []
         for phrase in expect_in:
-            if phrase.lower() in output_lower:
+            alternatives = [a.strip().lower() for a in phrase.split("|")]
+            if any(alt in output_lower for alt in alternatives):
                 found += 1
             else:
                 missing.append(phrase)
@@ -566,6 +604,20 @@ def score_fidelity(text: str, tier: str, scenario_hints: dict | None = None, sna
         ) for p in parsed)
         has_signal = any(p.get("t") in ("escalate", "clarify") for p in parsed)
         checks["tier_appropriate"] = 1.0 if (has_mutation or has_signal) else 0.0
+
+        # L2 scope violation: L2 should NEVER create new sections (table, checklist,
+        # list, section). These are structural decisions that belong to L3.
+        # If L2 creates sections, it "works" but violates tiering discipline.
+        section_displays = {"table", "checklist", "list", "section"}
+        creates = [p for p in parsed if p.get("t") == "entity.create"]
+        l2_sections = [c for c in creates if c.get("display") in section_displays]
+        if l2_sections:
+            section_ids = [c.get("id", "?") for c in l2_sections]
+            checks["l2_scope"] = 0.0
+            notes.append(f"L2 created section-level entities {section_ids} — should have "
+                         "escalated to L3. Output is correct but violates tier discipline.")
+        else:
+            checks["l2_scope"] = 1.0
 
         # L2 duplicate-creation: if L2 creates an entity under a parent that has
         # exactly ONE existing child with similar shape AND the parent is not a
@@ -756,6 +808,259 @@ def score_fidelity(text: str, tier: str, scenario_hints: dict | None = None, sna
         else:
             checks["restructured"] = 0.0
             notes.append("Expected section creation + item moves for restructuring request")
+
+    # Quote table — should create a parent table with 3 row children, not flat cards under page
+    if hints.get("creates_quote_table"):
+        creates = [p for p in parsed if p.get("t") == "entity.create"] if parsed else []
+        # Find the table/section parent
+        parents = [p for p in creates if p.get("display") in ("table", "section", "list")]
+        # Find row children
+        rows = [p for p in creates if p.get("display") == "row"]
+        # Also accept: rows whose parent matches a created entity (even if display not explicit)
+        if not rows:
+            parent_ids = {p.get("id") for p in parents}
+            rows = [p for p in creates if p.get("parent") in parent_ids]
+        if parents and len(rows) >= 3:
+            checks["quote_table"] = 1.0
+            notes.append(f"Created table parent with {len(rows)} quote rows — proper grouping")
+        elif parents and rows:
+            checks["quote_table"] = 0.7
+            notes.append(f"Created table parent but only {len(rows)} rows (expected 3)")
+        elif len(creates) >= 3 and not parents:
+            checks["quote_table"] = 0.3
+            notes.append("Created quote entities but flat under page — should be grouped under a table")
+        else:
+            checks["quote_table"] = 0.0
+            notes.append(f"Expected table parent + 3 quote rows, got {len(creates)} entities total")
+
+    # Budget table — should create a parent table with architect plans as first row
+    if hints.get("creates_budget_table"):
+        creates = [p for p in parsed if p.get("t") == "entity.create"] if parsed else []
+        parents = [p for p in creates if p.get("display") in ("table", "list", "section")]
+        rows = [p for p in creates if p.get("display") == "row"]
+        if not rows:
+            parent_ids = {p.get("id") for p in parents}
+            rows = [p for p in creates if p.get("parent") in parent_ids]
+        # Check for architect/cost content in rows
+        has_architect = any(
+            "architect" in str(p.get("p", {})).lower() or "architect" in p.get("id", "").lower()
+            for p in rows
+        )
+        has_cost = any("8000" in str(p.get("p", {})) for p in (creates))
+        if parents and rows and has_architect:
+            checks["budget_table"] = 1.0
+            notes.append("Created budget table with architect line item — proper structure")
+        elif parents and has_cost:
+            checks["budget_table"] = 0.8
+            notes.append("Created budget section with cost data but architect not as separate row")
+        elif has_cost and not parents:
+            checks["budget_table"] = 0.4
+            notes.append("Recorded $8k but no budget table created — cost data on overview card "
+                         "instead of as a line item entity")
+        else:
+            checks["budget_table"] = 0.0
+            notes.append("Expected budget table with architect plans as first expense row")
+
+    # Tasks section — should create action items (things to do), not expense items
+    if hints.get("creates_tasks"):
+        creates = [p for p in parsed if p.get("t") == "entity.create"] if parsed else []
+        parents = [p for p in creates
+                   if p.get("display") in ("table", "checklist", "list", "section")]
+        rows = [p for p in creates if p.get("display") == "row"]
+        if not rows:
+            parent_ids = {p.get("id") for p in parents}
+            rows = [p for p in creates if p.get("parent") in parent_ids]
+        if parents and len(rows) >= 2:
+            checks["tasks_created"] = 1.0
+            notes.append(f"Created tasks section with {len(rows)} action items")
+        elif len(rows) >= 2:
+            checks["tasks_created"] = 0.7
+            notes.append(f"Created {len(rows)} task rows but no parent section")
+        elif creates:
+            checks["tasks_created"] = 0.5
+            notes.append(f"Only {len(creates)} entities — expected tasks for plumber, "
+                         "electrician, and countertop measurement")
+        else:
+            checks["tasks_created"] = 0.0
+            notes.append("No task entities created")
+
+    # Updates existing entity (not creates a new one) — for corrections like price changes
+    if hints.get("updates_existing"):
+        has_update = any(p.get("t") == "entity.update" for p in parsed) if parsed else False
+        has_create = any(p.get("t") == "entity.create" for p in parsed) if parsed else False
+        if has_update and not has_create:
+            checks["update_not_create"] = 1.0
+            notes.append("Correctly updated existing entity instead of creating duplicate")
+        elif has_update and has_create:
+            checks["update_not_create"] = 0.6
+            notes.append("Updated existing entity but also created new one — possible duplicate")
+        else:
+            checks["update_not_create"] = 0.0
+            notes.append("Expected entity.update on existing entity — model created new or did nothing")
+
+    # Vendor/selection switch — should update multiple entities in one turn
+    # Selection should use rel.set, not a string prop
+    if hints.get("uses_rel_for_selection"):
+        has_rel = any(p.get("t") == "rel.set" for p in parsed) if parsed else False
+        has_prop_update = any(
+            p.get("t") == "entity.update"
+            and any(k.lower() in ("vendor", "selected", "chosen", "cabinet_vendor")
+                    for k in p.get("p", {}).keys())
+            for p in parsed
+        ) if parsed else False
+        if has_rel:
+            checks["selection_method"] = 1.0
+            notes.append("Used rel.set for selection — correct primitive for exclusive choice")
+        elif has_prop_update:
+            checks["selection_method"] = 0.3
+            notes.append("Used string prop for selection instead of rel.set. Selection among "
+                         "options is a relationship — switching later should be a single rel.set, "
+                         "not finding and overwriting a vendor name string.")
+        else:
+            checks["selection_method"] = 0.0
+            notes.append("No selection operation found — expected rel.set to pick a vendor")
+
+    # Adds budget line items (scope creep) — should create entities under budget table, not tasks
+    if hints.get("adds_budget_items"):
+        creates = [p for p in parsed if p.get("t") == "entity.create"] if parsed else []
+        # Check that new items go under budget-like parent, not tasks
+        budget_parents = {"budget", "line_items", "expenses", "costs"}
+        task_parents = {"tasks", "checklist", "schedule", "timeline"}
+        under_budget = [c for c in creates
+                        if any(bp in c.get("parent", "").lower() for bp in budget_parents)]
+        under_tasks = [c for c in creates
+                       if any(tp in c.get("parent", "").lower() for tp in task_parents)]
+        if len(under_budget) >= 2:
+            checks["budget_items_added"] = 1.0
+            notes.append(f"Added {len(under_budget)} line items under budget table — correct placement")
+        elif len(creates) >= 2 and not under_tasks:
+            # Created entities but parent name doesn't match our budget_parents list
+            # Still okay if they're not under tasks
+            checks["budget_items_added"] = 0.8
+            notes.append(f"Added {len(creates)} items (parent not named 'budget' but not under tasks)")
+        elif len(under_tasks) >= 1:
+            checks["budget_items_added"] = 0.3
+            notes.append(f"Put expense items under tasks section — flooring/appliances are "
+                         "budget line items (things with costs), not tasks (things to do)")
+        elif len(creates) == 1:
+            checks["budget_items_added"] = 0.5
+            notes.append("Only 1 line item — message mentioned 2 (flooring + appliances)")
+        else:
+            checks["budget_items_added"] = 0.0
+            notes.append("No new entities created for scope additions")
+
+    # Budget ceiling — new expenses shouldn't inflate the budget total
+    # When adding line items, the model should NOT touch the budget total prop.
+    # "Budget is 35k" sets a ceiling. New expenses go within it.
+    if hints.get("budget_ceiling_intact"):
+        total_modified = False
+        for p in (parsed or []):
+            if p.get("t") == "entity.update":
+                props = p.get("p", {})
+                for k in props:
+                    if k.lower() in ("total", "budget"):
+                        total_modified = True
+                        notes.append(f"Budget total was modified (prop '{k}'). "
+                                     f"New expenses are within the existing budget — "
+                                     f"the total shouldn't change unless the user explicitly raises it.")
+        if total_modified:
+            checks["budget_ceiling"] = 0.0
+        else:
+            checks["budget_ceiling"] = 1.0
+
+    # Timeline updates — should update date props on 2+ entities
+    if hints.get("updates_dates"):
+        date_updates = [
+            p for p in parsed
+            if p.get("t") == "entity.update"
+            and any(k in str(p.get("p", {})).lower() for k in ["date", "march", "start"])
+        ] if parsed else []
+        if len(date_updates) >= 2:
+            checks["cascade_dates"] = 1.0
+            notes.append(f"Updated {len(date_updates)} timeline entities — cascade handled")
+        elif len(date_updates) == 1:
+            checks["cascade_dates"] = 0.5
+            notes.append("Only updated 1 date — electrician AND plumber both need new dates")
+        else:
+            checks["cascade_dates"] = 0.0
+            notes.append("No date updates found for timeline cascade")
+
+    # Creates a budget line item (not a task update) — for completed expenses
+    if hints.get("creates_budget_item"):
+        creates = [p for p in parsed if p.get("t") == "entity.create"] if parsed else []
+        updates = [p for p in parsed if p.get("t") == "entity.update"] if parsed else []
+        # Best: creates new entity under budget table with cost + completion status
+        budget_parents = {"budget", "line_items", "expenses", "costs"}
+        task_refs = {"task_measure", "task_counter", "measure_counter"}
+        new_budget_item = [c for c in creates
+                          if any(bp in c.get("parent", "").lower() for bp in budget_parents)]
+        # Check if it updated the measurement task instead (wrong)
+        updated_task = any(
+            any(tr in p.get("ref", "").lower() for tr in task_refs)
+            for p in updates
+        )
+        has_cost = any(
+            "3200" in str(p.get("p", {})) or "cost" in str(p.get("p", {}).keys()).lower()
+            for p in (creates + updates)
+        )
+        # Accept done=true OR status in {paid, complete, done} as completion marker
+        completion_statuses = {"paid", "complete", "completed", "done"}
+        has_done = any(
+            p.get("p", {}).get("done") is True
+            or str(p.get("p", {}).get("status", "")).lower() in completion_statuses
+            for p in (creates + updates)
+        )
+        if new_budget_item and has_cost and has_done:
+            checks["budget_item_created"] = 1.0
+            notes.append("Created countertops as budget line item with cost + completion — correct")
+        elif creates and has_cost and has_done:
+            checks["budget_item_created"] = 0.7
+            notes.append("Created entity with cost + completion but not under budget table")
+        elif new_budget_item and has_cost:
+            checks["budget_item_created"] = 0.8
+            notes.append("Created budget line item with cost but no completion marker")
+        elif updated_task and has_cost:
+            checks["budget_item_created"] = 0.3
+            notes.append("Updated measurement task instead of creating expense line item — "
+                         "measuring countertops (task) and countertop installation (expense) "
+                         "are different things")
+        elif has_cost or has_done:
+            checks["budget_item_created"] = 0.4
+            notes.append("Partially captured — missing " +
+                         ("cost" if not has_cost else "completion status"))
+        else:
+            checks["budget_item_created"] = 0.0
+            notes.append("Expected new budget line item with cost: 3200 and done/paid status")
+
+    # Prerequisite completion — completing work implies prerequisite tasks are done
+    if hints.get("marks_prereq_done"):
+        updates = [p for p in parsed if p.get("t") == "entity.update"] if parsed else []
+        # Look for an update to the measurement task setting done=true
+        prereq_refs = {"task_measure", "measure_counter", "task_counter"}
+        completion_statuses = {"paid", "complete", "completed", "done"}
+        marked_prereq = any(
+            any(pr in p.get("ref", "").lower() for pr in prereq_refs)
+            and (p.get("p", {}).get("done") is True
+                 or str(p.get("p", {}).get("status", "")).lower() in completion_statuses)
+            for p in updates
+        )
+        if marked_prereq:
+            checks["prereq_completed"] = 1.0
+            notes.append("Marked prerequisite task (measure countertops) as done — correct inference")
+        else:
+            checks["prereq_completed"] = 0.0
+            notes.append("Prerequisite task (measure countertops) left incomplete — if countertops "
+                         "are installed, measuring is necessarily done too")
+
+    # L4 comprehensive summary — should mention all major data points
+    if hints.get("comprehensive_summary") and tier == "L4":
+        text_lower = text.lower()
+        summary_markers = ["budget", "architect", "cabinet", "floor", "appliance", "plumb", "electri"]
+        found = sum(1 for m in summary_markers if m in text_lower)
+        checks["summary_breadth"] = found / len(summary_markers)
+        missing = [m for m in summary_markers if m not in text_lower]
+        if missing:
+            notes.append(f"Summary missing topics: {missing}")
 
     score = sum(checks.values()) / max(len(checks), 1) if checks else 0.5
     return DimensionScore("fidelity", score, checks, notes)

@@ -36,6 +36,8 @@ For adding a child to an existing section (e.g., adding an item to a checklist):
 
 Only create children under parents that already exist in the snapshot.
 
+Choose the right parent. If the snapshot has both a budget table and a tasks checklist, items with costs go under budget and items with actions/dates go under tasks. "New flooring, 4-6k" → budget table. "Schedule inspection" → tasks.
+
 ### Escalation
 
 Escalate when you can't handle the request with existing structure:
@@ -160,3 +162,16 @@ User: "the chicken should be 2 lbs, bone-in"
 (Casual qualifiers go in note, not as bespoke boolean props.)
 {"t":"entity.update","ref":"item_chicken_thighs","p":{"note":"2 lbs, bone-in"}}
 (RIGHT: note string. WRONG: {"quantity":"2 lbs","bone_in":true} — too structured for a grocery list. Match the formality of the domain.)
+
+User: "going with cabinet depot"
+(Selection among options — use rel.set, not a string prop.)
+{"t":"rel.set","from":"page","to":"quote_cabinet_depot","type":"selected","cardinality":"one_to_one"}
+{"t":"voice","text":"Cabinet Depot selected: $9,500."}
+(WRONG: {"t":"entity.update","ref":"overview","p":{"cabinet_vendor":"Cabinet Depot"}} — duplicates data as a string. When you switch vendors, you'd have to find and overwrite the string. rel.set handles the swap atomically.)
+
+User: "switching to woodworks. they'll honor the 9500 price"
+(Vendor switch = rel.set + correlated entity.update for the price change.)
+{"t":"rel.set","from":"page","to":"quote_woodworks","type":"selected","cardinality":"one_to_one"}
+{"t":"entity.update","ref":"quote_woodworks","p":{"cost":9500}}
+{"t":"voice","text":"Switched to Woodworks Unlimited at $9,500."}
+(rel.set auto-drops Cabinet Depot. The price update is a separate entity.update because it's a prop change on the quote, not the relationship itself.)

@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import time
 from datetime import date, datetime, timezone, timedelta
@@ -246,8 +247,19 @@ def classify_tier(message: str, snapshot: dict | None) -> str:
     msg_lower = message.lower().strip()
 
     # Questions → L4
-    if msg_lower.endswith("?") or any(msg_lower.startswith(q) for q in
-        ["how many", "who", "what's left", "what do we", "how much", "is there", "do we"]):
+    # Explicit question marks
+    if msg_lower.endswith("?"):
+        return "L4"
+    # Query starters
+    query_starts = ["how many", "who", "what's left", "what do we", "how much",
+                    "is there", "do we", "where are we", "show me", "give me"]
+    if any(msg_lower.startswith(q) for q in query_starts):
+        return "L4"
+    # Query phrases anywhere (summaries, breakdowns, status checks)
+    query_phrases = ["breakdown", "looking like", "status update", "summary",
+                     "where do we stand", "how are we", "what's the total",
+                     "run the numbers", "full picture"]
+    if any(qp in msg_lower for qp in query_phrases):
         return "L4"
 
     # No entities → L3
@@ -256,9 +268,31 @@ def classify_tier(message: str, snapshot: dict | None) -> str:
 
     # Structural keywords → L3
     structural = ["add a section", "add a new", "set up a", "create a", "track",
-                   "we should do", "need a", "gonna be", "redoing"]
+                   "we should do", "need a", "gonna be", "redoing", "reorganize",
+                   "group the", "split the", "separate the"]
     if any(kw in msg_lower for kw in structural):
         return "L3"
+
+    # Multi-item creation: 3+ comma/and-separated values suggest table creation → L3
+    # e.g. "quotes: woodworks 12k, cabinet depot 9500, custom craft 15k"
+    # e.g. "chores: dishes, vacuuming, bathroom, trash, mopping"
+    # Count comma-separated segments
+    segments = [s.strip() for s in msg_lower.split(",") if s.strip()]
+    if len(segments) >= 3:
+        # Check if this looks like a list of new items (not just a complex sentence)
+        # Heuristic: multiple segments with numbers, or introducing a set of things
+        has_numbers = sum(1 for s in segments if re.search(r'\d', s))
+        intro_patterns = ["quotes", "chores", "tasks", "items", "players",
+                          "guests", "weekly", "daily", "monthly"]
+        has_intro = any(ip in msg_lower for ip in intro_patterns)
+        if has_numbers >= 2 or has_intro:
+            # Check if parent table already exists for these items
+            entities = snapshot.get("entities", {})
+            # If there's already a table that could hold these, L2 can add rows
+            table_parents = [e for e in entities.values()
+                            if e.get("display") in ("table", "list", "checklist")]
+            if not table_parents:
+                return "L3"
 
     # Default → L2
     return "L2"
@@ -683,12 +717,12 @@ def main():
     print(f"{'-'*70}")
 
     for r in results:
-        print(f"{r['name']:<26} {len(r['turns']):>6} {r['avg_score']:>5.0%} "
+        print(f"{r['name']:<26} {len(r['turns']):>6} {r['avg_score']:>5.1%} "
               f"{r['tier_accuracy']:>5.0%} {r['total_tokens']:>7} "
               f"{r['total_time_ms']:>6}ms {r['final_entity_count']:>9}")
 
     avg = sum(r["avg_score"] for r in results) / max(len(results), 1)
-    print(f"\nOverall average: {avg:.0%}")
+    print(f"\nOverall average: {avg:.1%}")
 
     # Save report
     if save_dir:

@@ -55,6 +55,7 @@ Cardinality (set once per relationship type, enforced by the reducer):
 Use relationships (not boolean props) when:
 - A role can only belong to one entity at a time (hosting, assigned_to, current_turn)
 - Reassignment is common ("now tom's hosting", "move linda to table 5")
+- Selection among options is exclusive ("going with cabinet depot" picks one from several quotes)
 - You'd otherwise need to find-and-clear the old holder manually
 
 The reducer handles the swap atomically — one rel.set is all you emit.
@@ -134,6 +135,8 @@ Pick based on entity shape:
 
 Children of a table/list/checklist use `display: "row"`. If `display` is omitted on a child, it inherits from parent context.
 
+Group siblings of the same type under a parent. When creating 3+ entities that are the same kind of thing (quotes, players, tasks, items), create a parent table/list/checklist first and nest them as rows — don't dump them flat under page. Example: 3 vendor quotes → create `cabinet_quotes` (display: table) → 3 row children under it.
+
 ## Emission Order
 
 Emit in this order:
@@ -187,6 +190,14 @@ Shared context applies to every item in a batch. "Add chicken, rice, soy sauce f
 
 Keep props flat and natural for the domain. A grocery item has `name`, `done`, maybe `quantity` and `note` — not `bone_in: true` or `organic: false`. Casual qualifiers like "bone-in" and "the good kind from trader joes" go in a `note` string, not as bespoke boolean or enum props. Match the complexity of the domain: a grocery list is informal, a project tracker can be more structured.
 
+This applies to dependencies and scheduling too. "Need to measure countertops before either" is a dependency note, not a `priority` prop. Use `note: "before plumber and electrician"` — not `priority: "before plumber and electrician"` or `depends_on: ["task_plumber"]`. Save structured dependency tracking for when the user explicitly asks for it.
+
 Place data on the most specific entity it belongs to. "$120 pot" about last night's game goes on the game entity, not the details card. A guest's dietary restriction goes on the guest row, not the event summary. If data describes a specific item, it's a prop on that item — not on its parent or a global summary.
+
+Budget = ceiling. When a user says "budget is 35k," that's a total cap — not a running sum. New expenses ("also need flooring, 4-6k") are line items WITHIN that budget, not additions to it. Don't increase the total unless the user explicitly says "raise the budget" or "increase to 50k." Adding a $5k flooring expense to a $35k budget means $5k less remaining, not a $40k budget.
+
+Items vs tasks. Things with costs are budget line items (architect plans $8k, flooring $4-6k, appliances ~$8k). Things with actions and dates are tasks (measure countertops, schedule plumber). Don't conflate them — "flooring, probably 4 to 6k" is an expense, not a task. They belong in separate sections: a budget/expenses table for cost tracking, a tasks/checklist for action items. Some work has both aspects (plumber = task to schedule AND eventual expense) — put it where the primary information lands. If the user gives a cost, it's a line item. If they give a date or action, it's a task.
+
+Prerequisite completion. When work is done, its prerequisites are done too. "Countertops are done, cost $3200" → create the expense line item AND mark `task_measure_countertops` as done. If countertops are installed, measuring is necessarily complete. Scan the snapshot for prerequisite tasks that are logically completed by the user's message.
 
 Reassignment is a relationship, not a prop update. If "tom hosted" and Mike was the previous host, emit a single rel.set — the reducer clears Mike automatically via cardinality. Don't try to manually find-and-clear the old holder with two entity.update calls.

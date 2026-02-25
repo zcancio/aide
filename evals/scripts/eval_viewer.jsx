@@ -210,7 +210,7 @@ export default function Viewer() {
             </div>}
             <Lbl>{isL4 ? "L4 Plain Text Response" : "Clean JSONL"}</Lbl>
             {isL4
-              ? <div style={{ background:"#111118", border:"1px solid #1e1e2e", borderRadius:6, padding:16, fontSize:14, lineHeight:1.7, color:"#d1d5db", minHeight:40 }}>{t.output||"(empty)"}</div>
+              ? <pre style={{ background:"#111118", border:"1px solid #1e1e2e", borderRadius:6, padding:16, fontSize:13, lineHeight:1.7, fontFamily:mono, color:"#d1d5db", minHeight:40, whiteSpace:"pre-wrap", wordBreak:"break-word", margin:0 }}>{t.output||"(empty)"}</pre>
               : <Pre text={t.output} mh={400} />}
             {t.notes && <div style={{ marginTop:12, padding:"8px 12px", background:"#1a1a0e", border:"1px solid #333318", borderRadius:6, fontSize:12, color:"#d4d484" }}>{"📝 "}{t.notes}</div>}
           </>}
