@@ -246,17 +246,25 @@ def classify_tier(message: str, snapshot: dict | None) -> str:
     """
     msg_lower = message.lower().strip()
 
+    # Structural keywords → L3 (check BEFORE query phrases to avoid "create a summary" → L4)
+    structural = ["add a section", "add a new", "set up a", "create a", "make a",
+                   "we should do", "need a", "gonna be", "redoing", "reorganize",
+                   "group the", "split the", "separate the"]
+    if any(kw in msg_lower for kw in structural):
+        return "L3"
+
     # Questions → L4
-    # Explicit question marks
-    if msg_lower.endswith("?"):
+    # Question mark anywhere (not just at end) — handles "is X working? feels like..."
+    if "?" in msg_lower:
         return "L4"
-    # Query starters
+    # Query starters — expanded to catch "is the X working" patterns
     query_starts = ["how many", "who", "what's left", "what do we", "how much",
-                    "is there", "do we", "where are we", "show me", "give me"]
+                    "is there", "is the", "is it", "are the", "are they",
+                    "do we", "does it", "does the", "where are we", "show me", "give me"]
     if any(msg_lower.startswith(q) for q in query_starts):
         return "L4"
     # Query phrases anywhere (summaries, breakdowns, status checks)
-    query_phrases = ["breakdown", "looking like", "status update", "summary",
+    query_phrases = ["breakdown", "looking like", "status update",
                      "where do we stand", "how are we", "what's the total",
                      "run the numbers", "full picture"]
     if any(qp in msg_lower for qp in query_phrases):
@@ -264,13 +272,6 @@ def classify_tier(message: str, snapshot: dict | None) -> str:
 
     # No entities → L3
     if not snapshot or not snapshot.get("entities"):
-        return "L3"
-
-    # Structural keywords → L3
-    structural = ["add a section", "add a new", "set up a", "create a", "track",
-                   "we should do", "need a", "gonna be", "redoing", "reorganize",
-                   "group the", "split the", "separate the"]
-    if any(kw in msg_lower for kw in structural):
         return "L3"
 
     # Multi-item creation: 3+ comma/and-separated values suggest table creation → L3
@@ -583,8 +584,9 @@ def run_multiturn_scenario(
                 "message": message,
                 "tier": actual_tier,
                 "expected_tier": expected_tier,
-                "classified_tier": classified_tier,
-                "tier_correct": classified_tier in accept_tiers,
+                "classified_tier": actual_tier,  # Tier actually used in the prompt
+                "classifier_raw": classified_tier,  # Raw classifier output (before fallback)
+                "tier_correct": actual_tier in accept_tiers,
                 "notes": notes,
                 # Full score breakdown
                 "score": {

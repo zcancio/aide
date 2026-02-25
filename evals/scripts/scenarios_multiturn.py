@@ -540,6 +540,148 @@ CHORES_CLARIFY = {
 
 
 # ---------------------------------------------------------------------------
+# Flu Tracker — tests time-series data (readings as append-only rows)
+# ---------------------------------------------------------------------------
+
+FLU_TRACKER = {
+    "name": "flu_tracker",
+    "description": "Family flu temperature tracker with real-world data density. Tests "
+                   "time-series append pattern (each reading is a NEW entity), batch data "
+                   "entry, terse time/temp parsing, inline meds and notes, multi-person "
+                   "multi-day state, and data-dense L4 synthesis.",
+    "turns": [
+        # ── Setup ──
+        {
+            "message": "kids are sick, need to track fevers for ringo and george",
+            "expected_tier": "L3",
+            "checks": {"creates_page": True},
+            "notes": "Setup. Should create page with per-person sections or a readings "
+                     "table. Structure must support MANY readings per person per day. "
+                     "Don't over-scaffold — just the container.",
+        },
+        # ── Sunday Dec 29: Ringo's first day ──
+        {
+            "message": "ringo sunday dec 29: 1030am 103.7 tylenol, 135pm 101.5 motrin, 520pm 101 tylenol, 820pm 102 motrin",
+            "expected_tier": "L2",
+            "checks": {"batch_creates": True, "min_entities": 4,
+                       "expect_in_output": ["103.7", "101.5", "101", "102"]},
+            "accept_tiers": ["L2", "L3"],
+            "notes": "Batch entry — 4 readings in one message. Each reading must be a "
+                     "SEPARATE entity. '1030am' = 10:30 AM, '135pm' = 1:35 PM, etc. "
+                     "Each has a med (alternating tylenol/motrin). Tests terse batch parsing.",
+        },
+        # ── Summary cards request ──
+        {
+            "message": "create a summary card for each kid",
+            "expected_tier": "L3",
+            "checks": {"creates_2_cards": True},
+            "notes": "User wants per-kid summary cards before more data comes in. Should "
+                     "create 2 card entities (one for Ringo, one for George) that can hold "
+                     "summary stats like latest temp, last med, trend. Tests structural "
+                     "creation mid-build. Cards should be distinct from the readings table.",
+        },
+        # ── Monday Dec 30: Ringo's long day ──
+        {
+            "message": "ringo monday: 12am 101.6 tylenol - woke him back to sleep. "
+                     "2am 103.5 motrin - down to 101 by 245. "
+                     "630am 98.6 no meds. "
+                     "925am 99.8 tylenol. "
+                     "1030am 100.3 no meds. "
+                     "115pm 101.1 motrin. "
+                     "2pm 101.4 no meds",
+            "expected_tier": "L2",
+            "checks": {"batch_creates": True, "min_entities": 7,
+                       "captures_note": True,
+                       "expect_in_output": ["103.5", "98.6", "101.1"]},
+            "accept_tiers": ["L2", "L3"],
+            "notes": "7 readings in one message. Massive batch. Inline notes on two readings "
+                     "('woke him back to sleep', 'down to 101 by 245'). Each MUST be a "
+                     "separate entity. Tests high-volume append pattern. The 98.6 is notable — "
+                     "fever broke then came back.",
+        },
+        # ── Monday Dec 30: George's long day ──
+        {
+            "message": "george monday: 2am 102.7 tylenol. "
+                     "630am 102.7 tylenol. "
+                     "925am 101 no meds. "
+                     "1030am 102.9 motrin - 1130 eye lids swelling. "
+                     "115pm 100.3 no meds. "
+                     "2pm 101.3 tylenol - threw up. "
+                     "3pm 101.9 no meds. "
+                     "4pm 103 motrin",
+            "expected_tier": "L2",
+            "checks": {"batch_creates": True, "min_entities": 8,
+                       "captures_note": True,
+                       "expect_in_output": ["102.7", "102.9", "103"]},
+            "accept_tiers": ["L2", "L3"],
+            "notes": "8 readings for george. Critical notes: 'eye lids swelling' (symptom "
+                     "escalation at 11:30, separate from 10:30 reading time), 'threw up' "
+                     "(on 2pm reading). Tests that notes attach to correct readings. "
+                     "The 102.7 → 102.7 (no improvement after tylenol) is significant.",
+        },
+        # ── Status check after big data dump ──
+        {
+            "message": "how are they doing? who's worse?",
+            "expected_tier": "L4",
+            "checks": {"trend_summary": True, "plain_text": True},
+            "notes": "L4 must synthesize across 2 kids, 2 days, ~19 readings total. "
+                     "George is worse: higher peaks (103), not responding to tylenol "
+                     "(102.7→102.7), vomiting, eye swelling. Ringo had a bad spike "
+                     "(103.7, 103.5) but responded to meds. Should identify George as "
+                     "more concerning.",
+        },
+        # ── Tuesday Dec 31: New day entries ──
+        {
+            "message": "ringo tues 5pm 101 tylenol, 830pm 99.7 motrin",
+            "expected_tier": "L2",
+            "checks": {"appends_not_updates": True,
+                       "expect_in_output": ["101", "99.7"]},
+            "notes": "New day, 2 more ringo readings. Must be NEW entities (not updates "
+                     "to monday readings). Running total: ringo now has 13 readings across "
+                     "3 days.",
+        },
+        {
+            "message": "george tues 740pm 100.5 tylenol",
+            "expected_tier": "L2",
+            "checks": {"appends_not_updates": True,
+                       "expect_in_output": ["100.5"]},
+            "notes": "Single george reading, new day. Must be NEW entity. George now has "
+                     "9 readings across 2 days.",
+        },
+        # ── Pattern question ──
+        {
+            "message": "is the tylenol even working for george? feels like it doesn't do anything",
+            "expected_tier": "L4",
+            "checks": {"george_med_analysis": True, "plain_text": True},
+            "notes": "L4 should look at george's post-tylenol readings. Monday 2am tylenol → "
+                     "630am still 102.7 (no drop). 2pm tylenol → 3pm 101.9 (marginal). "
+                     "Motrin readings show more improvement. Should compare tylenol vs motrin "
+                     "effectiveness for george specifically.",
+        },
+        # ── Retroactive correction ──
+        {
+            "message": "wait the 925am one for george on monday was actually 101.5 not 101",
+            "expected_tier": "L2",
+            "checks": {"updates_existing": True,
+                       "expect_in_output": ["101.5"]},
+            "notes": "Correction to existing reading. This IS an entity.update (not a new "
+                     "reading). The user is fixing a data entry error, not logging a new check. "
+                     "Must find the right george reading (monday 9:25am) and update the temp.",
+        },
+        # ── When to worry ──
+        {
+            "message": "what's george's highest temp been? should we go to the ER?",
+            "expected_tier": "L4",
+            "checks": {"george_peak": True, "plain_text": True},
+            "notes": "L4 should find george's peak: 103°F on monday 4pm. Should also note "
+                     "concerning symptoms (eye swelling, vomiting) alongside the fever data. "
+                     "Should NOT give medical advice but can note what the data shows.",
+        },
+    ],
+}
+
+
+# ---------------------------------------------------------------------------
 # All multi-turn scenarios
 # ---------------------------------------------------------------------------
 
@@ -549,6 +691,7 @@ MULTI_TURN_SCENARIOS = [
     GROCERY_REALISTIC,
     RENOVATION_REALISTIC,
     CHORES_CLARIFY,
+    FLU_TRACKER,
 ]
 
 # ---------------------------------------------------------------------------

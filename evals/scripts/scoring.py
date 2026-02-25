@@ -1062,6 +1062,221 @@ def score_fidelity(text: str, tier: str, scenario_hints: dict | None = None, sna
         if missing:
             notes.append(f"Summary missing topics: {missing}")
 
+    # ── Flu tracker checks ──
+
+    # Creates summary cards — one per person (e.g., Ringo and George)
+    if hints.get("creates_2_cards"):
+        creates = [p for p in parsed if p.get("t") == "entity.create"] if parsed else []
+        cards = [c for c in creates if c.get("display") == "card"]
+        # Check for kid names in card IDs or props
+        kid_names = {"ringo", "george"}
+        named_cards = [c for c in cards
+                       if any(name in c.get("id", "").lower() or
+                              name in str(c.get("p", {})).lower()
+                              for name in kid_names)]
+        if len(cards) >= 2 and len(named_cards) >= 2:
+            checks["summary_cards"] = 1.0
+            notes.append(f"Created {len(cards)} summary cards for both kids")
+        elif len(cards) >= 2:
+            checks["summary_cards"] = 0.8
+            notes.append(f"Created {len(cards)} cards but names not clearly associated")
+        elif len(cards) == 1:
+            checks["summary_cards"] = 0.5
+            notes.append("Only created 1 card — expected one per kid (Ringo and George)")
+        elif creates:
+            checks["summary_cards"] = 0.3
+            notes.append(f"Created {len(creates)} entities but display != 'card' — "
+                         "summary cards should use card display type")
+        else:
+            checks["summary_cards"] = 0.0
+            notes.append("No summary cards created — expected 2 card entities (one per kid)")
+
+    # Creates reading — new entity for a temperature check
+    if hints.get("creates_reading"):
+        creates = [p for p in parsed if p.get("t") == "entity.create"] if parsed else []
+        reading_creates = [c for c in creates if c.get("display") == "row"]
+        if reading_creates:
+            checks["reading_created"] = 1.0
+            notes.append(f"Created {len(reading_creates)} reading row(s)")
+        elif creates:
+            checks["reading_created"] = 0.7
+            notes.append("Created entity but not as a row — readings should be rows in a table")
+        else:
+            # Check if they updated a person card instead
+            updates = [p for p in parsed if p.get("t") == "entity.update"] if parsed else []
+            if updates:
+                checks["reading_created"] = 0.0
+                notes.append("Updated existing entity instead of creating new reading — "
+                             "each temperature check is a separate data point in a time series")
+            else:
+                checks["reading_created"] = 0.0
+                notes.append("No reading entity created")
+
+    # Appends not updates — MUST create new entity, not update previous reading
+    if hints.get("appends_not_updates"):
+        creates = [p for p in parsed if p.get("t") == "entity.create"] if parsed else []
+        updates = [p for p in parsed if p.get("t") == "entity.update"] if parsed else []
+        has_create = len(creates) > 0
+        # Updates to person-level entities (like a summary) are okay,
+        # but updating a previous reading entity is wrong
+        reading_updates = [u for u in updates
+                          if any(k in u.get("ref", "").lower()
+                                 for k in ["reading", "check", "temp", "entry"])]
+        if has_create and not reading_updates:
+            checks["append_not_update"] = 1.0
+            notes.append("Correctly created new reading entity (append pattern)")
+        elif has_create and reading_updates:
+            checks["append_not_update"] = 0.5
+            notes.append("Created new reading but also updated a previous one — "
+                         "readings are immutable data points")
+        else:
+            checks["append_not_update"] = 0.0
+            notes.append("Updated existing reading instead of creating new one — "
+                         "each temperature check must be its own entity")
+
+    # Captures note — inline commentary preserved as prop
+    if hints.get("captures_note"):
+        all_ops = parsed or []
+        has_note = any(
+            any(k.lower() in ("note", "notes", "comment", "memo")
+                for k in p.get("p", {}).keys())
+            for p in all_ops if p.get("t") in ("entity.create", "entity.update")
+        )
+        if has_note:
+            checks["note_captured"] = 1.0
+            notes.append("Inline note/comment captured as prop")
+        else:
+            checks["note_captured"] = 0.0
+            notes.append("Inline note discarded — contextual comments should be a note prop")
+
+    # Captures meds — medication recorded as prop on the reading
+    if hints.get("captures_meds"):
+        all_ops = parsed or []
+        has_meds = any(
+            any(k.lower() in ("meds", "medication", "med", "medicine", "drug", "treatment")
+                for k in p.get("p", {}).keys())
+            for p in all_ops if p.get("t") in ("entity.create", "entity.update")
+        )
+        if not has_meds:
+            # Also check if med name appears in any prop value
+            has_meds = any(
+                any(str(v).lower() in ("motrin", "tylenol", "ibuprofen", "acetaminophen")
+                    for v in p.get("p", {}).values())
+                for p in all_ops if p.get("t") in ("entity.create", "entity.update")
+            )
+        if has_meds:
+            checks["meds_captured"] = 1.0
+            notes.append("Medication recorded on reading entity")
+        else:
+            checks["meds_captured"] = 0.0
+            notes.append("Medication not captured — meds given at a reading should be "
+                         "a prop on that reading entity")
+
+    # Trend summary — L4 should discuss trajectory per person
+    if hints.get("trend_summary") and tier == "L4":
+        text_lower = text.lower()
+        mentions_ringo = "ringo" in text_lower
+        mentions_george = "george" in text_lower
+        has_trajectory = any(w in text_lower for w in
+                            ["rising", "up", "spike", "climb", "increas",
+                             "dropping", "down", "improv", "break", "decreas",
+                             "came down", "went up", "higher", "lower"])
+        if mentions_ringo and mentions_george and has_trajectory:
+            checks["trend_analysis"] = 1.0
+            notes.append("Discussed both patients with trajectory analysis")
+        elif mentions_ringo and mentions_george:
+            checks["trend_analysis"] = 0.7
+            notes.append("Mentioned both patients but no clear trajectory language")
+        elif has_trajectory:
+            checks["trend_analysis"] = 0.5
+            notes.append("Has trajectory analysis but didn't mention both patients by name")
+        else:
+            checks["trend_analysis"] = 0.0
+            notes.append("Expected per-person trend discussion with trajectory")
+
+    # Ringo pattern discussion — L4 should reference his specific data
+    if hints.get("mentions_ringo_pattern") and tier == "L4":
+        text_lower = text.lower()
+        mentions_ringo = "ringo" in text_lower
+        has_numbers = sum(1 for n in ["100.3", "100.5", "99.1", "100.8"]
+                         if n in text_lower)
+        has_rebound = any(w in text_lower for w in
+                         ["rebound", "bounce", "back up", "rose again", "fluctuat",
+                          "came back", "returned", "not consistent", "yo-yo"])
+        if mentions_ringo and has_numbers >= 2 and has_rebound:
+            checks["ringo_pattern"] = 1.0
+            notes.append("Discussed Ringo's rebound pattern with specific data points")
+        elif mentions_ringo and (has_numbers >= 2 or has_rebound):
+            checks["ringo_pattern"] = 0.7
+            notes.append("Mentioned Ringo with some data but incomplete pattern analysis")
+        elif mentions_ringo:
+            checks["ringo_pattern"] = 0.4
+            notes.append("Mentioned Ringo but no specific data or pattern discussion")
+        else:
+            checks["ringo_pattern"] = 0.0
+            notes.append("Expected discussion of Ringo's rebound pattern")
+
+    # Batch creates — multiple readings in one message, each must be separate entity
+    if hints.get("batch_creates"):
+        creates = [p for p in parsed if p.get("t") == "entity.create"] if parsed else []
+        updates = [p for p in parsed if p.get("t") == "entity.update"] if parsed else []
+        min_expected = hints.get("min_entities", 2)
+        if len(creates) >= min_expected:
+            checks["batch_created"] = 1.0
+            notes.append(f"Created {len(creates)} entities from batch entry (expected ≥{min_expected})")
+        elif len(creates) >= min_expected * 0.5:
+            checks["batch_created"] = len(creates) / min_expected
+            notes.append(f"Created {len(creates)} of ≥{min_expected} expected entities — some readings lost")
+        elif updates and not creates:
+            checks["batch_created"] = 0.0
+            notes.append(f"Updated existing entities instead of creating new ones — "
+                         "each reading in a batch must be a separate entity")
+        else:
+            checks["batch_created"] = 0.0
+            notes.append(f"Expected ≥{min_expected} new entities from batch, got {len(creates)}")
+
+    # George med analysis — L4 should compare tylenol vs motrin effectiveness
+    if hints.get("george_med_analysis") and tier == "L4":
+        text_lower = text.lower()
+        mentions_george = "george" in text_lower
+        mentions_tylenol = "tylenol" in text_lower
+        mentions_motrin = "motrin" in text_lower
+        has_comparison = any(w in text_lower for w in
+                           ["not working", "doesn't", "doesn't seem", "less effective",
+                            "better with", "more effective", "no change", "no drop",
+                            "didn't drop", "no improvement", "still", "same",
+                            "respond", "works better", "compare"])
+        if mentions_george and mentions_tylenol and mentions_motrin and has_comparison:
+            checks["med_comparison"] = 1.0
+            notes.append("Compared tylenol vs motrin effectiveness for George")
+        elif mentions_george and (mentions_tylenol or mentions_motrin):
+            checks["med_comparison"] = 0.5
+            notes.append("Mentioned George's meds but no clear comparison between them")
+        else:
+            checks["med_comparison"] = 0.0
+            notes.append("Expected tylenol vs motrin comparison for George")
+
+    # George peak — L4 should identify highest temp and concerning symptoms
+    if hints.get("george_peak") and tier == "L4":
+        text_lower = text.lower()
+        mentions_george = "george" in text_lower
+        has_peak = any(n in text_lower for n in ["103", "103.0"])
+        has_symptoms = any(w in text_lower for w in
+                          ["swell", "vomit", "threw up", "eye"])
+        if mentions_george and has_peak and has_symptoms:
+            checks["peak_and_symptoms"] = 1.0
+            notes.append("Identified George's peak temp and concerning symptoms")
+        elif mentions_george and has_peak:
+            checks["peak_and_symptoms"] = 0.7
+            notes.append("Found George's peak but didn't mention concerning symptoms "
+                         "(eye swelling, vomiting)")
+        elif mentions_george:
+            checks["peak_and_symptoms"] = 0.3
+            notes.append("Mentioned George but missed peak temp and symptoms")
+        else:
+            checks["peak_and_symptoms"] = 0.0
+            notes.append("Expected George's peak temp (103°F) and symptom discussion")
+
     score = sum(checks.values()) / max(len(checks), 1) if checks else 0.5
     return DimensionScore("fidelity", score, checks, notes)
 
