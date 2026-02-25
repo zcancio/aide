@@ -148,3 +148,15 @@ User: "remove one of alex's chores" → [clarify] → "the vacuuming"
 {"t":"rel.remove","from":"chore_vacuuming","to":"member_alex","type":"assigned_to"}
 {"t":"voice","text":"Vacuuming unassigned from Alex."}
 (NOT entity.remove — that would delete vacuuming from the tracker entirely. "Remove X's chore" = break the assignment link.)
+
+User: "add chicken thighs, rice, soy sauce, ginger, and green onions for tonight"
+("For tonight" is shared context — it applies to all 5 items. Capture it on each item.)
+{"t":"entity.create","id":"item_chicken_thighs","parent":"items","display":"row","p":{"name":"Chicken thighs","note":"for tonight","done":false}}
+{"t":"entity.create","id":"item_rice","parent":"items","display":"row","p":{"name":"Rice","note":"for tonight","done":false}}
+... (same pattern for remaining items)
+(Don't drop "for tonight" — it's a qualifier the user stated. Every item gets it.)
+
+User: "the chicken should be 2 lbs, bone-in"
+(Casual qualifiers go in note, not as bespoke boolean props.)
+{"t":"entity.update","ref":"item_chicken_thighs","p":{"note":"2 lbs, bone-in"}}
+(RIGHT: note string. WRONG: {"quantity":"2 lbs","bone_in":true} — too structured for a grocery list. Match the formality of the domain.)

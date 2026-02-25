@@ -51,14 +51,30 @@ const mono = "ui-monospace, 'SF Mono', Monaco, Consolas, monospace";
 
 function parseEv(s) { if (!s) return []; const r = []; for (const l of s.split("\n")) { const x = l.trim(); if (!x || x[0]==='`') continue; try { r.push(JSON.parse(x)); } catch(e) {} } return r; }
 
-function mkTree(ents) {
+function mkTree(ents, removedEnts) {
   if (!ents) return [];
-  const all = Object.values(ents).filter(e => e && e.id);
+  const merged = { ...ents };
+  if (removedEnts) {
+    for (const [id, e] of Object.entries(removedEnts)) {
+      if (!merged[id]) merged[id] = { ...e, _removed: true };
+    }
+  }
+  const all = Object.values(merged).filter(e => e && e.id);
+  const allIds = new Set(all.map(e => e.id));
+  allIds.add("root");
   const ch = {};
   all.forEach(e => { const p = e.parent || "root"; (ch[p] = ch[p] || []).push(e); });
+  for (const p of Object.keys(ch)) {
+    ch[p].sort((a, b) => (a._removed ? 1 : 0) - (b._removed ? 1 : 0));
+  }
   const out = [];
-  const walk = (pid, d) => { (ch[pid] || []).forEach(c => { out.push({ ...c, depth: d }); walk(c.id, d + 1); }); };
+  const visited = new Set();
+  const walk = (pid, d) => { (ch[pid] || []).forEach(c => { visited.add(c.id); out.push({ ...c, depth: d }); walk(c.id, d + 1); }); };
   walk("root", 0);
+  const orphans = all.filter(e => !visited.has(e.id) && !allIds.has(e.parent || "root"));
+  if (orphans.length > 0) {
+    orphans.forEach(o => { out.push({ ...o, depth: 0, _orphan: true }); });
+  }
   return out;
 }
 
@@ -67,16 +83,18 @@ function eDiff(b, a) {
   const ak = new Set(Object.keys(a || {}));
   const add = [...ak].filter(k => !bk.has(k));
   const rem = [...bk].filter(k => !ak.has(k));
-  // Detect prop changes on entities that exist in both
   const mod = [];
   const modDetails = {};
+  const moved = {};
   for (const k of ak) {
     if (!bk.has(k)) continue;
     const bp = JSON.stringify((b[k]?.props || b[k]?.p || {}));
     const ap = JSON.stringify((a[k]?.props || a[k]?.p || {}));
-    if (bp !== ap) {
+    const bParent = b[k]?.parent;
+    const aParent = a[k]?.parent;
+    const parentChanged = bParent !== aParent;
+    if (bp !== ap || parentChanged) {
       mod.push(k);
-      // Find which props changed
       const bObj = b[k]?.props || b[k]?.p || {};
       const aObj = a[k]?.props || a[k]?.p || {};
       const changed = [];
@@ -86,10 +104,14 @@ function eDiff(b, a) {
           changed.push(bObj[pk] === undefined ? `+${pk}` : aObj[pk] === undefined ? `-${pk}` : `${pk}: ${JSON.stringify(bObj[pk])}→${JSON.stringify(aObj[pk])}`);
         }
       }
+      if (parentChanged) {
+        changed.push(`parent: ${bParent}→${aParent}`);
+        moved[k] = { from: bParent, to: aParent };
+      }
       modDetails[k] = changed;
     }
   }
-  return { add, rem, mod, modDetails };
+  return { add, rem, mod, modDetails, moved };
 }
 
 function Viewer() {
@@ -110,8 +132,15 @@ function Viewer() {
   const N = turns.length;
   const t = turns[idx];
   const evts = useMemo(() => parseEv(t.output), [t.output]);
-  const tree = useMemo(() => mkTree(t.snapshot_after?.entities), [t.snapshot_after]);
   const diff = useMemo(() => eDiff(t.snapshot_before?.entities, t.snapshot_after?.entities), [t]);
+  const removedEnts = useMemo(() => {
+    if (!diff.rem.length) return null;
+    const before = t.snapshot_before?.entities || {};
+    const out = {};
+    for (const id of diff.rem) { if (before[id]) out[id] = before[id]; }
+    return out;
+  }, [diff.rem, t.snapshot_before]);
+  const tree = useMemo(() => mkTree(t.snapshot_after?.entities, removedEnts), [t.snapshot_after, removedEnts]);
   const isL4 = t.tier === "L4";
   const pct = Math.round((t.score?.composite || 0) * 100);
 
@@ -216,8 +245,10 @@ function Viewer() {
               <Lbl>Entity Diff</Lbl>
               <div>
                 {diff.add.map(k=><span key={k} style={{ display:"inline-block", padding:"2px 7px", borderRadius:4, background:"#064e3b", border:"1px solid #047857", color:"#6ee7b7", fontSize:11, fontFamily:mono, marginRight:5, marginBottom:4 }}>+ {k}</span>)}
-                {diff.mod.map(k=><span key={k} style={{ display:"inline-block", padding:"2px 7px", borderRadius:4, background:"#1e3a5f", border:"1px solid #2563eb", color:"#93c5fd", fontSize:11, fontFamily:mono, marginRight:5, marginBottom:4 }} title={(diff.modDetails[k]||[]).join(", ")}>~ {k}</span>)}
+                {diff.mod.filter(k=>!diff.moved[k]).map(k=><span key={k} style={{ display:"inline-block", padding:"2px 7px", borderRadius:4, background:"#1e3a5f", border:"1px solid #2563eb", color:"#93c5fd", fontSize:11, fontFamily:mono, marginRight:5, marginBottom:4 }} title={(diff.modDetails[k]||[]).join(", ")}>~ {k}</span>)}
+                {Object.keys(diff.moved).map(k=><span key={k} style={{ display:"inline-block", padding:"2px 7px", borderRadius:4, background:"#3b1f63", border:"1px solid #7c3aed", color:"#c4b5fd", fontSize:11, fontFamily:mono, marginRight:5, marginBottom:4 }} title={`${diff.moved[k].from} → ${diff.moved[k].to}`}>↗ {k}</span>)}
                 {diff.rem.map(k=><span key={k} style={{ display:"inline-block", padding:"2px 7px", borderRadius:4, background:"#4c0519", border:"1px solid #be123c", color:"#fda4af", fontSize:11, fontFamily:mono, marginRight:5, marginBottom:4 }}>- {k}</span>)}
+                {tree.filter(e=>e._orphan).map(e=><span key={e.id} style={{ display:"inline-block", padding:"2px 7px", borderRadius:4, background:"#431407", border:"1px solid #c2410c", color:"#fb923c", fontSize:11, fontFamily:mono, marginRight:5, marginBottom:4 }} title={`parent "${e.parent}" deleted`}>⚠ {e.id}</span>)}
                 {diff.add.length===0 && diff.rem.length===0 && diff.mod.length===0 && <span style={{ fontSize:12, color:"#64748b" }}>No entity changes</span>}
               </div>
               {diff.mod.length > 0 && <div style={{ marginTop:8 }}>
@@ -230,20 +261,23 @@ function Viewer() {
             <Lbl>Entity Tree — Turn {t.turn}</Lbl>
             {tree.length > 0 ? (
               <div style={{ background:"#08080f", border:"1px solid #1e1e2e", borderRadius:6, padding:12 }}>
-                {tree.map((e,i)=>{ const nw=diff.add.includes(e.id); const md=diff.mod.includes(e.id); const clr=nw?"#6ee7b7":md?"#93c5fd":"#cbd5e1"; return (
-                  <div key={i} style={{ paddingLeft:e.depth*20, paddingTop:3, paddingBottom:3, fontSize:12, fontFamily:mono }}>
+                {tree.map((e,i)=>{ const nw=diff.add.includes(e.id); const md=diff.mod.includes(e.id); const rm=!!e._removed; const mv=!!diff.moved[e.id]; const orph=!!e._orphan; const clr=rm?"#f87171":orph?"#fb923c":nw?"#6ee7b7":md?"#93c5fd":"#cbd5e1"; return (
+                  <div key={i} style={{ paddingLeft:e.depth*20, paddingTop:3, paddingBottom:3, fontSize:12, fontFamily:mono, opacity:rm?0.5:1 }}>
                     <div style={{ display:"flex", alignItems:"center", gap:4 }}>
                       <span style={{ color:"#475569" }}>{e.depth>0?"├─":"◆"}</span>
-                      <span style={{ color:clr, fontWeight:nw||md?700:400 }}>{e.id}</span>
+                      <span style={{ color:clr, fontWeight:nw||md||rm||orph?700:400, textDecoration:rm?"line-through":"none" }}>{e.id}</span>
+                      {rm && <span style={{ fontSize:9, padding:"0 4px", borderRadius:3, background:"#4c0519", color:"#fda4af", border:"1px solid #be123c" }}>del</span>}
+                      {orph && <span style={{ fontSize:9, padding:"0 4px", borderRadius:3, background:"#431407", color:"#fb923c", border:"1px solid #c2410c" }} title={`parent "${e.parent}" was deleted`}>⚠ orphan</span>}
                       {nw && <span style={{ fontSize:9, padding:"0 4px", borderRadius:3, background:"#064e3b", color:"#6ee7b7", border:"1px solid #047857" }}>new</span>}
-                      {md && <span style={{ fontSize:9, padding:"0 4px", borderRadius:3, background:"#1e3a5f", color:"#93c5fd", border:"1px solid #2563eb" }}>mod</span>}
-                      {e.display && <span style={{ fontSize:10, padding:"0 4px", marginLeft:2, borderRadius:3, background:"#1e293b", color:"#94a3b8" }}>{e.display}</span>}
+                      {mv && <span style={{ fontSize:9, padding:"0 4px", borderRadius:3, background:"#3b1f63", color:"#c4b5fd", border:"1px solid #7c3aed" }} title={`from ${diff.moved[e.id].from} → ${diff.moved[e.id].to}`}>↗ moved</span>}
+                      {md && !mv && !orph && <span style={{ fontSize:9, padding:"0 4px", borderRadius:3, background:"#1e3a5f", color:"#93c5fd", border:"1px solid #2563eb" }}>mod</span>}
+                      {e.display && <span style={{ fontSize:10, padding:"0 4px", marginLeft:2, borderRadius:3, background:rm?"#1a0a0a":"#1e293b", color:rm?"#6b7280":"#94a3b8" }}>{e.display}</span>}
                     </div>
-                    {e.props && Object.keys(e.props).length>0 && <div style={{ paddingLeft:20, fontSize:11, color:"#475569", fontFamily:mono }}>
+                    {e.props && Object.keys(e.props).length>0 && <div style={{ paddingLeft:20, fontSize:11, color:rm?"#6b7280":orph?"#9a7050":"#475569", fontFamily:mono, textDecoration:rm?"line-through":"none" }}>
                       {Object.entries(e.props).slice(0,5).map(([k,v])=>{
                         const changes = diff.modDetails[e.id] || [];
-                        const isChanged = changes.some(c => c.startsWith(k+":") || c === "+"+k);
-                        return <span key={k} style={{ marginRight:8, color:isChanged?"#93c5fd":"#475569", fontWeight:isChanged?600:400 }}>{k}={JSON.stringify(v).slice(0,24)}</span>;
+                        const isChanged = !rm && !orph && changes.some(c => c.startsWith(k+":") || c === "+"+k);
+                        return <span key={k} style={{ marginRight:8, color:rm?"#6b7280":isChanged?"#93c5fd":orph?"#9a7050":"#475569", fontWeight:isChanged?600:400 }}>{k}={JSON.stringify(v).slice(0,24)}</span>;
                       })}
                     </div>}
                   </div>

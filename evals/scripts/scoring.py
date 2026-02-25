@@ -383,6 +383,16 @@ def score_structure(text: str, tier: str, scenario_hints: dict | None = None, sn
         creates = [p for p in parsed if p.get("t") == "entity.create"]
         checks["no_entity_creation"] = 1.0 if not creates else 0.0
 
+    # Orphan detection — entity.remove on a parent without moving all children first
+    if snapshot and tier in ("L2", "L3"):
+        orphans = snapshot.get("orphans", [])
+        if orphans:
+            checks["no_orphans"] = 0.0
+            notes.append(f"Orphaned entities: {orphans} — parent was removed without moving all children first")
+        # Only add the check if a remove happened this turn
+        elif any(p.get("t") == "entity.remove" for p in parsed):
+            checks["no_orphans"] = 1.0
+
     score = sum(checks.values()) / max(len(checks), 1) if checks else 1.0
     return DimensionScore("structure", score, checks, notes)
 
@@ -499,6 +509,23 @@ def score_fidelity(text: str, tier: str, scenario_hints: dict | None = None, sna
             checks["data_preserved"] = found / len(data_points)
             if missing_data:
                 notes.append(f"Data from message not in output: {missing_data}")
+
+    # Turn-level content expectations — specific strings that MUST appear in output
+    # Use for contextual data that the regex-based data_preserved can't catch
+    # (temporal phrases, qualifiers, store names, etc.)
+    expect_in = hints.get("expect_in_output", [])
+    if expect_in:
+        output_lower = text.lower()
+        found = 0
+        missing = []
+        for phrase in expect_in:
+            if phrase.lower() in output_lower:
+                found += 1
+            else:
+                missing.append(phrase)
+        checks["context_captured"] = found / len(expect_in)
+        if missing:
+            notes.append(f"Context from message not captured: {missing}")
 
     # Dangling refs — updates to entities that don't exist mean user intent was lost
     if snapshot and tier in ("L2", "L3"):
@@ -658,6 +685,77 @@ def score_fidelity(text: str, tier: str, scenario_hints: dict | None = None, sna
             else:
                 checks["unassign_method"] = 0.0
                 notes.append("No unassignment operation found — expected rel.remove")
+
+    # "Already have X" — item should leave the remaining list (done=true or entity.remove)
+    if hints.get("marks_done_or_removes"):
+        has_done = any(
+            p.get("t") == "entity.update" and p.get("p", {}).get("done") is True
+            for p in parsed
+        ) if parsed else False
+        has_remove = any(p.get("t") == "entity.remove" for p in parsed) if parsed else False
+        if has_done or has_remove:
+            checks["item_resolved"] = 1.0
+            method = "marked done" if has_done else "removed"
+            notes.append(f"Item {method} — no longer on remaining list")
+        else:
+            checks["item_resolved"] = 0.0
+            notes.append("Item should be done or removed — 'already have' means don't need to buy")
+
+    # Correction / un-check — model must set done=false (reverse a previous check-off)
+    if hints.get("unchecks_eggs"):
+        has_uncheck = any(
+            p.get("t") == "entity.update" and p.get("p", {}).get("done") is False
+            for p in parsed
+        ) if parsed else False
+        if has_uncheck:
+            checks["state_reversed"] = 1.0
+            notes.append("Correctly reversed done state — eggs back on remaining list")
+        else:
+            checks["state_reversed"] = 0.0
+            notes.append("Expected done=false to un-check eggs — model didn't reverse previous state")
+
+    # Update existing entity with new detail (quantity, note, qualifier)
+    if hints.get("updates_chicken"):
+        has_update = any(
+            p.get("t") == "entity.update" and "chicken" in p.get("ref", "").lower()
+            for p in parsed
+        ) if parsed else False
+        if has_update:
+            checks["detail_added"] = 1.0
+            notes.append("Updated chicken entity with additional detail")
+        else:
+            # Also accept if they created a new entity (wrong but less wrong)
+            has_create = any(
+                p.get("t") == "entity.create" and "chicken" in p.get("id", "").lower()
+                for p in parsed
+            ) if parsed else False
+            if has_create:
+                checks["detail_added"] = 0.3
+                notes.append("Created new chicken entity instead of updating existing one")
+            else:
+                checks["detail_added"] = 0.0
+                notes.append("Expected entity.update on chicken item with quantity/note")
+
+    # Restructuring — should create new section entities and/or move items
+    if hints.get("creates_sections"):
+        new_sections = [
+            p for p in parsed
+            if p.get("t") == "entity.create"
+            and p.get("display") in ("section", "group", "checklist", "card")
+        ] if parsed else []
+        moves = [p for p in parsed if p.get("t") == "entity.move"] if parsed else []
+        if new_sections and moves:
+            checks["restructured"] = 1.0
+            notes.append(f"Created {len(new_sections)} section(s) and moved {len(moves)} item(s)")
+        elif new_sections:
+            checks["restructured"] = 0.7
+            notes.append(f"Created {len(new_sections)} section(s) but didn't move existing items into them")
+        elif moves:
+            checks["restructured"] = 0.7
+            notes.append(f"Moved {len(moves)} item(s) but didn't create new section entities")
+        else:
+            checks["restructured"] = 0.0
+            notes.append("Expected section creation + item moves for restructuring request")
 
     score = sum(checks.values()) / max(len(checks), 1) if checks else 0.5
     return DimensionScore("fidelity", score, checks, notes)

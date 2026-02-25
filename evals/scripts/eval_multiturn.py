@@ -208,7 +208,11 @@ def apply_output_to_snapshot(snapshot: dict, output_text: str, tier: str) -> dic
 
         # Signals (voice, escalate, batch) — no state change
 
-    return {"meta": meta, "entities": entities, "relationships": relationships, "relationship_types": rel_types}
+    # Detect orphaned entities — children whose parent was removed
+    all_ids = set(entities.keys()) | {"root"}
+    orphans = [eid for eid, e in entities.items() if e.get("parent") and e["parent"] not in all_ids]
+
+    return {"meta": meta, "entities": entities, "relationships": relationships, "relationship_types": rel_types, "orphans": orphans}
 
 
 # ---------------------------------------------------------------------------
@@ -448,7 +452,14 @@ def run_multiturn_scenario(
             # (the merged output has L3-style entity creates, not L2-only mutations)
             effective_tier = result.get("escalated_to", actual_tier)
 
+            # Update snapshot from clean output (fences stripped)
+            # Done BEFORE scoring so structure scorer can detect orphans
+            new_snapshot = apply_output_to_snapshot(snapshot, result["output"], effective_tier)
+            entity_count = len(new_snapshot.get("entities", {}))
+            entity_delta = entity_count - len(snapshot.get("entities", {}))
+
             # Score this turn (use raw output so fence detection works)
+            # Pass new_snapshot so structure scorer can check for orphans
             turn_score = score_scenario(
                 name=f"{name}_t{i+1}",
                 tier=effective_tier,
@@ -457,15 +468,10 @@ def run_multiturn_scenario(
                 output_text=result.get("raw_output", result["output"]),
                 output_tokens=result["output_tokens"],
                 latency_ms=result["ttc_ms"],
-                snapshot=snapshot,
+                snapshot=new_snapshot,
                 user_message=message,
                 turn_hints=turn_spec.get("checks", {}),
             )
-
-            # Update snapshot from clean output (fences stripped)
-            new_snapshot = apply_output_to_snapshot(snapshot, result["output"], effective_tier)
-            entity_count = len(new_snapshot.get("entities", {}))
-            entity_delta = entity_count - len(snapshot.get("entities", {}))
 
             # Track history — use natural language summaries, NOT bracket format
             # that the model will mimic in its own output

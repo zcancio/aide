@@ -253,7 +253,8 @@ POKER_REALISTIC = {
 
 GROCERY_REALISTIC = {
     "name": "grocery_realistic",
-    "description": "Quick grocery list build, typical phone-speed messages.",
+    "description": "Quick grocery list build, typical phone-speed messages. "
+                   "Tests data preservation, corrections, grouping, and state reversal.",
     "turns": [
         {
             "message": "grocery run",
@@ -290,8 +291,43 @@ GROCERY_REALISTIC = {
         {
             "message": "add chicken thighs, rice, soy sauce, ginger, and green onions for tonight",
             "expected_tier": "L2",
-            "checks": {"creates_5_items": True},
-            "notes": "Batch add. 5 items in one message. Tests multi-entity creation.",
+            "checks": {"creates_5_items": True,
+                       "expect_in_output": ["tonight"]},
+            "notes": "Batch add 5 items. 'For tonight' is meaningful context — should appear "
+                     "as a note, group label, or prop on the items. Dropping temporal context "
+                     "loses user intent.",
+        },
+        {
+            "message": "actually I already have rice at home",
+            "expected_tier": "L2",
+            "checks": {"marks_done_or_removes": True},
+            "notes": "'Already have at home' = don't need to buy. Should mark rice done or "
+                     "remove it. Either is acceptable — the key is the item leaves the "
+                     "'remaining' list.",
+        },
+        {
+            "message": "the chicken should be 2 lbs, bone-in",
+            "expected_tier": "L2",
+            "checks": {"updates_chicken": True,
+                       "expect_in_output": ["2", "bone"]},
+            "notes": "Adds quantity detail to existing chicken item. Should entity.update "
+                     "chore_chicken_thighs with quantity or note. '2 lbs' and 'bone-in' "
+                     "must appear in the output.",
+        },
+        {
+            "message": "group the dinner stuff separately from the basics",
+            "expected_tier": "L3",
+            "checks": {"creates_sections": True},
+            "notes": "Restructuring — needs L3 to create section entities and move items. "
+                     "Should create something like a 'Dinner' section and a 'Basics' section "
+                     "or similar grouping. Tests entity.move or re-parenting.",
+        },
+        {
+            "message": "wait I didn't actually get the eggs yet",
+            "expected_tier": "L2",
+            "checks": {"unchecks_eggs": True},
+            "notes": "Correction — reverses turn 4's check-off. Should set eggs done=false. "
+                     "Tests that the model can undo previous state, not just advance it.",
         },
     ],
 }
