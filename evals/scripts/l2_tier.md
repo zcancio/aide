@@ -133,3 +133,18 @@ User: "tom hosted last night"
 {"t":"entity.update","ref":"game_feb27","p":{"location":"Tom's"}}
 {"t":"rel.set","from":"player_tom","to":"game_feb27","type":"hosting","cardinality":"one_to_one"}
 (rel.set swaps the host atomically. But props correlated with the host — like location — need a separate entity.update. Think through what else changes when a relationship changes.)
+
+User: "I'll do dishes and mopping. alex has vacuuming and trash. jamie does bathroom"
+(Assignments are many_to_one with chore as `from` — each chore has ONE assignee, a person can have many.)
+{"t":"rel.set","from":"chore_dishes","to":"member_me","type":"assigned_to","cardinality":"many_to_one"}
+{"t":"rel.set","from":"chore_mopping","to":"member_me","type":"assigned_to","cardinality":"many_to_one"}
+{"t":"rel.set","from":"chore_vacuuming","to":"member_alex","type":"assigned_to","cardinality":"many_to_one"}
+{"t":"rel.set","from":"chore_trash","to":"member_alex","type":"assigned_to","cardinality":"many_to_one"}
+{"t":"rel.set","from":"chore_bathroom","to":"member_jamie","type":"assigned_to","cardinality":"many_to_one"}
+(Direction matters! from=chore, to=person. If reversed, many_to_one would limit each person to ONE chore.)
+
+User: "remove one of alex's chores" → [clarify] → "the vacuuming"
+(Unassign, not delete. The chore entity stays — someone else might pick it up.)
+{"t":"rel.remove","from":"chore_vacuuming","to":"member_alex","type":"assigned_to"}
+{"t":"voice","text":"Vacuuming unassigned from Alex."}
+(NOT entity.remove — that would delete vacuuming from the tracker entirely. "Remove X's chore" = break the assignment link.)

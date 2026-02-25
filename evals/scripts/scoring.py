@@ -198,7 +198,7 @@ def score_validity(text: str, tier: str) -> DimensionScore:
                 valid_struct += 1
             elif t == "entity.update" and "ref" in p and "p" in p:
                 valid_struct += 1
-            elif t in ("voice", "escalate", "batch.start", "batch.end", "style.set",
+            elif t in ("voice", "escalate", "clarify", "batch.start", "batch.end", "style.set",
                        "meta.set", "meta.update", "entity.remove", "entity.move",
                        "entity.reorder", "rel.set", "rel.remove", "style.entity",
                        "meta.annotate", "meta.constrain", "rel.constrain"):
@@ -532,10 +532,13 @@ def score_fidelity(text: str, tier: str, scenario_hints: dict | None = None, sna
 
     # Tier-appropriate behavior
     if tier == "L2":
-        # L2 should mutate, not create structure
-        has_mutation = any(p.get("t") in ("entity.update", "entity.create", "entity.remove") for p in parsed)
-        has_escalation = any(p.get("t") == "escalate" for p in parsed)
-        checks["tier_appropriate"] = 1.0 if (has_mutation or has_escalation) else 0.0
+        # L2 should mutate state or signal (escalate/clarify)
+        has_mutation = any(p.get("t") in (
+            "entity.update", "entity.create", "entity.remove",
+            "rel.set", "rel.remove",
+        ) for p in parsed)
+        has_signal = any(p.get("t") in ("escalate", "clarify") for p in parsed)
+        checks["tier_appropriate"] = 1.0 if (has_mutation or has_signal) else 0.0
 
         # L2 duplicate-creation: if L2 creates an entity under a parent that has
         # exactly ONE existing child with similar shape AND the parent is not a
@@ -598,6 +601,63 @@ def score_fidelity(text: str, tier: str, scenario_hints: dict | None = None, sna
             else:
                 checks["clarify_quality"] = 0.3
                 notes.append("Clarify signal lacks text")
+
+    # Clarify resolution checks — user answered a previous clarify, model must act on it
+    if hints.get("resolves_clarify"):
+        # Model should NOT re-ask — user already gave their answer
+        checks["no_re_clarify"] = 0.0 if has_clarify else 1.0
+        if has_clarify:
+            notes.append("Model re-asked for clarification after user already answered — should have acted")
+        # Model should emit at least one mutation (entity.update, entity.remove, rel.set, etc.)
+        mutation_types = {"entity.update", "entity.remove", "entity.create", "rel.set", "rel.remove"}
+        has_mutation = any(p.get("t") in mutation_types for p in parsed) if parsed else False
+        checks["applied_resolution"] = 1.0 if has_mutation else 0.0
+        if not has_mutation:
+            notes.append("User answered clarify but model emitted no mutations — answer was ignored")
+        else:
+            notes.append("Clarify resolved: model applied mutations based on user's answer")
+
+    # Removal check — model should emit entity.remove
+    if hints.get("removes_chore"):
+        has_remove = any(p.get("t") == "entity.remove" for p in parsed) if parsed else False
+        checks["emitted_remove"] = 1.0 if has_remove else 0.0
+        if not has_remove:
+            # Also accept entity.update with active=false or similar deactivation
+            has_deactivate = any(
+                p.get("t") == "entity.update" and
+                p.get("props", {}).get("active") is False
+                for p in parsed
+            ) if parsed else False
+            if has_deactivate:
+                checks["emitted_remove"] = 0.8
+                notes.append("Used entity.update to deactivate instead of entity.remove — acceptable")
+            else:
+                notes.append("Expected entity.remove for chore removal — model didn't remove anything")
+
+    # Unassign check — model should rel.remove the assignment, NOT entity.remove the chore
+    if hints.get("unassigns_chore"):
+        has_rel_remove = any(p.get("t") == "rel.remove" for p in parsed) if parsed else False
+        has_entity_remove = any(p.get("t") == "entity.remove" for p in parsed) if parsed else False
+        if has_rel_remove and not has_entity_remove:
+            checks["unassign_method"] = 1.0
+            notes.append("Correctly used rel.remove to unassign — chore entity preserved")
+        elif has_rel_remove and has_entity_remove:
+            checks["unassign_method"] = 0.3
+            notes.append("Used rel.remove but ALSO entity.remove — chore was deleted from tracker")
+        elif has_entity_remove and not has_rel_remove:
+            checks["unassign_method"] = 0.2
+            notes.append("Used entity.remove instead of rel.remove — destroyed the chore entity "
+                         "instead of just unassigning it. 'Remove alex's chore' means take it "
+                         "off alex's plate, not delete vacuuming from the tracker.")
+        else:
+            # Maybe used entity.update to clear assigned_to prop?
+            has_update = any(p.get("t") == "entity.update" for p in parsed) if parsed else False
+            if has_update:
+                checks["unassign_method"] = 0.5
+                notes.append("Used entity.update — works but rel.remove is the correct primitive for unassignment")
+            else:
+                checks["unassign_method"] = 0.0
+                notes.append("No unassignment operation found — expected rel.remove")
 
     score = sum(checks.values()) / max(len(checks), 1) if checks else 0.5
     return DimensionScore("fidelity", score, checks, notes)

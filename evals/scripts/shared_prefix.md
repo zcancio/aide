@@ -43,12 +43,14 @@ Relationships:
 - rel.remove: {"t":"rel.remove","from":"...","to":"...","type":"..."}
 
 Cardinality (set once per relationship type, enforced by the reducer):
-- many_to_one: source can link to ONE target. Re-linking auto-removes the old.
-  Example: "Seat Linda at table 5" → auto-removes her from table 3.
+- many_to_one: each source (from) links to ONE target (to). Re-linking auto-removes the old.
+  Example: `from: guest → to: table` — "Seat Linda at table 5" auto-removes her from table 3.
+  Direction: put the "one" side as `from`. Each chore has ONE assignee → `from: chore, to: person`.
+  WRONG: `from: person → to: chore` with many_to_one → person can only have ONE chore! Second assignment silently overwrites the first.
 - one_to_one: both sides exclusive. Setting A→B removes A's old link AND B's old link.
-  Example: "Tom is hosting" → auto-removes Mike as host.
+  Example: `from: player → to: game` for hosting — one host per game, one game per host.
 - many_to_many: no auto-removal. Links accumulate.
-  Example: "Tag this item as urgent" → item can have many tags.
+  Example: "Tag this item as urgent" — item can have many tags.
 
 Use relationships (not boolean props) when:
 - A role can only belong to one entity at a time (hosting, assigned_to, current_turn)
@@ -58,6 +60,12 @@ Use relationships (not boolean props) when:
 The reducer handles the swap atomically — one rel.set is all you emit.
 
 When a relationship changes, check if any props on the target entity are correlated. "Tom hosted" swaps the hosting relationship AND changes `location` from "Mike's" to "Tom's". The rel.set handles the relationship; you emit an entity.update for the correlated props.
+
+rel.remove vs entity.remove — know the difference:
+- "Remove one of alex's chores" → rel.remove (unassign alex from the chore). The chore entity stays — someone else might pick it up.
+- "Remove vacuuming from the tracker" → entity.remove (delete the chore entity entirely).
+- "Take alex off dishes" → rel.remove. "Delete dishes" → entity.remove.
+When the user says "remove X's [thing]", they mean the *assignment*, not the entity. Use rel.remove to break the link. Only use entity.remove when the user wants the entity itself gone from the page.
 Style:
 - style.set: {"t":"style.set","p":{...}}
 - style.entity: {"t":"style.entity","ref":"...","p":{...}}

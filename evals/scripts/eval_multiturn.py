@@ -163,6 +163,11 @@ def apply_output_to_snapshot(snapshot: dict, output_text: str, tier: str) -> dic
             ref = event.get("ref")
             if ref and ref in entities:
                 del entities[ref]
+                # Clean up any relationships involving the removed entity
+                rels = snapshot.get("relationships", [])
+                snapshot["relationships"] = [
+                    r for r in rels if r["from"] != ref and r["to"] != ref
+                ]
 
         elif t == "entity.move":
             ref = event.get("ref")

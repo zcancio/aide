@@ -400,8 +400,16 @@ CHORES_CLARIFY = {
             "message": "mark jamie's as done",
             "expected_tier": "L2",
             "checks": {"should_clarify": True},
-            "notes": "SHOULD CLARIFY. Jamie now has bathroom + kitchen counters. Which one is done? "
-                     "Or both? Model must ask.",
+            "notes": "SHOULD CLARIFY. Jamie now has bathroom + kitchen counters (maybe dishes/mopping "
+                     "too if swap happened). Which one is done? Model must ask.",
+        },
+        {
+            "message": "kitchen counters",
+            "expected_tier": "L2",
+            "checks": {"resolves_clarify": True, "marks_done": True},
+            "notes": "Answers the clarify from turn 7. Should mark chore_kitchen_counters done=true. "
+                     "Short answer — model must understand this resolves the previous question, "
+                     "not create a new entity or ask again.",
         },
         {
             "message": "actually remove one of alex's chores",
@@ -409,6 +417,15 @@ CHORES_CLARIFY = {
             "checks": {"should_clarify": True},
             "notes": "SHOULD CLARIFY. Alex has vacuuming (done) + trash. Remove which? "
                      "Probably the done one, but model shouldn't assume.",
+        },
+        {
+            "message": "the vacuuming since it's already done",
+            "expected_tier": "L2",
+            "checks": {"resolves_clarify": True, "unassigns_chore": True},
+            "notes": "Answers the clarify from turn 9. Should rel.remove the assigned_to "
+                     "relationship between chore_vacuuming and member_alex — NOT entity.remove "
+                     "the chore itself. 'Remove one of alex's chores' means take it off alex's "
+                     "plate, not delete vacuuming from the tracker. The chore entity stays.",
         },
     ],
 }
