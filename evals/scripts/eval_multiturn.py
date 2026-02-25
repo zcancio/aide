@@ -245,10 +245,26 @@ def classify_tier(message: str, snapshot: dict | None) -> str:
     Returns expected tier based on message + snapshot.
     """
     msg_lower = message.lower().strip()
+    entities = snapshot.get("entities", {}) if snapshot else {}
+    entity_ids_lower = [eid.lower() for eid in entities.keys()]
+
+    # "add a new [thing]" — L3 only if the [thing] table doesn't exist yet
+    # e.g. "add a new chore" when chores table exists → L2 (adding row)
+    add_new_match = re.search(r'add a new (\w+)', msg_lower)
+    if add_new_match:
+        thing = add_new_match.group(1)
+        # Check if a table for this thing exists (singular or plural)
+        thing_exists = any(thing in eid or thing.rstrip('s') in eid or thing + 's' in eid
+                          for eid in entity_ids_lower)
+        if thing_exists:
+            return "L2"  # Adding to existing structure
+        else:
+            return "L3"  # Creating new structure
 
     # Structural keywords → L3 (check BEFORE query phrases to avoid "create a summary" → L4)
-    structural = ["add a section", "add a new", "set up a", "create a", "make a",
-                   "we should do", "need a", "gonna be", "redoing", "reorganize",
+    # Note: "gonna be" removed — too aggressive for "it's gonna be me, mike..." (adding to roster)
+    structural = ["add a section", "set up a", "create a", "make a",
+                   "we should track", "we should do", "gotta do", "redoing", "reorganize",
                    "group the", "split the", "separate the"]
     if any(kw in msg_lower for kw in structural):
         return "L3"
@@ -271,13 +287,42 @@ def classify_tier(message: str, snapshot: dict | None) -> str:
         return "L4"
 
     # No entities → L3
-    if not snapshot or not snapshot.get("entities"):
+    if not entities:
         return "L3"
+
+    # Helper: check if an entity has children (is populated, not just skeleton)
+    def has_children(prefix):
+        parent_ids = [eid for eid in entities.keys() if prefix in eid.lower()]
+        if not parent_ids:
+            return False
+        # Check if any other entity has one of these as parent
+        for e in entities.values():
+            if e.get("parent") in parent_ids:
+                return True
+        return False
+
+    # Budget/cost introduction → L3 if budget is empty or doesn't exist
+    # e.g. "budget is around 35k" or "already spent 8k"
+    if re.search(r'budget\s+(is|around|of|:)', msg_lower):
+        if not has_children("budget"):
+            return "L3"
+
+    # Quotes introduction → L3 if no quote children exist
+    # e.g. "got 3 quotes" or "quotes for the cabinets"
+    if re.search(r'(\d+\s+)?quotes?\s+(for|from|:)', msg_lower) or ("got" in msg_lower and "quote" in msg_lower):
+        if not has_children("quote"):
+            return "L3"
+
+    # Scheduling multiple contractors/tasks → L3 if tasks table is empty
+    # e.g. "plumber can start march 10, electrician march 3"
+    contractor_pattern = r'(plumber|electrician|contractor|installer|painter|carpenter)'
+    if re.search(contractor_pattern, msg_lower) and re.search(r'(start|begin|come|schedule)', msg_lower):
+        if not has_children("task"):
+            return "L3"
 
     # Multi-item creation: 3+ comma/and-separated values suggest table creation → L3
     # e.g. "quotes: woodworks 12k, cabinet depot 9500, custom craft 15k"
     # e.g. "chores: dishes, vacuuming, bathroom, trash, mopping"
-    # Count comma-separated segments
     segments = [s.strip() for s in msg_lower.split(",") if s.strip()]
     if len(segments) >= 3:
         # Check if this looks like a list of new items (not just a complex sentence)
@@ -285,15 +330,19 @@ def classify_tier(message: str, snapshot: dict | None) -> str:
         has_numbers = sum(1 for s in segments if re.search(r'\d', s))
         intro_patterns = ["quotes", "chores", "tasks", "items", "players",
                           "guests", "weekly", "daily", "monthly"]
-        has_intro = any(ip in msg_lower for ip in intro_patterns)
-        if has_numbers >= 2 or has_intro:
-            # Check if parent table already exists for these items
-            entities = snapshot.get("entities", {})
-            # If there's already a table that could hold these, L2 can add rows
-            table_parents = [e for e in entities.values()
-                            if e.get("display") in ("table", "list", "checklist")]
-            if not table_parents:
-                return "L3"
+        matched_intro = next((ip for ip in intro_patterns if ip in msg_lower), None)
+        if has_numbers >= 2 or matched_intro:
+            # Check if a table for THIS specific intro pattern has children
+            # (not just exists — "chores:" needs populated chores, not just skeleton)
+            if matched_intro:
+                if not has_children(matched_intro):
+                    return "L3"
+            else:
+                # No specific intro, fall back to checking if ANY table exists
+                table_parents = [e for e in entities.values()
+                                if e.get("display") in ("table", "list", "checklist")]
+                if not table_parents:
+                    return "L3"
 
     # Default → L2
     return "L2"
