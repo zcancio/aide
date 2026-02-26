@@ -1,11 +1,11 @@
 """L2 Compiler — Intent compilation using Haiku."""
 
 import json
-from pathlib import Path
 from typing import Any
 
 from backend.config import settings
 from backend.services.ai_provider import ai_provider
+from backend.services.prompt_builder import build_l2_prompt
 from engine.kernel.primitives import validate_primitive
 from engine.kernel.types import Event
 
@@ -14,10 +14,8 @@ class L2Compiler:
     """L2 (Haiku) intent compilation service."""
 
     def __init__(self) -> None:
-        """Initialize L2 with system prompt."""
-        prompt_path = Path(__file__).parent.parent / "prompts" / "l2_system.md"
-        with open(prompt_path) as f:
-            self.system_prompt = f.read()
+        """Initialize L2 compiler."""
+        pass
 
     async def compile(
         self,
@@ -39,6 +37,9 @@ class L2Compiler:
             - response: response text to show user
             - escalate: bool indicating if L3 is needed
         """
+        # Build system prompt with new prompt builder
+        system_prompt = build_l2_prompt(snapshot)
+
         # Build user message with context
         user_content = self._build_user_message(message, snapshot, recent_events)
 
@@ -47,7 +48,7 @@ class L2Compiler:
 
         result = await ai_provider.call_claude(
             model=settings.L2_MODEL,
-            system=self.system_prompt,
+            system=system_prompt,
             messages=messages,
             max_tokens=4096,
             temperature=0.0,

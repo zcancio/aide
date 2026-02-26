@@ -17,9 +17,9 @@ def test_l2_prompt_includes_snapshot():
     prompt = build_l2_prompt(snapshot)
 
     assert "Test" in prompt
-    assert "Primitive Schemas" in prompt
     assert "Current Snapshot" in prompt
-    assert "L2 System Prompt" in prompt
+    assert "L2 (Compiler)" in prompt
+    assert "aide-prompt-v3.1" in prompt
 
 
 def test_l3_prompt_includes_snapshot():
@@ -28,40 +28,41 @@ def test_l3_prompt_includes_snapshot():
     prompt = build_l3_prompt(snapshot)
 
     assert "Milk" in prompt
-    assert "Primitive Schemas" in prompt
     assert "Current Snapshot" in prompt
-    assert "L3 System Prompt" in prompt
+    assert "L3 (Architect)" in prompt
+    assert "aide-prompt-v3.1" in prompt
 
 
 def test_l4_prompt_includes_snapshot():
-    """L4 prompt includes snapshot JSON but not primitive schemas."""
+    """L4 prompt includes snapshot JSON and shared context."""
     snapshot = {"entities": {"guest_1": {"name": "Sarah", "status": "attending"}}}
     prompt = build_l4_prompt(snapshot)
 
     assert "Sarah" in prompt
     assert "attending" in prompt
     assert "Current Snapshot" in prompt
-    assert "L4 System Prompt" in prompt
-    # L4 doesn't need primitive schemas since it doesn't emit events
-    assert "Primitive Schemas" not in prompt
+    assert "L4 (Analyst)" in prompt
+    assert "aide-prompt-v3.1" in prompt
 
 
 def test_messages_includes_conversation_tail():
-    """Messages array includes last 10 turns plus current message."""
+    """Messages array includes last 5 turns plus current message by default."""
     conversation = [{"role": "user", "content": f"msg{i}"} for i in range(20)]
     messages = build_messages(conversation, "new message")
 
-    # Should include last 10 + new = 11 total
-    assert len(messages) == 11
+    # Should include last 5 + new = 6 total
+    assert len(messages) == 6
     assert messages[-1]["content"] == "new message"
     assert messages[-1]["role"] == "user"
-    # Should include msg10-msg19 (last 10)
-    assert messages[0]["content"] == "msg10"
-    assert messages[9]["content"] == "msg19"
+    # Should include msg15-msg19 (last 5)
+    assert messages[0]["content"] == "msg15"
+    # Last tail message (msg19) has cache control
+    assert messages[4]["content"][0]["text"] == "msg19"
+    assert messages[4]["content"][0]["cache_control"]["type"] == "ephemeral"
 
 
 def test_messages_with_short_conversation():
-    """Messages array works with conversations shorter than 10 turns."""
+    """Messages array works with conversations shorter than 5 turns."""
     conversation = [
         {"role": "user", "content": "hello"},
         {"role": "assistant", "content": "hi"},
@@ -71,7 +72,9 @@ def test_messages_with_short_conversation():
     # Should include all 2 + new = 3 total
     assert len(messages) == 3
     assert messages[0]["content"] == "hello"
-    assert messages[1]["content"] == "hi"
+    # Last tail message has cache control
+    assert messages[1]["content"][0]["text"] == "hi"
+    assert messages[1]["content"][0]["cache_control"]["type"] == "ephemeral"
     assert messages[2]["content"] == "how are you?"
 
 
@@ -118,11 +121,11 @@ def test_l2_prompt_structure():
     prompt = build_l2_prompt(snapshot)
 
     # Check section ordering
-    l2_pos = prompt.find("L2 System Prompt")
-    primitives_pos = prompt.find("## Primitive Schemas")
+    prefix_pos = prompt.find("aide-prompt-v3.1")
+    l2_pos = prompt.find("L2 (Compiler)")
     snapshot_pos = prompt.find("## Current Snapshot")
 
-    assert l2_pos < primitives_pos < snapshot_pos, "Prompt sections should be in order"
+    assert prefix_pos < l2_pos < snapshot_pos, "Prompt sections should be in order"
 
 
 def test_l3_prompt_structure():
@@ -130,11 +133,11 @@ def test_l3_prompt_structure():
     snapshot = {"entities": {}}
     prompt = build_l3_prompt(snapshot)
 
-    l3_pos = prompt.find("L3 System Prompt")
-    primitives_pos = prompt.find("## Primitive Schemas")
+    prefix_pos = prompt.find("aide-prompt-v3.1")
+    l3_pos = prompt.find("L3 (Architect)")
     snapshot_pos = prompt.find("## Current Snapshot")
 
-    assert l3_pos < primitives_pos < snapshot_pos, "Prompt sections should be in order"
+    assert prefix_pos < l3_pos < snapshot_pos, "Prompt sections should be in order"
 
 
 def test_l4_prompt_structure():
@@ -142,9 +145,8 @@ def test_l4_prompt_structure():
     snapshot = {"entities": {}}
     prompt = build_l4_prompt(snapshot)
 
-    l4_pos = prompt.find("L4 System Prompt")
+    prefix_pos = prompt.find("aide-prompt-v3.1")
+    l4_pos = prompt.find("L4 (Analyst)")
     snapshot_pos = prompt.find("## Current Snapshot")
 
-    assert l4_pos < snapshot_pos, "Prompt sections should be in order"
-    # L4 should not have primitive schemas
-    assert "## Primitive Schemas" not in prompt
+    assert prefix_pos < l4_pos < snapshot_pos, "Prompt sections should be in order"

@@ -40,7 +40,8 @@ def test_prompt_building_l2():
     snapshot = {"entities": {"item_1": {"name": "Test"}}}
     prompt = build_l2_prompt(snapshot)
     assert "Test" in prompt
-    assert "L2 System Prompt" in prompt
+    assert "L2 (Compiler)" in prompt
+    assert "aide-prompt-v3.1" in prompt
 
 
 def test_prompt_building_l3():
@@ -48,7 +49,8 @@ def test_prompt_building_l3():
     snapshot = {"entities": {"item_1": {"name": "Test"}}}
     prompt = build_l3_prompt(snapshot)
     assert "Test" in prompt
-    assert "L3 System Prompt" in prompt
+    assert "L3 (Architect)" in prompt
+    assert "aide-prompt-v3.1" in prompt
 
 
 def test_prompt_building_l4():
@@ -56,4 +58,5 @@ def test_prompt_building_l4():
     snapshot = {"entities": {"item_1": {"name": "Test"}}}
     prompt = build_l4_prompt(snapshot)
     assert "Test" in prompt
-    assert "L4 System Prompt" in prompt
+    assert "L4 (Analyst)" in prompt
+    assert "aide-prompt-v3.1" in prompt

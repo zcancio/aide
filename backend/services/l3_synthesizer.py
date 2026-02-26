@@ -1,10 +1,10 @@
 """L3 Synthesizer — Schema synthesis using Sonnet."""
 
 import json
-from pathlib import Path
 from typing import Any
 
 from backend.services.ai_provider import ai_provider
+from backend.services.prompt_builder import build_l3_prompt
 from engine.kernel.primitives import validate_primitive
 from engine.kernel.types import Event
 
@@ -13,10 +13,8 @@ class L3Synthesizer:
     """L3 (Sonnet) schema synthesis service."""
 
     def __init__(self) -> None:
-        """Initialize L3 with system prompt."""
-        prompt_path = Path(__file__).parent.parent / "prompts" / "l3_system.md"
-        with open(prompt_path) as f:
-            self.system_prompt = f.read()
+        """Initialize L3 synthesizer."""
+        pass
 
     async def synthesize(
         self,
@@ -39,6 +37,9 @@ class L3Synthesizer:
             - primitives: list of primitive events
             - response: response text to show user
         """
+        # Build system prompt with new prompt builder
+        system_prompt = build_l3_prompt(snapshot)
+
         # Build user message with context
         user_content = self._build_user_message(message, snapshot, recent_events)
 
@@ -47,7 +48,7 @@ class L3Synthesizer:
 
         result = await ai_provider.call_claude(
             model="claude-sonnet-4-20250514",
-            system=self.system_prompt,
+            system=system_prompt,
             messages=messages,
             max_tokens=16384,  # Increased for large entity batches (grids, etc.)
             temperature=0.0,

@@ -27,7 +27,7 @@ class AnthropicClient:
     async def stream(
         self,
         messages: list[dict[str, Any]],
-        system: str,
+        system: str | list[dict[str, Any]],
         model: str = "claude-sonnet-4-5-20250929",
         max_tokens: int = 4096,
         cache_ttl: int | None = None,
@@ -37,17 +37,18 @@ class AnthropicClient:
 
         Args:
             messages: Messages array for the conversation
-            system: System prompt
+            system: System prompt (string or content blocks with cache_control)
             model: Model identifier
             max_tokens: Maximum tokens to generate
-            cache_ttl: Optional cache TTL in seconds for prompt caching
+            cache_ttl: Optional cache TTL (deprecated - use content blocks directly)
 
         Yields:
             Text chunks as they arrive from the API
         """
-        # Build cache control if specified
+        # Support both old string format and new content blocks
         system_content: str | list[dict[str, Any]] = system
-        if cache_ttl:
+        if isinstance(system, str) and cache_ttl:
+            # Legacy path: convert string to content blocks
             system_content = [
                 {
                     "type": "text",

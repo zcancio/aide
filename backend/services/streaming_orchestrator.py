@@ -13,8 +13,9 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 from backend.services.anthropic_client import AnthropicClient
-from backend.services.classifier import TIER_CACHE_TTL, TIER_MODELS, classify
-from backend.services.prompt_builder import build_l2_prompt, build_l3_prompt, build_l4_prompt, build_messages
+from backend.services.classifier import TIER_MODELS
+from backend.services.prompt_builder import build_messages, build_system_blocks
+from backend.services.tier_classifier import classify_tier
 from engine.kernel.reducer_v2 import reduce
 
 logger = logging.getLogger(__name__)
@@ -60,27 +61,17 @@ class StreamingOrchestrator:
             Dictionaries containing events, deltas, or metadata
         """
         # Classify message to determine tier
-        has_schema = bool(self.snapshot.get("entities"))
-        classification = classify(content, self.snapshot, has_schema)
-
-        self.tier = classification.tier
+        self.tier = classify_tier(content, self.snapshot)
         self.model = TIER_MODELS[self.tier]
-        cache_ttl = TIER_CACHE_TTL[self.tier]
 
         logger.info(
-            "streaming_orchestrator: classified message aide_id=%s tier=%s reason=%s",
+            "streaming_orchestrator: classified message aide_id=%s tier=%s",
             self.aide_id,
             self.tier,
-            classification.reason,
         )
 
-        # Build prompt based on tier
-        if self.tier == "L2":
-            system = build_l2_prompt(self.snapshot)
-        elif self.tier == "L3":
-            system = build_l3_prompt(self.snapshot)
-        else:  # L4
-            system = build_l4_prompt(self.snapshot)
+        # Build system prompt with content blocks (includes cache control)
+        system_blocks = build_system_blocks(self.tier, self.snapshot)
 
         # Build messages array
         messages = build_messages(self.conversation, content)
@@ -90,16 +81,14 @@ class StreamingOrchestrator:
             "type": "meta.classification",
             "tier": self.tier,
             "model": self.model,
-            "reason": classification.reason,
         }
 
         # Stream from LLM and parse JSONL
         line_buffer = ""
         async for chunk in self.client.stream(
             messages=messages,
-            system=system,
+            system=system_blocks,
             model=self.model,
-            cache_ttl=cache_ttl,
         ):
             line_buffer += chunk
 
