@@ -45,7 +45,6 @@ def classify_tier(message: str, snapshot: dict[str, Any] | None) -> str:
     structural = [
         "add a section",
         "set up a",
-        "create a",
         "make a",
         "we should track",
         "we should do",
@@ -57,6 +56,10 @@ def classify_tier(message: str, snapshot: dict[str, Any] | None) -> str:
         "separate the",
     ]
     if any(kw in msg_lower for kw in structural):
+        return "L3"
+
+    # "create X" patterns → L3 (handles "create a card", "create summary cards", etc.)
+    if re.search(r"\bcreate\s+\w+", msg_lower):
         return "L3"
 
     # Questions → L4

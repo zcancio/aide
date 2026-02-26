@@ -263,10 +263,14 @@ def classify_tier(message: str, snapshot: dict | None) -> str:
 
     # Structural keywords → L3 (check BEFORE query phrases to avoid "create a summary" → L4)
     # Note: "gonna be" removed — too aggressive for "it's gonna be me, mike..." (adding to roster)
-    structural = ["add a section", "set up a", "create a", "make a",
+    structural = ["add a section", "set up a", "make a",
                    "we should track", "we should do", "gotta do", "redoing", "reorganize",
                    "group the", "split the", "separate the"]
     if any(kw in msg_lower for kw in structural):
+        return "L3"
+
+    # "create X" patterns → L3 (handles "create a card", "create summary cards", etc.)
+    if re.search(r'\bcreate\s+\w+', msg_lower):
         return "L3"
 
     # Questions → L4
