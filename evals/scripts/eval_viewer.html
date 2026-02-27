@@ -53,6 +53,9 @@ body{font-family:var(--font-sans);background:var(--bg-deep);color:var(--text-pri
 .view-pane.active{display:block}
 .view-pane::-webkit-scrollbar{width:4px}
 .view-pane::-webkit-scrollbar-thumb{background:var(--border-light);border-radius:2px}
+.prompt-content{padding:16px;font-family:var(--font-mono);font-size:11px;line-height:1.65;color:#94a3b8;white-space:pre-wrap;word-break:break-word}
+.prompt-content .prompt-section{color:var(--accent-blue);font-weight:600;margin-top:16px}
+.prompt-content .prompt-snapshot{color:var(--accent-amber);opacity:.7;font-size:10px}
 
 /* Right: Metrics */
 .panel-right{width:260;min-width:220px;border-left:1px solid var(--border);display:flex;flex-direction:column;background:var(--bg-panel);overflow-y:auto}
@@ -71,6 +74,10 @@ body{font-family:var(--font-sans);background:var(--bg-deep);color:var(--text-pri
 .tier-badge.L4{background:#312e81;color:#c4b5fd}
 .tier-badge.L3{background:#0c3547;color:#7dd3fc}
 .model-name{font-family:var(--font-mono);font-size:9px;color:var(--text-muted);margin-top:2px;word-break:break-all}
+
+/* ── Resize Handles ───────────────────────── */
+.resize-handle{width:4px;cursor:col-resize;background:transparent;transition:background .15s;flex-shrink:0;z-index:5}
+.resize-handle:hover,.resize-handle.dragging{background:var(--accent-blue)}
 
 /* ── Chat Bubbles ───────────────────────────── */
 .turn-block{margin-bottom:12px}
@@ -197,18 +204,21 @@ body{font-family:var(--font-sans);background:var(--bg-deep);color:var(--text-pri
 <!-- Main 3 panels -->
 <div class="main">
   <!-- LEFT: Chat -->
-  <div class="panel-left">
+  <div class="panel-left" id="panelLeft">
     <div class="panel-header">Conversation</div>
     <div class="chat-scroll" id="chat"></div>
   </div>
 
-  <!-- CENTER: 4 Views -->
+  <div class="resize-handle" id="resizeLeft"></div>
+
+  <!-- CENTER: 5 Views -->
   <div class="panel-center">
     <div class="view-tabs" id="vtabs">
       <div class="vtab active" data-view="rendered">Rendered</div>
       <div class="vtab" data-view="raw">Raw Output</div>
       <div class="vtab" data-view="diff">Before / After</div>
       <div class="vtab" data-view="tree">Entity Tree</div>
+      <div class="vtab" data-view="prompt">Prompt</div>
     </div>
     <div class="view-content">
       <div class="view-pane active" id="v-rendered">
@@ -221,11 +231,14 @@ body{font-family:var(--font-sans);background:var(--bg-deep);color:var(--text-pri
       <div class="view-pane" id="v-raw"></div>
       <div class="view-pane" id="v-diff"></div>
       <div class="view-pane" id="v-tree"></div>
+      <div class="view-pane" id="v-prompt"></div>
     </div>
   </div>
 
+  <div class="resize-handle" id="resizeRight"></div>
+
   <!-- RIGHT: Metrics -->
-  <div class="panel-right">
+  <div class="panel-right" id="panelRight">
     <div class="panel-header">Turn Metrics</div>
     <div id="metrics"></div>
   </div>
@@ -239,7 +252,7 @@ body{font-family:var(--font-sans);background:var(--bg-deep);color:var(--text-pri
     <button class="cbtn pp off" id="cPlay">▶</button>
     <button class="cbtn" id="cNext">▸</button>
     <button class="cbtn" id="cEnd">⏭</button>
-    <span class="hint">←→ step · Space play · D detail · 1-4 views</span>
+    <span class="hint">←→ step · Space play · 1-5 views</span>
   </div>
   <div class="ptrack" id="ptrack"><div class="pfill" id="pfill"></div></div>
 </div>
@@ -534,6 +547,35 @@ function renderTree(g, ti) {
   return html;
 }
 
+// ── View: Prompt ───────────────────────────
+function renderPrompt(t) {
+  if (!t.system_prompt) {
+    return `<div class="prompt-content" style="color:var(--text-muted);font-style:italic">No prompt data. Re-run eval to capture prompts.</div>`;
+  }
+  const raw = t.system_prompt;
+  // Highlight markdown headers and snapshot JSON
+  let html = `<div class="prompt-content">`;
+  const lines = raw.split("\n");
+  let inSnapshot = false;
+  for (const line of lines) {
+    if (line.startsWith("## Current Snapshot")) {
+      inSnapshot = true;
+      html += `<span class="prompt-section">${esc(line)}</span>\n`;
+    } else if (line.startsWith("```") && inSnapshot) {
+      html += `<span class="prompt-snapshot">${esc(line)}</span>\n`;
+    } else if (inSnapshot && !line.startsWith("```")) {
+      html += `<span class="prompt-snapshot">${esc(line)}</span>\n`;
+      if (line.trim() === "```") inSnapshot = false;
+    } else if (line.startsWith("# ") || line.startsWith("## ") || line.startsWith("### ")) {
+      html += `<span class="prompt-section">${esc(line)}</span>\n`;
+    } else {
+      html += esc(line) + "\n";
+    }
+  }
+  html += `</div>`;
+  return html;
+}
+
 // ── Right Panel: Metrics ───────────────────
 function renderMetrics(g, ti) {
   const t = g.turns[ti];
@@ -676,6 +718,9 @@ function update() {
   // Tree
   $("v-tree").innerHTML = renderTree(G, cur);
 
+  // Prompt
+  $("v-prompt").innerHTML = renderPrompt(t);
+
   // Metrics
   $("metrics").innerHTML = renderMetrics(G, cur);
 
@@ -762,12 +807,95 @@ document.addEventListener("keydown",e=>{
   else if(e.key==="2")switchView("raw");
   else if(e.key==="3")switchView("diff");
   else if(e.key==="4")switchView("tree");
+  else if(e.key==="5")switchView("prompt");
 });
 
 document.addEventListener("dragenter",e=>{e.preventDefault();$("drop").classList.add("show");});
+
+// ── Resize handles ───────────────────────────
+(function initResize() {
+  const panelL = $("panelLeft");
+  const panelR = $("panelRight");
+  const handleL = $("resizeLeft");
+  const handleR = $("resizeRight");
+  let dragging = null; // "left" or "right"
+  let startX = 0, startW = 0;
+
+  function onDown(which, e) {
+    e.preventDefault();
+    dragging = which;
+    startX = e.clientX;
+    startW = which === "left" ? panelL.offsetWidth : panelR.offsetWidth;
+    (which === "left" ? handleL : handleR).classList.add("dragging");
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }
+  handleL.addEventListener("mousedown", e => onDown("left", e));
+  handleR.addEventListener("mousedown", e => onDown("right", e));
+
+  document.addEventListener("mousemove", e => {
+    if (!dragging) return;
+    const dx = e.clientX - startX;
+    if (dragging === "left") {
+      const w = Math.max(200, Math.min(600, startW + dx));
+      panelL.style.width = w + "px";
+      panelL.style.minWidth = w + "px";
+    } else {
+      const w = Math.max(180, Math.min(500, startW - dx));
+      panelR.style.width = w + "px";
+      panelR.style.minWidth = w + "px";
+    }
+  });
+
+  document.addEventListener("mouseup", () => {
+    if (!dragging) return;
+    handleL.classList.remove("dragging");
+    handleR.classList.remove("dragging");
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+    dragging = null;
+  });
+})();
 $("drop").addEventListener("dragleave",e=>{if(e.target===$("drop"))$("drop").classList.remove("show");});
 $("drop").addEventListener("dragover",e=>e.preventDefault());
 $("drop").addEventListener("drop",e=>{e.preventDefault();$("drop").classList.remove("show");if(e.dataTransfer.files[0])loadFile(e.dataTransfer.files[0]);});
+
+// ── Resizable Panels ──────────────────────
+(function initResize() {
+  function makeDraggable(handleId, getPanel, side) {
+    const handle = $(handleId);
+    let startX, startW;
+    function onDown(e) {
+      e.preventDefault();
+      const panel = getPanel();
+      startX = e.clientX;
+      startW = panel.getBoundingClientRect().width;
+      handle.classList.add("dragging");
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+    }
+    function onMove(e) {
+      const panel = getPanel();
+      const dx = e.clientX - startX;
+      const newW = side === "left" ? startW + dx : startW - dx;
+      const clamped = Math.max(180, Math.min(newW, window.innerWidth * 0.5));
+      panel.style.width = clamped + "px";
+      panel.style.minWidth = clamped + "px";
+    }
+    function onUp() {
+      handle.classList.remove("dragging");
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    }
+    handle.addEventListener("mousedown", onDown);
+  }
+  makeDraggable("resizeLeft", () => $("panelLeft"), "left");
+  makeDraggable("resizeRight", () => $("panelRight"), "right");
+})();
 
 // ── Demo Data ──────────────────────────────
 const DEMO = {"scenario_id":"poker_league_demo","name":"Poker League","pattern":"roster + timeline + ledger","timestamp":"2026-02-26T15:00:00Z","turns":[{"turn":1,"tier":"L4","message":"I'm running a poker league. 8 players, Thursday nights biweekly, rotating hosts and snack duty. Players are Mike, Dave, Sarah, Linda, Tom, Amy, Jake, and Priya. Mike's hosting first game, Dave's on snacks.","tool_calls":[{"name":"mutate_entity","input":{"action":"create","id":"page","parent":"root","display":"page","props":{"title":"Poker League — Spring 2026"}}},{"name":"mutate_entity","input":{"action":"create","id":"roster","parent":"page","display":"table","props":{"title":"Roster","_pattern":"roster"}}},{"name":"mutate_entity","input":{"action":"create","id":"player_mike","parent":"roster","props":{"name":"Mike","status":"active","snack_duty":false}}},{"name":"mutate_entity","input":{"action":"create","id":"player_dave","parent":"roster","props":{"name":"Dave","status":"active","snack_duty":true}}},{"name":"mutate_entity","input":{"action":"create","id":"player_sarah","parent":"roster","props":{"name":"Sarah","status":"active","snack_duty":false}}},{"name":"mutate_entity","input":{"action":"create","id":"player_linda","parent":"roster","props":{"name":"Linda","status":"active","snack_duty":false}}},{"name":"mutate_entity","input":{"action":"create","id":"player_tom","parent":"roster","props":{"name":"Tom","status":"active","snack_duty":false}}},{"name":"mutate_entity","input":{"action":"create","id":"player_amy","parent":"roster","props":{"name":"Amy","status":"active","snack_duty":false}}},{"name":"mutate_entity","input":{"action":"create","id":"player_jake","parent":"roster","props":{"name":"Jake","status":"active","snack_duty":false}}},{"name":"mutate_entity","input":{"action":"create","id":"player_priya","parent":"roster","props":{"name":"Priya","status":"active","snack_duty":false}}},{"name":"mutate_entity","input":{"action":"create","id":"schedule","parent":"page","display":"table","props":{"title":"Schedule","_pattern":"timeline"}}},{"name":"mutate_entity","input":{"action":"create","id":"game_1","parent":"schedule","props":{"date":"2026-02-19","host":"Mike","snacks":"Dave","status":"upcoming"}}}],"text_blocks":["Poker league. 8 players, biweekly Thursday.","Roster and schedule set. Mike hosting game 1, Dave on snacks."],"usage":{"input_tokens":1850,"output_tokens":680,"cache_read":0},"ttfc_ms":1320,"ttc_ms":4800,"validation":{"passed":true,"issues":[]}},{"turn":2,"tier":"L3","message":"We need to track standings too. Points, wins, and losses.","tool_calls":[{"name":"mutate_entity","input":{"action":"create","id":"standings","parent":"page","display":"table","props":{"title":"Standings","_pattern":"ledger","_sort_by":"points","_sort_order":"desc"}}}],"text_blocks":["Standings section added. Tracking points, wins, losses."],"usage":{"input_tokens":2400,"output_tokens":220,"cache_read":1600},"ttfc_ms":420,"ttc_ms":1200,"validation":{"passed":true,"issues":[]}},{"turn":3,"tier":"L3","message":"Mike's out this week. Dave's subbing in for hosting. Dave's on snacks since it was Mike's rotation.","tool_calls":[{"name":"mutate_entity","input":{"action":"update","ref":"player_mike","props":{"status":"out"}}},{"name":"mutate_entity","input":{"action":"update","ref":"player_dave","props":{"snack_duty":true}}},{"name":"mutate_entity","input":{"action":"update","ref":"game_1","props":{"host":"Dave","snacks":"Dave"}}}],"text_blocks":["Mike out. Dave hosting and on snacks. 7 active."],"usage":{"input_tokens":2600,"output_tokens":190,"cache_read":1800},"ttfc_ms":350,"ttc_ms":980,"validation":{"passed":true,"issues":[]}},{"turn":4,"tier":"L3","message":"Game 1 results: Sarah won, Tom second, Linda third. Sarah 10 pts, Tom 7, Linda 5. Everyone else 2 points for showing up.","tool_calls":[{"name":"mutate_entity","input":{"action":"update","ref":"game_1","props":{"status":"complete","winner":"Sarah"}}},{"name":"mutate_entity","input":{"action":"create","id":"standing_sarah","parent":"standings","props":{"name":"Sarah","points":10,"wins":1,"losses":0}}},{"name":"mutate_entity","input":{"action":"create","id":"standing_tom","parent":"standings","props":{"name":"Tom","points":7,"wins":0,"losses":1}}},{"name":"mutate_entity","input":{"action":"create","id":"standing_linda","parent":"standings","props":{"name":"Linda","points":5,"wins":0,"losses":1}}},{"name":"mutate_entity","input":{"action":"create","id":"standing_dave","parent":"standings","props":{"name":"Dave","points":2,"wins":0,"losses":1}}},{"name":"mutate_entity","input":{"action":"create","id":"standing_amy","parent":"standings","props":{"name":"Amy","points":2,"wins":0,"losses":1}}},{"name":"mutate_entity","input":{"action":"create","id":"standing_jake","parent":"standings","props":{"name":"Jake","points":2,"wins":0,"losses":1}}},{"name":"mutate_entity","input":{"action":"create","id":"standing_priya","parent":"standings","props":{"name":"Priya","points":2,"wins":0,"losses":1}}}],"text_blocks":["Game 1 recorded. Sarah leads with 10 points."],"usage":{"input_tokens":2900,"output_tokens":420,"cache_read":2000},"ttfc_ms":380,"ttc_ms":2100,"validation":{"passed":true,"issues":[]}},{"turn":5,"tier":"L3","message":"Actually let's also track a buy-in amount per player. Default $20.","tool_calls":[{"name":"mutate_entity","input":{"action":"update","ref":"player_mike","props":{"buy_in":20}}},{"name":"mutate_entity","input":{"action":"update","ref":"player_dave","props":{"buy_in":20}}},{"name":"mutate_entity","input":{"action":"update","ref":"player_sarah","props":{"buy_in":20}}},{"name":"mutate_entity","input":{"action":"update","ref":"player_linda","props":{"buy_in":20}}},{"name":"mutate_entity","input":{"action":"update","ref":"player_tom","props":{"buy_in":20}}},{"name":"mutate_entity","input":{"action":"update","ref":"player_amy","props":{"buy_in":20}}},{"name":"mutate_entity","input":{"action":"update","ref":"player_jake","props":{"buy_in":20}}},{"name":"mutate_entity","input":{"action":"update","ref":"player_priya","props":{"buy_in":20}}}],"text_blocks":["Buy-in field added. $20 default across all 8 players."],"usage":{"input_tokens":3100,"output_tokens":340,"cache_read":2200},"ttfc_ms":360,"ttc_ms":1600,"validation":{"passed":true,"issues":[]}},{"turn":6,"tier":"L3","message":"Mike's back for game 2. Jake can't make it. Sarah's hosting, Priya on snacks.","tool_calls":[{"name":"mutate_entity","input":{"action":"update","ref":"player_mike","props":{"status":"active"}}},{"name":"mutate_entity","input":{"action":"update","ref":"player_jake","props":{"status":"out"}}},{"name":"mutate_entity","input":{"action":"update","ref":"player_dave","props":{"snack_duty":false}}},{"name":"mutate_entity","input":{"action":"create","id":"game_2","parent":"schedule","props":{"date":"2026-03-05","host":"Sarah","snacks":"Priya","status":"upcoming"}}}],"text_blocks":["Mike active. Jake out for game 2. Sarah hosting, Priya on snacks."],"usage":{"input_tokens":3400,"output_tokens":250,"cache_read":2600},"ttfc_ms":330,"ttc_ms":1100,"validation":{"passed":true,"issues":[]}},{"turn":7,"tier":"L3","message":"Who's in the lead right now?","tool_calls":[],"text_blocks":["Sarah leads with 10 points and 1 win. Tom is second with 7, Linda third with 5. Dave, Amy, Jake, and Priya each have 2 points."],"usage":{"input_tokens":3600,"output_tokens":120,"cache_read":2800},"ttfc_ms":280,"ttc_ms":650,"validation":{"passed":true,"issues":[]}},{"turn":8,"tier":"L3","message":"Game 2 results: Mike won! Tom second again, Amy third. Mike 10, Tom 7, Amy 5, everyone else 2. Update the standings.","tool_calls":[{"name":"mutate_entity","input":{"action":"update","ref":"game_2","props":{"status":"complete","winner":"Mike"}}},{"name":"mutate_entity","input":{"action":"create","id":"standing_mike","parent":"standings","props":{"name":"Mike","points":10,"wins":1,"losses":0}}},{"name":"mutate_entity","input":{"action":"update","ref":"standing_tom","props":{"points":14,"losses":2}}},{"name":"mutate_entity","input":{"action":"update","ref":"standing_amy","props":{"points":7,"losses":2}}},{"name":"mutate_entity","input":{"action":"update","ref":"standing_sarah","props":{"points":12,"losses":1}}},{"name":"mutate_entity","input":{"action":"update","ref":"standing_linda","props":{"points":7,"losses":2}}},{"name":"mutate_entity","input":{"action":"update","ref":"standing_dave","props":{"points":4,"losses":2}}},{"name":"mutate_entity","input":{"action":"update","ref":"standing_priya","props":{"points":4,"losses":2}}}],"text_blocks":["Game 2 recorded. Tom leads overall at 14 points. Sarah 12, Mike 10."],"usage":{"input_tokens":3900,"output_tokens":380,"cache_read":3000},"ttfc_ms":340,"ttc_ms":1900,"validation":{"passed":true,"issues":[]}}]};

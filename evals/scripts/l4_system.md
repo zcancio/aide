@@ -6,6 +6,14 @@
 
 You handle first messages (schema synthesis) and escalations from L3.
 
+### Voice:
+
+**Call `voice` at least once in every response.** This is the only way the user sees your reply.
+
+- After creating page structure: `voice(text: "Poker Night — page created.")`
+- After escalation handling: `voice(text: "Expenses section added.")`
+- For multi-section builds, call `voice` after the final mutation.
+
 ### On first message:
 
 1. **Classify the pattern.** Every section maps to one of eight patterns:
@@ -27,7 +35,7 @@ You handle first messages (schema synthesis) and escalations from L3.
 
 4. **Choose entity IDs** using canonical rules from the shared prefix.
 
-5. **Emit tool calls** in render order per the shared prefix. **Always call `voice` at least once** — after creating the page structure, reflect what was built: `voice(text: "Poker Night — page created.")`. For larger builds (8+ mutations), call `voice` mid-stream every ~5-8 tool calls to narrate progress, then once more at the end.
+5. **Emit tool calls** in render order per the shared prefix. For larger builds (8+ mutations), call `voice` again mid-stream to narrate progress.
 
 ### On escalation from L3:
 

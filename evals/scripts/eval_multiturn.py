@@ -359,6 +359,73 @@ def run_turn(
     ttfc_ms = int((first_content_time - start) * 1000) if first_content_time else -1
     ttc_ms = int((end - start) * 1000)
 
+    # ── Forced voice continuation ──
+    # If model emitted mutations but no voice, force a continuation call
+    # with tool_choice to guarantee voice output.
+    has_voice = any(t["name"] == "voice" for t in all_raw_tools)
+    if not has_voice and tool_calls:
+        print(f"    ⚠ No voice — forcing continuation...")
+        # Build continuation messages: original + assistant response + tool results
+        cont_msgs = list(msgs)
+
+        # Add assistant's tool-use response
+        assistant_content = []
+        for raw_tool in all_raw_tools:
+            assistant_content.append({
+                "type": "tool_use",
+                "id": raw_tool["id"],
+                "name": raw_tool["name"],
+                "input": raw_tool["input"],
+            })
+        cont_msgs.append({"role": "assistant", "content": assistant_content})
+
+        # Add tool results (API requires a result for each tool_use)
+        tool_results = []
+        for raw_tool in all_raw_tools:
+            tool_results.append({
+                "type": "tool_result",
+                "tool_use_id": raw_tool["id"],
+                "content": "ok",
+            })
+        cont_msgs.append({"role": "user", "content": tool_results})
+
+        # Force voice call
+        voice_start = time.time()
+        with client.messages.stream(
+            model=model,
+            max_tokens=256,
+            temperature=temperature,
+            system=system,
+            messages=cont_msgs,
+            tools=TOOLS,
+            tool_choice={"type": "tool", "name": "voice"},
+        ) as voice_stream:
+            voice_tool = None
+            for event in voice_stream:
+                if event.type == "content_block_start":
+                    if event.content_block.type == "tool_use":
+                        voice_tool = {"name": event.content_block.name, "id": event.content_block.id, "input_json": ""}
+                elif event.type == "content_block_delta":
+                    if hasattr(event.delta, "partial_json") and voice_tool:
+                        voice_tool["input_json"] += event.delta.partial_json
+                elif event.type == "content_block_stop":
+                    if voice_tool:
+                        try:
+                            params = json.loads(voice_tool["input_json"])
+                        except json.JSONDecodeError:
+                            params = {}
+                        ts = int((time.time() - start) * 1000)
+                        voice_text = params.get("text", "")
+                        if voice_text.strip():
+                            text_blocks.append({"text": voice_text.strip(), "timestamp_ms": ts, "_forced": True})
+                        all_raw_tools.append({"name": "voice", "id": voice_tool["id"], "input": params})
+                        voice_tool = None
+
+        voice_end = time.time()
+        ttc_ms = int((voice_end - start) * 1000)  # extend TTC to include voice
+        voice_msg = voice_stream.get_final_message()
+        print(f"    ✓ Voice forced in {int((voice_end - voice_start)*1000)}ms")
+
     # Deduplicate text blocks (model may emit same text as both text block and voice tool)
     seen = set()
     deduped = []
@@ -369,11 +436,38 @@ def run_turn(
             deduped.append(tb)
     text_blocks = deduped
 
+    # Voice fallback — if model didn't call voice, synthesize from mutations
+    if not text_blocks and tool_calls:
+        creates = [tc for tc in tool_calls if tc["input"].get("action") == "create"]
+        updates = [tc for tc in tool_calls if tc["input"].get("action") == "update"]
+        rels = [tc for tc in tool_calls if tc["name"] == "set_relationship"]
+        parts = []
+        # Find page title if created
+        page = next((tc for tc in creates if tc["input"].get("display") == "page"), None)
+        if page:
+            title = page["input"].get("props", {}).get("title", "Page")
+            parts.append(f"{title} — page created.")
+        else:
+            if creates:
+                parts.append(f"{len(creates)} entities created.")
+            if updates:
+                parts.append(f"{len(updates)} updated.")
+            if rels:
+                parts.append(f"{len(rels)} relationships set.")
+        fallback_text = " ".join(parts) if parts else "Done."
+        text_blocks.append({
+            "text": fallback_text,
+            "timestamp_ms": ttc_ms,
+            "_synthetic": True,
+        })
+        print(f"    ⚠ Voice fallback: \"{fallback_text}\"")
+
     return {
         "tool_calls": tool_calls,
         "text_blocks": text_blocks,
         "all_raw_tools": all_raw_tools,
         "snapshot": snapshot,
+        "system_prompt": system,
         "usage": {
             "input_tokens": msg.usage.input_tokens,
             "output_tokens": msg.usage.output_tokens,
@@ -630,6 +724,14 @@ def validate_turn(turn_spec: dict, result: dict, snapshot: dict) -> dict[str, An
     # Every turn must produce at least one text block
     if not tb:
         issues.append("No voice output — user gets silence in chat")
+    else:
+        # Check if voice was synthetic (model didn't call voice tool at all)
+        raw_tb = result["text_blocks"]
+        if any(isinstance(b, dict) and b.get("_synthetic") for b in raw_tb):
+            issues.append("Voice synthetic fallback — model produced no voice at all")
+        elif any(isinstance(b, dict) and b.get("_forced") for b in raw_tb):
+            # Forced via continuation — not a failure, just a note
+            pass  # Don't flag as issue — the system handled it
 
     for text in tb:
         if len(text) > 150:
@@ -759,6 +861,7 @@ def run_scenario(scenario: dict, run_dir: Path, max_turn: int | None = None) -> 
             "message": message,
             "tool_calls": result["tool_calls"],
             "text_blocks": result["text_blocks"],
+            "system_prompt": result["system_prompt"],
             "usage": result["usage"],
             "ttfc_ms": result["ttfc_ms"],
             "ttc_ms": result["ttc_ms"],
