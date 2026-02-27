@@ -1,0 +1,143 @@
+{
+  "meta": {
+    "title": "Sophie's Graduation",
+    "identity": "Sophie's graduation in May. Planning event."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Sophie's Graduation"
+      }
+    },
+    "event_details": {
+      "id": "event_details",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "graduate": "Sophie",
+        "month": "May",
+        "date": "2026-05-22",
+        "venue": "UC Davis",
+        "time": "10:00"
+      }
+    },
+    "guest_list": {
+      "id": "guest_list",
+      "parent": "page",
+      "display": "table",
+      "props": {}
+    },
+    "guest_linda": {
+      "id": "guest_linda",
+      "parent": "guest_list",
+      "display": "row",
+      "props": {
+        "name": "Aunt Linda",
+        "rsvp": "yes"
+      }
+    },
+    "guest_bob": {
+      "id": "guest_bob",
+      "parent": "guest_list",
+      "display": "row",
+      "props": {
+        "name": "Uncle Bob",
+        "rsvp": "yes"
+      }
+    },
+    "guest_james": {
+      "id": "guest_james",
+      "parent": "guest_list",
+      "display": "row",
+      "props": {
+        "name": "Cousin James",
+        "rsvp": "pending"
+      }
+    },
+    "guest_maria": {
+      "id": "guest_maria",
+      "parent": "guest_list",
+      "display": "row",
+      "props": {
+        "name": "Maria Garcia",
+        "rsvp": "yes"
+      }
+    },
+    "guest_carlos": {
+      "id": "guest_carlos",
+      "parent": "guest_list",
+      "display": "row",
+      "props": {
+        "name": "Carlos Garcia",
+        "rsvp": "yes"
+      }
+    },
+    "guest_dave": {
+      "id": "guest_dave",
+      "parent": "guest_list",
+      "display": "row",
+      "props": {
+        "name": "Dave",
+        "rsvp": "pending"
+      }
+    },
+    "potluck": {
+      "id": "potluck",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Potluck"
+      }
+    },
+    "food_potato_salad": {
+      "id": "food_potato_salad",
+      "parent": "potluck",
+      "display": "row",
+      "props": {
+        "dish": "Potato Salad",
+        "bringing": "Aunt Linda"
+      }
+    },
+    "food_carne_asada": {
+      "id": "food_carne_asada",
+      "parent": "potluck",
+      "display": "row",
+      "props": {
+        "dish": "Carne Asada",
+        "bringing": "Carlos Garcia"
+      }
+    },
+    "food_drinks": {
+      "id": "food_drinks",
+      "parent": "potluck",
+      "display": "row",
+      "props": {
+        "dish": "Drinks",
+        "bringing": "Maria Garcia"
+      }
+    },
+    "food_dessert": {
+      "id": "food_dessert",
+      "parent": "potluck",
+      "display": "row",
+      "props": {
+        "dish": "Dessert",
+        "bringing": ""
+      }
+    },
+    "food_sides": {
+      "id": "food_sides",
+      "parent": "potluck",
+      "display": "row",
+      "props": {
+        "dish": "Sides",
+        "bringing": ""
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {}
+}

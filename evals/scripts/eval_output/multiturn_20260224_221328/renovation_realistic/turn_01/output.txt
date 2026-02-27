@@ -1,0 +1,9 @@
+```jsonl
+{"t":"meta.set","p":{"title":"Kitchen Remodel","identity":"Kitchen remodeling project. Tracking tasks, budget, and timeline."}}
+{"t":"entity.create","id":"page","parent":"root","display":"page","p":{"title":"Kitchen Remodel"}}
+{"t":"entity.create","id":"overview","parent":"page","display":"card","p":{"status":"Planning"}}
+{"t":"entity.create","id":"budget","parent":"page","display":"table","p":{"title":"Budget"}}
+{"t":"voice","text":"Kitchen remodel started. Add expenses and tasks as you go."}
+{"t":"entity.create","id":"tasks","parent":"page","display":"checklist","p":{"title":"Tasks"}}
+{"t":"voice","text":"Project set up. Budget and task tracking ready."}
+```

@@ -1,0 +1,2 @@
+{"t":"entity.create","id":"budget_overview","parent":"page","display":"card","p":{"total":35000,"spent":8000,"remaining":27000}}
+{"t":"entity.create","id":"expense_architect","parent":"page","display":"row","p":{"category":"Design","description":"Architect plans","amount":8000,"date":"2026-02-24"}}

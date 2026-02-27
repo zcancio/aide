@@ -1,0 +1,2 @@
+{"t":"entity.create","id":"task_flooring","parent":"tasks","display":"row","p":{"task":"Flooring","done":false,"note":"4-6k"}}
+{"t":"entity.create","id":"task_appliances","parent":"tasks","display":"row","p":{"task":"Appliances","done":false,"note":"~8k"}}

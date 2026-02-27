@@ -1,0 +1,28 @@
+{
+  "type": "jsonl_stream",
+  "content": [
+    {
+      "t": "entity.create",
+      "id": "food",
+      "parent": "page",
+      "display": "table",
+      "p": {
+        "title": "Potluck"
+      }
+    },
+    {
+      "t": "entity.create",
+      "id": "food_potato_salad",
+      "parent": "food",
+      "display": "row",
+      "p": {
+        "dish": "Potato salad",
+        "who": "Aunt Linda"
+      }
+    },
+    {
+      "t": "voice",
+      "text": "Potluck started. Linda bringing potato salad."
+    }
+  ]
+}

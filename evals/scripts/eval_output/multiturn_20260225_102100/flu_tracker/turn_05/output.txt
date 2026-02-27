@@ -1,0 +1,8 @@
+{"t":"entity.create","id":"reading_george_2am_dec30","parent":"readings","display":"row","p":{"name":"George","date":"2025-12-30","time":"02:00","temp":102.7,"medication":"Tylenol"}}
+{"t":"entity.create","id":"reading_george_630am_dec30","parent":"readings","display":"row","p":{"name":"George","date":"2025-12-30","time":"06:30","temp":102.7,"medication":"Tylenol"}}
+{"t":"entity.create","id":"reading_george_925am_dec30","parent":"readings","display":"row","p":{"name":"George","date":"2025-12-30","time":"09:25","temp":101,"medication":null}}
+{"t":"entity.create","id":"reading_george_1030am_dec30","parent":"readings","display":"row","p":{"name":"George","date":"2025-12-30","time":"10:30","temp":102.9,"medication":"Motrin","note":"1130 eye lids swelling"}}
+{"t":"entity.create","id":"reading_george_115pm_dec30","parent":"readings","display":"row","p":{"name":"George","date":"2025-12-30","time":"13:15","temp":100.3,"medication":null}}
+{"t":"entity.create","id":"reading_george_2pm_dec30","parent":"readings","display":"row","p":{"name":"George","date":"2025-12-30","time":"14:00","temp":101.3,"medication":"Tylenol","note":"threw up"}}
+{"t":"entity.create","id":"reading_george_3pm_dec30","parent":"readings","display":"row","p":{"name":"George","date":"2025-12-30","time":"15:00","temp":101.9,"medication":null}}
+{"t":"entity.create","id":"reading_george_4pm_dec30","parent":"readings","display":"row","p":{"name":"George","date":"2025-12-30","time":"16:00","temp":103.0,"medication":"Motrin"}}

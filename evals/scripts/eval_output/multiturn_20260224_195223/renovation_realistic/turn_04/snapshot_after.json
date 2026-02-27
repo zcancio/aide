@@ -1,0 +1,84 @@
+{
+  "meta": {
+    "title": "Kitchen Remodel",
+    "identity": "Kitchen renovation project."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Kitchen Remodel"
+      }
+    },
+    "project_overview": {
+      "id": "project_overview",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "status": "Planning",
+        "budget": 35000,
+        "spent": 17500,
+        "remaining": 17500
+      }
+    },
+    "budget": {
+      "id": "budget",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Budget"
+      }
+    },
+    "expense_architect": {
+      "id": "expense_architect",
+      "parent": "budget",
+      "display": "row",
+      "props": {
+        "item": "Architect plans",
+        "cost": 8000,
+        "status": "paid"
+      }
+    },
+    "cabinet_quotes": {
+      "id": "cabinet_quotes",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Cabinet Quotes"
+      }
+    },
+    "quote_woodworks": {
+      "id": "quote_woodworks",
+      "parent": "cabinet_quotes",
+      "display": "row",
+      "props": {
+        "vendor": "Woodworks Unlimited",
+        "cost": 12000
+      }
+    },
+    "quote_cabinet_depot": {
+      "id": "quote_cabinet_depot",
+      "parent": "cabinet_quotes",
+      "display": "row",
+      "props": {
+        "vendor": "Cabinet Depot",
+        "cost": 9500,
+        "status": "selected"
+      }
+    },
+    "quote_custom_craft": {
+      "id": "quote_custom_craft",
+      "parent": "cabinet_quotes",
+      "display": "row",
+      "props": {
+        "vendor": "Custom Craft",
+        "cost": 15000
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {},
+  "orphans": []
+}

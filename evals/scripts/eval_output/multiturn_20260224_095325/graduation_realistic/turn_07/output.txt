@@ -1,0 +1,6 @@
+{"t":entity.update","ref":"guest_carlos","p":{"bringing":"Carne asada"}}
+{"t":"entity.create","id":"guest_maria","parent":"guest_list","display":"row","p":{"name":"Maria Garcia","rsvp":"yes","bringing":"Drinks"}}
+{"t":"entity.create","id":"food_carne_asada","parent":"food","display":"row","p":{"dish":"Carne asada","bringing":"Carlos Garcia"}}
+{"t":"entity.create","id":"food_drinks","parent":"food","display":"row","p":{"dish":"Drinks","bringing":"Maria Garcia"}}
+{"t":"entity.create","id":"food_dessert","parent":"food","display":"row","p":{"dish":"Dessert","bringing":""}}
+{"t":"entity.create","id":"food_sides","parent":"food","display":"row","p":{"dish":"Sides","bringing":""}}

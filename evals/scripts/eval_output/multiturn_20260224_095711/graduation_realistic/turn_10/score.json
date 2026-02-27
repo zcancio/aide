@@ -1,0 +1,65 @@
+{
+  "name": "graduation_realistic_t10",
+  "tier": "L2",
+  "model": "claude-haiku-4-5-20251001",
+  "prompt_version": "v3.1",
+  "composite": 0.808,
+  "dimensions": {
+    "validity": {
+      "name": "validity",
+      "score": 0.933,
+      "checks": {
+        "parseable": 0.667,
+        "no_fences": 1.0,
+        "valid_types": 1.0,
+        "valid_structure": 1.0,
+        "not_empty": 1.0
+      },
+      "notes": [
+        "2 parse errors"
+      ]
+    },
+    "voice": {
+      "name": "voice",
+      "score": 1.0,
+      "checks": {
+        "no_voice_to_check": 1.0
+      },
+      "notes": [
+        "No voice lines emitted"
+      ]
+    },
+    "structure": {
+      "name": "structure",
+      "score": 0.667,
+      "checks": {
+        "parents_before_children": 0.0,
+        "display_hints_valid": 1.0,
+        "entity_ids_quality": 1.0
+      },
+      "notes": []
+    },
+    "efficiency": {
+      "name": "efficiency",
+      "score": 0.11,
+      "checks": {
+        "within_budget": 0.0,
+        "in_sweet_spot": 0.22
+      },
+      "notes": [
+        "178 tokens \u2014 well over budget 100"
+      ]
+    },
+    "fidelity": {
+      "name": "fidelity",
+      "score": 1.0,
+      "checks": {
+        "tier_appropriate": 1.0
+      },
+      "notes": []
+    }
+  },
+  "latency_ms": 1455,
+  "output_tokens": 178,
+  "cache_hit_pct": 0.0
+}

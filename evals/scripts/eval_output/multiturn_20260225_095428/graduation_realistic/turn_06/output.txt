@@ -1,0 +1,6 @@
+```jsonl
+{"t":"entity.create","id":"food","parent":"page","display":"table","p":{"title":"Food"}}
+{"t":"entity.create","id":"food_potato_salad","parent":"food","display":"row","p":{"dish":"Potato salad"}}
+{"t":"rel.set","from":"food_potato_salad","to":"guest_aunt_linda","type":"bringing","cardinality":"many_to_one"}
+{"t":"voice","text":"Potluck started. Potato salad from Linda."}
+```

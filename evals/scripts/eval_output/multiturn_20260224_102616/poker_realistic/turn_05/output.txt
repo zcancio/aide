@@ -1,0 +1,10 @@
+```jsonl
+{"t":"entity.update","ref":"details","p":{"next_game":"January 30, 2026","host":"Mike"}}
+{"t":"entity.update","ref":"player_me","p":{"wins":0}}
+{"t":"entity.update","ref":"player_mike","p":{"wins":0}}
+{"t":"entity.update","ref":"player_dave","p":{"wins":0}}
+{"t":"entity.update","ref":"player_tom","p":{"wins":0}}
+{"t":"entity.update","ref":"player_sarah","p":{"wins":0}}
+{"t":"entity.update","ref":"player_jake","p":{"wins":0}}
+{"t":"voice","text":"Win tracking added. First game: Jan 30 at Mike's."}
+```

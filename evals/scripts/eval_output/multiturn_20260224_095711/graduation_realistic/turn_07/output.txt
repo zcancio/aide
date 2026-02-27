@@ -1,0 +1,62 @@
+{
+  "t": "entity.create",
+  "id": "potluck_assignments",
+  "parent": "page",
+  "display": "section",
+  "p": {
+    "title": "Potluck"
+  }
+}
+{
+  "t": "entity.create",
+  "id": "potluck_linda",
+  "parent": "potluck_assignments",
+  "display": "row",
+  "p": {
+    "person": "Linda",
+    "item": "Potato salad",
+    "confirmed": true
+  }
+}
+{
+  "t": "entity.create",
+  "id": "potluck_carlos",
+  "parent": "potluck_assignments",
+  "display": "row",
+  "p": {
+    "person": "Carlos",
+    "item": "Carne asada",
+    "confirmed": true
+  }
+}
+{
+  "t": "entity.create",
+  "id": "potluck_maria",
+  "parent": "potluck_assignments",
+  "display": "row",
+  "p": {
+    "person": "Maria",
+    "item": "Drinks",
+    "confirmed": true
+  }
+}
+{
+  "t": "entity.create",
+  "id": "potluck_dessert",
+  "parent": "potluck_assignments",
+  "display": "row",
+  "p": {
+    "item": "Dessert",
+    "confirmed": false
+  }
+}
+{
+  "t": "entity.create",
+  "id": "potluck_sides",
+  "parent": "potluck_assignments",
+  "display": "row",
+  "p": {
+    "item": "Sides",
+    "confirmed": false
+  }
+}

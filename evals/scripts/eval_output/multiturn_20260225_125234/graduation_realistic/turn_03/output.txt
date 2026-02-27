@@ -1,0 +1,4 @@
+{"t":"entity.create","id":"guests","parent":"page","display":"table","p":{}}
+{"t":"entity.create","id":"guest_linda","parent":"guests","display":"row","p":{"name":"Aunt Linda","rsvp":"yes"}}
+{"t":"entity.create","id":"guest_bob","parent":"guests","display":"row","p":{"name":"Uncle Bob","rsvp":"yes"}}
+{"t":"entity.create","id":"guest_james","parent":"guests","display":"row","p":{"name":"Cousin James","rsvp":"pending"}}

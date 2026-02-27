@@ -1,0 +1,2 @@
+{"t":"entity.create","id":"reading_george_740pm_dec31","parent":"george_readings","display":"row","p":{"time":"2026-12-31T19:40","temp":100.5,"meds":"tylenol"}}
+{"t":"entity.update","ref":"george_summary","p":{"latest_temp":100.5,"latest_time":"2026-12-31T19:40","latest_meds":"tylenol","trend":"High spike to 103 at 4pm Monday, holding 100-102 through evening. Latest 100.5 at 740pm Tuesday shows continued improvement."}}

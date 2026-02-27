@@ -1,0 +1,2 @@
+{"t":"entity.create","id":"item_flooring","parent":"page","display":"card","p":{"category":"Flooring","estimated_cost":"4-6k"}}
+{"t":"entity.create","id":"item_appliances","parent":"page","display":"card","p":{"category":"Appliances","estimated_cost":"8k"}}

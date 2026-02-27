@@ -1,0 +1,59 @@
+{
+  "name": "graduation_realistic_t8",
+  "tier": "L2",
+  "model": "claude-haiku-4-5-20251001",
+  "prompt_version": "v3.1",
+  "composite": 0.835,
+  "dimensions": {
+    "validity": {
+      "name": "validity",
+      "score": 0.867,
+      "checks": {
+        "parseable": 0.333,
+        "no_fences": 1.0,
+        "valid_types": 1.0,
+        "valid_structure": 1.0,
+        "not_empty": 1.0
+      },
+      "notes": [
+        "2 parse errors"
+      ]
+    },
+    "voice": {
+      "name": "voice",
+      "score": 1.0,
+      "checks": {
+        "no_voice_to_check": 1.0
+      },
+      "notes": [
+        "No voice lines emitted"
+      ]
+    },
+    "structure": {
+      "name": "structure",
+      "score": 0.5,
+      "checks": {},
+      "notes": []
+    },
+    "efficiency": {
+      "name": "efficiency",
+      "score": 1.0,
+      "checks": {
+        "within_budget": 1.0,
+        "in_sweet_spot": 1.0
+      },
+      "notes": []
+    },
+    "fidelity": {
+      "name": "fidelity",
+      "score": 1.0,
+      "checks": {
+        "tier_appropriate": 1.0
+      },
+      "notes": []
+    }
+  },
+  "latency_ms": 846,
+  "output_tokens": 51,
+  "cache_hit_pct": 0.0
+}

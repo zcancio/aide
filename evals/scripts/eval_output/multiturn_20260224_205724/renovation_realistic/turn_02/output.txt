@@ -1,0 +1,6 @@
+```jsonl
+{"t":"entity.update","ref":"project_overview","p":{"budget":35000}}
+{"t":"entity.create","id":"expenses","parent":"page","display":"table","p":{"title":"Expenses"}}
+{"t":"entity.create","id":"expense_architect","parent":"expenses","display":"row","p":{"item":"Architect plans","cost":8000,"status":"Paid"}}
+{"t":"voice","text":"Budget set at $35k. Architect plans tracked at $8k."}
+```

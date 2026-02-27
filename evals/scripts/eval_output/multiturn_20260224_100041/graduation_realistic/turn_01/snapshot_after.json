@@ -1,0 +1,26 @@
+{
+  "meta": {
+    "title": "Sophie's Graduation",
+    "identity": "Graduation party for Sophie in May 2026."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Sophie's Graduation"
+      }
+    },
+    "event_details": {
+      "id": "event_details",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "honoree": "Sophie",
+        "occasion": "Graduation",
+        "month": "May 2026"
+      }
+    }
+  }
+}

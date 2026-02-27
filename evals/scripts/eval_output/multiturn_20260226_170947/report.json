@@ -1,0 +1,12 @@
+{
+  "run_dir": "eval_output/multiturn_20260226_170947",
+  "timestamp": "2026-02-26T17:09:47.428230",
+  "scenarios_run": 1,
+  "results": [
+    {
+      "scenario_id": "poker_realistic",
+      "name": "poker_realistic",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CYXgV1JsYY5LHNY7g7ftA'}"
+    }
+  ]
+}

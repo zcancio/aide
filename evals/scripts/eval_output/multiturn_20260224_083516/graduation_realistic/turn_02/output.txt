@@ -1,0 +1,1 @@
+{"t":"entity.update","ref":"event_details","p":{"date":"May 22, 2025","location":"UC Davis","time":"10:00 AM"}}

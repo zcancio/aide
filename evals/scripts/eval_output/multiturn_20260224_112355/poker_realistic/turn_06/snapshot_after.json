@@ -1,0 +1,137 @@
+{
+  "meta": {
+    "title": "Poker Night",
+    "identity": "Poker night with friends."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Poker Night"
+      }
+    },
+    "details": {
+      "id": "details",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "title": "Details",
+        "schedule": "Every other Thursday",
+        "buy_in": 20
+      }
+    },
+    "players": {
+      "id": "players",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Players"
+      }
+    },
+    "games": {
+      "id": "games",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Games"
+      }
+    },
+    "player_me": {
+      "id": "player_me",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "Me",
+        "buy_in": 20,
+        "wins": 0
+      }
+    },
+    "player_mike": {
+      "id": "player_mike",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "Mike",
+        "buy_in": 20,
+        "wins": 1
+      }
+    },
+    "player_dave": {
+      "id": "player_dave",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "Dave",
+        "buy_in": 20,
+        "wins": 0
+      }
+    },
+    "player_tom": {
+      "id": "player_tom",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "Tom",
+        "buy_in": 20,
+        "wins": 0
+      }
+    },
+    "player_sarah": {
+      "id": "player_sarah",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "Sarah",
+        "buy_in": 20,
+        "wins": 0
+      }
+    },
+    "player_jake": {
+      "id": "player_jake",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "Jake",
+        "buy_in": 20,
+        "wins": 0
+      }
+    },
+    "game_jan09": {
+      "id": "game_jan09",
+      "parent": "games",
+      "display": "row",
+      "props": {
+        "date": "2025-01-09",
+        "location": "Mike's"
+      }
+    },
+    "game_feb20": {
+      "id": "game_feb20",
+      "parent": "games",
+      "display": "row",
+      "props": {
+        "date": "2026-02-20",
+        "location": "Tom's",
+        "pot": 120,
+        "winner": "Mike"
+      }
+    }
+  },
+  "relationships": [
+    {
+      "from": "player_tom",
+      "to": "game_feb20",
+      "type": "hosting"
+    },
+    {
+      "from": "player_mike",
+      "to": "game_jan09",
+      "type": "hosting"
+    }
+  ],
+  "relationship_types": {
+    "hosting": "one_to_one"
+  }
+}

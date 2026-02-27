@@ -1,0 +1,3 @@
+
+{"t":"entity.create","id":"chore_kitchen_counters","parent":"chores","display":"row","p":{"task":"Wipe down kitchen counters","done":false}}
+{"t":"rel.set","from":"chore_kitchen_counters","to":"member_jamie","type":"assigned_to","cardinality":"many_to_one"}

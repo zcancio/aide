@@ -1,0 +1,119 @@
+{
+  "meta": {
+    "title": "Fever Tracker",
+    "identity": "Tracking fevers for Ringo and George."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Fever Tracker"
+      }
+    },
+    "kids": {
+      "id": "kids",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Kids"
+      }
+    },
+    "kid_ringo": {
+      "id": "kid_ringo",
+      "parent": "kids",
+      "display": "row",
+      "props": {
+        "name": "Ringo"
+      }
+    },
+    "kid_george": {
+      "id": "kid_george",
+      "parent": "kids",
+      "display": "row",
+      "props": {
+        "name": "George"
+      }
+    },
+    "readings": {
+      "id": "readings",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Temperature Readings"
+      }
+    },
+    "reading_ringo_1030am": {
+      "id": "reading_ringo_1030am",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "name": "Ringo",
+        "time": "2025-12-29T10:30-08:00",
+        "temp": 103.7,
+        "med": "Tylenol"
+      }
+    },
+    "reading_ringo_135pm": {
+      "id": "reading_ringo_135pm",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "name": "Ringo",
+        "time": "2025-12-29T13:45-08:00",
+        "temp": 101.5,
+        "med": "Motrin"
+      }
+    },
+    "reading_ringo_520pm": {
+      "id": "reading_ringo_520pm",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "name": "Ringo",
+        "time": "2025-12-29T17:20-08:00",
+        "temp": 101.0,
+        "med": "Tylenol"
+      }
+    },
+    "reading_ringo_820pm": {
+      "id": "reading_ringo_820pm",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "name": "Ringo",
+        "time": "2025-12-29T20:20-08:00",
+        "temp": 102.0,
+        "med": "Motrin"
+      }
+    },
+    "summary_ringo": {
+      "id": "summary_ringo",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "title": "Ringo Summary",
+        "last_reading": "2025-12-29T20:20-08:00",
+        "last_temp": 102.0,
+        "last_med": "Motrin",
+        "readings_today": 4
+      }
+    },
+    "summary_george": {
+      "id": "summary_george",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "title": "George Summary",
+        "last_reading": null,
+        "last_temp": null,
+        "last_med": null,
+        "readings_today": 0
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {},
+  "orphans": []
+}

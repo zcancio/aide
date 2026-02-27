@@ -1,0 +1,2 @@
+{"t":"entity.create","id":"reading_george_dec31_740pm","parent":"readings","display":"row","p":{"name":"George","time":"2025-12-31T19:40-08:00","temp":100.5,"med":"Tylenol"}}
+{"t":"entity.update","ref":"summary_george","p":{"last_reading":"2025-12-31T19:40-08:00","last_temp":100.5,"last_med":"Tylenol"}}

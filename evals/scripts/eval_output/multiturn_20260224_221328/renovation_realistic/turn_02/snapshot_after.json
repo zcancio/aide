@@ -1,0 +1,56 @@
+{
+  "meta": {
+    "title": "Kitchen Remodel",
+    "identity": "Kitchen remodeling project. Tracking tasks, budget, and timeline."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Kitchen Remodel"
+      }
+    },
+    "overview": {
+      "id": "overview",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "status": "Planning"
+      }
+    },
+    "budget": {
+      "id": "budget",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Budget",
+        "total": 35000,
+        "spent": 8000,
+        "remaining": 27000
+      }
+    },
+    "tasks": {
+      "id": "tasks",
+      "parent": "page",
+      "display": "checklist",
+      "props": {
+        "title": "Tasks"
+      }
+    },
+    "line_architect_plans": {
+      "id": "line_architect_plans",
+      "parent": "budget",
+      "display": "row",
+      "props": {
+        "item": "Architect plans",
+        "cost": 8000,
+        "status": "paid"
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {},
+  "orphans": []
+}

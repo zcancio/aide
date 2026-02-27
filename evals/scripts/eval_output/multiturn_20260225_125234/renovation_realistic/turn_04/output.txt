@@ -1,0 +1,3 @@
+{"t":"rel.set","from":"page","to":"quote_depot","type":"selected","cardinality":"one_to_one"}
+{"t":"entity.update","ref":"details","p":{"spent":17500,"remaining":17500}}
+{"t":"entity.create","id":"expense_cabinets","parent":"budget","display":"row","p":{"item":"Cabinets","cost":9500,"status":"pending"}}

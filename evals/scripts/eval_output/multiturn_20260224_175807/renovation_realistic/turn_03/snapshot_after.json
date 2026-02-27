@@ -1,0 +1,64 @@
+{
+  "meta": {
+    "title": "Kitchen Remodel",
+    "identity": "Kitchen renovation project tracking."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Kitchen Remodel"
+      }
+    },
+    "overview": {
+      "id": "overview",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "status": "Planning",
+        "budget": 35000,
+        "spent": 8000
+      }
+    },
+    "section_cabinet_quotes": {
+      "id": "section_cabinet_quotes",
+      "parent": "page",
+      "display": "section",
+      "props": {
+        "title": "Cabinet Quotes"
+      }
+    },
+    "quote_woodworks_unlimited": {
+      "id": "quote_woodworks_unlimited",
+      "parent": "section_cabinet_quotes",
+      "display": "row",
+      "props": {
+        "vendor": "Woodworks Unlimited",
+        "price": 12000
+      }
+    },
+    "quote_cabinet_depot": {
+      "id": "quote_cabinet_depot",
+      "parent": "section_cabinet_quotes",
+      "display": "row",
+      "props": {
+        "vendor": "Cabinet Depot",
+        "price": 9500
+      }
+    },
+    "quote_custom_craft": {
+      "id": "quote_custom_craft",
+      "parent": "section_cabinet_quotes",
+      "display": "row",
+      "props": {
+        "vendor": "Custom Craft",
+        "price": 15000
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {},
+  "orphans": []
+}

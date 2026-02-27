@@ -1,0 +1,4 @@
+{"t":"entity.update","ref":"task_venue","p":{"task":"Book park pavilion"}}
+{"t":"entity.update","ref":"task_catering","p":{"task":"Order cake"}}
+{"t":"entity.update","ref":"task_decorations","p":{"done":false}}
+{"t":"entity.create","id":"task_parking","parent":"todo","display":"row","p":{"task":"Figure out parking","done":false}}

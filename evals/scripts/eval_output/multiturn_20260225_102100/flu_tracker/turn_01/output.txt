@@ -1,0 +1,10 @@
+```jsonl
+{"t":"meta.set","p":{"title":"Fever Tracker","identity":"Tracking fevers for Ringo and George."}}
+{"t":"entity.create","id":"page","parent":"root","display":"page","p":{"title":"Fever Tracker"}}
+{"t":"entity.create","id":"kids","parent":"page","display":"table","p":{"title":"Kids"}}
+{"t":"entity.create","id":"kid_ringo","parent":"kids","display":"row","p":{"name":"Ringo"}}
+{"t":"entity.create","id":"kid_george","parent":"kids","display":"row","p":{"name":"George"}}
+{"t":"voice","text":"Fever tracker ready. Log temperatures as you take them."}
+{"t":"entity.create","id":"readings","parent":"page","display":"table","p":{"title":"Temperature Readings"}}
+{"t":"voice","text":"Tracker set up for Ringo and George."}
+```

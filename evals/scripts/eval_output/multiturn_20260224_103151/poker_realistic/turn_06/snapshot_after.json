@@ -1,0 +1,114 @@
+{
+  "meta": {
+    "title": "Poker Night",
+    "identity": "Poker night with friends."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Poker Night"
+      }
+    },
+    "details": {
+      "id": "details",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "event": "Poker night",
+        "participants": "Friends",
+        "schedule": "Every other Thursday",
+        "buy_in": 20
+      }
+    },
+    "roster": {
+      "id": "roster",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Roster"
+      }
+    },
+    "player_you": {
+      "id": "player_you",
+      "parent": "roster",
+      "display": "row",
+      "props": {
+        "name": "You",
+        "wins": 0,
+        "hosting": false
+      }
+    },
+    "player_mike": {
+      "id": "player_mike",
+      "parent": "roster",
+      "display": "row",
+      "props": {
+        "name": "Mike",
+        "wins": 1,
+        "hosting": true
+      }
+    },
+    "player_dave": {
+      "id": "player_dave",
+      "parent": "roster",
+      "display": "row",
+      "props": {
+        "name": "Dave",
+        "wins": 0,
+        "hosting": false
+      }
+    },
+    "player_tom": {
+      "id": "player_tom",
+      "parent": "roster",
+      "display": "row",
+      "props": {
+        "name": "Tom",
+        "wins": 0,
+        "hosting": true
+      }
+    },
+    "player_sarah": {
+      "id": "player_sarah",
+      "parent": "roster",
+      "display": "row",
+      "props": {
+        "name": "Sarah",
+        "wins": 0,
+        "hosting": false
+      }
+    },
+    "player_jake": {
+      "id": "player_jake",
+      "parent": "roster",
+      "display": "row",
+      "props": {
+        "name": "Jake",
+        "wins": 0,
+        "hosting": false
+      }
+    },
+    "schedule": {
+      "id": "schedule",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Schedule"
+      }
+    },
+    "game_feb27": {
+      "id": "game_feb27",
+      "parent": "schedule",
+      "display": "row",
+      "props": {
+        "date": "2026-02-27",
+        "host": "Mike",
+        "status": "upcoming",
+        "pot": 120
+      }
+    }
+  }
+}

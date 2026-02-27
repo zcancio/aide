@@ -1,0 +1,4 @@
+6 guests total: Aunt Linda, Uncle Bob, Cousin James, Maria Garcia, Carlos Garcia, Dave.
+
+2 confirmed (Aunt Linda, Uncle Bob).
+4 pending (Cousin James, Maria Garcia, Carlos Garcia, Dave).

@@ -1,0 +1,63 @@
+{
+  "meta": {
+    "title": "Grocery Run",
+    "identity": "Shopping list for a grocery run."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Grocery Run"
+      }
+    },
+    "shopping_list": {
+      "id": "shopping_list",
+      "parent": "page",
+      "display": "checklist",
+      "props": {
+        "title": "Shopping List"
+      }
+    },
+    "item_milk": {
+      "id": "item_milk",
+      "parent": "shopping_list",
+      "display": "row",
+      "props": {
+        "name": "Milk",
+        "done": true
+      }
+    },
+    "item_eggs": {
+      "id": "item_eggs",
+      "parent": "shopping_list",
+      "display": "row",
+      "props": {
+        "name": "Eggs",
+        "done": true
+      }
+    },
+    "item_bread": {
+      "id": "item_bread",
+      "parent": "shopping_list",
+      "display": "row",
+      "props": {
+        "name": "Bread",
+        "done": false
+      }
+    },
+    "item_butter": {
+      "id": "item_butter",
+      "parent": "shopping_list",
+      "display": "row",
+      "props": {
+        "name": "Butter",
+        "brand": "Trader Joe's",
+        "done": false
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {}
+}

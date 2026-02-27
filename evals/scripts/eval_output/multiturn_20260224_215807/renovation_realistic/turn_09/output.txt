@@ -1,0 +1,3 @@
+{"t":"entity.create","id":"expense_flooring","parent":"budget_section","display":"row","p":{"item":"Flooring","amount":5500,"note":"estimate 4-6k"}}
+{"t":"entity.create","id":"expense_appliances","parent":"budget_section","display":"row","p":{"item":"Appliances","amount":8000}}
+{"t":"voice","text":"Flooring and appliances added. Budget remaining: ~$3k."}

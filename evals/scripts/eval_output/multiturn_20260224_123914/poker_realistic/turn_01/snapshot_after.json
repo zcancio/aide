@@ -1,0 +1,34 @@
+{
+  "meta": {
+    "title": "Poker Night",
+    "identity": "Poker night with friends."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Poker Night"
+      }
+    },
+    "details": {
+      "id": "details",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "title": "Details"
+      }
+    },
+    "players": {
+      "id": "players",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Players"
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {}
+}

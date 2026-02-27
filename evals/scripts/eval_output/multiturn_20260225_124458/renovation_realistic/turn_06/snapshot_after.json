@@ -1,0 +1,128 @@
+{
+  "meta": {
+    "title": "Kitchen Remodel",
+    "identity": "Kitchen renovation project tracker."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Kitchen Remodel"
+      }
+    },
+    "overview": {
+      "id": "overview",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "status": "Planning"
+      }
+    },
+    "budget": {
+      "id": "budget",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Budget",
+        "total": 35000,
+        "spent": 17500
+      }
+    },
+    "tasks": {
+      "id": "tasks",
+      "parent": "page",
+      "display": "checklist",
+      "props": {
+        "title": "Tasks"
+      }
+    },
+    "line_architect": {
+      "id": "line_architect",
+      "parent": "budget",
+      "display": "row",
+      "props": {
+        "item": "Architect plans",
+        "cost": 8000,
+        "status": "paid"
+      }
+    },
+    "quotes_cabinets": {
+      "id": "quotes_cabinets",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Cabinet Quotes"
+      }
+    },
+    "quote_woodworks": {
+      "id": "quote_woodworks",
+      "parent": "quotes_cabinets",
+      "display": "row",
+      "props": {
+        "vendor": "Woodworks Unlimited",
+        "cost": 12000
+      }
+    },
+    "quote_depot": {
+      "id": "quote_depot",
+      "parent": "quotes_cabinets",
+      "display": "row",
+      "props": {
+        "vendor": "Cabinet Depot",
+        "cost": 9500
+      }
+    },
+    "quote_custom": {
+      "id": "quote_custom",
+      "parent": "quotes_cabinets",
+      "display": "row",
+      "props": {
+        "vendor": "Custom Craft",
+        "cost": 15000
+      }
+    },
+    "task_measure_countertops": {
+      "id": "task_measure_countertops",
+      "parent": "tasks",
+      "display": "row",
+      "props": {
+        "task": "Measure countertops",
+        "done": false,
+        "note": "before plumber and electrician"
+      }
+    },
+    "task_plumber": {
+      "id": "task_plumber",
+      "parent": "tasks",
+      "display": "row",
+      "props": {
+        "task": "Plumber",
+        "done": false,
+        "date": "2026-03-10"
+      }
+    },
+    "task_electrician": {
+      "id": "task_electrician",
+      "parent": "tasks",
+      "display": "row",
+      "props": {
+        "task": "Electrician",
+        "done": false,
+        "date": "2026-03-03"
+      }
+    }
+  },
+  "relationships": [
+    {
+      "from": "page",
+      "to": "quote_depot",
+      "type": "selected"
+    }
+  ],
+  "relationship_types": {
+    "selected": "one_to_one"
+  },
+  "orphans": []
+}

@@ -1,0 +1,64 @@
+{
+  "meta": {
+    "title": "Grocery Run",
+    "identity": "Grocery shopping list."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Grocery Run"
+      }
+    },
+    "groceries": {
+      "id": "groceries",
+      "parent": "page",
+      "display": "checklist",
+      "props": {
+        "title": "Items"
+      }
+    },
+    "item_milk": {
+      "id": "item_milk",
+      "parent": "groceries",
+      "display": "row",
+      "props": {
+        "name": "Milk",
+        "done": false
+      }
+    },
+    "item_eggs": {
+      "id": "item_eggs",
+      "parent": "groceries",
+      "display": "row",
+      "props": {
+        "name": "Eggs",
+        "done": false
+      }
+    },
+    "item_bread": {
+      "id": "item_bread",
+      "parent": "groceries",
+      "display": "row",
+      "props": {
+        "name": "Bread",
+        "done": false
+      }
+    },
+    "item_butter": {
+      "id": "item_butter",
+      "parent": "groceries",
+      "display": "row",
+      "props": {
+        "name": "Butter",
+        "note": "the good kind from trader joes",
+        "done": false
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {},
+  "orphans": []
+}

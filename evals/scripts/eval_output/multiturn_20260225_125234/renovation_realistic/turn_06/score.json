@@ -1,0 +1,63 @@
+{
+  "name": "renovation_realistic_t6",
+  "tier": "L3",
+  "model": "claude-sonnet-4-5-20250929",
+  "prompt_version": "v3.1",
+  "composite": 0.825,
+  "dimensions": {
+    "validity": {
+      "name": "validity",
+      "score": 0.8,
+      "checks": {
+        "parseable": 1.0,
+        "no_fences": 0.0,
+        "valid_types": 1.0,
+        "valid_structure": 1.0,
+        "not_empty": 1.0
+      },
+      "notes": []
+    },
+    "voice": {
+      "name": "voice",
+      "score": 1.0,
+      "checks": {
+        "no_voice_to_check": 1.0
+      },
+      "notes": [
+        "No voice lines emitted"
+      ]
+    },
+    "structure": {
+      "name": "structure",
+      "score": 1.0,
+      "checks": {},
+      "notes": []
+    },
+    "efficiency": {
+      "name": "efficiency",
+      "score": 0.85,
+      "checks": {
+        "within_budget": 1.0,
+        "in_sweet_spot": 0.7
+      },
+      "notes": [
+        "Under minimum (51 < 80) \u2014 may be incomplete"
+      ]
+    },
+    "fidelity": {
+      "name": "fidelity",
+      "score": 0.333,
+      "checks": {
+        "data_preserved": 1.0,
+        "tier_appropriate": 0.0,
+        "tasks_created": 0.0
+      },
+      "notes": [
+        "No task entities created"
+      ]
+    }
+  },
+  "latency_ms": 1997,
+  "output_tokens": 51,
+  "cache_hit_pct": 0.0
+}

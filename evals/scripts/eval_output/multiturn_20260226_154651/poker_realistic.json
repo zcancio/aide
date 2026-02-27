@@ -1,0 +1,624 @@
+{
+  "scenario_id": "poker_realistic",
+  "name": "Poker Realistic",
+  "description": "User sets up poker league incrementally, names arrive in batches.",
+  "timestamp": "2026-02-26T15:47:19.978424",
+  "turns": [
+    {
+      "turn": 1,
+      "tier": "L4",
+      "expected_tier": "L4",
+      "accept_tiers": [
+        "L4"
+      ],
+      "message": "starting a poker night with some guys",
+      "tool_calls": [
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "poker_night",
+            "parent": "root",
+            "display": "page",
+            "props": {
+              "name": "Poker Night",
+              "schedule": "Every other Thursday",
+              "buy_in": 20
+            }
+          }
+        }
+      ],
+      "text_blocks": [],
+      "usage": {
+        "input_tokens": 2918,
+        "output_tokens": 131,
+        "cache_read": 0
+      },
+      "ttfc_ms": 1725,
+      "ttc_ms": 2599,
+      "validation": {
+        "passed": false,
+        "issues": [
+          "Expected page with title in props"
+        ]
+      },
+      "checks": {
+        "creates_page": true,
+        "has_meta": true
+      },
+      "notes": "Vague. Should create minimal page. Should NOT create 8 player slots."
+    },
+    {
+      "turn": 2,
+      "tier": "L3",
+      "expected_tier": "L3",
+      "accept_tiers": [
+        "L3"
+      ],
+      "message": "it's gonna be me, mike, dave and tom to start",
+      "tool_calls": [
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "players",
+            "parent": "poker_night",
+            "display": "section",
+            "props": {
+              "name": "Players"
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "player_me",
+            "parent": "players",
+            "display": "card",
+            "props": {
+              "name": "Me",
+              "wins": 0
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "player_mike",
+            "parent": "players",
+            "display": "card",
+            "props": {
+              "name": "Mike",
+              "wins": 1
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "player_dave",
+            "parent": "players",
+            "display": "card",
+            "props": {
+              "name": "Dave",
+              "wins": 0
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "player_tom",
+            "parent": "players",
+            "display": "card",
+            "props": {
+              "name": "Tom",
+              "wins": 0
+            }
+          }
+        }
+      ],
+      "text_blocks": [],
+      "usage": {
+        "input_tokens": 3275,
+        "output_tokens": 577,
+        "cache_read": 0
+      },
+      "ttfc_ms": 1161,
+      "ttc_ms": 5469,
+      "validation": {
+        "passed": true,
+        "issues": []
+      },
+      "checks": {
+        "creates_4_players": true
+      },
+      "notes": "Adds first batch of players. If no roster exists, may escalate to L3."
+    },
+    {
+      "turn": 3,
+      "tier": "L3",
+      "expected_tier": "L3",
+      "accept_tiers": [
+        "L3"
+      ],
+      "message": "every other thursday, $20 buy in",
+      "tool_calls": [
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "update",
+            "ref": "poker_night",
+            "props": {
+              "schedule": "Every other Thursday",
+              "buy_in": 20
+            }
+          }
+        }
+      ],
+      "text_blocks": [],
+      "usage": {
+        "input_tokens": 4418,
+        "output_tokens": 104,
+        "cache_read": 0
+      },
+      "ttfc_ms": 1396,
+      "ttc_ms": 2401,
+      "validation": {
+        "passed": true,
+        "issues": []
+      },
+      "checks": {
+        "updates_details": true
+      },
+      "notes": "Adds schedule + buy-in to existing details."
+    },
+    {
+      "turn": 4,
+      "tier": "L3",
+      "expected_tier": "L3",
+      "accept_tiers": [
+        "L3"
+      ],
+      "message": "sarah and jake want in too",
+      "tool_calls": [
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "player_sarah",
+            "parent": "players",
+            "display": "card",
+            "props": {
+              "name": "Sarah",
+              "wins": 0
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "player_jake",
+            "parent": "players",
+            "display": "card",
+            "props": {
+              "name": "Jake",
+              "wins": 0
+            }
+          }
+        }
+      ],
+      "text_blocks": [],
+      "usage": {
+        "input_tokens": 4582,
+        "output_tokens": 241,
+        "cache_read": 0
+      },
+      "ttfc_ms": 1365,
+      "ttc_ms": 3050,
+      "validation": {
+        "passed": true,
+        "issues": []
+      },
+      "checks": {
+        "creates_2_players": true
+      },
+      "notes": "Adds 2 more players to existing roster."
+    },
+    {
+      "turn": 5,
+      "tier": "L3",
+      "expected_tier": "L3",
+      "accept_tiers": [
+        "L3"
+      ],
+      "message": "we should track wins and who's hosting. first game was at mike's last thursday",
+      "tool_calls": [
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "update",
+            "ref": "player_me",
+            "props": {
+              "name": "Me",
+              "wins": 0
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "update",
+            "ref": "player_mike",
+            "props": {
+              "name": "Mike",
+              "wins": 0
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "update",
+            "ref": "player_dave",
+            "props": {
+              "name": "Dave",
+              "wins": 0
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "update",
+            "ref": "player_tom",
+            "props": {
+              "name": "Tom",
+              "wins": 0
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "update",
+            "ref": "player_sarah",
+            "props": {
+              "name": "Sarah",
+              "wins": 0
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "update",
+            "ref": "player_jake",
+            "props": {
+              "name": "Jake",
+              "wins": 0
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "games",
+            "parent": "poker_night",
+            "display": "section",
+            "props": {
+              "name": "Games"
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "game_last_thursday",
+            "parent": "games",
+            "display": "card",
+            "props": {
+              "date": "2025-01-23",
+              "host": "Tom",
+              "winner": "Mike",
+              "pot": 120
+            }
+          }
+        }
+      ],
+      "text_blocks": [],
+      "usage": {
+        "input_tokens": 5075,
+        "output_tokens": 752,
+        "cache_read": 0
+      },
+      "ttfc_ms": 1521,
+      "ttc_ms": 7561,
+      "validation": {
+        "passed": true,
+        "issues": []
+      },
+      "checks": {
+        "adds_schedule_or_fields": true
+      },
+      "notes": "May need L3 for new fields (wins, hosting) or schedule section. Should create a game/schedule entry for the first game."
+    },
+    {
+      "turn": 6,
+      "tier": "L3",
+      "expected_tier": "L3",
+      "accept_tiers": [
+        "L3"
+      ],
+      "message": "mike won, $120 pot. tom ended up hosting",
+      "tool_calls": [
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "update",
+            "ref": "player_mike",
+            "props": {
+              "name": "Mike",
+              "wins": 1
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "update",
+            "ref": "game_last_thursday",
+            "props": {
+              "date": "2025-01-23",
+              "host": "Tom",
+              "winner": "Mike",
+              "pot": 120
+            }
+          }
+        }
+      ],
+      "text_blocks": [],
+      "usage": {
+        "input_tokens": 6323,
+        "output_tokens": 202,
+        "cache_read": 0
+      },
+      "ttfc_ms": 1276,
+      "ttc_ms": 2882,
+      "validation": {
+        "passed": true,
+        "issues": []
+      },
+      "checks": {
+        "updates_game_result": true,
+        "updates_mike_wins": true
+      },
+      "notes": "Post-game update on the existing game. Should UPDATE game entity, not create new one."
+    },
+    {
+      "turn": 7,
+      "tier": "L4",
+      "expected_tier": "L4",
+      "accept_tiers": [
+        "L4"
+      ],
+      "message": "who's won the most so far",
+      "tool_calls": [],
+      "text_blocks": [
+        "Mike with 1 win. Everyone else at 0."
+      ],
+      "usage": {
+        "input_tokens": 6524,
+        "output_tokens": 16,
+        "cache_read": 0
+      },
+      "ttfc_ms": 1025,
+      "ttc_ms": 1527,
+      "validation": {
+        "passed": true,
+        "issues": []
+      },
+      "checks": {
+        "answers_standings": true,
+        "plain_text": true
+      },
+      "notes": "L4 query over standings. After 1 game, Mike leads."
+    },
+    {
+      "turn": 8,
+      "tier": "L3",
+      "expected_tier": "L3",
+      "accept_tiers": [
+        "L3"
+      ],
+      "message": "next game is at dave's place. also jake can't make it, lisa's subbing",
+      "tool_calls": [
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "game_next",
+            "parent": "games",
+            "display": "card",
+            "props": {
+              "date": "2025-02-06",
+              "host": "Dave",
+              "note": "Jake out, Lisa subbing"
+            }
+          }
+        }
+      ],
+      "text_blocks": [],
+      "usage": {
+        "input_tokens": 6670,
+        "output_tokens": 151,
+        "cache_read": 0
+      },
+      "ttfc_ms": 1413,
+      "ttc_ms": 2569,
+      "validation": {
+        "passed": false,
+        "issues": [
+          "Expected update (updates_jake)"
+        ]
+      },
+      "checks": {
+        "creates_game": true,
+        "updates_jake": true,
+        "creates_lisa": true
+      },
+      "notes": "Multi-intent: schedule next game + roster change (sub). Tests whether L2 handles the sub correctly."
+    }
+  ],
+  "final_snapshot": {
+    "meta": {
+      "title": null,
+      "identity": null
+    },
+    "entities": {
+      "poker_night": {
+        "id": "poker_night",
+        "parent": "root",
+        "display": "page",
+        "props": {
+          "name": "Poker Night",
+          "schedule": "Every other Thursday",
+          "buy_in": 20
+        },
+        "_removed": false,
+        "_created_seq": 1,
+        "_updated_seq": 7
+      },
+      "players": {
+        "id": "players",
+        "parent": "poker_night",
+        "display": "section",
+        "props": {
+          "name": "Players"
+        },
+        "_removed": false,
+        "_created_seq": 2,
+        "_updated_seq": 2
+      },
+      "player_me": {
+        "id": "player_me",
+        "parent": "players",
+        "display": "card",
+        "props": {
+          "name": "Me",
+          "wins": 0
+        },
+        "_removed": false,
+        "_created_seq": 3,
+        "_updated_seq": 10
+      },
+      "player_mike": {
+        "id": "player_mike",
+        "parent": "players",
+        "display": "card",
+        "props": {
+          "name": "Mike",
+          "wins": 1
+        },
+        "_removed": false,
+        "_created_seq": 4,
+        "_updated_seq": 18
+      },
+      "player_dave": {
+        "id": "player_dave",
+        "parent": "players",
+        "display": "card",
+        "props": {
+          "name": "Dave",
+          "wins": 0
+        },
+        "_removed": false,
+        "_created_seq": 5,
+        "_updated_seq": 12
+      },
+      "player_tom": {
+        "id": "player_tom",
+        "parent": "players",
+        "display": "card",
+        "props": {
+          "name": "Tom",
+          "wins": 0
+        },
+        "_removed": false,
+        "_created_seq": 6,
+        "_updated_seq": 13
+      },
+      "player_sarah": {
+        "id": "player_sarah",
+        "parent": "players",
+        "display": "card",
+        "props": {
+          "name": "Sarah",
+          "wins": 0
+        },
+        "_removed": false,
+        "_created_seq": 8,
+        "_updated_seq": 14
+      },
+      "player_jake": {
+        "id": "player_jake",
+        "parent": "players",
+        "display": "card",
+        "props": {
+          "name": "Jake",
+          "wins": 0
+        },
+        "_removed": false,
+        "_created_seq": 9,
+        "_updated_seq": 15
+      },
+      "games": {
+        "id": "games",
+        "parent": "poker_night",
+        "display": "section",
+        "props": {
+          "name": "Games"
+        },
+        "_removed": false,
+        "_created_seq": 16,
+        "_updated_seq": 16
+      },
+      "game_last_thursday": {
+        "id": "game_last_thursday",
+        "parent": "games",
+        "display": "card",
+        "props": {
+          "date": "2025-01-23",
+          "host": "Tom",
+          "winner": "Mike",
+          "pot": 120
+        },
+        "_removed": false,
+        "_created_seq": 17,
+        "_updated_seq": 19
+      },
+      "game_next": {
+        "id": "game_next",
+        "parent": "games",
+        "display": "card",
+        "props": {
+          "date": "2025-02-06",
+          "host": "Dave",
+          "note": "Jake out, Lisa subbing"
+        },
+        "_removed": false,
+        "_created_seq": 20,
+        "_updated_seq": 20
+      }
+    },
+    "relationships": [],
+    "_sequence": 20
+  }
+}

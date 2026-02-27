@@ -1,0 +1,8 @@
+{"t":"entity.create","id":"reading_ringo_12am_dec30","parent":"ringo_readings","display":"row","p":{"time":"2026-12-30T00:00","temp":101.6,"meds":"tylenol","note":"woke him back to sleep"}}
+{"t":"entity.create","id":"reading_ringo_2am_dec30","parent":"ringo_readings","display":"row","p":{"time":"2026-12-30T02:00","temp":103.5,"meds":"motrin","note":"down to 101 by 2:45"}}
+{"t":"entity.create","id":"reading_ringo_630am_dec30","parent":"ringo_readings","display":"row","p":{"time":"2026-12-30T06:30","temp":98.6,"meds":"none"}}
+{"t":"entity.create","id":"reading_ringo_925am_dec30","parent":"ringo_readings","display":"row","p":{"time":"2026-12-30T09:25","temp":99.8,"meds":"tylenol"}}
+{"t":"entity.create","id":"reading_ringo_1030am_dec30","parent":"ringo_readings","display":"row","p":{"time":"2026-12-30T10:30","temp":100.3,"meds":"none"}}
+{"t":"entity.create","id":"reading_ringo_115pm_dec30","parent":"ringo_readings","display":"row","p":{"time":"2026-12-30T13:15","temp":101.1,"meds":"motrin"}}
+{"t":"entity.create","id":"reading_ringo_2pm_dec30","parent":"ringo_readings","display":"row","p":{"time":"2026-12-30T14:00","temp":101.4,"meds":"none"}}
+{"t":"entity.update","ref":"ringo_summary","p":{"latest_temp":101.4,"latest_time":"2026-12-30T14:00","latest_meds":"none","trend":"Spike to 103.5 at 2am, dropped to 98.6 by morning, now holding 99-101"}}

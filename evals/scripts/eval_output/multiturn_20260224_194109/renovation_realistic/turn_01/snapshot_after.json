@@ -1,0 +1,27 @@
+{
+  "meta": {
+    "title": "Kitchen Remodel",
+    "identity": "Kitchen remodel project tracking."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Kitchen Remodel"
+      }
+    },
+    "project_overview": {
+      "id": "project_overview",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "status": "Planning"
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {},
+  "orphans": []
+}

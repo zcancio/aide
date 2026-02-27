@@ -1,0 +1,4 @@
+{"t":"entity.create","id":"task_countertop_measure","parent":"page","display":"row","p":{"task":"Get countertops measured","done":false,"priority":"before_trades"}}
+{"t":"entity.create","id":"task_plumber","parent":"page","display":"row","p":{"task":"Plumber","date":"2026-03-10","done":false}}
+{"t":"entity.create","id":"task_electrician","parent":"page","display":"row","p":{"task":"Electrician","date":"2026-03-03","done":false}}
+{"t":"voice","text":"Counters first, then electrician (Mar 3), plumber (Mar 10)."}

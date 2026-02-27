@@ -1,0 +1,135 @@
+{
+  "meta": {
+    "title": "Poker Night",
+    "identity": "Poker night with friends."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Poker Night"
+      }
+    },
+    "details": {
+      "id": "details",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "event": "Poker Night",
+        "schedule": "Every other Thursday",
+        "buy_in": 20
+      }
+    },
+    "roster": {
+      "id": "roster",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Players"
+      }
+    },
+    "player_mike": {
+      "id": "player_mike",
+      "parent": "roster",
+      "display": "row",
+      "props": {
+        "name": "Mike",
+        "wins": 1
+      }
+    },
+    "player_dave": {
+      "id": "player_dave",
+      "parent": "roster",
+      "display": "row",
+      "props": {
+        "name": "Dave",
+        "wins": 0
+      }
+    },
+    "player_tom": {
+      "id": "player_tom",
+      "parent": "roster",
+      "display": "row",
+      "props": {
+        "name": "Tom",
+        "wins": 0
+      }
+    },
+    "player_you": {
+      "id": "player_you",
+      "parent": "roster",
+      "display": "row",
+      "props": {
+        "name": "You",
+        "wins": 0
+      }
+    },
+    "player_sarah": {
+      "id": "player_sarah",
+      "parent": "roster",
+      "display": "row",
+      "props": {
+        "name": "Sarah",
+        "wins": 0
+      }
+    },
+    "player_jake": {
+      "id": "player_jake",
+      "parent": "roster",
+      "display": "row",
+      "props": {
+        "name": "Jake",
+        "wins": 0,
+        "status": "unavailable"
+      }
+    },
+    "schedule": {
+      "id": "schedule",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Schedule"
+      }
+    },
+    "game_feb27": {
+      "id": "game_feb27",
+      "parent": "schedule",
+      "display": "row",
+      "props": {
+        "date": "2026-02-27",
+        "location": "Mike's",
+        "pot": 120
+      }
+    },
+    "game_mar13": {
+      "id": "game_mar13",
+      "parent": "schedule",
+      "display": "row",
+      "props": {
+        "date": "2026-03-13",
+        "location": "Dave's"
+      }
+    },
+    "player_lisa": {
+      "id": "player_lisa",
+      "parent": "roster",
+      "display": "row",
+      "props": {
+        "name": "Lisa",
+        "wins": 0
+      }
+    }
+  },
+  "relationships": [
+    {
+      "from": "player_tom",
+      "to": "game_feb27",
+      "type": "hosting"
+    }
+  ],
+  "relationship_types": {
+    "hosting": "one_to_one"
+  }
+}

@@ -1,0 +1,6 @@
+```jsonl
+{"t":"meta.set","p":{"title":"Roommate Chores","identity":"Chore tracker for three roommates: me, Alex, and Jamie."}}
+{"t":"entity.create","id":"page","parent":"root","display":"page","p":{"title":"Roommate Chores"}}
+{"t":"entity.create","id":"chores","parent":"page","display":"table","p":{"title":"Chores"}}
+{"t":"voice","text":"Chore tracker created. Add tasks to get started."}
+```

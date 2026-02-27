@@ -1,0 +1,6 @@
+```jsonl
+{"t":"meta.set","p":{"title":"Sophie's Graduation","identity":"Sophie's graduation in May. Planning celebration."}}
+{"t":"entity.create","id":"page","parent":"root","display":"page","p":{"title":"Sophie's Graduation"}}
+{"t":"entity.create","id":"details","parent":"page","display":"card","p":{"who":"Sophie","when":"May 2026","event":"Graduation celebration"}}
+{"t":"voice","text":"Graduation details set. Add venue, guest count, or tasks as you plan."}
+```

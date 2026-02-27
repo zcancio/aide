@@ -1,0 +1,2 @@
+{"t":"entity.create","id":"player_sarah","parent":"roster","display":"row","p":{"name":"Sarah"}}
+{"t":"entity.create","id":"player_jake","parent":"roster","display":"row","p":{"name":"Jake"}}

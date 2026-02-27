@@ -1,0 +1,118 @@
+{
+  "meta": {
+    "title": "Flu Tracker",
+    "identity": "Temperature tracking for Ringo and George during flu."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Flu Tracker"
+      }
+    },
+    "patients": {
+      "id": "patients",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Patients"
+      }
+    },
+    "patient_ringo": {
+      "id": "patient_ringo",
+      "parent": "patients",
+      "display": "row",
+      "props": {
+        "name": "Ringo"
+      }
+    },
+    "patient_george": {
+      "id": "patient_george",
+      "parent": "patients",
+      "display": "row",
+      "props": {
+        "name": "George"
+      }
+    },
+    "readings": {
+      "id": "readings",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Temperature Readings"
+      }
+    },
+    "reading_ringo_3am": {
+      "id": "reading_ringo_3am",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "patient": "Ringo",
+        "time": "2026-02-25T03:00",
+        "temp": 100.3,
+        "meds": "none"
+      }
+    },
+    "reading_ringo_840am": {
+      "id": "reading_ringo_840am",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "patient": "Ringo",
+        "time": "2026-02-25T08:40",
+        "temp": 100.5,
+        "meds": "none"
+      }
+    },
+    "reading_george_1am": {
+      "id": "reading_george_1am",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "patient": "George",
+        "time": "2026-02-25T01:00",
+        "temp": 100.1,
+        "meds": "none",
+        "note": "checked without waking"
+      }
+    },
+    "reading_george_5am": {
+      "id": "reading_george_5am",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "patient": "George",
+        "time": "2026-02-25T05:00",
+        "temp": 102.5,
+        "meds": "motrin"
+      }
+    },
+    "reading_george_840am": {
+      "id": "reading_george_840am",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "patient": "George",
+        "time": "2026-02-25T08:40",
+        "temp": 99.5,
+        "meds": "none"
+      }
+    },
+    "reading_george_7am": {
+      "id": "reading_george_7am",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "patient": "George",
+        "time": "2026-02-25T07:00",
+        "temp": 98.8,
+        "meds": "none"
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {},
+  "orphans": []
+}

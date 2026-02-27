@@ -1,0 +1,63 @@
+{
+  "name": "grocery_realistic_t7",
+  "tier": "L2",
+  "model": "claude-haiku-4-5-20251001",
+  "prompt_version": "v3.1",
+  "composite": 1.0,
+  "dimensions": {
+    "validity": {
+      "name": "validity",
+      "score": 1.0,
+      "checks": {
+        "parseable": 1.0,
+        "no_fences": 1.0,
+        "valid_types": 1.0,
+        "valid_structure": 1.0,
+        "not_empty": 1.0
+      },
+      "notes": []
+    },
+    "voice": {
+      "name": "voice",
+      "score": 1.0,
+      "checks": {
+        "no_voice_to_check": 1.0
+      },
+      "notes": [
+        "No voice lines emitted"
+      ]
+    },
+    "structure": {
+      "name": "structure",
+      "score": 1.0,
+      "checks": {
+        "no_orphans": 1.0
+      },
+      "notes": []
+    },
+    "efficiency": {
+      "name": "efficiency",
+      "score": 1.0,
+      "checks": {
+        "within_budget": 1.0,
+        "in_sweet_spot": 1.0
+      },
+      "notes": []
+    },
+    "fidelity": {
+      "name": "fidelity",
+      "score": 1.0,
+      "checks": {
+        "tier_appropriate": 1.0,
+        "l2_scope": 1.0,
+        "item_resolved": 1.0
+      },
+      "notes": [
+        "Item removed \u2014 no longer on remaining list"
+      ]
+    }
+  },
+  "latency_ms": 1394,
+  "output_tokens": 16,
+  "cache_hit_pct": 0.0
+}

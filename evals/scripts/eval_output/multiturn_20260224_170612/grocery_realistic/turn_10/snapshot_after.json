@@ -1,0 +1,109 @@
+{
+  "meta": {
+    "title": "Grocery Run",
+    "identity": "Shopping list for a grocery run."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Grocery Run"
+      }
+    },
+    "item_milk": {
+      "id": "item_milk",
+      "parent": "basics",
+      "display": "row",
+      "props": {
+        "name": "Milk",
+        "done": true
+      }
+    },
+    "item_eggs": {
+      "id": "item_eggs",
+      "parent": "basics",
+      "display": "row",
+      "props": {
+        "name": "Eggs",
+        "done": false
+      }
+    },
+    "item_bread": {
+      "id": "item_bread",
+      "parent": "basics",
+      "display": "row",
+      "props": {
+        "name": "Bread",
+        "done": false
+      }
+    },
+    "item_butter": {
+      "id": "item_butter",
+      "parent": "basics",
+      "display": "row",
+      "props": {
+        "name": "Butter",
+        "brand": "Trader Joe's",
+        "done": false
+      }
+    },
+    "item_chicken_thighs": {
+      "id": "item_chicken_thighs",
+      "parent": "dinner",
+      "display": "row",
+      "props": {
+        "name": "Chicken thighs",
+        "done": false,
+        "quantity": "2 lbs",
+        "bone_in": true
+      }
+    },
+    "item_soy_sauce": {
+      "id": "item_soy_sauce",
+      "parent": "dinner",
+      "display": "row",
+      "props": {
+        "name": "Soy sauce",
+        "done": false
+      }
+    },
+    "item_ginger": {
+      "id": "item_ginger",
+      "parent": "dinner",
+      "display": "row",
+      "props": {
+        "name": "Ginger",
+        "done": false
+      }
+    },
+    "item_green_onions": {
+      "id": "item_green_onions",
+      "parent": "dinner",
+      "display": "row",
+      "props": {
+        "name": "Green onions",
+        "done": false
+      }
+    },
+    "basics": {
+      "id": "basics",
+      "parent": "page",
+      "display": "checklist",
+      "props": {
+        "title": "Basics"
+      }
+    },
+    "dinner": {
+      "id": "dinner",
+      "parent": "page",
+      "display": "checklist",
+      "props": {
+        "title": "Dinner Ingredients"
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {}
+}

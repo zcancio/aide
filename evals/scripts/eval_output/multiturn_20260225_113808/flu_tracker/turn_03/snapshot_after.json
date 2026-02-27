@@ -1,0 +1,110 @@
+{
+  "meta": {
+    "title": "Fever Log",
+    "identity": "Temperature tracking for Ringo and George."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Fever Log"
+      }
+    },
+    "ringo_section": {
+      "id": "ringo_section",
+      "parent": "page",
+      "display": "section",
+      "props": {
+        "title": "Ringo"
+      }
+    },
+    "ringo_readings": {
+      "id": "ringo_readings",
+      "parent": "ringo_section",
+      "display": "table",
+      "props": {
+        "title": "Readings"
+      }
+    },
+    "george_section": {
+      "id": "george_section",
+      "parent": "page",
+      "display": "section",
+      "props": {
+        "title": "George"
+      }
+    },
+    "george_readings": {
+      "id": "george_readings",
+      "parent": "george_section",
+      "display": "table",
+      "props": {
+        "title": "Readings"
+      }
+    },
+    "reading_ringo_1030am_dec29": {
+      "id": "reading_ringo_1030am_dec29",
+      "parent": "ringo_readings",
+      "display": "row",
+      "props": {
+        "time": "2026-12-29T10:30",
+        "temp": 103.7,
+        "meds": "tylenol"
+      }
+    },
+    "reading_ringo_135pm_dec29": {
+      "id": "reading_ringo_135pm_dec29",
+      "parent": "ringo_readings",
+      "display": "row",
+      "props": {
+        "time": "2026-12-29T13:50",
+        "temp": 101.5,
+        "meds": "motrin"
+      }
+    },
+    "reading_ringo_520pm_dec29": {
+      "id": "reading_ringo_520pm_dec29",
+      "parent": "ringo_readings",
+      "display": "row",
+      "props": {
+        "time": "2026-12-29T17:20",
+        "temp": 101,
+        "meds": "tylenol"
+      }
+    },
+    "reading_ringo_820pm_dec29": {
+      "id": "reading_ringo_820pm_dec29",
+      "parent": "ringo_readings",
+      "display": "row",
+      "props": {
+        "time": "2026-12-29T20:20",
+        "temp": 102,
+        "meds": "motrin"
+      }
+    },
+    "ringo_summary": {
+      "id": "ringo_summary",
+      "parent": "ringo_section",
+      "display": "card",
+      "props": {
+        "latest_temp": 102,
+        "latest_time": "2026-12-29T20:20",
+        "latest_meds": "motrin",
+        "trend": "Fluctuating 101-103.7"
+      }
+    },
+    "george_summary": {
+      "id": "george_summary",
+      "parent": "george_section",
+      "display": "card",
+      "props": {
+        "status": "No readings yet"
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {},
+  "orphans": []
+}

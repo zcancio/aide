@@ -1,0 +1,132 @@
+{
+  "meta": {
+    "title": "Kitchen Remodel",
+    "identity": "Kitchen renovation project tracking."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Kitchen Remodel"
+      }
+    },
+    "details": {
+      "id": "details",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "project": "Kitchen remodel",
+        "budget": 35000,
+        "spent": 34200,
+        "remaining": 800
+      }
+    },
+    "budget": {
+      "id": "budget",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Budget"
+      }
+    },
+    "expense_architect": {
+      "id": "expense_architect",
+      "parent": "budget",
+      "display": "row",
+      "props": {
+        "item": "Architect plans",
+        "cost": 8000,
+        "status": "paid"
+      }
+    },
+    "cabinet_quotes": {
+      "id": "cabinet_quotes",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Cabinet Quotes"
+      }
+    },
+    "quote_woodworks": {
+      "id": "quote_woodworks",
+      "parent": "cabinet_quotes",
+      "display": "row",
+      "props": {
+        "vendor": "Woodworks Unlimited",
+        "cost": 9500
+      }
+    },
+    "quote_depot": {
+      "id": "quote_depot",
+      "parent": "cabinet_quotes",
+      "display": "row",
+      "props": {
+        "vendor": "Cabinet Depot",
+        "cost": 11000
+      }
+    },
+    "quote_custom": {
+      "id": "quote_custom",
+      "parent": "cabinet_quotes",
+      "display": "row",
+      "props": {
+        "vendor": "Custom Craft",
+        "cost": 15000
+      }
+    },
+    "expense_cabinets": {
+      "id": "expense_cabinets",
+      "parent": "budget",
+      "display": "row",
+      "props": {
+        "item": "Cabinets (Woodworks Unlimited)",
+        "cost": 9500,
+        "status": "pending"
+      }
+    },
+    "expense_flooring": {
+      "id": "expense_flooring",
+      "parent": "budget",
+      "display": "row",
+      "props": {
+        "item": "Flooring",
+        "cost": 5500,
+        "status": "pending",
+        "note": "4-6k estimate"
+      }
+    },
+    "expense_appliances": {
+      "id": "expense_appliances",
+      "parent": "budget",
+      "display": "row",
+      "props": {
+        "item": "Appliances",
+        "cost": 8000,
+        "status": "pending"
+      }
+    },
+    "expense_countertops": {
+      "id": "expense_countertops",
+      "parent": "budget",
+      "display": "row",
+      "props": {
+        "item": "Countertops",
+        "cost": 3200,
+        "status": "paid"
+      }
+    }
+  },
+  "relationships": [
+    {
+      "from": "page",
+      "to": "quote_woodworks",
+      "type": "selected"
+    }
+  ],
+  "relationship_types": {
+    "selected": "one_to_one"
+  },
+  "orphans": []
+}

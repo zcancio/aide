@@ -1,0 +1,5 @@
+3 tasks remain: Order a cake, get decorations, figure out parking.
+
+1 food item unassigned: Dessert has no contributor.
+
+4 guests haven't confirmed RSVP: Cousin James, Maria Garcia, Carlos Garcia, Dave.

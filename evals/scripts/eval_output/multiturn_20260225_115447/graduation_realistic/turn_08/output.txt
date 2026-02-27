@@ -1,0 +1,8 @@
+
+```json
+{"t":"entity.update","ref":"dish_drinks","p":{"dish":"Drinks"}}
+{"t":"rel.set","from":"dish_drinks","to":"guest_bob","type":"bringing","cardinality":"many_to_one"}
+{"t":"entity.create","id":"dish_fruit_platter","parent":"potluck","display":"row","p":{"dish":"Fruit platter"}}
+{"t":"rel.set","from":"dish_fruit_platter","to":"guest_maria","type":"bringing","cardinality":"many_to_one"}
+{"t":"rel.remove","from":"dish_drinks","to":"guest_maria","type":"bringing"}
+```

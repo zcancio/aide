@@ -1,0 +1,8 @@
+{"t":"entity.create","id":"food_carne_asada","parent":"food","display":"row","p":{"name":"Carne asada"}}
+{"t":"rel.set","from":"food_carne_asada","to":"guest_carlos","type":"bringing","cardinality":"many_to_one"}
+{"t":"entity.update","ref":"food_potato_salad","p":{"name":"Potato salad"}}
+{"t":"rel.set","from":"food_potato_salad","to":"guest_linda","type":"bringing","cardinality":"many_to_one"}
+{"t":"entity.create","id":"food_drinks","parent":"food","display":"row","p":{"name":"Drinks"}}
+{"t":"rel.set","from":"food_drinks","to":"guest_maria","type":"bringing","cardinality":"many_to_one"}
+{"t":"entity.create","id":"food_dessert","parent":"food","display":"row","p":{"name":"Dessert"}}
+{"t":"entity.create","id":"food_sides","parent":"food","display":"row","p":{"name":"Sides"}}

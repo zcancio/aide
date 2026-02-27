@@ -1,0 +1,7 @@
+```jsonl
+{"t":"meta.set","p":{"title":"Kitchen Remodel","identity":"Kitchen renovation project tracker."}}
+{"t":"entity.create","id":"page","parent":"root","display":"page","p":{"title":"Kitchen Remodel"}}
+{"t":"entity.create","id":"details","parent":"page","display":"card","p":{"project":"Kitchen renovation"}}
+{"t":"entity.create","id":"tasks","parent":"page","display":"checklist","p":{"title":"Tasks"}}
+{"t":"voice","text":"Kitchen remodel started. Add tasks and details as you go."}
+```

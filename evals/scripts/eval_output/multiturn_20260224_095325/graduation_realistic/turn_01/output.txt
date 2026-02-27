@@ -1,0 +1,5 @@
+{"t":
+"meta.set","p":{"title":"Sophie's Graduation","identity":"Graduation celebration in May for Sophie."}}
+{"t":"entity.create","id":"page","parent":"root","display":"page","p":{"title":"Sophie's Graduation"}}
+{"t":"entity.create","id":"event_details","parent":"page","display":"card","p":{"graduate":"Sophie","month":"May 2026"}}
+{"t":"voice","text":"Graduation event started. Add details as you plan."}

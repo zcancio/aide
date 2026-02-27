@@ -1,0 +1,4 @@
+```json
+{"t":"entity.create","id":"summary_ringo","parent":"page","display":"card","p":{"name":"Ringo"}}
+{"t":"entity.create","id":"summary_george","parent":"page","display":"card","p":{"name":"George"}}
+```

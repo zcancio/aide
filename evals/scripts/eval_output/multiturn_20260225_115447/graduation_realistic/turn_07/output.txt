@@ -1,0 +1,6 @@
+{"t":"entity.create","id":"dish_carne_asada","parent":"potluck","display":"row","p":{"dish":"Carne asada"}}
+{"t":"rel.set","from":"dish_carne_asada","to":"guest_carlos","type":"bringing","cardinality":"many_to_one"}
+{"t":"entity.create","id":"dish_drinks","parent":"potluck","display":"row","p":{"dish":"Drinks"}}
+{"t":"rel.set","from":"dish_drinks","to":"guest_maria","type":"bringing","cardinality":"many_to_one"}
+{"t":"entity.create","id":"dish_dessert","parent":"potluck","display":"row","p":{"dish":"Dessert"}}
+{"t":"entity.create","id":"dish_sides","parent":"potluck","display":"row","p":{"dish":"Sides"}}

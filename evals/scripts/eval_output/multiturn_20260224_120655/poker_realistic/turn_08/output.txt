@@ -1,0 +1,4 @@
+{"t":"entity.create","id":"game_feb27","parent":"games","display":"row","p":{"date":"2026-02-27","location":"Dave's","pot":null}}
+{"t":"rel.set","from":"player_dave","to":"game_feb27","type":"hosting","cardinality":"one_to_one"}
+{"t":"entity.create","id":"player_lisa","parent":"players","display":"row","p":{"name":"Lisa","wins":0}}
+{"t":"entity.update","ref":"player_jake","p":{"status":"unavailable"}}

@@ -1,0 +1,6 @@
+```json
+{"t":"meta.set","p":{"title":"Kitchen Remodel","identity":"Kitchen remodel project tracking."}}
+{"t":"entity.create","id":"page","parent":"root","display":"page","p":{"title":"Kitchen Remodel"}}
+{"t":"entity.create","id":"details","parent":"page","display":"card","p":{"status":"Planning"}}
+{"t":"voice","text":"Kitchen remodel page created. Add scope and budget details to get started."}
+```

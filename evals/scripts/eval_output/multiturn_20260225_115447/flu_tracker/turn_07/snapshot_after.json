@@ -1,0 +1,273 @@
+{
+  "meta": {
+    "title": "Fever Tracking",
+    "identity": "Temperature tracking for Ringo and George."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Fever Tracking"
+      }
+    },
+    "ringo_readings": {
+      "id": "ringo_readings",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Ringo's Readings"
+      }
+    },
+    "george_readings": {
+      "id": "george_readings",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "George's Readings"
+      }
+    },
+    "reading_ringo_1": {
+      "id": "reading_ringo_1",
+      "parent": "ringo_readings",
+      "display": "row",
+      "props": {
+        "time": "2025-12-29T10:30",
+        "temp": 103.7,
+        "meds": "tylenol"
+      }
+    },
+    "reading_ringo_2": {
+      "id": "reading_ringo_2",
+      "parent": "ringo_readings",
+      "display": "row",
+      "props": {
+        "time": "2025-12-29T13:30",
+        "temp": 101.5,
+        "meds": "motrin"
+      }
+    },
+    "reading_ringo_3": {
+      "id": "reading_ringo_3",
+      "parent": "ringo_readings",
+      "display": "row",
+      "props": {
+        "time": "2025-12-29T17:20",
+        "temp": 101,
+        "meds": "tylenol"
+      }
+    },
+    "reading_ringo_4": {
+      "id": "reading_ringo_4",
+      "parent": "ringo_readings",
+      "display": "row",
+      "props": {
+        "time": "2025-12-29T20:20",
+        "temp": 102,
+        "meds": "motrin"
+      }
+    },
+    "ringo_summary": {
+      "id": "ringo_summary",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "name": "Ringo",
+        "latest_temp": 99.7,
+        "latest_time": "2026-01-01T20:30",
+        "latest_meds": "motrin",
+        "reading_count": 13
+      }
+    },
+    "george_summary": {
+      "id": "george_summary",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "name": "George",
+        "latest_temp": 103,
+        "latest_time": "2025-12-30T16:00",
+        "reading_count": 8,
+        "latest_meds": "motrin"
+      }
+    },
+    "reading_ringo_5": {
+      "id": "reading_ringo_5",
+      "parent": "ringo_readings",
+      "display": "row",
+      "props": {
+        "time": "2025-12-30T00:00",
+        "temp": 101.6,
+        "meds": "tylenol",
+        "note": "woke him back to sleep"
+      }
+    },
+    "reading_ringo_6": {
+      "id": "reading_ringo_6",
+      "parent": "ringo_readings",
+      "display": "row",
+      "props": {
+        "time": "2025-12-30T02:00",
+        "temp": 103.5,
+        "meds": "motrin",
+        "note": "down to 101 by 2:45am"
+      }
+    },
+    "reading_ringo_7": {
+      "id": "reading_ringo_7",
+      "parent": "ringo_readings",
+      "display": "row",
+      "props": {
+        "time": "2025-12-30T06:30",
+        "temp": 98.6,
+        "meds": null
+      }
+    },
+    "reading_ringo_8": {
+      "id": "reading_ringo_8",
+      "parent": "ringo_readings",
+      "display": "row",
+      "props": {
+        "time": "2025-12-30T09:25",
+        "temp": 99.8,
+        "meds": "tylenol"
+      }
+    },
+    "reading_ringo_9": {
+      "id": "reading_ringo_9",
+      "parent": "ringo_readings",
+      "display": "row",
+      "props": {
+        "time": "2025-12-30T10:30",
+        "temp": 100.3,
+        "meds": null
+      }
+    },
+    "reading_ringo_10": {
+      "id": "reading_ringo_10",
+      "parent": "ringo_readings",
+      "display": "row",
+      "props": {
+        "time": "2025-12-30T13:15",
+        "temp": 101.1,
+        "meds": "motrin"
+      }
+    },
+    "reading_ringo_11": {
+      "id": "reading_ringo_11",
+      "parent": "ringo_readings",
+      "display": "row",
+      "props": {
+        "time": "2025-12-30T14:00",
+        "temp": 101.4,
+        "meds": null
+      }
+    },
+    "reading_george_1": {
+      "id": "reading_george_1",
+      "parent": "george_readings",
+      "display": "row",
+      "props": {
+        "time": "2025-12-30T02:00",
+        "temp": 102.7,
+        "meds": "tylenol"
+      }
+    },
+    "reading_george_2": {
+      "id": "reading_george_2",
+      "parent": "george_readings",
+      "display": "row",
+      "props": {
+        "time": "2025-12-30T06:30",
+        "temp": 102.7,
+        "meds": "tylenol"
+      }
+    },
+    "reading_george_3": {
+      "id": "reading_george_3",
+      "parent": "george_readings",
+      "display": "row",
+      "props": {
+        "time": "2025-12-30T09:25",
+        "temp": 101,
+        "meds": null
+      }
+    },
+    "reading_george_4": {
+      "id": "reading_george_4",
+      "parent": "george_readings",
+      "display": "row",
+      "props": {
+        "time": "2025-12-30T10:30",
+        "temp": 102.9,
+        "meds": "motrin",
+        "note": "1130 eyelids swelling"
+      }
+    },
+    "reading_george_5": {
+      "id": "reading_george_5",
+      "parent": "george_readings",
+      "display": "row",
+      "props": {
+        "time": "2025-12-30T13:15",
+        "temp": 100.3,
+        "meds": null
+      }
+    },
+    "reading_george_6": {
+      "id": "reading_george_6",
+      "parent": "george_readings",
+      "display": "row",
+      "props": {
+        "time": "2025-12-30T14:00",
+        "temp": 101.3,
+        "meds": "tylenol",
+        "note": "threw up"
+      }
+    },
+    "reading_george_7": {
+      "id": "reading_george_7",
+      "parent": "george_readings",
+      "display": "row",
+      "props": {
+        "time": "2025-12-30T15:00",
+        "temp": 101.9,
+        "meds": null
+      }
+    },
+    "reading_george_8": {
+      "id": "reading_george_8",
+      "parent": "george_readings",
+      "display": "row",
+      "props": {
+        "time": "2025-12-30T16:00",
+        "temp": 103,
+        "meds": "motrin"
+      }
+    },
+    "reading_ringo_12": {
+      "id": "reading_ringo_12",
+      "parent": "ringo_readings",
+      "display": "row",
+      "props": {
+        "time": "2026-01-01T17:00",
+        "temp": 101,
+        "meds": "tylenol"
+      }
+    },
+    "reading_ringo_13": {
+      "id": "reading_ringo_13",
+      "parent": "ringo_readings",
+      "display": "row",
+      "props": {
+        "time": "2026-01-01T20:30",
+        "temp": 99.7,
+        "meds": "motrin"
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {},
+  "orphans": []
+}

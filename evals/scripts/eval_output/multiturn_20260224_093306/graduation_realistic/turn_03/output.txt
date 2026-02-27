@@ -1,0 +1,7 @@
+
+```json
+{"t":"entity.create","id":"guests","parent":"page","display":"section","p":{"title":"Guests"}}
+{"t":"entity.create","id":"guest_linda","parent":"guests","display":"row","p":{"name":"Aunt Linda","rsvp":"confirmed"}}
+{"t":"entity.create","id":"guest_bob","parent":"guests","display":"row","p":{"name":"Uncle Bob","rsvp":"confirmed"}}
+{"t":"entity.create","id":"guest_james","parent":"guests","display":"row","p":{"name":"Cousin James","rsvp":"pending"}}
+```

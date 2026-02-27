@@ -1,0 +1,14 @@
+```json
+{"t":"batch.start"}
+{"t":"entity.create","id":"basics","parent":"page","display":"checklist","p":{"title":"Basics"}}
+{"t":"entity.move","ref":"item_bread","parent":"basics","position":0}
+{"t":"entity.move","ref":"item_butter","parent":"basics","position":1}
+{"t":"entity.create","id":"tonights_dinner","parent":"page","display":"checklist","p":{"title":"Tonight's Dinner"}}
+{"t":"entity.move","ref":"item_chicken_thighs","parent":"tonights_dinner","position":0}
+{"t":"entity.move","ref":"item_soy_sauce","parent":"tonights_dinner","position":1}
+{"t":"entity.move","ref":"item_ginger","parent":"tonights_dinner","position":2}
+{"t":"entity.move","ref":"item_green_onions","parent":"tonights_dinner","position":3}
+{"t":"entity.reorder","ref":"items","children":["item_milk","item_eggs"]}
+{"t":"batch.end"}
+{"t":"voice","text":"Grouped into Basics and Tonight's Dinner."}
+```

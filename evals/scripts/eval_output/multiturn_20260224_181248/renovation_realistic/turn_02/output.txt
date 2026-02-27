@@ -1,0 +1,2 @@
+{"t":"entity.update","ref":"details","p":{"budget":35000,"spent":8000}}
+{"t":"voice","text":"Budget: $35k. Spent: $8k on architect plans."}

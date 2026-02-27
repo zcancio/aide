@@ -1,0 +1,5 @@
+{"t":"entity.create","id":"game_mar06","parent":"games","display":"row","p":{"date":"2026-03-06","buy_in":20,"location":"Dave's"}}
+{"t":"rel.set","from":"player_dave","to":"game_mar06","type":"hosting","cardinality":"one_to_one"}
+{"t":"entity.create","id":"player_lisa","parent":"players","display":"row","p":{"name":"Lisa","wins":0}}
+{"t":"escalate","tier":"L4","reason":"query","extract":"who's won the most so far"}
+Mike: 1 win. Everyone else: 0 wins.

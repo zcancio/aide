@@ -1,0 +1,12 @@
+{"t":"entity.update","ref":"player_you","p":{"wins":0}}
+{"t":"entity.update","ref":"player_mike","p":{"wins":1}}
+{"t":"entity.update","ref":"player_dave","p":{"wins":0}}
+{"t":"entity.update","ref":"player_tom","p":{"wins":0}}
+{"t":"entity.update","ref":"player_sarah","p":{"wins":0}}
+{"t":"entity.update","ref":"player_jake","p":{"wins":0}}
+{"t":"entity.create","id":"games","parent":"page","display":"table","p":{"title":"Games"}}
+{"t":"voice","text":"Win tracking added. Building game history."}
+{"t":"entity.create","id":"game_feb13","parent":"games","display":"row","p":{"date":"2026-02-13","location":"Mike's"}}
+{"t":"rel.set","from":"player_mike","to":"game_feb13","type":"hosting","cardinality":"one_to_one"}
+{"t":"rel.set","from":"player_mike","to":"game_feb13","type":"won","cardinality":"many_to_many"}
+{"t":"voice","text":"First game logged. Mike hosted and won."}

@@ -1,0 +1,9 @@
+{"t":"entity.create","id":"reading_george_1","parent":"readings","display":"row","p":{"name":"George","datetime":"2025-12-30T02:00","temp":102.7,"meds":"Tylenol"}}
+{"t":"entity.create","id":"reading_george_2","parent":"readings","display":"row","p":{"name":"George","datetime":"2025-12-30T06:30","temp":102.7,"meds":"Tylenol"}}
+{"t":"entity.create","id":"reading_george_3","parent":"readings","display":"row","p":{"name":"George","datetime":"2025-12-30T09:25","temp":101.0,"meds":null}}
+{"t":"entity.create","id":"reading_george_4","parent":"readings","display":"row","p":{"name":"George","datetime":"2025-12-30T10:30","temp":102.9,"meds":"Motrin","note":"eyelids swelling"}}
+{"t":"entity.create","id":"reading_george_5","parent":"readings","display":"row","p":{"name":"George","datetime":"2025-12-30T13:15","temp":100.3,"meds":null}}
+{"t":"entity.create","id":"reading_george_6","parent":"readings","display":"row","p":{"name":"George","datetime":"2025-12-30T14:00","temp":101.3,"meds":"Tylenol","note":"threw up"}}
+{"t":"entity.create","id":"reading_george_7","parent":"readings","display":"row","p":{"name":"George","datetime":"2025-12-30T15:00","temp":101.9,"meds":null}}
+{"t":"entity.create","id":"reading_george_8","parent":"readings","display":"row","p":{"name":"George","datetime":"2025-12-30T16:00","temp":103.0,"meds":"Motrin"}}
+{"t":"entity.update","ref":"summary_george","p":{"latest_temp":103.0,"latest_time":"2025-12-30T16:00","trend":"Fluctuating","last_meds":"Motrin","status":"Active fever"}}

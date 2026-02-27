@@ -1,0 +1,3 @@
+{"t":"entity.create","id":"expense_flooring","parent":"budget","display":"row","p":{"item":"Flooring","cost":5500,"note":"4-6k estimate"}}
+{"t":"entity.create","id":"expense_appliances","parent":"budget","display":"row","p":{"item":"Appliances","cost":8000,"note":"~8k estimate"}}
+{"t":"entity.update","ref":"project_overview","p":{"spent":31000,"remaining":4000}}

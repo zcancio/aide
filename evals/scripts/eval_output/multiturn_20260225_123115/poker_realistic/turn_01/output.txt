@@ -1,0 +1,9 @@
+```json
+{"t":"meta.set","p":{"title":"Poker Night","identity":"Poker night tracker."}}
+{"t":"entity.create","id":"page","parent":"root","display":"page","p":{"title":"Poker Night"}}
+{"t":"entity.create","id":"details","parent":"page","display":"card","p":{}}
+{"t":"voice","text":"Poker night started. Add players and game details."}
+{"t":"entity.create","id":"players","parent":"page","display":"table","p":{"title":"Players"}}
+{"t":"entity.create","id":"games","parent":"page","display":"table","p":{"title":"Games"}}
+{"t":"voice","text":"Ready to track players and games."}
+```

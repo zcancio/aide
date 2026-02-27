@@ -1,0 +1,9 @@
+```json
+{"t":"meta.set","p":{"title":"Flu Tracker","identity":"Temperature tracking for Ringo and George during flu."}}
+{"t":"entity.create","id":"page","parent":"root","display":"page","p":{"title":"Flu Tracker"}}
+{"t":"entity.create","id":"patients","parent":"page","display":"table","p":{"title":"Patients"}}
+{"t":"entity.create","id":"patient_ringo","parent":"patients","display":"row","p":{"name":"Ringo"}}
+{"t":"entity.create","id":"patient_george","parent":"patients","display":"row","p":{"name":"George"}}
+{"t":"entity.create","id":"readings","parent":"page","display":"table","p":{"title":"Temperature Readings"}}
+{"t":"voice","text":"Flu tracker ready. Log temps as they come in."}
+```

@@ -1,0 +1,1 @@
+{"t":"entity.update","ref":"item_chicken_thighs","p":{"quantity":"2 lbs","bone_in":true}}

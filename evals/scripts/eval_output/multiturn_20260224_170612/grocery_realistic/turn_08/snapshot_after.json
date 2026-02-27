@@ -1,0 +1,101 @@
+{
+  "meta": {
+    "title": "Grocery Run",
+    "identity": "Shopping list for a grocery run."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Grocery Run"
+      }
+    },
+    "shopping_list": {
+      "id": "shopping_list",
+      "parent": "page",
+      "display": "checklist",
+      "props": {
+        "title": "Shopping List"
+      }
+    },
+    "item_milk": {
+      "id": "item_milk",
+      "parent": "shopping_list",
+      "display": "row",
+      "props": {
+        "name": "Milk",
+        "done": true
+      }
+    },
+    "item_eggs": {
+      "id": "item_eggs",
+      "parent": "shopping_list",
+      "display": "row",
+      "props": {
+        "name": "Eggs",
+        "done": true
+      }
+    },
+    "item_bread": {
+      "id": "item_bread",
+      "parent": "shopping_list",
+      "display": "row",
+      "props": {
+        "name": "Bread",
+        "done": false
+      }
+    },
+    "item_butter": {
+      "id": "item_butter",
+      "parent": "shopping_list",
+      "display": "row",
+      "props": {
+        "name": "Butter",
+        "brand": "Trader Joe's",
+        "done": false
+      }
+    },
+    "item_chicken_thighs": {
+      "id": "item_chicken_thighs",
+      "parent": "shopping_list",
+      "display": "row",
+      "props": {
+        "name": "Chicken thighs",
+        "done": false,
+        "quantity": "2 lbs",
+        "bone_in": true
+      }
+    },
+    "item_soy_sauce": {
+      "id": "item_soy_sauce",
+      "parent": "shopping_list",
+      "display": "row",
+      "props": {
+        "name": "Soy sauce",
+        "done": false
+      }
+    },
+    "item_ginger": {
+      "id": "item_ginger",
+      "parent": "shopping_list",
+      "display": "row",
+      "props": {
+        "name": "Ginger",
+        "done": false
+      }
+    },
+    "item_green_onions": {
+      "id": "item_green_onions",
+      "parent": "shopping_list",
+      "display": "row",
+      "props": {
+        "name": "Green onions",
+        "done": false
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {}
+}

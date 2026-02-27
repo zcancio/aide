@@ -1,0 +1,6 @@
+6 guests:
+- Confirmed: Aunt Linda, Uncle Bob
+- Maybe: Cousin James
+- Pending: Maria Garcia, Carlos Garcia, Dave
+
+4 confirmed or likely, 2 pending.

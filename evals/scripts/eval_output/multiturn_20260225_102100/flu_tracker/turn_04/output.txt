@@ -1,0 +1,7 @@
+{"t":"entity.create","id":"reading_ringo_12am_dec30","parent":"readings","display":"row","p":{"name":"Ringo","date":"2025-12-30","time":"00:00","temp":101.6,"medication":"Tylenol","note":"woke him back to sleep"}}
+{"t":"entity.create","id":"reading_ringo_2am_dec30","parent":"readings","display":"row","p":{"name":"Ringo","date":"2025-12-30","time":"02:00","temp":103.5,"medication":"Motrin","note":"down to 101 by 2:45"}}
+{"t":"entity.create","id":"reading_ringo_630am_dec30","parent":"readings","display":"row","p":{"name":"Ringo","date":"2025-12-30","time":"06:30","temp":98.6}}
+{"t":"entity.create","id":"reading_ringo_925am_dec30","parent":"readings","display":"row","p":{"name":"Ringo","date":"2025-12-30","time":"09:25","temp":99.8,"medication":"Tylenol"}}
+{"t":"entity.create","id":"reading_ringo_1030am_dec30","parent":"readings","display":"row","p":{"name":"Ringo","date":"2025-12-30","time":"10:30","temp":100.3}}
+{"t":"entity.create","id":"reading_ringo_115pm_dec30","parent":"readings","display":"row","p":{"name":"Ringo","date":"2025-12-30","time":"13:15","temp":101.1,"medication":"Motrin"}}
+{"t":"entity.create","id":"reading_ringo_2pm_dec30","parent":"readings","display":"row","p":{"name":"Ringo","date":"2025-12-30","time":"14:00","temp":101.4}}

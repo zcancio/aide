@@ -1,0 +1,3 @@
+{"t":"entity.update","ref":"food_drinks","p":{"item":"Drinks","host":"Uncle Bob"}}
+{"t":"entity.update","ref":"food_drinks","p":{"item":"Fruit Platter"}}
+{"t":"entity.update","ref":"food_drinks","p":{"host":"Maria"}}

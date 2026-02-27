@@ -1,0 +1,3 @@
+{
+"t":"entity.update","ref":"guest_maria_garcia","p":{"contribution":"fruit platter"}}
+{"t":"entity.update","ref":"guest_bob","p":{"contribution":"drinks"}}

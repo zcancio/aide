@@ -1,0 +1,9 @@
+```jsonl
+{"t":"entity.create","id":"food","parent":"page","display":"table","props":{"title":"Food"}}
+{"t":"entity.create","id":"food_potato_salad","parent":"food","display":"row","props":{"dish":"Potato salad","provider":"Aunt Linda","status":"confirmed"}}
+{"t":"entity.create","id":"food_main_1","parent":"food","display":"row","props":{"dish":"Main dish","provider":"TBD","status":"needed"}}
+{"t":"entity.create","id":"food_side_1","parent":"food","display":"row","props":{"dish":"Side dish","provider":"TBD","status":"needed"}}
+{"t":"entity.create","id":"food_dessert","parent":"food","display":"row","props":{"dish":"Dessert","provider":"TBD","status":"needed"}}
+{"t":"entity.create","id":"food_drinks","parent":"food","display":"row","props":{"dish":"Drinks","provider":"TBD","status":"needed"}}
+{"t":"voice","text":"Potluck started. Linda's potato salad confirmed."}
+```

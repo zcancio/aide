@@ -1,0 +1,2 @@
+{"t":"entity.update","ref":"reading_george_925am_dec30","p":{"temp":101.5}}
+{"t":"entity.update","ref":"george_summary","p":{"trend":"High spike to 103 at 4pm Monday, holding 100-102 through evening. Latest 100.5 at 7:40pm Tuesday shows continued improvement."}}

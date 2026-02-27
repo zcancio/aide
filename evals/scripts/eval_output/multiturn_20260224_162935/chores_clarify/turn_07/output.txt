@@ -1,0 +1,1 @@
+{"t":"clarify","text":"Jamie has 4 chores assigned: dishes, mopping, bathroom cleaning, and kitchen counters. Which ones are done?","options":["All of them","Dishes only","Mopping only","Bathroom cleaning only","Kitchen counters only"]}

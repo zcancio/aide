@@ -1,0 +1,1 @@
+{"t":"entity.create","id":"reading_ringo_3am","parent":"readings","display":"row","p":{"patient":"Ringo","time":"2026-02-25T03:00","temp":100.3,"meds":"none"}}

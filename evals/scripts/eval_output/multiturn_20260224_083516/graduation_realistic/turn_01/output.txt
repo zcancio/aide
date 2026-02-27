@@ -1,0 +1,14 @@
+```jsonl
+{"t":"meta.set","p":{"title":"Sophie's Graduation","identity":"Graduation planning for Sophie in May."}}
+{"t":"entity.create","id":"page","parent":"root","display":"page","p":{"title":"Sophie's Graduation"}}
+{"t":"entity.create","id":"event_details","parent":"page","display":"card","p":{"date":"May 2025","honoree":"Sophie","event_type":"Graduation celebration"}}
+{"t":"entity.create","id":"todo","parent":"page","display":"checklist","p":{"title":"Planning Tasks"}}
+{"t":"entity.create","id":"task_venue","parent":"todo","display":"row","p":{"task":"Book venue","done":false}}
+{"t":"voice","text":"Event details set. Building task list."}
+{"t":"entity.create","id":"task_invites","parent":"todo","display":"row","p":{"task":"Send invitations","done":false}}
+{"t":"entity.create","id":"task_catering","parent":"todo","display":"row","p":{"task":"Arrange catering","done":false}}
+{"t":"entity.create","id":"task_decorations","parent":"todo","display":"row","p":{"task":"Get decorations","done":false}}
+{"t":"entity.create","id":"task_photographer","parent":"todo","display":"row","p":{"task":"Book photographer","done":false}}
+{"t":"style.set","p":{"primary_color":"#2d3748","font_family":"Inter","density":"comfortable"}}
+{"t":"voice","text":"Graduation planning started. 5 tasks ready to track."}
+```

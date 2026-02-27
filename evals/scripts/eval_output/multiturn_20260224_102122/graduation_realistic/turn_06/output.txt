@@ -1,0 +1,5 @@
+```json
+{"t":"entity.create","id":"food","parent":"page","display":"section","p":{"title":"Potluck"}}
+{"t":"entity.create","id":"food_potato_salad","parent":"food","display":"row","p":{"dish":"Potato Salad","bringing":"Aunt Linda"}}
+{"t":"voice","text":"Potluck tracking started. Potato salad claimed by Aunt Linda."}
+```

@@ -1,0 +1,12 @@
+[
+  {
+    "scenario_id": "poker_realistic",
+    "name": "Poker Realistic",
+    "turns": 8,
+    "total_tool_calls": 21,
+    "total_text_blocks": 1,
+    "total_issues": 2,
+    "all_passed": false,
+    "entity_count": 12
+  }
+]

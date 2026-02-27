@@ -1,0 +1,12 @@
+Looking at George's pattern with Tylenol:
+
+2am: 102.7 → Tylenol → 6:30am still 102.7 (no drop over 4.5 hours)
+6:30am: 102.7 → Tylenol → 9:25am down to 101 (1.7° drop)
+2pm: 101.3 → Tylenol, threw up → 3pm rose to 101.9 (meds likely lost)
+7:40pm: 100.5 → Tylenol → (no follow-up reading yet)
+
+Motrin shows clearer response:
+10:30am: 102.9 → Motrin → 1:15pm down to 100.3 (2.6° drop)
+4pm: 103 → Motrin → (no follow-up reading yet)
+
+Tylenol's effect is inconsistent for George—sometimes drops fever, sometimes holds steady. The 2pm dose was vomited, so that reading doesn't count. When Tylenol does work (6:30am dose), the drop is smaller than Motrin's. Worth tracking the 7:40pm Tylenol dose with a follow-up reading to confirm the pattern.

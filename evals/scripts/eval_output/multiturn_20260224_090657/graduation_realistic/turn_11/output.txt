@@ -1,0 +1,10 @@
+3 tasks remain:
+- Order cake
+- Get decorations
+- Figure out parking
+
+2 food items unassigned:
+- Dessert
+- Sides
+
+2 guests haven't confirmed: Cousin James, Dave.

@@ -1,0 +1,3 @@
+{"t":"entity.create","id":"guest_maria_garcia","parent":"guest_list","display":"row","p":{"name":"Maria Garcia","rsvp":"pending"}}
+{"t":"entity.create","id":"guest_carlos_garcia","parent":"guest_list","display":"row","p":{"name":"Carlos Garcia","rsvp":"pending"}}
+{"t":"entity.create","id":"guest_dave","parent":"guest_list","display":"row","p":{"name":"Dave","rsvp":"pending"}}

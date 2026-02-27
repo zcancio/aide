@@ -1,0 +1,4 @@
+{"t":"entity.create","id":"cabinet_quotes","parent":"page","display":"table","p":{"label":"Cabinet Quotes"}}
+{"t":"entity.create","id":"quote_woodworks","parent":"cabinet_quotes","display":"row","p":{"vendor":"Woodworks Unlimited","amount":12000}}
+{"t":"entity.create","id":"quote_cabinet_depot","parent":"cabinet_quotes","display":"row","p":{"vendor":"Cabinet Depot","amount":9500}}
+{"t":"entity.create","id":"quote_custom_craft","parent":"cabinet_quotes","display":"row","p":{"vendor":"Custom Craft","amount":15000}}

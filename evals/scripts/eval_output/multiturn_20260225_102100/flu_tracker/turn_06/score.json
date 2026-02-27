@@ -1,0 +1,61 @@
+{
+  "name": "flu_tracker_t6",
+  "tier": "L4",
+  "model": "claude-sonnet-4-5-20250929",
+  "prompt_version": "v3.1",
+  "composite": 0.923,
+  "dimensions": {
+    "validity": {
+      "name": "validity",
+      "score": 1.0,
+      "checks": {
+        "is_plain_text": 1.0,
+        "not_empty": 1.0
+      },
+      "notes": []
+    },
+    "voice": {
+      "name": "voice",
+      "score": 1.0,
+      "checks": {
+        "violation_count": 1.0,
+        "severity_score": 1.0
+      },
+      "notes": []
+    },
+    "structure": {
+      "name": "structure",
+      "score": 1.0,
+      "checks": {
+        "no_jsonl_emission": 1.0
+      },
+      "notes": []
+    },
+    "efficiency": {
+      "name": "efficiency",
+      "score": 0.235,
+      "checks": {
+        "within_budget": 0.0,
+        "in_sweet_spot": 0.47
+      },
+      "notes": [
+        "306 tokens \u2014 well over budget 200"
+      ]
+    },
+    "fidelity": {
+      "name": "fidelity",
+      "score": 1.0,
+      "checks": {
+        "has_content": 1.0,
+        "not_json": 1.0,
+        "trend_analysis": 1.0
+      },
+      "notes": [
+        "Discussed both patients with trajectory analysis"
+      ]
+    }
+  },
+  "latency_ms": 7509,
+  "output_tokens": 306,
+  "cache_hit_pct": 0.0
+}

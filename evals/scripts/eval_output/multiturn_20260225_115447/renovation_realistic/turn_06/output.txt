@@ -1,0 +1,3 @@
+{"t":"entity.create","id":"task_measure_countertops","parent":"tasks","display":"row","p":{"task":"Measure countertops","done":false,"note":"before plumber and electrician"}}
+{"t":"entity.create","id":"task_plumber","parent":"tasks","display":"row","p":{"task":"Plumber","done":false,"date":"2026-03-10"}}
+{"t":"entity.create","id":"task_electrician","parent":"tasks","display":"row","p":{"task":"Electrician","done":false,"date":"2026-03-03"}}

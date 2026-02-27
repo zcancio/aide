@@ -1,0 +1,102 @@
+{
+  "meta": {
+    "title": "Poker Night",
+    "identity": "Poker night tracker."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Poker Night"
+      }
+    },
+    "details": {
+      "id": "details",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "title": "Details",
+        "schedule": "Every other Thursday",
+        "buy_in": 20
+      }
+    },
+    "players": {
+      "id": "players",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Players"
+      }
+    },
+    "games": {
+      "id": "games",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Games"
+      }
+    },
+    "player_me": {
+      "id": "player_me",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "Me"
+      }
+    },
+    "player_mike": {
+      "id": "player_mike",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "Mike"
+      }
+    },
+    "player_dave": {
+      "id": "player_dave",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "Dave"
+      }
+    },
+    "player_tom": {
+      "id": "player_tom",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "Tom"
+      }
+    },
+    "game_feb27": {
+      "id": "game_feb27",
+      "parent": "games",
+      "display": "row",
+      "props": {
+        "date": "2026-02-27",
+        "buy_in": 20
+      }
+    },
+    "player_sarah": {
+      "id": "player_sarah",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "Sarah"
+      }
+    },
+    "player_jake": {
+      "id": "player_jake",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "Jake"
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {},
+  "orphans": []
+}

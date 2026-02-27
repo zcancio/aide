@@ -1,0 +1,4 @@
+{"t":"entity.create","id":"game_mar13","parent":"schedule","display":"row","p":{"date":"2026-03-13","host":"Dave","status":"upcoming"}}
+{"t":"entity.update","ref":"player_jake","p":{"status":"out"}}
+{"t":"entity.create","id":"player_lisa","parent":"roster","display":"row","p":{"name":"Lisa","wins":0,"hosting":false}}
+{"t":"voice","text":"Next game Mar 13 at Dave's. Jake out, Lisa in."}

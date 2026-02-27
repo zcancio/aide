@@ -1,0 +1,5 @@
+```json
+{"t":"entity.create","id":"potluck","parent":"page","display":"table","p":{"title":"Potluck"}}
+{"t":"entity.create","id":"food_potato_salad","parent":"potluck","display":"row","p":{"dish":"Potato Salad","bringing":"Aunt Linda"}}
+{"t":"voice","text":"Potluck section added. Potato salad assigned to Linda."}
+```

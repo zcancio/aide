@@ -1,0 +1,4 @@
+{"t":"rel.set","from":"page","to":"quote_woodworks","type":"selected","cardinality":"one_to_one"}
+{"t":"entity.update","ref":"quote_woodworks","p":{"cost":9500}}
+{"t":"entity.update","ref":"budget","p":{"remaining":17500}}
+{"t":"voice","text":"Woodworks Unlimited selected at $9,500. Remaining: $17,500."}

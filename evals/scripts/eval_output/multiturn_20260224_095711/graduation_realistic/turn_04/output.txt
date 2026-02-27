@@ -1,0 +1,4 @@
+{
+"t":"entity.create","id":"guest_maria_garcia","parent":"guests","display":"row","p":{"name":"Maria Garcia","rsvp":"yes"}}
+{"t":"entity.create","id":"guest_carlos_garcia","parent":"guests","display":"row","p":{"name":"Carlos Garcia","rsvp":"yes"}}
+{"t":"entity.create","id":"guest_dave","parent":"guests","display":"row","p":{"name":"Dave","rsvp":"maybe"}}

@@ -1,0 +1,63 @@
+{
+  "meta": {
+    "title": "Sophie's Graduation",
+    "identity": "Planning Sophie's graduation in May."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Sophie's Graduation"
+      }
+    },
+    "event_details": {
+      "id": "event_details",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "month": "May",
+        "occasion": "Graduation",
+        "date": "2026-05-22",
+        "venue": "UC Davis",
+        "time": "10:00"
+      }
+    },
+    "guests": {
+      "id": "guests",
+      "parent": "page",
+      "display": "section",
+      "props": {
+        "title": "Guests"
+      }
+    },
+    "guest_linda": {
+      "id": "guest_linda",
+      "parent": "guests",
+      "display": "row",
+      "props": {
+        "name": "Aunt Linda",
+        "rsvp": "yes"
+      }
+    },
+    "guest_bob": {
+      "id": "guest_bob",
+      "parent": "guests",
+      "display": "row",
+      "props": {
+        "name": "Uncle Bob",
+        "rsvp": "yes"
+      }
+    },
+    "guest_james": {
+      "id": "guest_james",
+      "parent": "guests",
+      "display": "row",
+      "props": {
+        "name": "Cousin James",
+        "rsvp": "pending"
+      }
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{"t":"entity.create","id":"item_flooring","parent":"page","display":"card","p":{"category":"Flooring","estimate":"4-6k"}}
+{"t":"entity.create","id":"item_appliances","parent":"page","display":"card","p":{"category":"Appliances","estimate":"8k"}}
+{"t":"entity.update","ref":"details","p":{"spent":35500,"remaining":0}}
+{"t":"escalate","tier":"L3","reason":"budget_overflow","extract":"Flooring (4-6k) + Appliances (8k) exceed remaining budget by $5,500-$7,500. Raise budget or deprioritize items?"}
+{"t":"entity.update","ref":"details","p":{"spent":9500,"remaining":25500}}
+{"t":"voice","text":"Budget: $35k ceiling. Flooring + appliances fit within remaining $25.5k."}

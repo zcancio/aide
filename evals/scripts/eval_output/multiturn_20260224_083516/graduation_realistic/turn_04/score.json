@@ -1,0 +1,63 @@
+{
+  "name": "graduation_realistic_t4",
+  "tier": "L2",
+  "model": "claude-haiku-4-5-20251001",
+  "prompt_version": "v3.0",
+  "composite": 0.888,
+  "dimensions": {
+    "validity": {
+      "name": "validity",
+      "score": 1.0,
+      "checks": {
+        "parseable": 1.0,
+        "no_fences": 1.0,
+        "valid_types": 1.0,
+        "valid_structure": 1.0,
+        "not_empty": 1.0
+      },
+      "notes": []
+    },
+    "voice": {
+      "name": "voice",
+      "score": 1.0,
+      "checks": {
+        "no_voice_to_check": 1.0
+      },
+      "notes": [
+        "No voice lines emitted"
+      ]
+    },
+    "structure": {
+      "name": "structure",
+      "score": 0.952,
+      "checks": {
+        "parents_before_children": 0.857,
+        "display_hints_valid": 1.0,
+        "entity_ids_quality": 1.0
+      },
+      "notes": []
+    },
+    "efficiency": {
+      "name": "efficiency",
+      "score": 0.0,
+      "checks": {
+        "within_budget": 0.0,
+        "in_sweet_spot": 0.0
+      },
+      "notes": [
+        "242 tokens \u2014 well over budget 100"
+      ]
+    },
+    "fidelity": {
+      "name": "fidelity",
+      "score": 1.0,
+      "checks": {
+        "tier_appropriate": 1.0
+      },
+      "notes": []
+    }
+  },
+  "latency_ms": 1631,
+  "output_tokens": 242,
+  "cache_hit_pct": 0.0
+}

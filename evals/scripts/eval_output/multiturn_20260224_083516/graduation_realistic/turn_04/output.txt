@@ -1,0 +1,7 @@
+{"t":"entity.create","id":"guests","parent":"page","display":"section","p":{"title":"Guests"}}
+{"t":"entity.create","id":"guest_linda","parent":"guests","display":"row","p":{"name":"Aunt Linda","status":"confirmed"}}
+{"t":"entity.create","id":"guest_bob","parent":"guests","display":"row","p":{"name":"Uncle Bob","status":"confirmed"}}
+{"t":"entity.create","id":"guest_james","parent":"guests","display":"row","p":{"name":"Cousin James","status":"maybe"}}
+{"t":"entity.create","id":"guest_maria","parent":"guests","display":"row","p":{"name":"Maria Garcia","status":"likely"}}
+{"t":"entity.create","id":"guest_carlos","parent":"guests","display":"row","p":{"name":"Carlos Garcia","status":"likely"}}
+{"t":"entity.create","id":"guest_dave","parent":"guests","display":"row","p":{"name":"Dave","status":"likely"}}

@@ -1,0 +1,3 @@
+{"t":"rel.set","from":"chore_dishes","to":"member_jamie","type":"assigned_to","cardinality":"many_to_one"}
+{"t":"rel.set","from":"chore_mopping","to":"member_jamie","type":"assigned_to","cardinality":"many_to_one"}
+{"t":"rel.set","from":"chore_bathroom","to":"member_me","type":"assigned_to","cardinality":"many_to_one"}

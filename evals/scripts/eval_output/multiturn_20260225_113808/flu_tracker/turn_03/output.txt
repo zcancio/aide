@@ -1,0 +1,7 @@
+```json
+{"t":"entity.create","id":"ringo_summary","parent":"ringo_section","display":"card","p":{"latest_temp":102,"latest_time":"2026-12-29T20:20","latest_meds":"motrin","trend":"Fluctuating 101-103.7"}}
+{"t":"entity.move","ref":"ringo_summary","parent":"ringo_section","position":0}
+{"t":"entity.create","id":"george_summary","parent":"george_section","display":"card","p":{"status":"No readings yet"}}
+{"t":"entity.move","ref":"george_summary","parent":"george_section","position":0}
+{"t":"voice","text":"Summary cards added for both kids."}
+```

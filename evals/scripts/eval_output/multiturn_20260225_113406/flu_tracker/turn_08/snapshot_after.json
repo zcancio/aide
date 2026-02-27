@@ -1,0 +1,315 @@
+{
+  "meta": {
+    "title": "Fever Tracker",
+    "identity": "Tracking fevers for Ringo and George."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Fever Tracker"
+      }
+    },
+    "kids": {
+      "id": "kids",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Kids"
+      }
+    },
+    "kid_ringo": {
+      "id": "kid_ringo",
+      "parent": "kids",
+      "display": "row",
+      "props": {
+        "name": "Ringo"
+      }
+    },
+    "kid_george": {
+      "id": "kid_george",
+      "parent": "kids",
+      "display": "row",
+      "props": {
+        "name": "George"
+      }
+    },
+    "readings": {
+      "id": "readings",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Temperature Readings"
+      }
+    },
+    "reading_ringo_1030am": {
+      "id": "reading_ringo_1030am",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "child": "Ringo",
+        "datetime": "2025-12-29T10:30",
+        "temp": 103.7,
+        "medication": "Tylenol"
+      }
+    },
+    "reading_ringo_135pm": {
+      "id": "reading_ringo_135pm",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "child": "Ringo",
+        "datetime": "2025-12-29T13:30",
+        "temp": 101.5,
+        "medication": "Motrin"
+      }
+    },
+    "reading_ringo_520pm": {
+      "id": "reading_ringo_520pm",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "child": "Ringo",
+        "datetime": "2025-12-29T17:20",
+        "temp": 101,
+        "medication": "Tylenol"
+      }
+    },
+    "reading_ringo_820pm": {
+      "id": "reading_ringo_820pm",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "child": "Ringo",
+        "datetime": "2025-12-29T20:20",
+        "temp": 102,
+        "medication": "Motrin"
+      }
+    },
+    "summary_ringo": {
+      "id": "summary_ringo",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "title": "Ringo Summary",
+        "last_reading": "2025-12-31T20:30",
+        "last_temp": 99.7,
+        "last_medication": "Motrin",
+        "trend": "improving. peaked 103.5 Monday 2am, dropped steadily through morning, holding 99-101 range Tuesday evening"
+      }
+    },
+    "summary_george": {
+      "id": "summary_george",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "title": "George Summary",
+        "last_reading": "2025-12-31T19:40",
+        "last_temp": 100.5,
+        "last_medication": "Tylenol",
+        "trend": "peaked 102.7 early, dipped to 100.3 at 115pm, rising again"
+      }
+    },
+    "reading_ringo_12am": {
+      "id": "reading_ringo_12am",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "child": "Ringo",
+        "datetime": "2025-12-30T00:00",
+        "temp": 101.6,
+        "medication": "Tylenol",
+        "note": "woke him back to sleep"
+      }
+    },
+    "reading_ringo_2am": {
+      "id": "reading_ringo_2am",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "child": "Ringo",
+        "datetime": "2025-12-30T02:00",
+        "temp": 103.5,
+        "medication": "Motrin",
+        "note": "down to 101 by 2:45am"
+      }
+    },
+    "reading_ringo_630am": {
+      "id": "reading_ringo_630am",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "child": "Ringo",
+        "datetime": "2025-12-30T06:30",
+        "temp": 98.6
+      }
+    },
+    "reading_ringo_925am": {
+      "id": "reading_ringo_925am",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "child": "Ringo",
+        "datetime": "2025-12-30T09:25",
+        "temp": 99.8,
+        "medication": "Tylenol"
+      }
+    },
+    "reading_ringo_1030am_mon": {
+      "id": "reading_ringo_1030am_mon",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "child": "Ringo",
+        "datetime": "2025-12-30T10:30",
+        "temp": 100.3
+      }
+    },
+    "reading_ringo_115pm": {
+      "id": "reading_ringo_115pm",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "child": "Ringo",
+        "datetime": "2025-12-30T13:15",
+        "temp": 101.1,
+        "medication": "Motrin"
+      }
+    },
+    "reading_ringo_2pm": {
+      "id": "reading_ringo_2pm",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "child": "Ringo",
+        "datetime": "2025-12-30T14:00",
+        "temp": 101.4
+      }
+    },
+    "reading_george_2am": {
+      "id": "reading_george_2am",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "child": "George",
+        "datetime": "2025-12-30T02:00",
+        "temp": 102.7,
+        "medication": "Tylenol"
+      }
+    },
+    "reading_george_630am": {
+      "id": "reading_george_630am",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "child": "George",
+        "datetime": "2025-12-30T06:30",
+        "temp": 102.7,
+        "medication": "Tylenol"
+      }
+    },
+    "reading_george_925am": {
+      "id": "reading_george_925am",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "child": "George",
+        "datetime": "2025-12-30T09:25",
+        "temp": 101
+      }
+    },
+    "reading_george_1030am": {
+      "id": "reading_george_1030am",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "child": "George",
+        "datetime": "2025-12-30T10:30",
+        "temp": 102.9,
+        "medication": "Motrin",
+        "note": "1130 eyelids swelling"
+      }
+    },
+    "reading_george_115pm": {
+      "id": "reading_george_115pm",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "child": "George",
+        "datetime": "2025-12-30T13:15",
+        "temp": 100.3
+      }
+    },
+    "reading_george_2pm": {
+      "id": "reading_george_2pm",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "child": "George",
+        "datetime": "2025-12-30T14:00",
+        "temp": 101.3,
+        "medication": "Tylenol",
+        "note": "threw up"
+      }
+    },
+    "reading_george_3pm": {
+      "id": "reading_george_3pm",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "child": "George",
+        "datetime": "2025-12-30T15:00",
+        "temp": 101.9
+      }
+    },
+    "reading_george_4pm": {
+      "id": "reading_george_4pm",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "child": "George",
+        "datetime": "2025-12-30T16:00",
+        "temp": 103,
+        "medication": "Motrin"
+      }
+    },
+    "reading_ringo_5pm": {
+      "id": "reading_ringo_5pm",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "child": "Ringo",
+        "datetime": "2025-12-31T17:00",
+        "temp": 101,
+        "medication": "Tylenol"
+      }
+    },
+    "reading_ringo_830pm": {
+      "id": "reading_ringo_830pm",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "child": "Ringo",
+        "datetime": "2025-12-31T20:30",
+        "temp": 99.7,
+        "medication": "Motrin"
+      }
+    },
+    "reading_george_740pm": {
+      "id": "reading_george_740pm",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "child": "George",
+        "datetime": "2025-12-31T19:40",
+        "temp": 100.5,
+        "medication": "Tylenol"
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {},
+  "orphans": []
+}

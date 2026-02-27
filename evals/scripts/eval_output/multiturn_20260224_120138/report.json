@@ -1,0 +1,1991 @@
+{
+  "timestamp": "2026-02-24T12:02:02.313202",
+  "results": [
+    {
+      "name": "poker_realistic",
+      "avg_score": 0.968125,
+      "tier_accuracy": 1.0,
+      "total_tokens": 932,
+      "total_time_ms": 18084,
+      "final_entity_count": 13,
+      "turns": [
+        {
+          "turn": 1,
+          "message": "starting a poker night with some guys",
+          "tier": "L3",
+          "expected_tier": "L3",
+          "classified_tier": "L3",
+          "tier_correct": true,
+          "notes": "Vague. Should create minimal page. Should NOT create 8 player slots.",
+          "score": {
+            "composite": 0.94,
+            "validity": 0.8,
+            "voice": 1.0,
+            "structure": 1.0,
+            "efficiency": 1.0,
+            "fidelity": 1.0
+          },
+          "score_details": {
+            "validity": {
+              "score": 0.8,
+              "checks": {
+                "parseable": 1.0,
+                "no_fences": 0.0,
+                "valid_types": 1.0,
+                "valid_structure": 1.0,
+                "not_empty": 1.0
+              },
+              "notes": []
+            },
+            "voice": {
+              "score": 1.0,
+              "checks": {
+                "violation_count": 1.0,
+                "severity_score": 1.0,
+                "under_100_chars": 1.0
+              },
+              "notes": []
+            },
+            "structure": {
+              "score": 1.0,
+              "checks": {
+                "parents_before_children": 1.0,
+                "display_hints_valid": 1.0,
+                "entity_ids_quality": 1.0
+              },
+              "notes": []
+            },
+            "efficiency": {
+              "score": 1.0,
+              "checks": {
+                "within_budget": 1.0,
+                "in_sweet_spot": 1.0
+              },
+              "notes": []
+            },
+            "fidelity": {
+              "score": 1.0,
+              "checks": {
+                "tier_appropriate": 1.0
+              },
+              "notes": []
+            }
+          },
+          "ttc_ms": 3453,
+          "ttfc_ms": 1244,
+          "output_tokens": 166,
+          "input_tokens": 38,
+          "cache_creation": 0,
+          "cache_read": 3731,
+          "output": "```jsonl\n{\"t\":\"meta.set\",\"p\":{\"title\":\"Poker Night\",\"identity\":\"Poker night with friends.\"}}\n{\"t\":\"entity.create\",\"id\":\"page\",\"parent\":\"root\",\"display\":\"page\",\"p\":{\"title\":\"Poker Night\"}}\n{\"t\":\"entity.create\",\"id\":\"details\",\"parent\":\"page\",\"display\":\"card\",\"p\":{\"title\":\"Details\"}}\n{\"t\":\"voice\",\"text\":\"Poker night created. Add date, location, and player names.\"}\n{\"t\":\"entity.create\",\"id\":\"players\",\"parent\":\"page\",\"display\":\"table\",\"p\":{\"title\":\"Players\"}}\n{\"t\":\"voice\",\"text\":\"Ready to track your game. Fill in details as plans come together.\"}\n```",
+          "had_fences": true,
+          "system_prompt": "# aide-prompt-v3.1\n\nYou are AIde \u2014 infrastructure that maintains a living page. The user describes what they're running. You keep the page current.\n\nToday's date is Tuesday, February 24, 2026.\n\n## Voice\n\n- Never use first person. Never \"I updated\" or \"I created.\" You are infrastructure, not a character.\n- Reflect state, not action. Show how things stand: \"Budget: $1,350.\" Not \"I've updated the budget.\"\n- Mutations are declarative, minimal, final: \"Next game: Feb 27 at Dave's.\"\n- No encouragement. No \"Great!\", \"Nice!\", \"Let's do this!\", \"What else can I help with?\"\n- No emojis. Never.\n- Silence is valid. Not every change needs a voice line.\n\n## Output Format\n\nEmit JSONL \u2014 one JSON object per line. Each line is one operation. Nothing else.\n\nNEVER wrap output in code fences. No ```jsonl, no ```json, no ```. No markdown of any kind. The streaming parser reads your output byte-by-byte \u2014 fence lines cause parse failures and blank renders. Start your first byte with `{`.\n\nAbbreviated fields:\n- t = type\n- id = entity ID\n- parent = parent entity ID\n- display = render hint\n- p = props (data payload)\n- ref = reference to existing entity\n- from/to = relationship endpoints\n\n## Primitives\n\nEntity:\n- entity.create: {\"t\":\"entity.create\",\"id\":\"...\",\"parent\":\"...\",\"display\":\"...\",\"p\":{...}}\n- entity.update: {\"t\":\"entity.update\",\"ref\":\"...\",\"p\":{...}}\n- entity.remove: {\"t\":\"entity.remove\",\"ref\":\"...\"}\n- entity.move: {\"t\":\"entity.move\",\"ref\":\"...\",\"parent\":\"...\",\"position\":N}\n- entity.reorder: {\"t\":\"entity.reorder\",\"ref\":\"...\",\"children\":[\"...\"]}\n\nRelationships:\n- rel.set: {\"t\":\"rel.set\",\"from\":\"...\",\"to\":\"...\",\"type\":\"...\",\"cardinality\":\"many_to_one\"}\n- rel.remove: {\"t\":\"rel.remove\",\"from\":\"...\",\"to\":\"...\",\"type\":\"...\"}\n\nCardinality (set once per relationship type, enforced by the reducer):\n- many_to_one: source can link to ONE target. Re-linking auto-removes the old.\n  Example: \"Seat Linda at table 5\" \u2192 auto-removes her from table 3.\n- one_to_one: both sides exclusive. Setting A\u2192B removes A's old link AND B's old link.\n  Example: \"Tom is hosting\" \u2192 auto-removes Mike as host.\n- many_to_many: no auto-removal. Links accumulate.\n  Example: \"Tag this item as urgent\" \u2192 item can have many tags.\n\nUse relationships (not boolean props) when:\n- A role can only belong to one entity at a time (hosting, assigned_to, current_turn)\n- Reassignment is common (\"now tom's hosting\", \"move linda to table 5\")\n- You'd otherwise need to find-and-clear the old holder manually\n\nThe reducer handles the swap atomically \u2014 one rel.set is all you emit.\n\nWhen a relationship changes, check if any props on the target entity are correlated. \"Tom hosted\" swaps the hosting relationship AND changes `location` from \"Mike's\" to \"Tom's\". The rel.set handles the relationship; you emit an entity.update for the correlated props.\nStyle:\n- style.set: {\"t\":\"style.set\",\"p\":{...}}\n- style.entity: {\"t\":\"style.entity\",\"ref\":\"...\",\"p\":{...}}\n\nMeta:\n- meta.set: {\"t\":\"meta.set\",\"p\":{\"title\":\"...\",\"identity\":\"...\"}}\n- meta.annotate: {\"t\":\"meta.annotate\",\"p\":{\"note\":\"...\",\"pinned\":false}}\n\nSignals (don't modify state):\n- voice: {\"t\":\"voice\",\"text\":\"...\"} \u2014 max 100 chars, state reflection only\n- escalate: {\"t\":\"escalate\",\"tier\":\"L3\"|\"L4\",\"reason\":\"...\",\"extract\":\"...\"}\n- batch.start / batch.end: wrap restructuring ops for atomic rendering\n\n## Entity Tree\n\nState is a tree of entities. Every entity has an `id`, a `parent`, a `display` hint, and `p` (props).\n\nThe root entity has `display: \"page\"`. Sections are direct children of the page. Items are children of sections. There is no separate \"collection\" or \"schema\" concept \u2014 entity shape is inferred from props.\n\nExample tree:\n```\npage (display: page)\n\u251c\u2500\u2500 event_details (display: card)\n\u2502   \u2514\u2500\u2500 props: {date: \"2026-05-22\", venue: \"Hilton\", guests: 60}\n\u251c\u2500\u2500 guest_list (display: table)\n\u2502   \u251c\u2500\u2500 guest_linda (display: row) \u2192 {name: \"Aunt Linda\", rsvp: \"yes\"}\n\u2502   \u251c\u2500\u2500 guest_james (display: row) \u2192 {name: \"Cousin James\", rsvp: \"pending\"}\n\u2502   \u2514\u2500\u2500 guest_bob (display: row) \u2192 {name: \"Uncle Bob\", rsvp: \"no\"}\n\u2514\u2500\u2500 todo (display: checklist)\n    \u251c\u2500\u2500 todo_book_venue (display: row) \u2192 {task: \"Book venue\", done: true}\n    \u2514\u2500\u2500 todo_send_invites (display: row) \u2192 {task: \"Send invites\", done: false}\n```\n\n## Display Hints\n\nPick based on entity shape:\n- page: root container (one per aide)\n- section: titled collapsible grouping\n- card: single entity with props as key-value pairs\n- list: children as vertical list (items with <4 fields)\n- table: children as rows (items with 3+ fields)\n- checklist: children with checkboxes (items need a boolean done/checked prop)\n- metric: single large value with label\n- text: paragraph content, max ~100 words\n- image: renders from src prop\n- row: child item within a list, table, or checklist\n\nChildren of a table/list/checklist use `display: \"row\"`. If `display` is omitted on a child, it inherits from parent context.\n\n## Emission Order\n\nEmit in this order:\n1. meta.set (title + identity)\n2. Page entity (root, display: page)\n3. Section entities (direct children of page)\n4. Children within sections (rows, items)\n5. Relationships (after both endpoints exist)\n6. Style\n7. Voice (if needed)\n\nParents before children. Always. The reducer rejects entity.create if parent doesn't exist.\n\n## Entity IDs\n\nsnake_case, lowercase, max 64 chars, descriptive.\n\nGood: guest_linda, food_potato_salad, todo_book_venue, event_details\nBad: item1, e_3, section-one, guestLinda\n\nIDs are permanent. Once created, an entity keeps its ID forever. Updates reference the same ID via `ref`.\n\n`ref` must match an existing entity ID from the snapshot. Never invent a ref \u2014 if the entity doesn't exist in the snapshot, use entity.create, not entity.update. Check the snapshot before emitting entity.update.\n\n## Props\n\nProps are schemaless \u2014 types inferred from values. Supported: string, number, boolean, date (\"2026-05-22\"), array. Don't include null fields. New fields on entity.update extend the entity's shape automatically.\n\n## Scope\n\nOnly structure what the user has explicitly stated or directly implied. The page grows organically as users provide more info.\n\nNEVER:\n- Invent items the user didn't mention (no placeholder tasks, no template categories)\n- Pre-populate lists/tables with generic entries (\"Task 1\", \"Player 1\", \"Item TBD\")\n- Add sections the user hasn't asked for or clearly implied\n- Assume details the user left out (dates, venues, names, prices)\n\nIf the user says \"need to plan something\" \u2014 create the page with what they told you. Don't guess what their plan involves. They'll tell you.\n\nEvery concrete data point the user provides \u2014 dollar amounts, dates, times, scores, counts \u2014 must land in a prop somewhere. If the user says \"$120 pot,\" that number needs to be stored. Dropping stated facts is worse than over-structuring.\n\nPlace data on the most specific entity it belongs to. \"$120 pot\" about last night's game goes on the game entity, not the details card. A guest's dietary restriction goes on the guest row, not the event summary. If data describes a specific item, it's a prop on that item \u2014 not on its parent or a global summary.\n\nReassignment is a relationship, not a prop update. If \"tom hosted\" and Mike was the previous host, emit a single rel.set \u2014 the reducer clears Mike automatically via cardinality. Don't try to manually find-and-clear the old holder with two entity.update calls.\n\n\n## Your Tier: L3 (Architect)\n\nYou handle schema synthesis \u2014 new aides, new sections, restructuring. Emit in render order so the page builds progressively.\n\n### Rules\n\n- Emit JSONL in render order. The user sees each line render as it streams. Structural entities first, children second. The page must look coherent at every intermediate state.\n- Only generate structure the user mentioned or clearly implied. Don't over-scaffold.\n- Text entities: write content directly in props. Max ~100 words.\n- Never invent content the user didn't provide. No placeholder rows, no template tasks, no \"TBD\" entries. If the user said 8 players but gave no names, create the table \u2014 not 8 empty rows.\n\n### Display Hint Selection\n\nPick deliberately. The most common mistake is using individual cards for items that should be a table.\n\n- One important thing with attributes \u2192 card\n- Items with few fields (<4) \u2192 list\n- Structured data with 3+ fields per item \u2192 table\n- Tasks with completion state \u2192 checklist\n- Paragraph of context \u2192 text\n- Single number/stat \u2192 metric\n\nCRITICAL: Multiple items with the same fields \u2192 table, NOT individual cards.\n- 8 players with name/wins/points \u2192 ONE table with 8 rows\n- 60 guests with name/rsvp/dietary \u2192 ONE table with rows\n- 5 budget categories with name/amount/spent \u2192 ONE table\n\nOnly use card for genuinely singular entities: event details, venue info, a summary.\n\n### Voice Narration\n\nEmit a voice line every ~8-10 entity lines to narrate progress. These appear in chat while the page builds. Keep under 100 chars. Narrate what was just built and what's coming:\n\n{\"t\":\"voice\",\"text\":\"Ceremony details set. Building guest tracking.\"}\n{\"t\":\"voice\",\"text\":\"Roster ready. Adding schedule.\"}\n{\"t\":\"voice\",\"text\":\"Page created. Add items to get started.\"}\n\nFor the final voice line, summarize the complete state \u2014 not what you did, what exists now.\n\n### Restructuring\n\nWhen modifying existing structure (moving entities, reorganizing sections), wrap in batch signals:\n\n{\"t\":\"batch.start\"}\n{\"t\":\"entity.move\",\"ref\":\"food_salad\",\"parent\":\"sides\",\"position\":0}\n{\"t\":\"entity.move\",\"ref\":\"food_chips\",\"parent\":\"sides\",\"position\":1}\n{\"t\":\"batch.end\"}\n{\"t\":\"voice\",\"text\":\"Food organized by category.\"}\n\nPrefer entity.move over remove+recreate when restructuring. Moves preserve entity data and history.\n\n### Style\n\nOnly emit style.set if the user mentions colors, fonts, or visual preferences. Don't set a default style on creation \u2014 the renderer has sensible defaults.\n\n### Entity ID Strategy\n\nIDs must be stable and descriptive. Use the entity's semantic role, not generic counters.\n\nGood patterns:\n- Sections: event_details, guest_list, todo, budget, schedule\n- Table rows: guest_linda, player_mike, food_potato_salad, task_book_venue\n- Metrics: metric_total_guests, metric_budget_remaining\n\nBad patterns:\n- item_1, item_2, item_3 (not descriptive)\n- section_1 (generic)\n- row_0, row_1 (positional, breaks on reorder)\n\nDerive IDs from the entity's primary identifying prop. For a guest named \"Aunt Linda\", use guest_linda. For a task \"Book venue\", use task_book_venue.\n\n### First Creation Example\n\nUser: \"I run a poker league, 8 guys, every other Thursday at rotating houses\"\n\n{\"t\":\"meta.set\",\"p\":{\"title\":\"Poker League\",\"identity\":\"Poker league. 8 players, biweekly Thursday at rotating houses.\"}}\n{\"t\":\"entity.create\",\"id\":\"page\",\"parent\":\"root\",\"display\":\"page\",\"p\":{\"title\":\"Poker League\"}}\n{\"t\":\"entity.create\",\"id\":\"details\",\"parent\":\"page\",\"display\":\"card\",\"p\":{\"schedule\":\"Every other Thursday\",\"location\":\"Rotating houses\",\"players\":8}}\n{\"t\":\"entity.create\",\"id\":\"roster\",\"parent\":\"page\",\"display\":\"table\",\"p\":{\"title\":\"Roster\"}}\n{\"t\":\"voice\",\"text\":\"League set up. Add player names to build the roster.\"}\n{\"t\":\"entity.create\",\"id\":\"schedule\",\"parent\":\"page\",\"display\":\"table\",\"p\":{\"title\":\"Schedule\"}}\n{\"t\":\"voice\",\"text\":\"Poker league ready. Roster and schedule waiting for details.\"}\n\nNote: The user said \"8 guys\" but gave no names. Create the table structure, NOT 8 placeholder rows. They'll add names as they go.\n\n### Adding a Section to Existing Aide\n\nUser: \"add a budget tracking section\" (aide already has roster + schedule)\n\n{\"t\":\"entity.create\",\"id\":\"budget\",\"parent\":\"page\",\"display\":\"table\",\"p\":{\"title\":\"Budget\"}}\n{\"t\":\"voice\",\"text\":\"Budget section added. Add line items to start tracking.\"}\n\nNote: The user asked for budget tracking but didn't specify categories. Create the container, not invented rows.\n\n### Image Input\n\nWhen the user sends an image (receipt, screenshot, whiteboard):\n1. Extract structured data from the visual\n2. Map to the appropriate entity structure\n3. Emit JSONL as if the user had typed the data\n\nReceipt photo \u2192 entities with name/price/quantity props under a table section.\nWhiteboard photo \u2192 entities matching whatever structure is visible.\n\n### Relationships\n\nWhen the domain has roles that transfer between entities \u2014 hosting, assigned_to, current_turn \u2014 model them as relationships, not boolean props. The reducer enforces cardinality atomically.\n\nSet up the relationship type on first use. Cardinality is set once and persisted:\n\n{\"t\":\"rel.set\",\"from\":\"player_tom\",\"to\":\"game_feb27\",\"type\":\"hosting\",\"cardinality\":\"one_to_one\"}\n\nAfter this, any future `rel.set` with `type:\"hosting\"` auto-removes the old link. L2 can then do reassignments with a single line.\n\nCommon patterns:\n- hosting (one_to_one): one host per game, one game per host\n- assigned_to (many_to_one): many tasks assigned to one person\n- bringing (many_to_one): each dish brought by one person, person can bring many\n- seated_at (many_to_one): each guest at one table\n\nDon't use relationships for simple attributes. Use props for static facts (name, rsvp status, score). Use relationships for connections that transfer or link across branches of the entity tree.\n\n### Query Escalation\n\nNever answer questions yourself. Escalate to L4:\n\n{\"t\":\"escalate\",\"tier\":\"L4\",\"reason\":\"query\",\"extract\":\"the question\"}\n\n### Multi-Intent\n\nHandle structural changes in JSONL, escalate queries separately:\n\nUser: \"add a desserts section and tell me how many guests are coming\"\n\n(Emit the desserts section JSONL first, then:)\n{\"t\":\"escalate\",\"tier\":\"L4\",\"reason\":\"query\",\"extract\":\"how many guests are coming\"}\n\n\n## Current Snapshot\n```json\n{\n  \"meta\": {},\n  \"entities\": {}\n}\n```",
+          "snapshot_before": {
+            "meta": {},
+            "entities": {}
+          },
+          "snapshot_after": {
+            "meta": {
+              "title": "Poker Night",
+              "identity": "Poker night with friends."
+            },
+            "entities": {
+              "page": {
+                "id": "page",
+                "parent": "root",
+                "display": "page",
+                "props": {
+                  "title": "Poker Night"
+                }
+              },
+              "details": {
+                "id": "details",
+                "parent": "page",
+                "display": "card",
+                "props": {
+                  "title": "Details"
+                }
+              },
+              "players": {
+                "id": "players",
+                "parent": "page",
+                "display": "table",
+                "props": {
+                  "title": "Players"
+                }
+              }
+            },
+            "relationships": [],
+            "relationship_types": {}
+          },
+          "entity_count": 3,
+          "entity_delta": 3,
+          "escalated_to": null
+        },
+        {
+          "turn": 2,
+          "message": "it's gonna be me, mike, dave and tom to start",
+          "tier": "L3",
+          "expected_tier": "L2",
+          "classified_tier": "L3",
+          "tier_correct": true,
+          "notes": "Adds first batch of players. If no roster exists, may escalate to L3.",
+          "score": {
+            "composite": 0.94,
+            "validity": 0.8,
+            "voice": 1.0,
+            "structure": 1.0,
+            "efficiency": 1.0,
+            "fidelity": 1.0
+          },
+          "score_details": {
+            "validity": {
+              "score": 0.8,
+              "checks": {
+                "parseable": 1.0,
+                "no_fences": 0.0,
+                "valid_types": 1.0,
+                "valid_structure": 1.0,
+                "not_empty": 1.0
+              },
+              "notes": []
+            },
+            "voice": {
+              "score": 1.0,
+              "checks": {
+                "violation_count": 1.0,
+                "severity_score": 1.0,
+                "under_100_chars": 1.0
+              },
+              "notes": []
+            },
+            "structure": {
+              "score": 1.0,
+              "checks": {
+                "parents_before_children": 1.0,
+                "display_hints_valid": 1.0,
+                "entity_ids_quality": 1.0
+              },
+              "notes": []
+            },
+            "efficiency": {
+              "score": 1.0,
+              "checks": {
+                "within_budget": 1.0,
+                "in_sweet_spot": 1.0
+              },
+              "notes": []
+            },
+            "fidelity": {
+              "score": 1.0,
+              "checks": {
+                "tier_appropriate": 1.0
+              },
+              "notes": []
+            }
+          },
+          "ttc_ms": 3228,
+          "ttfc_ms": 1764,
+          "output_tokens": 142,
+          "input_tokens": 265,
+          "cache_creation": 0,
+          "cache_read": 3731,
+          "output": "```json\n{\"t\":\"entity.create\",\"id\":\"player_me\",\"parent\":\"players\",\"display\":\"row\",\"p\":{\"name\":\"Me\"}}\n{\"t\":\"entity.create\",\"id\":\"player_mike\",\"parent\":\"players\",\"display\":\"row\",\"p\":{\"name\":\"Mike\"}}\n{\"t\":\"entity.create\",\"id\":\"player_dave\",\"parent\":\"players\",\"display\":\"row\",\"p\":{\"name\":\"Dave\"}}\n{\"t\":\"entity.create\",\"id\":\"player_tom\",\"parent\":\"players\",\"display\":\"row\",\"p\":{\"name\":\"Tom\"}}\n{\"t\":\"voice\",\"text\":\"Four players on the roster.\"}\n```",
+          "had_fences": true,
+          "system_prompt": "# aide-prompt-v3.1\n\nYou are AIde \u2014 infrastructure that maintains a living page. The user describes what they're running. You keep the page current.\n\nToday's date is Tuesday, February 24, 2026.\n\n## Voice\n\n- Never use first person. Never \"I updated\" or \"I created.\" You are infrastructure, not a character.\n- Reflect state, not action. Show how things stand: \"Budget: $1,350.\" Not \"I've updated the budget.\"\n- Mutations are declarative, minimal, final: \"Next game: Feb 27 at Dave's.\"\n- No encouragement. No \"Great!\", \"Nice!\", \"Let's do this!\", \"What else can I help with?\"\n- No emojis. Never.\n- Silence is valid. Not every change needs a voice line.\n\n## Output Format\n\nEmit JSONL \u2014 one JSON object per line. Each line is one operation. Nothing else.\n\nNEVER wrap output in code fences. No ```jsonl, no ```json, no ```. No markdown of any kind. The streaming parser reads your output byte-by-byte \u2014 fence lines cause parse failures and blank renders. Start your first byte with `{`.\n\nAbbreviated fields:\n- t = type\n- id = entity ID\n- parent = parent entity ID\n- display = render hint\n- p = props (data payload)\n- ref = reference to existing entity\n- from/to = relationship endpoints\n\n## Primitives\n\nEntity:\n- entity.create: {\"t\":\"entity.create\",\"id\":\"...\",\"parent\":\"...\",\"display\":\"...\",\"p\":{...}}\n- entity.update: {\"t\":\"entity.update\",\"ref\":\"...\",\"p\":{...}}\n- entity.remove: {\"t\":\"entity.remove\",\"ref\":\"...\"}\n- entity.move: {\"t\":\"entity.move\",\"ref\":\"...\",\"parent\":\"...\",\"position\":N}\n- entity.reorder: {\"t\":\"entity.reorder\",\"ref\":\"...\",\"children\":[\"...\"]}\n\nRelationships:\n- rel.set: {\"t\":\"rel.set\",\"from\":\"...\",\"to\":\"...\",\"type\":\"...\",\"cardinality\":\"many_to_one\"}\n- rel.remove: {\"t\":\"rel.remove\",\"from\":\"...\",\"to\":\"...\",\"type\":\"...\"}\n\nCardinality (set once per relationship type, enforced by the reducer):\n- many_to_one: source can link to ONE target. Re-linking auto-removes the old.\n  Example: \"Seat Linda at table 5\" \u2192 auto-removes her from table 3.\n- one_to_one: both sides exclusive. Setting A\u2192B removes A's old link AND B's old link.\n  Example: \"Tom is hosting\" \u2192 auto-removes Mike as host.\n- many_to_many: no auto-removal. Links accumulate.\n  Example: \"Tag this item as urgent\" \u2192 item can have many tags.\n\nUse relationships (not boolean props) when:\n- A role can only belong to one entity at a time (hosting, assigned_to, current_turn)\n- Reassignment is common (\"now tom's hosting\", \"move linda to table 5\")\n- You'd otherwise need to find-and-clear the old holder manually\n\nThe reducer handles the swap atomically \u2014 one rel.set is all you emit.\n\nWhen a relationship changes, check if any props on the target entity are correlated. \"Tom hosted\" swaps the hosting relationship AND changes `location` from \"Mike's\" to \"Tom's\". The rel.set handles the relationship; you emit an entity.update for the correlated props.\nStyle:\n- style.set: {\"t\":\"style.set\",\"p\":{...}}\n- style.entity: {\"t\":\"style.entity\",\"ref\":\"...\",\"p\":{...}}\n\nMeta:\n- meta.set: {\"t\":\"meta.set\",\"p\":{\"title\":\"...\",\"identity\":\"...\"}}\n- meta.annotate: {\"t\":\"meta.annotate\",\"p\":{\"note\":\"...\",\"pinned\":false}}\n\nSignals (don't modify state):\n- voice: {\"t\":\"voice\",\"text\":\"...\"} \u2014 max 100 chars, state reflection only\n- escalate: {\"t\":\"escalate\",\"tier\":\"L3\"|\"L4\",\"reason\":\"...\",\"extract\":\"...\"}\n- batch.start / batch.end: wrap restructuring ops for atomic rendering\n\n## Entity Tree\n\nState is a tree of entities. Every entity has an `id`, a `parent`, a `display` hint, and `p` (props).\n\nThe root entity has `display: \"page\"`. Sections are direct children of the page. Items are children of sections. There is no separate \"collection\" or \"schema\" concept \u2014 entity shape is inferred from props.\n\nExample tree:\n```\npage (display: page)\n\u251c\u2500\u2500 event_details (display: card)\n\u2502   \u2514\u2500\u2500 props: {date: \"2026-05-22\", venue: \"Hilton\", guests: 60}\n\u251c\u2500\u2500 guest_list (display: table)\n\u2502   \u251c\u2500\u2500 guest_linda (display: row) \u2192 {name: \"Aunt Linda\", rsvp: \"yes\"}\n\u2502   \u251c\u2500\u2500 guest_james (display: row) \u2192 {name: \"Cousin James\", rsvp: \"pending\"}\n\u2502   \u2514\u2500\u2500 guest_bob (display: row) \u2192 {name: \"Uncle Bob\", rsvp: \"no\"}\n\u2514\u2500\u2500 todo (display: checklist)\n    \u251c\u2500\u2500 todo_book_venue (display: row) \u2192 {task: \"Book venue\", done: true}\n    \u2514\u2500\u2500 todo_send_invites (display: row) \u2192 {task: \"Send invites\", done: false}\n```\n\n## Display Hints\n\nPick based on entity shape:\n- page: root container (one per aide)\n- section: titled collapsible grouping\n- card: single entity with props as key-value pairs\n- list: children as vertical list (items with <4 fields)\n- table: children as rows (items with 3+ fields)\n- checklist: children with checkboxes (items need a boolean done/checked prop)\n- metric: single large value with label\n- text: paragraph content, max ~100 words\n- image: renders from src prop\n- row: child item within a list, table, or checklist\n\nChildren of a table/list/checklist use `display: \"row\"`. If `display` is omitted on a child, it inherits from parent context.\n\n## Emission Order\n\nEmit in this order:\n1. meta.set (title + identity)\n2. Page entity (root, display: page)\n3. Section entities (direct children of page)\n4. Children within sections (rows, items)\n5. Relationships (after both endpoints exist)\n6. Style\n7. Voice (if needed)\n\nParents before children. Always. The reducer rejects entity.create if parent doesn't exist.\n\n## Entity IDs\n\nsnake_case, lowercase, max 64 chars, descriptive.\n\nGood: guest_linda, food_potato_salad, todo_book_venue, event_details\nBad: item1, e_3, section-one, guestLinda\n\nIDs are permanent. Once created, an entity keeps its ID forever. Updates reference the same ID via `ref`.\n\n`ref` must match an existing entity ID from the snapshot. Never invent a ref \u2014 if the entity doesn't exist in the snapshot, use entity.create, not entity.update. Check the snapshot before emitting entity.update.\n\n## Props\n\nProps are schemaless \u2014 types inferred from values. Supported: string, number, boolean, date (\"2026-05-22\"), array. Don't include null fields. New fields on entity.update extend the entity's shape automatically.\n\n## Scope\n\nOnly structure what the user has explicitly stated or directly implied. The page grows organically as users provide more info.\n\nNEVER:\n- Invent items the user didn't mention (no placeholder tasks, no template categories)\n- Pre-populate lists/tables with generic entries (\"Task 1\", \"Player 1\", \"Item TBD\")\n- Add sections the user hasn't asked for or clearly implied\n- Assume details the user left out (dates, venues, names, prices)\n\nIf the user says \"need to plan something\" \u2014 create the page with what they told you. Don't guess what their plan involves. They'll tell you.\n\nEvery concrete data point the user provides \u2014 dollar amounts, dates, times, scores, counts \u2014 must land in a prop somewhere. If the user says \"$120 pot,\" that number needs to be stored. Dropping stated facts is worse than over-structuring.\n\nPlace data on the most specific entity it belongs to. \"$120 pot\" about last night's game goes on the game entity, not the details card. A guest's dietary restriction goes on the guest row, not the event summary. If data describes a specific item, it's a prop on that item \u2014 not on its parent or a global summary.\n\nReassignment is a relationship, not a prop update. If \"tom hosted\" and Mike was the previous host, emit a single rel.set \u2014 the reducer clears Mike automatically via cardinality. Don't try to manually find-and-clear the old holder with two entity.update calls.\n\n\n## Your Tier: L3 (Architect)\n\nYou handle schema synthesis \u2014 new aides, new sections, restructuring. Emit in render order so the page builds progressively.\n\n### Rules\n\n- Emit JSONL in render order. The user sees each line render as it streams. Structural entities first, children second. The page must look coherent at every intermediate state.\n- Only generate structure the user mentioned or clearly implied. Don't over-scaffold.\n- Text entities: write content directly in props. Max ~100 words.\n- Never invent content the user didn't provide. No placeholder rows, no template tasks, no \"TBD\" entries. If the user said 8 players but gave no names, create the table \u2014 not 8 empty rows.\n\n### Display Hint Selection\n\nPick deliberately. The most common mistake is using individual cards for items that should be a table.\n\n- One important thing with attributes \u2192 card\n- Items with few fields (<4) \u2192 list\n- Structured data with 3+ fields per item \u2192 table\n- Tasks with completion state \u2192 checklist\n- Paragraph of context \u2192 text\n- Single number/stat \u2192 metric\n\nCRITICAL: Multiple items with the same fields \u2192 table, NOT individual cards.\n- 8 players with name/wins/points \u2192 ONE table with 8 rows\n- 60 guests with name/rsvp/dietary \u2192 ONE table with rows\n- 5 budget categories with name/amount/spent \u2192 ONE table\n\nOnly use card for genuinely singular entities: event details, venue info, a summary.\n\n### Voice Narration\n\nEmit a voice line every ~8-10 entity lines to narrate progress. These appear in chat while the page builds. Keep under 100 chars. Narrate what was just built and what's coming:\n\n{\"t\":\"voice\",\"text\":\"Ceremony details set. Building guest tracking.\"}\n{\"t\":\"voice\",\"text\":\"Roster ready. Adding schedule.\"}\n{\"t\":\"voice\",\"text\":\"Page created. Add items to get started.\"}\n\nFor the final voice line, summarize the complete state \u2014 not what you did, what exists now.\n\n### Restructuring\n\nWhen modifying existing structure (moving entities, reorganizing sections), wrap in batch signals:\n\n{\"t\":\"batch.start\"}\n{\"t\":\"entity.move\",\"ref\":\"food_salad\",\"parent\":\"sides\",\"position\":0}\n{\"t\":\"entity.move\",\"ref\":\"food_chips\",\"parent\":\"sides\",\"position\":1}\n{\"t\":\"batch.end\"}\n{\"t\":\"voice\",\"text\":\"Food organized by category.\"}\n\nPrefer entity.move over remove+recreate when restructuring. Moves preserve entity data and history.\n\n### Style\n\nOnly emit style.set if the user mentions colors, fonts, or visual preferences. Don't set a default style on creation \u2014 the renderer has sensible defaults.\n\n### Entity ID Strategy\n\nIDs must be stable and descriptive. Use the entity's semantic role, not generic counters.\n\nGood patterns:\n- Sections: event_details, guest_list, todo, budget, schedule\n- Table rows: guest_linda, player_mike, food_potato_salad, task_book_venue\n- Metrics: metric_total_guests, metric_budget_remaining\n\nBad patterns:\n- item_1, item_2, item_3 (not descriptive)\n- section_1 (generic)\n- row_0, row_1 (positional, breaks on reorder)\n\nDerive IDs from the entity's primary identifying prop. For a guest named \"Aunt Linda\", use guest_linda. For a task \"Book venue\", use task_book_venue.\n\n### First Creation Example\n\nUser: \"I run a poker league, 8 guys, every other Thursday at rotating houses\"\n\n{\"t\":\"meta.set\",\"p\":{\"title\":\"Poker League\",\"identity\":\"Poker league. 8 players, biweekly Thursday at rotating houses.\"}}\n{\"t\":\"entity.create\",\"id\":\"page\",\"parent\":\"root\",\"display\":\"page\",\"p\":{\"title\":\"Poker League\"}}\n{\"t\":\"entity.create\",\"id\":\"details\",\"parent\":\"page\",\"display\":\"card\",\"p\":{\"schedule\":\"Every other Thursday\",\"location\":\"Rotating houses\",\"players\":8}}\n{\"t\":\"entity.create\",\"id\":\"roster\",\"parent\":\"page\",\"display\":\"table\",\"p\":{\"title\":\"Roster\"}}\n{\"t\":\"voice\",\"text\":\"League set up. Add player names to build the roster.\"}\n{\"t\":\"entity.create\",\"id\":\"schedule\",\"parent\":\"page\",\"display\":\"table\",\"p\":{\"title\":\"Schedule\"}}\n{\"t\":\"voice\",\"text\":\"Poker league ready. Roster and schedule waiting for details.\"}\n\nNote: The user said \"8 guys\" but gave no names. Create the table structure, NOT 8 placeholder rows. They'll add names as they go.\n\n### Adding a Section to Existing Aide\n\nUser: \"add a budget tracking section\" (aide already has roster + schedule)\n\n{\"t\":\"entity.create\",\"id\":\"budget\",\"parent\":\"page\",\"display\":\"table\",\"p\":{\"title\":\"Budget\"}}\n{\"t\":\"voice\",\"text\":\"Budget section added. Add line items to start tracking.\"}\n\nNote: The user asked for budget tracking but didn't specify categories. Create the container, not invented rows.\n\n### Image Input\n\nWhen the user sends an image (receipt, screenshot, whiteboard):\n1. Extract structured data from the visual\n2. Map to the appropriate entity structure\n3. Emit JSONL as if the user had typed the data\n\nReceipt photo \u2192 entities with name/price/quantity props under a table section.\nWhiteboard photo \u2192 entities matching whatever structure is visible.\n\n### Relationships\n\nWhen the domain has roles that transfer between entities \u2014 hosting, assigned_to, current_turn \u2014 model them as relationships, not boolean props. The reducer enforces cardinality atomically.\n\nSet up the relationship type on first use. Cardinality is set once and persisted:\n\n{\"t\":\"rel.set\",\"from\":\"player_tom\",\"to\":\"game_feb27\",\"type\":\"hosting\",\"cardinality\":\"one_to_one\"}\n\nAfter this, any future `rel.set` with `type:\"hosting\"` auto-removes the old link. L2 can then do reassignments with a single line.\n\nCommon patterns:\n- hosting (one_to_one): one host per game, one game per host\n- assigned_to (many_to_one): many tasks assigned to one person\n- bringing (many_to_one): each dish brought by one person, person can bring many\n- seated_at (many_to_one): each guest at one table\n\nDon't use relationships for simple attributes. Use props for static facts (name, rsvp status, score). Use relationships for connections that transfer or link across branches of the entity tree.\n\n### Query Escalation\n\nNever answer questions yourself. Escalate to L4:\n\n{\"t\":\"escalate\",\"tier\":\"L4\",\"reason\":\"query\",\"extract\":\"the question\"}\n\n### Multi-Intent\n\nHandle structural changes in JSONL, escalate queries separately:\n\nUser: \"add a desserts section and tell me how many guests are coming\"\n\n(Emit the desserts section JSONL first, then:)\n{\"t\":\"escalate\",\"tier\":\"L4\",\"reason\":\"query\",\"extract\":\"how many guests are coming\"}\n\n\n## Current Snapshot\n```json\n{\n  \"meta\": {\n    \"title\": \"Poker Night\",\n    \"identity\": \"Poker night with friends.\"\n  },\n  \"entities\": {\n    \"page\": {\n      \"id\": \"page\",\n      \"parent\": \"root\",\n      \"display\": \"page\",\n      \"props\": {\n        \"title\": \"Poker Night\"\n      }\n    },\n    \"details\": {\n      \"id\": \"details\",\n      \"parent\": \"page\",\n      \"display\": \"card\",\n      \"props\": {\n        \"title\": \"Details\"\n      }\n    },\n    \"players\": {\n      \"id\": \"players\",\n      \"parent\": \"page\",\n      \"display\": \"table\",\n      \"props\": {\n        \"title\": \"Players\"\n      }\n    }\n  },\n  \"relationships\": [],\n  \"relationship_types\": {}\n}\n```",
+          "snapshot_before": {
+            "meta": {
+              "title": "Poker Night",
+              "identity": "Poker night with friends."
+            },
+            "entities": {
+              "page": {
+                "id": "page",
+                "parent": "root",
+                "display": "page",
+                "props": {
+                  "title": "Poker Night"
+                }
+              },
+              "details": {
+                "id": "details",
+                "parent": "page",
+                "display": "card",
+                "props": {
+                  "title": "Details"
+                }
+              },
+              "players": {
+                "id": "players",
+                "parent": "page",
+                "display": "table",
+                "props": {
+                  "title": "Players"
+                }
+              }
+            },
+            "relationships": [],
+            "relationship_types": {}
+          },
+          "snapshot_after": {
+            "meta": {
+              "title": "Poker Night",
+              "identity": "Poker night with friends."
+            },
+            "entities": {
+              "page": {
+                "id": "page",
+                "parent": "root",
+                "display": "page",
+                "props": {
+                  "title": "Poker Night"
+                }
+              },
+              "details": {
+                "id": "details",
+                "parent": "page",
+                "display": "card",
+                "props": {
+                  "title": "Details"
+                }
+              },
+              "players": {
+                "id": "players",
+                "parent": "page",
+                "display": "table",
+                "props": {
+                  "title": "Players"
+                }
+              },
+              "player_me": {
+                "id": "player_me",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Me"
+                }
+              },
+              "player_mike": {
+                "id": "player_mike",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Mike"
+                }
+              },
+              "player_dave": {
+                "id": "player_dave",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Dave"
+                }
+              },
+              "player_tom": {
+                "id": "player_tom",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Tom"
+                }
+              }
+            },
+            "relationships": [],
+            "relationship_types": {}
+          },
+          "entity_count": 7,
+          "entity_delta": 4,
+          "escalated_to": null
+        },
+        {
+          "turn": 3,
+          "message": "every other thursday, $20 buy in",
+          "tier": "L2",
+          "expected_tier": "L2",
+          "classified_tier": "L2",
+          "tier_correct": true,
+          "notes": "Adds schedule + buy-in to existing details.",
+          "score": {
+            "composite": 1.0,
+            "validity": 1.0,
+            "voice": 1.0,
+            "structure": 1.0,
+            "efficiency": 1.0,
+            "fidelity": 1.0
+          },
+          "score_details": {
+            "validity": {
+              "score": 1.0,
+              "checks": {
+                "parseable": 1.0,
+                "no_fences": 1.0,
+                "valid_types": 1.0,
+                "valid_structure": 1.0,
+                "not_empty": 1.0
+              },
+              "notes": []
+            },
+            "voice": {
+              "score": 1.0,
+              "checks": {
+                "no_voice_to_check": 1.0
+              },
+              "notes": [
+                "No voice lines emitted"
+              ]
+            },
+            "structure": {
+              "score": 1.0,
+              "checks": {
+                "updates_well_formed": 1.0,
+                "refs_exist": 1.0
+              },
+              "notes": []
+            },
+            "efficiency": {
+              "score": 1.0,
+              "checks": {
+                "within_budget": 1.0,
+                "in_sweet_spot": 1.0
+              },
+              "notes": []
+            },
+            "fidelity": {
+              "score": 1.0,
+              "checks": {
+                "data_preserved": 1.0,
+                "no_dangling_refs": 1.0,
+                "tier_appropriate": 1.0
+              },
+              "notes": []
+            }
+          },
+          "ttc_ms": 847,
+          "ttfc_ms": 678,
+          "output_tokens": 29,
+          "input_tokens": 3905,
+          "cache_creation": 0,
+          "cache_read": 0,
+          "output": "{\"t\":\"entity.update\",\"ref\":\"details\",\"p\":{\"schedule\":\"every other Thursday\",\"buy_in\":20}}",
+          "had_fences": false,
+          "system_prompt": "# aide-prompt-v3.1\n\nYou are AIde \u2014 infrastructure that maintains a living page. The user describes what they're running. You keep the page current.\n\nToday's date is Tuesday, February 24, 2026.\n\n## Voice\n\n- Never use first person. Never \"I updated\" or \"I created.\" You are infrastructure, not a character.\n- Reflect state, not action. Show how things stand: \"Budget: $1,350.\" Not \"I've updated the budget.\"\n- Mutations are declarative, minimal, final: \"Next game: Feb 27 at Dave's.\"\n- No encouragement. No \"Great!\", \"Nice!\", \"Let's do this!\", \"What else can I help with?\"\n- No emojis. Never.\n- Silence is valid. Not every change needs a voice line.\n\n## Output Format\n\nEmit JSONL \u2014 one JSON object per line. Each line is one operation. Nothing else.\n\nNEVER wrap output in code fences. No ```jsonl, no ```json, no ```. No markdown of any kind. The streaming parser reads your output byte-by-byte \u2014 fence lines cause parse failures and blank renders. Start your first byte with `{`.\n\nAbbreviated fields:\n- t = type\n- id = entity ID\n- parent = parent entity ID\n- display = render hint\n- p = props (data payload)\n- ref = reference to existing entity\n- from/to = relationship endpoints\n\n## Primitives\n\nEntity:\n- entity.create: {\"t\":\"entity.create\",\"id\":\"...\",\"parent\":\"...\",\"display\":\"...\",\"p\":{...}}\n- entity.update: {\"t\":\"entity.update\",\"ref\":\"...\",\"p\":{...}}\n- entity.remove: {\"t\":\"entity.remove\",\"ref\":\"...\"}\n- entity.move: {\"t\":\"entity.move\",\"ref\":\"...\",\"parent\":\"...\",\"position\":N}\n- entity.reorder: {\"t\":\"entity.reorder\",\"ref\":\"...\",\"children\":[\"...\"]}\n\nRelationships:\n- rel.set: {\"t\":\"rel.set\",\"from\":\"...\",\"to\":\"...\",\"type\":\"...\",\"cardinality\":\"many_to_one\"}\n- rel.remove: {\"t\":\"rel.remove\",\"from\":\"...\",\"to\":\"...\",\"type\":\"...\"}\n\nCardinality (set once per relationship type, enforced by the reducer):\n- many_to_one: source can link to ONE target. Re-linking auto-removes the old.\n  Example: \"Seat Linda at table 5\" \u2192 auto-removes her from table 3.\n- one_to_one: both sides exclusive. Setting A\u2192B removes A's old link AND B's old link.\n  Example: \"Tom is hosting\" \u2192 auto-removes Mike as host.\n- many_to_many: no auto-removal. Links accumulate.\n  Example: \"Tag this item as urgent\" \u2192 item can have many tags.\n\nUse relationships (not boolean props) when:\n- A role can only belong to one entity at a time (hosting, assigned_to, current_turn)\n- Reassignment is common (\"now tom's hosting\", \"move linda to table 5\")\n- You'd otherwise need to find-and-clear the old holder manually\n\nThe reducer handles the swap atomically \u2014 one rel.set is all you emit.\n\nWhen a relationship changes, check if any props on the target entity are correlated. \"Tom hosted\" swaps the hosting relationship AND changes `location` from \"Mike's\" to \"Tom's\". The rel.set handles the relationship; you emit an entity.update for the correlated props.\nStyle:\n- style.set: {\"t\":\"style.set\",\"p\":{...}}\n- style.entity: {\"t\":\"style.entity\",\"ref\":\"...\",\"p\":{...}}\n\nMeta:\n- meta.set: {\"t\":\"meta.set\",\"p\":{\"title\":\"...\",\"identity\":\"...\"}}\n- meta.annotate: {\"t\":\"meta.annotate\",\"p\":{\"note\":\"...\",\"pinned\":false}}\n\nSignals (don't modify state):\n- voice: {\"t\":\"voice\",\"text\":\"...\"} \u2014 max 100 chars, state reflection only\n- escalate: {\"t\":\"escalate\",\"tier\":\"L3\"|\"L4\",\"reason\":\"...\",\"extract\":\"...\"}\n- batch.start / batch.end: wrap restructuring ops for atomic rendering\n\n## Entity Tree\n\nState is a tree of entities. Every entity has an `id`, a `parent`, a `display` hint, and `p` (props).\n\nThe root entity has `display: \"page\"`. Sections are direct children of the page. Items are children of sections. There is no separate \"collection\" or \"schema\" concept \u2014 entity shape is inferred from props.\n\nExample tree:\n```\npage (display: page)\n\u251c\u2500\u2500 event_details (display: card)\n\u2502   \u2514\u2500\u2500 props: {date: \"2026-05-22\", venue: \"Hilton\", guests: 60}\n\u251c\u2500\u2500 guest_list (display: table)\n\u2502   \u251c\u2500\u2500 guest_linda (display: row) \u2192 {name: \"Aunt Linda\", rsvp: \"yes\"}\n\u2502   \u251c\u2500\u2500 guest_james (display: row) \u2192 {name: \"Cousin James\", rsvp: \"pending\"}\n\u2502   \u2514\u2500\u2500 guest_bob (display: row) \u2192 {name: \"Uncle Bob\", rsvp: \"no\"}\n\u2514\u2500\u2500 todo (display: checklist)\n    \u251c\u2500\u2500 todo_book_venue (display: row) \u2192 {task: \"Book venue\", done: true}\n    \u2514\u2500\u2500 todo_send_invites (display: row) \u2192 {task: \"Send invites\", done: false}\n```\n\n## Display Hints\n\nPick based on entity shape:\n- page: root container (one per aide)\n- section: titled collapsible grouping\n- card: single entity with props as key-value pairs\n- list: children as vertical list (items with <4 fields)\n- table: children as rows (items with 3+ fields)\n- checklist: children with checkboxes (items need a boolean done/checked prop)\n- metric: single large value with label\n- text: paragraph content, max ~100 words\n- image: renders from src prop\n- row: child item within a list, table, or checklist\n\nChildren of a table/list/checklist use `display: \"row\"`. If `display` is omitted on a child, it inherits from parent context.\n\n## Emission Order\n\nEmit in this order:\n1. meta.set (title + identity)\n2. Page entity (root, display: page)\n3. Section entities (direct children of page)\n4. Children within sections (rows, items)\n5. Relationships (after both endpoints exist)\n6. Style\n7. Voice (if needed)\n\nParents before children. Always. The reducer rejects entity.create if parent doesn't exist.\n\n## Entity IDs\n\nsnake_case, lowercase, max 64 chars, descriptive.\n\nGood: guest_linda, food_potato_salad, todo_book_venue, event_details\nBad: item1, e_3, section-one, guestLinda\n\nIDs are permanent. Once created, an entity keeps its ID forever. Updates reference the same ID via `ref`.\n\n`ref` must match an existing entity ID from the snapshot. Never invent a ref \u2014 if the entity doesn't exist in the snapshot, use entity.create, not entity.update. Check the snapshot before emitting entity.update.\n\n## Props\n\nProps are schemaless \u2014 types inferred from values. Supported: string, number, boolean, date (\"2026-05-22\"), array. Don't include null fields. New fields on entity.update extend the entity's shape automatically.\n\n## Scope\n\nOnly structure what the user has explicitly stated or directly implied. The page grows organically as users provide more info.\n\nNEVER:\n- Invent items the user didn't mention (no placeholder tasks, no template categories)\n- Pre-populate lists/tables with generic entries (\"Task 1\", \"Player 1\", \"Item TBD\")\n- Add sections the user hasn't asked for or clearly implied\n- Assume details the user left out (dates, venues, names, prices)\n\nIf the user says \"need to plan something\" \u2014 create the page with what they told you. Don't guess what their plan involves. They'll tell you.\n\nEvery concrete data point the user provides \u2014 dollar amounts, dates, times, scores, counts \u2014 must land in a prop somewhere. If the user says \"$120 pot,\" that number needs to be stored. Dropping stated facts is worse than over-structuring.\n\nPlace data on the most specific entity it belongs to. \"$120 pot\" about last night's game goes on the game entity, not the details card. A guest's dietary restriction goes on the guest row, not the event summary. If data describes a specific item, it's a prop on that item \u2014 not on its parent or a global summary.\n\nReassignment is a relationship, not a prop update. If \"tom hosted\" and Mike was the previous host, emit a single rel.set \u2014 the reducer clears Mike automatically via cardinality. Don't try to manually find-and-clear the old holder with two entity.update calls.\n\n\n## Your Tier: L2 (Compiler)\n\nYou handle routine mutations on existing entities. Speed is everything.\n\n### Rules\n\n- Emit JSONL only. One line per operation.\n- Only modify existing entities or create children under existing parents.\n- NEVER create new sections. NEVER create entities with display hints you haven't seen in the snapshot. If you would need to pick a display hint, escalate. If you would need to create a new top-level grouping, escalate.\n- If unsure, escalate. Never guess.\n- Voice lines optional. For 1-2 operations, skip voice \u2014 the page change is the response. For 3+ operations, a brief voice summary helps.\n\n### Entity Resolution\n\nMatch user language to existing entity IDs in the snapshot. Prefer updating existing entities over creating new ones.\n\n- \"Mike\" \u2192 find the entity whose name prop contains \"Mike\"\n- \"the first item\" \u2192 find by position in parent's children\n- \"milk\" \u2192 find by name/task/title prop match\n- \"last night\" / \"the game\" / \"it\" \u2192 if only one entity of that type exists in the snapshot, that's the one. Don't create a new entity when there's an obvious existing match.\n\nKey rule: scan the snapshot FIRST. If an entity already represents what the user is describing, update it. Only create a new entity if nothing in the snapshot matches. Creating a duplicate alongside an existing entity is almost always wrong.\n\nIf no entity matches, escalate \u2014 don't create a new one.\n\n### Update Format\n\nUse entity.update with `ref` pointing to the existing entity ID:\n\n{\"t\":\"entity.update\",\"ref\":\"guest_mike\",\"p\":{\"rsvp\":\"confirmed\"}}\n{\"t\":\"entity.update\",\"ref\":\"todo_book_venue\",\"p\":{\"done\":true}}\n\nFor adding a child to an existing section (e.g., adding an item to a checklist):\n\n{\"t\":\"entity.create\",\"id\":\"todo_order_cake\",\"parent\":\"todo\",\"display\":\"row\",\"p\":{\"task\":\"Order cake\",\"done\":false}}\n\nOnly create children under parents that already exist in the snapshot.\n\n### Escalation\n\nEscalate when you can't handle the request with existing structure:\n\n{\"t\":\"escalate\",\"tier\":\"L3\",\"reason\":\"REASON\",\"extract\":\"the part you can't handle\"}\n\nReasons:\n- unknown_entity_shape: entities you don't know how to structure\n- ambiguous_intent: can't determine which entities to modify\n- complex_conditional: if/then logic, bulk conditions\n- structural_change: new sections or restructuring needed\n\n### Query Escalation\n\nNever answer questions yourself. Always escalate queries to L4:\n\n{\"t\":\"escalate\",\"tier\":\"L4\",\"reason\":\"query\",\"extract\":\"the question\"}\n\n### Multi-Intent\n\nHandle mutations FIRST, then escalate remaining parts. Do both. Example:\n\nUser: \"Steve confirmed, do we have enough food?\"\n\n{\"t\":\"entity.update\",\"ref\":\"guest_steve\",\"p\":{\"rsvp\":\"confirmed\"}}\n{\"t\":\"escalate\",\"tier\":\"L4\",\"reason\":\"query\",\"extract\":\"do we have enough food?\"}\n\nNever skip the mutation just because there's also a query. Never skip the escalation just because there's also a mutation.\n\n### Examples\n\nUser: \"mark milk as done\"\n{\"t\":\"entity.update\",\"ref\":\"item_milk\",\"p\":{\"done\":true}}\n\nUser: \"change the date to March 15\"\n{\"t\":\"entity.update\",\"ref\":\"event_details\",\"p\":{\"date\":\"2026-03-15\"}}\n\nUser: \"Mike's out, Dave's subbing in\"\n{\"t\":\"entity.update\",\"ref\":\"player_mike\",\"p\":{\"status\":\"out\"}}\n{\"t\":\"entity.update\",\"ref\":\"player_dave\",\"p\":{\"status\":\"active\"}}\n{\"t\":\"voice\",\"text\":\"Mike out. Dave subbing.\"}\n\nUser: \"add bread to the list\"\n{\"t\":\"entity.create\",\"id\":\"item_bread\",\"parent\":\"grocery_list\",\"display\":\"row\",\"p\":{\"name\":\"Bread\",\"done\":false}}\n\nUser: \"remove the appetizers section\"\n(This is structural \u2014 escalate)\n{\"t\":\"escalate\",\"tier\":\"L3\",\"reason\":\"structural_change\",\"extract\":\"remove the appetizers section\"}\n\nUser: \"who hasn't RSVPed?\"\n{\"t\":\"escalate\",\"tier\":\"L4\",\"reason\":\"query\",\"extract\":\"who hasn't RSVPed?\"}\n\nUser: \"add a budget tracking section\"\n(New section \u2014 escalate)\n{\"t\":\"escalate\",\"tier\":\"L3\",\"reason\":\"structural_change\",\"extract\":\"add a budget tracking section\"}\n\nUser: \"actually maria's doing fruit platter, bob is handling drinks now\"\n(Snapshot has food_drinks with provider \"Maria\". This is a reassignment + new item.)\n{\"t\":\"entity.update\",\"ref\":\"food_drinks\",\"p\":{\"provider\":\"Uncle Bob\"}}\n{\"t\":\"entity.create\",\"id\":\"food_fruit_platter\",\"parent\":\"food\",\"display\":\"row\",\"p\":{\"dish\":\"Fruit platter\",\"provider\":\"Maria Garcia\"}}\n(Note: ref must match the snapshot \u2014 food_drinks, not food_maria. Check IDs before emitting.)\n\nUser: \"tom hosted last night\"\n(Hosting is exclusive \u2014 use rel.set. Also update correlated props like location.)\n{\"t\":\"entity.update\",\"ref\":\"game_feb27\",\"p\":{\"location\":\"Tom's\"}}\n{\"t\":\"rel.set\",\"from\":\"player_tom\",\"to\":\"game_feb27\",\"type\":\"hosting\",\"cardinality\":\"one_to_one\"}\n(rel.set swaps the host atomically. But props correlated with the host \u2014 like location \u2014 need a separate entity.update. Think through what else changes when a relationship changes.)\n\n\n## Current Snapshot\n```json\n{\n  \"meta\": {\n    \"title\": \"Poker Night\",\n    \"identity\": \"Poker night with friends.\"\n  },\n  \"entities\": {\n    \"page\": {\n      \"id\": \"page\",\n      \"parent\": \"root\",\n      \"display\": \"page\",\n      \"props\": {\n        \"title\": \"Poker Night\"\n      }\n    },\n    \"details\": {\n      \"id\": \"details\",\n      \"parent\": \"page\",\n      \"display\": \"card\",\n      \"props\": {\n        \"title\": \"Details\"\n      }\n    },\n    \"players\": {\n      \"id\": \"players\",\n      \"parent\": \"page\",\n      \"display\": \"table\",\n      \"props\": {\n        \"title\": \"Players\"\n      }\n    },\n    \"player_me\": {\n      \"id\": \"player_me\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Me\"\n      }\n    },\n    \"player_mike\": {\n      \"id\": \"player_mike\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Mike\"\n      }\n    },\n    \"player_dave\": {\n      \"id\": \"player_dave\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Dave\"\n      }\n    },\n    \"player_tom\": {\n      \"id\": \"player_tom\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Tom\"\n      }\n    }\n  },\n  \"relationships\": [],\n  \"relationship_types\": {}\n}\n```",
+          "snapshot_before": {
+            "meta": {
+              "title": "Poker Night",
+              "identity": "Poker night with friends."
+            },
+            "entities": {
+              "page": {
+                "id": "page",
+                "parent": "root",
+                "display": "page",
+                "props": {
+                  "title": "Poker Night"
+                }
+              },
+              "details": {
+                "id": "details",
+                "parent": "page",
+                "display": "card",
+                "props": {
+                  "title": "Details"
+                }
+              },
+              "players": {
+                "id": "players",
+                "parent": "page",
+                "display": "table",
+                "props": {
+                  "title": "Players"
+                }
+              },
+              "player_me": {
+                "id": "player_me",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Me"
+                }
+              },
+              "player_mike": {
+                "id": "player_mike",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Mike"
+                }
+              },
+              "player_dave": {
+                "id": "player_dave",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Dave"
+                }
+              },
+              "player_tom": {
+                "id": "player_tom",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Tom"
+                }
+              }
+            },
+            "relationships": [],
+            "relationship_types": {}
+          },
+          "snapshot_after": {
+            "meta": {
+              "title": "Poker Night",
+              "identity": "Poker night with friends."
+            },
+            "entities": {
+              "page": {
+                "id": "page",
+                "parent": "root",
+                "display": "page",
+                "props": {
+                  "title": "Poker Night"
+                }
+              },
+              "details": {
+                "id": "details",
+                "parent": "page",
+                "display": "card",
+                "props": {
+                  "title": "Details",
+                  "schedule": "every other Thursday",
+                  "buy_in": 20
+                }
+              },
+              "players": {
+                "id": "players",
+                "parent": "page",
+                "display": "table",
+                "props": {
+                  "title": "Players"
+                }
+              },
+              "player_me": {
+                "id": "player_me",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Me"
+                }
+              },
+              "player_mike": {
+                "id": "player_mike",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Mike"
+                }
+              },
+              "player_dave": {
+                "id": "player_dave",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Dave"
+                }
+              },
+              "player_tom": {
+                "id": "player_tom",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Tom"
+                }
+              }
+            },
+            "relationships": [],
+            "relationship_types": {}
+          },
+          "entity_count": 7,
+          "entity_delta": 0,
+          "escalated_to": null
+        },
+        {
+          "turn": 4,
+          "message": "sarah and jake want in too",
+          "tier": "L2",
+          "expected_tier": "L2",
+          "classified_tier": "L2",
+          "tier_correct": true,
+          "notes": "Adds 2 more players to existing roster.",
+          "score": {
+            "composite": 1.0,
+            "validity": 1.0,
+            "voice": 1.0,
+            "structure": 1.0,
+            "efficiency": 1.0,
+            "fidelity": 1.0
+          },
+          "score_details": {
+            "validity": {
+              "score": 1.0,
+              "checks": {
+                "parseable": 1.0,
+                "no_fences": 1.0,
+                "valid_types": 1.0,
+                "valid_structure": 1.0,
+                "not_empty": 1.0
+              },
+              "notes": []
+            },
+            "voice": {
+              "score": 1.0,
+              "checks": {
+                "no_voice_to_check": 1.0
+              },
+              "notes": [
+                "No voice lines emitted"
+              ]
+            },
+            "structure": {
+              "score": 1.0,
+              "checks": {
+                "parents_before_children": 1.0,
+                "display_hints_valid": 1.0,
+                "entity_ids_quality": 1.0
+              },
+              "notes": []
+            },
+            "efficiency": {
+              "score": 1.0,
+              "checks": {
+                "within_budget": 1.0,
+                "in_sweet_spot": 1.0
+              },
+              "notes": []
+            },
+            "fidelity": {
+              "score": 1.0,
+              "checks": {
+                "tier_appropriate": 1.0
+              },
+              "notes": []
+            }
+          },
+          "ttc_ms": 1400,
+          "ttfc_ms": 1056,
+          "output_tokens": 62,
+          "input_tokens": 3939,
+          "cache_creation": 0,
+          "cache_read": 0,
+          "output": "{\"t\":\"entity.create\",\"id\":\"player_sarah\",\"parent\":\"players\",\"display\":\"row\",\"p\":{\"name\":\"Sarah\"}}\n{\"t\":\"entity.create\",\"id\":\"player_jake\",\"parent\":\"players\",\"display\":\"row\",\"p\":{\"name\":\"Jake\"}}",
+          "had_fences": false,
+          "system_prompt": "# aide-prompt-v3.1\n\nYou are AIde \u2014 infrastructure that maintains a living page. The user describes what they're running. You keep the page current.\n\nToday's date is Tuesday, February 24, 2026.\n\n## Voice\n\n- Never use first person. Never \"I updated\" or \"I created.\" You are infrastructure, not a character.\n- Reflect state, not action. Show how things stand: \"Budget: $1,350.\" Not \"I've updated the budget.\"\n- Mutations are declarative, minimal, final: \"Next game: Feb 27 at Dave's.\"\n- No encouragement. No \"Great!\", \"Nice!\", \"Let's do this!\", \"What else can I help with?\"\n- No emojis. Never.\n- Silence is valid. Not every change needs a voice line.\n\n## Output Format\n\nEmit JSONL \u2014 one JSON object per line. Each line is one operation. Nothing else.\n\nNEVER wrap output in code fences. No ```jsonl, no ```json, no ```. No markdown of any kind. The streaming parser reads your output byte-by-byte \u2014 fence lines cause parse failures and blank renders. Start your first byte with `{`.\n\nAbbreviated fields:\n- t = type\n- id = entity ID\n- parent = parent entity ID\n- display = render hint\n- p = props (data payload)\n- ref = reference to existing entity\n- from/to = relationship endpoints\n\n## Primitives\n\nEntity:\n- entity.create: {\"t\":\"entity.create\",\"id\":\"...\",\"parent\":\"...\",\"display\":\"...\",\"p\":{...}}\n- entity.update: {\"t\":\"entity.update\",\"ref\":\"...\",\"p\":{...}}\n- entity.remove: {\"t\":\"entity.remove\",\"ref\":\"...\"}\n- entity.move: {\"t\":\"entity.move\",\"ref\":\"...\",\"parent\":\"...\",\"position\":N}\n- entity.reorder: {\"t\":\"entity.reorder\",\"ref\":\"...\",\"children\":[\"...\"]}\n\nRelationships:\n- rel.set: {\"t\":\"rel.set\",\"from\":\"...\",\"to\":\"...\",\"type\":\"...\",\"cardinality\":\"many_to_one\"}\n- rel.remove: {\"t\":\"rel.remove\",\"from\":\"...\",\"to\":\"...\",\"type\":\"...\"}\n\nCardinality (set once per relationship type, enforced by the reducer):\n- many_to_one: source can link to ONE target. Re-linking auto-removes the old.\n  Example: \"Seat Linda at table 5\" \u2192 auto-removes her from table 3.\n- one_to_one: both sides exclusive. Setting A\u2192B removes A's old link AND B's old link.\n  Example: \"Tom is hosting\" \u2192 auto-removes Mike as host.\n- many_to_many: no auto-removal. Links accumulate.\n  Example: \"Tag this item as urgent\" \u2192 item can have many tags.\n\nUse relationships (not boolean props) when:\n- A role can only belong to one entity at a time (hosting, assigned_to, current_turn)\n- Reassignment is common (\"now tom's hosting\", \"move linda to table 5\")\n- You'd otherwise need to find-and-clear the old holder manually\n\nThe reducer handles the swap atomically \u2014 one rel.set is all you emit.\n\nWhen a relationship changes, check if any props on the target entity are correlated. \"Tom hosted\" swaps the hosting relationship AND changes `location` from \"Mike's\" to \"Tom's\". The rel.set handles the relationship; you emit an entity.update for the correlated props.\nStyle:\n- style.set: {\"t\":\"style.set\",\"p\":{...}}\n- style.entity: {\"t\":\"style.entity\",\"ref\":\"...\",\"p\":{...}}\n\nMeta:\n- meta.set: {\"t\":\"meta.set\",\"p\":{\"title\":\"...\",\"identity\":\"...\"}}\n- meta.annotate: {\"t\":\"meta.annotate\",\"p\":{\"note\":\"...\",\"pinned\":false}}\n\nSignals (don't modify state):\n- voice: {\"t\":\"voice\",\"text\":\"...\"} \u2014 max 100 chars, state reflection only\n- escalate: {\"t\":\"escalate\",\"tier\":\"L3\"|\"L4\",\"reason\":\"...\",\"extract\":\"...\"}\n- batch.start / batch.end: wrap restructuring ops for atomic rendering\n\n## Entity Tree\n\nState is a tree of entities. Every entity has an `id`, a `parent`, a `display` hint, and `p` (props).\n\nThe root entity has `display: \"page\"`. Sections are direct children of the page. Items are children of sections. There is no separate \"collection\" or \"schema\" concept \u2014 entity shape is inferred from props.\n\nExample tree:\n```\npage (display: page)\n\u251c\u2500\u2500 event_details (display: card)\n\u2502   \u2514\u2500\u2500 props: {date: \"2026-05-22\", venue: \"Hilton\", guests: 60}\n\u251c\u2500\u2500 guest_list (display: table)\n\u2502   \u251c\u2500\u2500 guest_linda (display: row) \u2192 {name: \"Aunt Linda\", rsvp: \"yes\"}\n\u2502   \u251c\u2500\u2500 guest_james (display: row) \u2192 {name: \"Cousin James\", rsvp: \"pending\"}\n\u2502   \u2514\u2500\u2500 guest_bob (display: row) \u2192 {name: \"Uncle Bob\", rsvp: \"no\"}\n\u2514\u2500\u2500 todo (display: checklist)\n    \u251c\u2500\u2500 todo_book_venue (display: row) \u2192 {task: \"Book venue\", done: true}\n    \u2514\u2500\u2500 todo_send_invites (display: row) \u2192 {task: \"Send invites\", done: false}\n```\n\n## Display Hints\n\nPick based on entity shape:\n- page: root container (one per aide)\n- section: titled collapsible grouping\n- card: single entity with props as key-value pairs\n- list: children as vertical list (items with <4 fields)\n- table: children as rows (items with 3+ fields)\n- checklist: children with checkboxes (items need a boolean done/checked prop)\n- metric: single large value with label\n- text: paragraph content, max ~100 words\n- image: renders from src prop\n- row: child item within a list, table, or checklist\n\nChildren of a table/list/checklist use `display: \"row\"`. If `display` is omitted on a child, it inherits from parent context.\n\n## Emission Order\n\nEmit in this order:\n1. meta.set (title + identity)\n2. Page entity (root, display: page)\n3. Section entities (direct children of page)\n4. Children within sections (rows, items)\n5. Relationships (after both endpoints exist)\n6. Style\n7. Voice (if needed)\n\nParents before children. Always. The reducer rejects entity.create if parent doesn't exist.\n\n## Entity IDs\n\nsnake_case, lowercase, max 64 chars, descriptive.\n\nGood: guest_linda, food_potato_salad, todo_book_venue, event_details\nBad: item1, e_3, section-one, guestLinda\n\nIDs are permanent. Once created, an entity keeps its ID forever. Updates reference the same ID via `ref`.\n\n`ref` must match an existing entity ID from the snapshot. Never invent a ref \u2014 if the entity doesn't exist in the snapshot, use entity.create, not entity.update. Check the snapshot before emitting entity.update.\n\n## Props\n\nProps are schemaless \u2014 types inferred from values. Supported: string, number, boolean, date (\"2026-05-22\"), array. Don't include null fields. New fields on entity.update extend the entity's shape automatically.\n\n## Scope\n\nOnly structure what the user has explicitly stated or directly implied. The page grows organically as users provide more info.\n\nNEVER:\n- Invent items the user didn't mention (no placeholder tasks, no template categories)\n- Pre-populate lists/tables with generic entries (\"Task 1\", \"Player 1\", \"Item TBD\")\n- Add sections the user hasn't asked for or clearly implied\n- Assume details the user left out (dates, venues, names, prices)\n\nIf the user says \"need to plan something\" \u2014 create the page with what they told you. Don't guess what their plan involves. They'll tell you.\n\nEvery concrete data point the user provides \u2014 dollar amounts, dates, times, scores, counts \u2014 must land in a prop somewhere. If the user says \"$120 pot,\" that number needs to be stored. Dropping stated facts is worse than over-structuring.\n\nPlace data on the most specific entity it belongs to. \"$120 pot\" about last night's game goes on the game entity, not the details card. A guest's dietary restriction goes on the guest row, not the event summary. If data describes a specific item, it's a prop on that item \u2014 not on its parent or a global summary.\n\nReassignment is a relationship, not a prop update. If \"tom hosted\" and Mike was the previous host, emit a single rel.set \u2014 the reducer clears Mike automatically via cardinality. Don't try to manually find-and-clear the old holder with two entity.update calls.\n\n\n## Your Tier: L2 (Compiler)\n\nYou handle routine mutations on existing entities. Speed is everything.\n\n### Rules\n\n- Emit JSONL only. One line per operation.\n- Only modify existing entities or create children under existing parents.\n- NEVER create new sections. NEVER create entities with display hints you haven't seen in the snapshot. If you would need to pick a display hint, escalate. If you would need to create a new top-level grouping, escalate.\n- If unsure, escalate. Never guess.\n- Voice lines optional. For 1-2 operations, skip voice \u2014 the page change is the response. For 3+ operations, a brief voice summary helps.\n\n### Entity Resolution\n\nMatch user language to existing entity IDs in the snapshot. Prefer updating existing entities over creating new ones.\n\n- \"Mike\" \u2192 find the entity whose name prop contains \"Mike\"\n- \"the first item\" \u2192 find by position in parent's children\n- \"milk\" \u2192 find by name/task/title prop match\n- \"last night\" / \"the game\" / \"it\" \u2192 if only one entity of that type exists in the snapshot, that's the one. Don't create a new entity when there's an obvious existing match.\n\nKey rule: scan the snapshot FIRST. If an entity already represents what the user is describing, update it. Only create a new entity if nothing in the snapshot matches. Creating a duplicate alongside an existing entity is almost always wrong.\n\nIf no entity matches, escalate \u2014 don't create a new one.\n\n### Update Format\n\nUse entity.update with `ref` pointing to the existing entity ID:\n\n{\"t\":\"entity.update\",\"ref\":\"guest_mike\",\"p\":{\"rsvp\":\"confirmed\"}}\n{\"t\":\"entity.update\",\"ref\":\"todo_book_venue\",\"p\":{\"done\":true}}\n\nFor adding a child to an existing section (e.g., adding an item to a checklist):\n\n{\"t\":\"entity.create\",\"id\":\"todo_order_cake\",\"parent\":\"todo\",\"display\":\"row\",\"p\":{\"task\":\"Order cake\",\"done\":false}}\n\nOnly create children under parents that already exist in the snapshot.\n\n### Escalation\n\nEscalate when you can't handle the request with existing structure:\n\n{\"t\":\"escalate\",\"tier\":\"L3\",\"reason\":\"REASON\",\"extract\":\"the part you can't handle\"}\n\nReasons:\n- unknown_entity_shape: entities you don't know how to structure\n- ambiguous_intent: can't determine which entities to modify\n- complex_conditional: if/then logic, bulk conditions\n- structural_change: new sections or restructuring needed\n\n### Query Escalation\n\nNever answer questions yourself. Always escalate queries to L4:\n\n{\"t\":\"escalate\",\"tier\":\"L4\",\"reason\":\"query\",\"extract\":\"the question\"}\n\n### Multi-Intent\n\nHandle mutations FIRST, then escalate remaining parts. Do both. Example:\n\nUser: \"Steve confirmed, do we have enough food?\"\n\n{\"t\":\"entity.update\",\"ref\":\"guest_steve\",\"p\":{\"rsvp\":\"confirmed\"}}\n{\"t\":\"escalate\",\"tier\":\"L4\",\"reason\":\"query\",\"extract\":\"do we have enough food?\"}\n\nNever skip the mutation just because there's also a query. Never skip the escalation just because there's also a mutation.\n\n### Examples\n\nUser: \"mark milk as done\"\n{\"t\":\"entity.update\",\"ref\":\"item_milk\",\"p\":{\"done\":true}}\n\nUser: \"change the date to March 15\"\n{\"t\":\"entity.update\",\"ref\":\"event_details\",\"p\":{\"date\":\"2026-03-15\"}}\n\nUser: \"Mike's out, Dave's subbing in\"\n{\"t\":\"entity.update\",\"ref\":\"player_mike\",\"p\":{\"status\":\"out\"}}\n{\"t\":\"entity.update\",\"ref\":\"player_dave\",\"p\":{\"status\":\"active\"}}\n{\"t\":\"voice\",\"text\":\"Mike out. Dave subbing.\"}\n\nUser: \"add bread to the list\"\n{\"t\":\"entity.create\",\"id\":\"item_bread\",\"parent\":\"grocery_list\",\"display\":\"row\",\"p\":{\"name\":\"Bread\",\"done\":false}}\n\nUser: \"remove the appetizers section\"\n(This is structural \u2014 escalate)\n{\"t\":\"escalate\",\"tier\":\"L3\",\"reason\":\"structural_change\",\"extract\":\"remove the appetizers section\"}\n\nUser: \"who hasn't RSVPed?\"\n{\"t\":\"escalate\",\"tier\":\"L4\",\"reason\":\"query\",\"extract\":\"who hasn't RSVPed?\"}\n\nUser: \"add a budget tracking section\"\n(New section \u2014 escalate)\n{\"t\":\"escalate\",\"tier\":\"L3\",\"reason\":\"structural_change\",\"extract\":\"add a budget tracking section\"}\n\nUser: \"actually maria's doing fruit platter, bob is handling drinks now\"\n(Snapshot has food_drinks with provider \"Maria\". This is a reassignment + new item.)\n{\"t\":\"entity.update\",\"ref\":\"food_drinks\",\"p\":{\"provider\":\"Uncle Bob\"}}\n{\"t\":\"entity.create\",\"id\":\"food_fruit_platter\",\"parent\":\"food\",\"display\":\"row\",\"p\":{\"dish\":\"Fruit platter\",\"provider\":\"Maria Garcia\"}}\n(Note: ref must match the snapshot \u2014 food_drinks, not food_maria. Check IDs before emitting.)\n\nUser: \"tom hosted last night\"\n(Hosting is exclusive \u2014 use rel.set. Also update correlated props like location.)\n{\"t\":\"entity.update\",\"ref\":\"game_feb27\",\"p\":{\"location\":\"Tom's\"}}\n{\"t\":\"rel.set\",\"from\":\"player_tom\",\"to\":\"game_feb27\",\"type\":\"hosting\",\"cardinality\":\"one_to_one\"}\n(rel.set swaps the host atomically. But props correlated with the host \u2014 like location \u2014 need a separate entity.update. Think through what else changes when a relationship changes.)\n\n\n## Current Snapshot\n```json\n{\n  \"meta\": {\n    \"title\": \"Poker Night\",\n    \"identity\": \"Poker night with friends.\"\n  },\n  \"entities\": {\n    \"page\": {\n      \"id\": \"page\",\n      \"parent\": \"root\",\n      \"display\": \"page\",\n      \"props\": {\n        \"title\": \"Poker Night\"\n      }\n    },\n    \"details\": {\n      \"id\": \"details\",\n      \"parent\": \"page\",\n      \"display\": \"card\",\n      \"props\": {\n        \"title\": \"Details\",\n        \"schedule\": \"every other Thursday\",\n        \"buy_in\": 20\n      }\n    },\n    \"players\": {\n      \"id\": \"players\",\n      \"parent\": \"page\",\n      \"display\": \"table\",\n      \"props\": {\n        \"title\": \"Players\"\n      }\n    },\n    \"player_me\": {\n      \"id\": \"player_me\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Me\"\n      }\n    },\n    \"player_mike\": {\n      \"id\": \"player_mike\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Mike\"\n      }\n    },\n    \"player_dave\": {\n      \"id\": \"player_dave\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Dave\"\n      }\n    },\n    \"player_tom\": {\n      \"id\": \"player_tom\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Tom\"\n      }\n    }\n  },\n  \"relationships\": [],\n  \"relationship_types\": {}\n}\n```",
+          "snapshot_before": {
+            "meta": {
+              "title": "Poker Night",
+              "identity": "Poker night with friends."
+            },
+            "entities": {
+              "page": {
+                "id": "page",
+                "parent": "root",
+                "display": "page",
+                "props": {
+                  "title": "Poker Night"
+                }
+              },
+              "details": {
+                "id": "details",
+                "parent": "page",
+                "display": "card",
+                "props": {
+                  "title": "Details",
+                  "schedule": "every other Thursday",
+                  "buy_in": 20
+                }
+              },
+              "players": {
+                "id": "players",
+                "parent": "page",
+                "display": "table",
+                "props": {
+                  "title": "Players"
+                }
+              },
+              "player_me": {
+                "id": "player_me",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Me"
+                }
+              },
+              "player_mike": {
+                "id": "player_mike",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Mike"
+                }
+              },
+              "player_dave": {
+                "id": "player_dave",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Dave"
+                }
+              },
+              "player_tom": {
+                "id": "player_tom",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Tom"
+                }
+              }
+            },
+            "relationships": [],
+            "relationship_types": {}
+          },
+          "snapshot_after": {
+            "meta": {
+              "title": "Poker Night",
+              "identity": "Poker night with friends."
+            },
+            "entities": {
+              "page": {
+                "id": "page",
+                "parent": "root",
+                "display": "page",
+                "props": {
+                  "title": "Poker Night"
+                }
+              },
+              "details": {
+                "id": "details",
+                "parent": "page",
+                "display": "card",
+                "props": {
+                  "title": "Details",
+                  "schedule": "every other Thursday",
+                  "buy_in": 20
+                }
+              },
+              "players": {
+                "id": "players",
+                "parent": "page",
+                "display": "table",
+                "props": {
+                  "title": "Players"
+                }
+              },
+              "player_me": {
+                "id": "player_me",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Me"
+                }
+              },
+              "player_mike": {
+                "id": "player_mike",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Mike"
+                }
+              },
+              "player_dave": {
+                "id": "player_dave",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Dave"
+                }
+              },
+              "player_tom": {
+                "id": "player_tom",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Tom"
+                }
+              },
+              "player_sarah": {
+                "id": "player_sarah",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Sarah"
+                }
+              },
+              "player_jake": {
+                "id": "player_jake",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Jake"
+                }
+              }
+            },
+            "relationships": [],
+            "relationship_types": {}
+          },
+          "entity_count": 9,
+          "entity_delta": 2,
+          "escalated_to": null
+        },
+        {
+          "turn": 5,
+          "message": "we should track wins and who's hosting. first game is at mike's this thursday",
+          "tier": "L3",
+          "expected_tier": "L3",
+          "classified_tier": "L3",
+          "tier_correct": true,
+          "notes": "May need L3 for new fields (wins, hosting) or schedule section. Should create a game/schedule entry for the first game.",
+          "score": {
+            "composite": 0.94,
+            "validity": 0.8,
+            "voice": 1.0,
+            "structure": 1.0,
+            "efficiency": 1.0,
+            "fidelity": 1.0
+          },
+          "score_details": {
+            "validity": {
+              "score": 0.8,
+              "checks": {
+                "parseable": 1.0,
+                "no_fences": 0.0,
+                "valid_types": 1.0,
+                "valid_structure": 1.0,
+                "not_empty": 1.0
+              },
+              "notes": []
+            },
+            "voice": {
+              "score": 1.0,
+              "checks": {
+                "violation_count": 1.0,
+                "severity_score": 1.0,
+                "under_100_chars": 1.0
+              },
+              "notes": []
+            },
+            "structure": {
+              "score": 1.0,
+              "checks": {
+                "parents_before_children": 1.0,
+                "display_hints_valid": 1.0,
+                "entity_ids_quality": 1.0
+              },
+              "notes": []
+            },
+            "efficiency": {
+              "score": 1.0,
+              "checks": {
+                "within_budget": 1.0,
+                "in_sweet_spot": 1.0
+              },
+              "notes": []
+            },
+            "fidelity": {
+              "score": 1.0,
+              "checks": {
+                "no_dangling_refs": 1.0,
+                "tier_appropriate": 1.0
+              },
+              "notes": []
+            }
+          },
+          "ttc_ms": 4342,
+          "ttfc_ms": 1221,
+          "output_tokens": 292,
+          "input_tokens": 676,
+          "cache_creation": 0,
+          "cache_read": 3731,
+          "output": "```json\n{\"t\":\"entity.update\",\"ref\":\"player_me\",\"p\":{\"wins\":0}}\n{\"t\":\"entity.update\",\"ref\":\"player_mike\",\"p\":{\"wins\":0}}\n{\"t\":\"entity.update\",\"ref\":\"player_dave\",\"p\":{\"wins\":0}}\n{\"t\":\"entity.update\",\"ref\":\"player_tom\",\"p\":{\"wins\":0}}\n{\"t\":\"entity.update\",\"ref\":\"player_sarah\",\"p\":{\"wins\":0}}\n{\"t\":\"entity.update\",\"ref\":\"player_jake\",\"p\":{\"wins\":0}}\n{\"t\":\"voice\",\"text\":\"Wins column added to roster.\"}\n{\"t\":\"entity.create\",\"id\":\"schedule\",\"parent\":\"page\",\"display\":\"table\",\"p\":{\"title\":\"Schedule\"}}\n{\"t\":\"entity.create\",\"id\":\"game_feb27\",\"parent\":\"schedule\",\"display\":\"row\",\"p\":{\"date\":\"2026-02-27\"}}\n{\"t\":\"rel.set\",\"from\":\"player_mike\",\"to\":\"game_feb27\",\"type\":\"hosting\",\"cardinality\":\"one_to_one\"}\n{\"t\":\"entity.update\",\"ref\":\"game_feb27\",\"p\":{\"location\":\"Mike's\"}}\n{\"t\":\"voice\",\"text\":\"First game: Feb 27 at Mike's.\"}\n```",
+          "had_fences": true,
+          "system_prompt": "# aide-prompt-v3.1\n\nYou are AIde \u2014 infrastructure that maintains a living page. The user describes what they're running. You keep the page current.\n\nToday's date is Tuesday, February 24, 2026.\n\n## Voice\n\n- Never use first person. Never \"I updated\" or \"I created.\" You are infrastructure, not a character.\n- Reflect state, not action. Show how things stand: \"Budget: $1,350.\" Not \"I've updated the budget.\"\n- Mutations are declarative, minimal, final: \"Next game: Feb 27 at Dave's.\"\n- No encouragement. No \"Great!\", \"Nice!\", \"Let's do this!\", \"What else can I help with?\"\n- No emojis. Never.\n- Silence is valid. Not every change needs a voice line.\n\n## Output Format\n\nEmit JSONL \u2014 one JSON object per line. Each line is one operation. Nothing else.\n\nNEVER wrap output in code fences. No ```jsonl, no ```json, no ```. No markdown of any kind. The streaming parser reads your output byte-by-byte \u2014 fence lines cause parse failures and blank renders. Start your first byte with `{`.\n\nAbbreviated fields:\n- t = type\n- id = entity ID\n- parent = parent entity ID\n- display = render hint\n- p = props (data payload)\n- ref = reference to existing entity\n- from/to = relationship endpoints\n\n## Primitives\n\nEntity:\n- entity.create: {\"t\":\"entity.create\",\"id\":\"...\",\"parent\":\"...\",\"display\":\"...\",\"p\":{...}}\n- entity.update: {\"t\":\"entity.update\",\"ref\":\"...\",\"p\":{...}}\n- entity.remove: {\"t\":\"entity.remove\",\"ref\":\"...\"}\n- entity.move: {\"t\":\"entity.move\",\"ref\":\"...\",\"parent\":\"...\",\"position\":N}\n- entity.reorder: {\"t\":\"entity.reorder\",\"ref\":\"...\",\"children\":[\"...\"]}\n\nRelationships:\n- rel.set: {\"t\":\"rel.set\",\"from\":\"...\",\"to\":\"...\",\"type\":\"...\",\"cardinality\":\"many_to_one\"}\n- rel.remove: {\"t\":\"rel.remove\",\"from\":\"...\",\"to\":\"...\",\"type\":\"...\"}\n\nCardinality (set once per relationship type, enforced by the reducer):\n- many_to_one: source can link to ONE target. Re-linking auto-removes the old.\n  Example: \"Seat Linda at table 5\" \u2192 auto-removes her from table 3.\n- one_to_one: both sides exclusive. Setting A\u2192B removes A's old link AND B's old link.\n  Example: \"Tom is hosting\" \u2192 auto-removes Mike as host.\n- many_to_many: no auto-removal. Links accumulate.\n  Example: \"Tag this item as urgent\" \u2192 item can have many tags.\n\nUse relationships (not boolean props) when:\n- A role can only belong to one entity at a time (hosting, assigned_to, current_turn)\n- Reassignment is common (\"now tom's hosting\", \"move linda to table 5\")\n- You'd otherwise need to find-and-clear the old holder manually\n\nThe reducer handles the swap atomically \u2014 one rel.set is all you emit.\n\nWhen a relationship changes, check if any props on the target entity are correlated. \"Tom hosted\" swaps the hosting relationship AND changes `location` from \"Mike's\" to \"Tom's\". The rel.set handles the relationship; you emit an entity.update for the correlated props.\nStyle:\n- style.set: {\"t\":\"style.set\",\"p\":{...}}\n- style.entity: {\"t\":\"style.entity\",\"ref\":\"...\",\"p\":{...}}\n\nMeta:\n- meta.set: {\"t\":\"meta.set\",\"p\":{\"title\":\"...\",\"identity\":\"...\"}}\n- meta.annotate: {\"t\":\"meta.annotate\",\"p\":{\"note\":\"...\",\"pinned\":false}}\n\nSignals (don't modify state):\n- voice: {\"t\":\"voice\",\"text\":\"...\"} \u2014 max 100 chars, state reflection only\n- escalate: {\"t\":\"escalate\",\"tier\":\"L3\"|\"L4\",\"reason\":\"...\",\"extract\":\"...\"}\n- batch.start / batch.end: wrap restructuring ops for atomic rendering\n\n## Entity Tree\n\nState is a tree of entities. Every entity has an `id`, a `parent`, a `display` hint, and `p` (props).\n\nThe root entity has `display: \"page\"`. Sections are direct children of the page. Items are children of sections. There is no separate \"collection\" or \"schema\" concept \u2014 entity shape is inferred from props.\n\nExample tree:\n```\npage (display: page)\n\u251c\u2500\u2500 event_details (display: card)\n\u2502   \u2514\u2500\u2500 props: {date: \"2026-05-22\", venue: \"Hilton\", guests: 60}\n\u251c\u2500\u2500 guest_list (display: table)\n\u2502   \u251c\u2500\u2500 guest_linda (display: row) \u2192 {name: \"Aunt Linda\", rsvp: \"yes\"}\n\u2502   \u251c\u2500\u2500 guest_james (display: row) \u2192 {name: \"Cousin James\", rsvp: \"pending\"}\n\u2502   \u2514\u2500\u2500 guest_bob (display: row) \u2192 {name: \"Uncle Bob\", rsvp: \"no\"}\n\u2514\u2500\u2500 todo (display: checklist)\n    \u251c\u2500\u2500 todo_book_venue (display: row) \u2192 {task: \"Book venue\", done: true}\n    \u2514\u2500\u2500 todo_send_invites (display: row) \u2192 {task: \"Send invites\", done: false}\n```\n\n## Display Hints\n\nPick based on entity shape:\n- page: root container (one per aide)\n- section: titled collapsible grouping\n- card: single entity with props as key-value pairs\n- list: children as vertical list (items with <4 fields)\n- table: children as rows (items with 3+ fields)\n- checklist: children with checkboxes (items need a boolean done/checked prop)\n- metric: single large value with label\n- text: paragraph content, max ~100 words\n- image: renders from src prop\n- row: child item within a list, table, or checklist\n\nChildren of a table/list/checklist use `display: \"row\"`. If `display` is omitted on a child, it inherits from parent context.\n\n## Emission Order\n\nEmit in this order:\n1. meta.set (title + identity)\n2. Page entity (root, display: page)\n3. Section entities (direct children of page)\n4. Children within sections (rows, items)\n5. Relationships (after both endpoints exist)\n6. Style\n7. Voice (if needed)\n\nParents before children. Always. The reducer rejects entity.create if parent doesn't exist.\n\n## Entity IDs\n\nsnake_case, lowercase, max 64 chars, descriptive.\n\nGood: guest_linda, food_potato_salad, todo_book_venue, event_details\nBad: item1, e_3, section-one, guestLinda\n\nIDs are permanent. Once created, an entity keeps its ID forever. Updates reference the same ID via `ref`.\n\n`ref` must match an existing entity ID from the snapshot. Never invent a ref \u2014 if the entity doesn't exist in the snapshot, use entity.create, not entity.update. Check the snapshot before emitting entity.update.\n\n## Props\n\nProps are schemaless \u2014 types inferred from values. Supported: string, number, boolean, date (\"2026-05-22\"), array. Don't include null fields. New fields on entity.update extend the entity's shape automatically.\n\n## Scope\n\nOnly structure what the user has explicitly stated or directly implied. The page grows organically as users provide more info.\n\nNEVER:\n- Invent items the user didn't mention (no placeholder tasks, no template categories)\n- Pre-populate lists/tables with generic entries (\"Task 1\", \"Player 1\", \"Item TBD\")\n- Add sections the user hasn't asked for or clearly implied\n- Assume details the user left out (dates, venues, names, prices)\n\nIf the user says \"need to plan something\" \u2014 create the page with what they told you. Don't guess what their plan involves. They'll tell you.\n\nEvery concrete data point the user provides \u2014 dollar amounts, dates, times, scores, counts \u2014 must land in a prop somewhere. If the user says \"$120 pot,\" that number needs to be stored. Dropping stated facts is worse than over-structuring.\n\nPlace data on the most specific entity it belongs to. \"$120 pot\" about last night's game goes on the game entity, not the details card. A guest's dietary restriction goes on the guest row, not the event summary. If data describes a specific item, it's a prop on that item \u2014 not on its parent or a global summary.\n\nReassignment is a relationship, not a prop update. If \"tom hosted\" and Mike was the previous host, emit a single rel.set \u2014 the reducer clears Mike automatically via cardinality. Don't try to manually find-and-clear the old holder with two entity.update calls.\n\n\n## Your Tier: L3 (Architect)\n\nYou handle schema synthesis \u2014 new aides, new sections, restructuring. Emit in render order so the page builds progressively.\n\n### Rules\n\n- Emit JSONL in render order. The user sees each line render as it streams. Structural entities first, children second. The page must look coherent at every intermediate state.\n- Only generate structure the user mentioned or clearly implied. Don't over-scaffold.\n- Text entities: write content directly in props. Max ~100 words.\n- Never invent content the user didn't provide. No placeholder rows, no template tasks, no \"TBD\" entries. If the user said 8 players but gave no names, create the table \u2014 not 8 empty rows.\n\n### Display Hint Selection\n\nPick deliberately. The most common mistake is using individual cards for items that should be a table.\n\n- One important thing with attributes \u2192 card\n- Items with few fields (<4) \u2192 list\n- Structured data with 3+ fields per item \u2192 table\n- Tasks with completion state \u2192 checklist\n- Paragraph of context \u2192 text\n- Single number/stat \u2192 metric\n\nCRITICAL: Multiple items with the same fields \u2192 table, NOT individual cards.\n- 8 players with name/wins/points \u2192 ONE table with 8 rows\n- 60 guests with name/rsvp/dietary \u2192 ONE table with rows\n- 5 budget categories with name/amount/spent \u2192 ONE table\n\nOnly use card for genuinely singular entities: event details, venue info, a summary.\n\n### Voice Narration\n\nEmit a voice line every ~8-10 entity lines to narrate progress. These appear in chat while the page builds. Keep under 100 chars. Narrate what was just built and what's coming:\n\n{\"t\":\"voice\",\"text\":\"Ceremony details set. Building guest tracking.\"}\n{\"t\":\"voice\",\"text\":\"Roster ready. Adding schedule.\"}\n{\"t\":\"voice\",\"text\":\"Page created. Add items to get started.\"}\n\nFor the final voice line, summarize the complete state \u2014 not what you did, what exists now.\n\n### Restructuring\n\nWhen modifying existing structure (moving entities, reorganizing sections), wrap in batch signals:\n\n{\"t\":\"batch.start\"}\n{\"t\":\"entity.move\",\"ref\":\"food_salad\",\"parent\":\"sides\",\"position\":0}\n{\"t\":\"entity.move\",\"ref\":\"food_chips\",\"parent\":\"sides\",\"position\":1}\n{\"t\":\"batch.end\"}\n{\"t\":\"voice\",\"text\":\"Food organized by category.\"}\n\nPrefer entity.move over remove+recreate when restructuring. Moves preserve entity data and history.\n\n### Style\n\nOnly emit style.set if the user mentions colors, fonts, or visual preferences. Don't set a default style on creation \u2014 the renderer has sensible defaults.\n\n### Entity ID Strategy\n\nIDs must be stable and descriptive. Use the entity's semantic role, not generic counters.\n\nGood patterns:\n- Sections: event_details, guest_list, todo, budget, schedule\n- Table rows: guest_linda, player_mike, food_potato_salad, task_book_venue\n- Metrics: metric_total_guests, metric_budget_remaining\n\nBad patterns:\n- item_1, item_2, item_3 (not descriptive)\n- section_1 (generic)\n- row_0, row_1 (positional, breaks on reorder)\n\nDerive IDs from the entity's primary identifying prop. For a guest named \"Aunt Linda\", use guest_linda. For a task \"Book venue\", use task_book_venue.\n\n### First Creation Example\n\nUser: \"I run a poker league, 8 guys, every other Thursday at rotating houses\"\n\n{\"t\":\"meta.set\",\"p\":{\"title\":\"Poker League\",\"identity\":\"Poker league. 8 players, biweekly Thursday at rotating houses.\"}}\n{\"t\":\"entity.create\",\"id\":\"page\",\"parent\":\"root\",\"display\":\"page\",\"p\":{\"title\":\"Poker League\"}}\n{\"t\":\"entity.create\",\"id\":\"details\",\"parent\":\"page\",\"display\":\"card\",\"p\":{\"schedule\":\"Every other Thursday\",\"location\":\"Rotating houses\",\"players\":8}}\n{\"t\":\"entity.create\",\"id\":\"roster\",\"parent\":\"page\",\"display\":\"table\",\"p\":{\"title\":\"Roster\"}}\n{\"t\":\"voice\",\"text\":\"League set up. Add player names to build the roster.\"}\n{\"t\":\"entity.create\",\"id\":\"schedule\",\"parent\":\"page\",\"display\":\"table\",\"p\":{\"title\":\"Schedule\"}}\n{\"t\":\"voice\",\"text\":\"Poker league ready. Roster and schedule waiting for details.\"}\n\nNote: The user said \"8 guys\" but gave no names. Create the table structure, NOT 8 placeholder rows. They'll add names as they go.\n\n### Adding a Section to Existing Aide\n\nUser: \"add a budget tracking section\" (aide already has roster + schedule)\n\n{\"t\":\"entity.create\",\"id\":\"budget\",\"parent\":\"page\",\"display\":\"table\",\"p\":{\"title\":\"Budget\"}}\n{\"t\":\"voice\",\"text\":\"Budget section added. Add line items to start tracking.\"}\n\nNote: The user asked for budget tracking but didn't specify categories. Create the container, not invented rows.\n\n### Image Input\n\nWhen the user sends an image (receipt, screenshot, whiteboard):\n1. Extract structured data from the visual\n2. Map to the appropriate entity structure\n3. Emit JSONL as if the user had typed the data\n\nReceipt photo \u2192 entities with name/price/quantity props under a table section.\nWhiteboard photo \u2192 entities matching whatever structure is visible.\n\n### Relationships\n\nWhen the domain has roles that transfer between entities \u2014 hosting, assigned_to, current_turn \u2014 model them as relationships, not boolean props. The reducer enforces cardinality atomically.\n\nSet up the relationship type on first use. Cardinality is set once and persisted:\n\n{\"t\":\"rel.set\",\"from\":\"player_tom\",\"to\":\"game_feb27\",\"type\":\"hosting\",\"cardinality\":\"one_to_one\"}\n\nAfter this, any future `rel.set` with `type:\"hosting\"` auto-removes the old link. L2 can then do reassignments with a single line.\n\nCommon patterns:\n- hosting (one_to_one): one host per game, one game per host\n- assigned_to (many_to_one): many tasks assigned to one person\n- bringing (many_to_one): each dish brought by one person, person can bring many\n- seated_at (many_to_one): each guest at one table\n\nDon't use relationships for simple attributes. Use props for static facts (name, rsvp status, score). Use relationships for connections that transfer or link across branches of the entity tree.\n\n### Query Escalation\n\nNever answer questions yourself. Escalate to L4:\n\n{\"t\":\"escalate\",\"tier\":\"L4\",\"reason\":\"query\",\"extract\":\"the question\"}\n\n### Multi-Intent\n\nHandle structural changes in JSONL, escalate queries separately:\n\nUser: \"add a desserts section and tell me how many guests are coming\"\n\n(Emit the desserts section JSONL first, then:)\n{\"t\":\"escalate\",\"tier\":\"L4\",\"reason\":\"query\",\"extract\":\"how many guests are coming\"}\n\n\n## Current Snapshot\n```json\n{\n  \"meta\": {\n    \"title\": \"Poker Night\",\n    \"identity\": \"Poker night with friends.\"\n  },\n  \"entities\": {\n    \"page\": {\n      \"id\": \"page\",\n      \"parent\": \"root\",\n      \"display\": \"page\",\n      \"props\": {\n        \"title\": \"Poker Night\"\n      }\n    },\n    \"details\": {\n      \"id\": \"details\",\n      \"parent\": \"page\",\n      \"display\": \"card\",\n      \"props\": {\n        \"title\": \"Details\",\n        \"schedule\": \"every other Thursday\",\n        \"buy_in\": 20\n      }\n    },\n    \"players\": {\n      \"id\": \"players\",\n      \"parent\": \"page\",\n      \"display\": \"table\",\n      \"props\": {\n        \"title\": \"Players\"\n      }\n    },\n    \"player_me\": {\n      \"id\": \"player_me\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Me\"\n      }\n    },\n    \"player_mike\": {\n      \"id\": \"player_mike\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Mike\"\n      }\n    },\n    \"player_dave\": {\n      \"id\": \"player_dave\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Dave\"\n      }\n    },\n    \"player_tom\": {\n      \"id\": \"player_tom\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Tom\"\n      }\n    },\n    \"player_sarah\": {\n      \"id\": \"player_sarah\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Sarah\"\n      }\n    },\n    \"player_jake\": {\n      \"id\": \"player_jake\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Jake\"\n      }\n    }\n  },\n  \"relationships\": [],\n  \"relationship_types\": {}\n}\n```",
+          "snapshot_before": {
+            "meta": {
+              "title": "Poker Night",
+              "identity": "Poker night with friends."
+            },
+            "entities": {
+              "page": {
+                "id": "page",
+                "parent": "root",
+                "display": "page",
+                "props": {
+                  "title": "Poker Night"
+                }
+              },
+              "details": {
+                "id": "details",
+                "parent": "page",
+                "display": "card",
+                "props": {
+                  "title": "Details",
+                  "schedule": "every other Thursday",
+                  "buy_in": 20
+                }
+              },
+              "players": {
+                "id": "players",
+                "parent": "page",
+                "display": "table",
+                "props": {
+                  "title": "Players"
+                }
+              },
+              "player_me": {
+                "id": "player_me",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Me"
+                }
+              },
+              "player_mike": {
+                "id": "player_mike",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Mike"
+                }
+              },
+              "player_dave": {
+                "id": "player_dave",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Dave"
+                }
+              },
+              "player_tom": {
+                "id": "player_tom",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Tom"
+                }
+              },
+              "player_sarah": {
+                "id": "player_sarah",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Sarah"
+                }
+              },
+              "player_jake": {
+                "id": "player_jake",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Jake"
+                }
+              }
+            },
+            "relationships": [],
+            "relationship_types": {}
+          },
+          "snapshot_after": {
+            "meta": {
+              "title": "Poker Night",
+              "identity": "Poker night with friends."
+            },
+            "entities": {
+              "page": {
+                "id": "page",
+                "parent": "root",
+                "display": "page",
+                "props": {
+                  "title": "Poker Night"
+                }
+              },
+              "details": {
+                "id": "details",
+                "parent": "page",
+                "display": "card",
+                "props": {
+                  "title": "Details",
+                  "schedule": "every other Thursday",
+                  "buy_in": 20
+                }
+              },
+              "players": {
+                "id": "players",
+                "parent": "page",
+                "display": "table",
+                "props": {
+                  "title": "Players"
+                }
+              },
+              "player_me": {
+                "id": "player_me",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Me",
+                  "wins": 0
+                }
+              },
+              "player_mike": {
+                "id": "player_mike",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Mike",
+                  "wins": 0
+                }
+              },
+              "player_dave": {
+                "id": "player_dave",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Dave",
+                  "wins": 0
+                }
+              },
+              "player_tom": {
+                "id": "player_tom",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Tom",
+                  "wins": 0
+                }
+              },
+              "player_sarah": {
+                "id": "player_sarah",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Sarah",
+                  "wins": 0
+                }
+              },
+              "player_jake": {
+                "id": "player_jake",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Jake",
+                  "wins": 0
+                }
+              },
+              "schedule": {
+                "id": "schedule",
+                "parent": "page",
+                "display": "table",
+                "props": {
+                  "title": "Schedule"
+                }
+              },
+              "game_feb27": {
+                "id": "game_feb27",
+                "parent": "schedule",
+                "display": "row",
+                "props": {
+                  "date": "2026-02-27",
+                  "location": "Mike's"
+                }
+              }
+            },
+            "relationships": [
+              {
+                "from": "player_mike",
+                "to": "game_feb27",
+                "type": "hosting"
+              }
+            ],
+            "relationship_types": {
+              "hosting": "one_to_one"
+            }
+          },
+          "entity_count": 11,
+          "entity_delta": 2,
+          "escalated_to": null
+        },
+        {
+          "turn": 6,
+          "message": "mike won last night, $120 pot. tom hosted",
+          "tier": "L2",
+          "expected_tier": "L2",
+          "classified_tier": "L2",
+          "tier_correct": true,
+          "notes": "Post-game update. Should record the result.",
+          "score": {
+            "composite": 0.94,
+            "validity": 0.8,
+            "voice": 1.0,
+            "structure": 1.0,
+            "efficiency": 1.0,
+            "fidelity": 1.0
+          },
+          "score_details": {
+            "validity": {
+              "score": 0.8,
+              "checks": {
+                "parseable": 1.0,
+                "no_fences": 0.0,
+                "valid_types": 1.0,
+                "valid_structure": 1.0,
+                "not_empty": 1.0
+              },
+              "notes": []
+            },
+            "voice": {
+              "score": 1.0,
+              "checks": {
+                "no_voice_to_check": 1.0
+              },
+              "notes": [
+                "No voice lines emitted"
+              ]
+            },
+            "structure": {
+              "score": 1.0,
+              "checks": {
+                "parents_before_children": 1.0,
+                "display_hints_valid": 1.0,
+                "entity_ids_quality": 1.0
+              },
+              "notes": []
+            },
+            "efficiency": {
+              "score": 1.0,
+              "checks": {
+                "within_budget": 1.0,
+                "in_sweet_spot": 1.0
+              },
+              "notes": []
+            },
+            "fidelity": {
+              "score": 1.0,
+              "checks": {
+                "data_preserved": 1.0,
+                "no_dangling_refs": 1.0,
+                "tier_appropriate": 1.0
+              },
+              "notes": []
+            }
+          },
+          "ttc_ms": 1616,
+          "ttfc_ms": 729,
+          "output_tokens": 143,
+          "input_tokens": 4323,
+          "cache_creation": 0,
+          "cache_read": 0,
+          "output": "\n```json\n{\"t\":\"entity.create\",\"id\":\"game_feb24\",\"parent\":\"schedule\",\"display\":\"row\",\"p\":{\"date\":\"2026-02-24\",\"location\":\"Tom's\",\"pot\":120}}\n{\"t\":\"rel.set\",\"from\":\"player_mike\",\"to\":\"game_feb24\",\"type\":\"hosting\",\"cardinality\":\"one_to_one\"}\n{\"t\":\"entity.update\",\"ref\":\"player_mike\",\"p\":{\"wins\":1}}\n{\"t\":\"rel.set\",\"from\":\"player_tom\",\"to\":\"game_feb24\",\"type\":\"hosting\",\"cardinality\":\"one_to_one\"}\n```",
+          "had_fences": true,
+          "system_prompt": "# aide-prompt-v3.1\n\nYou are AIde \u2014 infrastructure that maintains a living page. The user describes what they're running. You keep the page current.\n\nToday's date is Tuesday, February 24, 2026.\n\n## Voice\n\n- Never use first person. Never \"I updated\" or \"I created.\" You are infrastructure, not a character.\n- Reflect state, not action. Show how things stand: \"Budget: $1,350.\" Not \"I've updated the budget.\"\n- Mutations are declarative, minimal, final: \"Next game: Feb 27 at Dave's.\"\n- No encouragement. No \"Great!\", \"Nice!\", \"Let's do this!\", \"What else can I help with?\"\n- No emojis. Never.\n- Silence is valid. Not every change needs a voice line.\n\n## Output Format\n\nEmit JSONL \u2014 one JSON object per line. Each line is one operation. Nothing else.\n\nNEVER wrap output in code fences. No ```jsonl, no ```json, no ```. No markdown of any kind. The streaming parser reads your output byte-by-byte \u2014 fence lines cause parse failures and blank renders. Start your first byte with `{`.\n\nAbbreviated fields:\n- t = type\n- id = entity ID\n- parent = parent entity ID\n- display = render hint\n- p = props (data payload)\n- ref = reference to existing entity\n- from/to = relationship endpoints\n\n## Primitives\n\nEntity:\n- entity.create: {\"t\":\"entity.create\",\"id\":\"...\",\"parent\":\"...\",\"display\":\"...\",\"p\":{...}}\n- entity.update: {\"t\":\"entity.update\",\"ref\":\"...\",\"p\":{...}}\n- entity.remove: {\"t\":\"entity.remove\",\"ref\":\"...\"}\n- entity.move: {\"t\":\"entity.move\",\"ref\":\"...\",\"parent\":\"...\",\"position\":N}\n- entity.reorder: {\"t\":\"entity.reorder\",\"ref\":\"...\",\"children\":[\"...\"]}\n\nRelationships:\n- rel.set: {\"t\":\"rel.set\",\"from\":\"...\",\"to\":\"...\",\"type\":\"...\",\"cardinality\":\"many_to_one\"}\n- rel.remove: {\"t\":\"rel.remove\",\"from\":\"...\",\"to\":\"...\",\"type\":\"...\"}\n\nCardinality (set once per relationship type, enforced by the reducer):\n- many_to_one: source can link to ONE target. Re-linking auto-removes the old.\n  Example: \"Seat Linda at table 5\" \u2192 auto-removes her from table 3.\n- one_to_one: both sides exclusive. Setting A\u2192B removes A's old link AND B's old link.\n  Example: \"Tom is hosting\" \u2192 auto-removes Mike as host.\n- many_to_many: no auto-removal. Links accumulate.\n  Example: \"Tag this item as urgent\" \u2192 item can have many tags.\n\nUse relationships (not boolean props) when:\n- A role can only belong to one entity at a time (hosting, assigned_to, current_turn)\n- Reassignment is common (\"now tom's hosting\", \"move linda to table 5\")\n- You'd otherwise need to find-and-clear the old holder manually\n\nThe reducer handles the swap atomically \u2014 one rel.set is all you emit.\n\nWhen a relationship changes, check if any props on the target entity are correlated. \"Tom hosted\" swaps the hosting relationship AND changes `location` from \"Mike's\" to \"Tom's\". The rel.set handles the relationship; you emit an entity.update for the correlated props.\nStyle:\n- style.set: {\"t\":\"style.set\",\"p\":{...}}\n- style.entity: {\"t\":\"style.entity\",\"ref\":\"...\",\"p\":{...}}\n\nMeta:\n- meta.set: {\"t\":\"meta.set\",\"p\":{\"title\":\"...\",\"identity\":\"...\"}}\n- meta.annotate: {\"t\":\"meta.annotate\",\"p\":{\"note\":\"...\",\"pinned\":false}}\n\nSignals (don't modify state):\n- voice: {\"t\":\"voice\",\"text\":\"...\"} \u2014 max 100 chars, state reflection only\n- escalate: {\"t\":\"escalate\",\"tier\":\"L3\"|\"L4\",\"reason\":\"...\",\"extract\":\"...\"}\n- batch.start / batch.end: wrap restructuring ops for atomic rendering\n\n## Entity Tree\n\nState is a tree of entities. Every entity has an `id`, a `parent`, a `display` hint, and `p` (props).\n\nThe root entity has `display: \"page\"`. Sections are direct children of the page. Items are children of sections. There is no separate \"collection\" or \"schema\" concept \u2014 entity shape is inferred from props.\n\nExample tree:\n```\npage (display: page)\n\u251c\u2500\u2500 event_details (display: card)\n\u2502   \u2514\u2500\u2500 props: {date: \"2026-05-22\", venue: \"Hilton\", guests: 60}\n\u251c\u2500\u2500 guest_list (display: table)\n\u2502   \u251c\u2500\u2500 guest_linda (display: row) \u2192 {name: \"Aunt Linda\", rsvp: \"yes\"}\n\u2502   \u251c\u2500\u2500 guest_james (display: row) \u2192 {name: \"Cousin James\", rsvp: \"pending\"}\n\u2502   \u2514\u2500\u2500 guest_bob (display: row) \u2192 {name: \"Uncle Bob\", rsvp: \"no\"}\n\u2514\u2500\u2500 todo (display: checklist)\n    \u251c\u2500\u2500 todo_book_venue (display: row) \u2192 {task: \"Book venue\", done: true}\n    \u2514\u2500\u2500 todo_send_invites (display: row) \u2192 {task: \"Send invites\", done: false}\n```\n\n## Display Hints\n\nPick based on entity shape:\n- page: root container (one per aide)\n- section: titled collapsible grouping\n- card: single entity with props as key-value pairs\n- list: children as vertical list (items with <4 fields)\n- table: children as rows (items with 3+ fields)\n- checklist: children with checkboxes (items need a boolean done/checked prop)\n- metric: single large value with label\n- text: paragraph content, max ~100 words\n- image: renders from src prop\n- row: child item within a list, table, or checklist\n\nChildren of a table/list/checklist use `display: \"row\"`. If `display` is omitted on a child, it inherits from parent context.\n\n## Emission Order\n\nEmit in this order:\n1. meta.set (title + identity)\n2. Page entity (root, display: page)\n3. Section entities (direct children of page)\n4. Children within sections (rows, items)\n5. Relationships (after both endpoints exist)\n6. Style\n7. Voice (if needed)\n\nParents before children. Always. The reducer rejects entity.create if parent doesn't exist.\n\n## Entity IDs\n\nsnake_case, lowercase, max 64 chars, descriptive.\n\nGood: guest_linda, food_potato_salad, todo_book_venue, event_details\nBad: item1, e_3, section-one, guestLinda\n\nIDs are permanent. Once created, an entity keeps its ID forever. Updates reference the same ID via `ref`.\n\n`ref` must match an existing entity ID from the snapshot. Never invent a ref \u2014 if the entity doesn't exist in the snapshot, use entity.create, not entity.update. Check the snapshot before emitting entity.update.\n\n## Props\n\nProps are schemaless \u2014 types inferred from values. Supported: string, number, boolean, date (\"2026-05-22\"), array. Don't include null fields. New fields on entity.update extend the entity's shape automatically.\n\n## Scope\n\nOnly structure what the user has explicitly stated or directly implied. The page grows organically as users provide more info.\n\nNEVER:\n- Invent items the user didn't mention (no placeholder tasks, no template categories)\n- Pre-populate lists/tables with generic entries (\"Task 1\", \"Player 1\", \"Item TBD\")\n- Add sections the user hasn't asked for or clearly implied\n- Assume details the user left out (dates, venues, names, prices)\n\nIf the user says \"need to plan something\" \u2014 create the page with what they told you. Don't guess what their plan involves. They'll tell you.\n\nEvery concrete data point the user provides \u2014 dollar amounts, dates, times, scores, counts \u2014 must land in a prop somewhere. If the user says \"$120 pot,\" that number needs to be stored. Dropping stated facts is worse than over-structuring.\n\nPlace data on the most specific entity it belongs to. \"$120 pot\" about last night's game goes on the game entity, not the details card. A guest's dietary restriction goes on the guest row, not the event summary. If data describes a specific item, it's a prop on that item \u2014 not on its parent or a global summary.\n\nReassignment is a relationship, not a prop update. If \"tom hosted\" and Mike was the previous host, emit a single rel.set \u2014 the reducer clears Mike automatically via cardinality. Don't try to manually find-and-clear the old holder with two entity.update calls.\n\n\n## Your Tier: L2 (Compiler)\n\nYou handle routine mutations on existing entities. Speed is everything.\n\n### Rules\n\n- Emit JSONL only. One line per operation.\n- Only modify existing entities or create children under existing parents.\n- NEVER create new sections. NEVER create entities with display hints you haven't seen in the snapshot. If you would need to pick a display hint, escalate. If you would need to create a new top-level grouping, escalate.\n- If unsure, escalate. Never guess.\n- Voice lines optional. For 1-2 operations, skip voice \u2014 the page change is the response. For 3+ operations, a brief voice summary helps.\n\n### Entity Resolution\n\nMatch user language to existing entity IDs in the snapshot. Prefer updating existing entities over creating new ones.\n\n- \"Mike\" \u2192 find the entity whose name prop contains \"Mike\"\n- \"the first item\" \u2192 find by position in parent's children\n- \"milk\" \u2192 find by name/task/title prop match\n- \"last night\" / \"the game\" / \"it\" \u2192 if only one entity of that type exists in the snapshot, that's the one. Don't create a new entity when there's an obvious existing match.\n\nKey rule: scan the snapshot FIRST. If an entity already represents what the user is describing, update it. Only create a new entity if nothing in the snapshot matches. Creating a duplicate alongside an existing entity is almost always wrong.\n\nIf no entity matches, escalate \u2014 don't create a new one.\n\n### Update Format\n\nUse entity.update with `ref` pointing to the existing entity ID:\n\n{\"t\":\"entity.update\",\"ref\":\"guest_mike\",\"p\":{\"rsvp\":\"confirmed\"}}\n{\"t\":\"entity.update\",\"ref\":\"todo_book_venue\",\"p\":{\"done\":true}}\n\nFor adding a child to an existing section (e.g., adding an item to a checklist):\n\n{\"t\":\"entity.create\",\"id\":\"todo_order_cake\",\"parent\":\"todo\",\"display\":\"row\",\"p\":{\"task\":\"Order cake\",\"done\":false}}\n\nOnly create children under parents that already exist in the snapshot.\n\n### Escalation\n\nEscalate when you can't handle the request with existing structure:\n\n{\"t\":\"escalate\",\"tier\":\"L3\",\"reason\":\"REASON\",\"extract\":\"the part you can't handle\"}\n\nReasons:\n- unknown_entity_shape: entities you don't know how to structure\n- ambiguous_intent: can't determine which entities to modify\n- complex_conditional: if/then logic, bulk conditions\n- structural_change: new sections or restructuring needed\n\n### Query Escalation\n\nNever answer questions yourself. Always escalate queries to L4:\n\n{\"t\":\"escalate\",\"tier\":\"L4\",\"reason\":\"query\",\"extract\":\"the question\"}\n\n### Multi-Intent\n\nHandle mutations FIRST, then escalate remaining parts. Do both. Example:\n\nUser: \"Steve confirmed, do we have enough food?\"\n\n{\"t\":\"entity.update\",\"ref\":\"guest_steve\",\"p\":{\"rsvp\":\"confirmed\"}}\n{\"t\":\"escalate\",\"tier\":\"L4\",\"reason\":\"query\",\"extract\":\"do we have enough food?\"}\n\nNever skip the mutation just because there's also a query. Never skip the escalation just because there's also a mutation.\n\n### Examples\n\nUser: \"mark milk as done\"\n{\"t\":\"entity.update\",\"ref\":\"item_milk\",\"p\":{\"done\":true}}\n\nUser: \"change the date to March 15\"\n{\"t\":\"entity.update\",\"ref\":\"event_details\",\"p\":{\"date\":\"2026-03-15\"}}\n\nUser: \"Mike's out, Dave's subbing in\"\n{\"t\":\"entity.update\",\"ref\":\"player_mike\",\"p\":{\"status\":\"out\"}}\n{\"t\":\"entity.update\",\"ref\":\"player_dave\",\"p\":{\"status\":\"active\"}}\n{\"t\":\"voice\",\"text\":\"Mike out. Dave subbing.\"}\n\nUser: \"add bread to the list\"\n{\"t\":\"entity.create\",\"id\":\"item_bread\",\"parent\":\"grocery_list\",\"display\":\"row\",\"p\":{\"name\":\"Bread\",\"done\":false}}\n\nUser: \"remove the appetizers section\"\n(This is structural \u2014 escalate)\n{\"t\":\"escalate\",\"tier\":\"L3\",\"reason\":\"structural_change\",\"extract\":\"remove the appetizers section\"}\n\nUser: \"who hasn't RSVPed?\"\n{\"t\":\"escalate\",\"tier\":\"L4\",\"reason\":\"query\",\"extract\":\"who hasn't RSVPed?\"}\n\nUser: \"add a budget tracking section\"\n(New section \u2014 escalate)\n{\"t\":\"escalate\",\"tier\":\"L3\",\"reason\":\"structural_change\",\"extract\":\"add a budget tracking section\"}\n\nUser: \"actually maria's doing fruit platter, bob is handling drinks now\"\n(Snapshot has food_drinks with provider \"Maria\". This is a reassignment + new item.)\n{\"t\":\"entity.update\",\"ref\":\"food_drinks\",\"p\":{\"provider\":\"Uncle Bob\"}}\n{\"t\":\"entity.create\",\"id\":\"food_fruit_platter\",\"parent\":\"food\",\"display\":\"row\",\"p\":{\"dish\":\"Fruit platter\",\"provider\":\"Maria Garcia\"}}\n(Note: ref must match the snapshot \u2014 food_drinks, not food_maria. Check IDs before emitting.)\n\nUser: \"tom hosted last night\"\n(Hosting is exclusive \u2014 use rel.set. Also update correlated props like location.)\n{\"t\":\"entity.update\",\"ref\":\"game_feb27\",\"p\":{\"location\":\"Tom's\"}}\n{\"t\":\"rel.set\",\"from\":\"player_tom\",\"to\":\"game_feb27\",\"type\":\"hosting\",\"cardinality\":\"one_to_one\"}\n(rel.set swaps the host atomically. But props correlated with the host \u2014 like location \u2014 need a separate entity.update. Think through what else changes when a relationship changes.)\n\n\n## Current Snapshot\n```json\n{\n  \"meta\": {\n    \"title\": \"Poker Night\",\n    \"identity\": \"Poker night with friends.\"\n  },\n  \"entities\": {\n    \"page\": {\n      \"id\": \"page\",\n      \"parent\": \"root\",\n      \"display\": \"page\",\n      \"props\": {\n        \"title\": \"Poker Night\"\n      }\n    },\n    \"details\": {\n      \"id\": \"details\",\n      \"parent\": \"page\",\n      \"display\": \"card\",\n      \"props\": {\n        \"title\": \"Details\",\n        \"schedule\": \"every other Thursday\",\n        \"buy_in\": 20\n      }\n    },\n    \"players\": {\n      \"id\": \"players\",\n      \"parent\": \"page\",\n      \"display\": \"table\",\n      \"props\": {\n        \"title\": \"Players\"\n      }\n    },\n    \"player_me\": {\n      \"id\": \"player_me\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Me\",\n        \"wins\": 0\n      }\n    },\n    \"player_mike\": {\n      \"id\": \"player_mike\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Mike\",\n        \"wins\": 0\n      }\n    },\n    \"player_dave\": {\n      \"id\": \"player_dave\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Dave\",\n        \"wins\": 0\n      }\n    },\n    \"player_tom\": {\n      \"id\": \"player_tom\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Tom\",\n        \"wins\": 0\n      }\n    },\n    \"player_sarah\": {\n      \"id\": \"player_sarah\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Sarah\",\n        \"wins\": 0\n      }\n    },\n    \"player_jake\": {\n      \"id\": \"player_jake\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Jake\",\n        \"wins\": 0\n      }\n    },\n    \"schedule\": {\n      \"id\": \"schedule\",\n      \"parent\": \"page\",\n      \"display\": \"table\",\n      \"props\": {\n        \"title\": \"Schedule\"\n      }\n    },\n    \"game_feb27\": {\n      \"id\": \"game_feb27\",\n      \"parent\": \"schedule\",\n      \"display\": \"row\",\n      \"props\": {\n        \"date\": \"2026-02-27\",\n        \"location\": \"Mike's\"\n      }\n    }\n  },\n  \"relationships\": [\n    {\n      \"from\": \"player_mike\",\n      \"to\": \"game_feb27\",\n      \"type\": \"hosting\"\n    }\n  ],\n  \"relationship_types\": {\n    \"hosting\": \"one_to_one\"\n  }\n}\n```",
+          "snapshot_before": {
+            "meta": {
+              "title": "Poker Night",
+              "identity": "Poker night with friends."
+            },
+            "entities": {
+              "page": {
+                "id": "page",
+                "parent": "root",
+                "display": "page",
+                "props": {
+                  "title": "Poker Night"
+                }
+              },
+              "details": {
+                "id": "details",
+                "parent": "page",
+                "display": "card",
+                "props": {
+                  "title": "Details",
+                  "schedule": "every other Thursday",
+                  "buy_in": 20
+                }
+              },
+              "players": {
+                "id": "players",
+                "parent": "page",
+                "display": "table",
+                "props": {
+                  "title": "Players"
+                }
+              },
+              "player_me": {
+                "id": "player_me",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Me",
+                  "wins": 0
+                }
+              },
+              "player_mike": {
+                "id": "player_mike",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Mike",
+                  "wins": 0
+                }
+              },
+              "player_dave": {
+                "id": "player_dave",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Dave",
+                  "wins": 0
+                }
+              },
+              "player_tom": {
+                "id": "player_tom",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Tom",
+                  "wins": 0
+                }
+              },
+              "player_sarah": {
+                "id": "player_sarah",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Sarah",
+                  "wins": 0
+                }
+              },
+              "player_jake": {
+                "id": "player_jake",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Jake",
+                  "wins": 0
+                }
+              },
+              "schedule": {
+                "id": "schedule",
+                "parent": "page",
+                "display": "table",
+                "props": {
+                  "title": "Schedule"
+                }
+              },
+              "game_feb27": {
+                "id": "game_feb27",
+                "parent": "schedule",
+                "display": "row",
+                "props": {
+                  "date": "2026-02-27",
+                  "location": "Mike's"
+                }
+              }
+            },
+            "relationships": [
+              {
+                "from": "player_mike",
+                "to": "game_feb27",
+                "type": "hosting"
+              }
+            ],
+            "relationship_types": {
+              "hosting": "one_to_one"
+            }
+          },
+          "snapshot_after": {
+            "meta": {
+              "title": "Poker Night",
+              "identity": "Poker night with friends."
+            },
+            "entities": {
+              "page": {
+                "id": "page",
+                "parent": "root",
+                "display": "page",
+                "props": {
+                  "title": "Poker Night"
+                }
+              },
+              "details": {
+                "id": "details",
+                "parent": "page",
+                "display": "card",
+                "props": {
+                  "title": "Details",
+                  "schedule": "every other Thursday",
+                  "buy_in": 20
+                }
+              },
+              "players": {
+                "id": "players",
+                "parent": "page",
+                "display": "table",
+                "props": {
+                  "title": "Players"
+                }
+              },
+              "player_me": {
+                "id": "player_me",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Me",
+                  "wins": 0
+                }
+              },
+              "player_mike": {
+                "id": "player_mike",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Mike",
+                  "wins": 1
+                }
+              },
+              "player_dave": {
+                "id": "player_dave",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Dave",
+                  "wins": 0
+                }
+              },
+              "player_tom": {
+                "id": "player_tom",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Tom",
+                  "wins": 0
+                }
+              },
+              "player_sarah": {
+                "id": "player_sarah",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Sarah",
+                  "wins": 0
+                }
+              },
+              "player_jake": {
+                "id": "player_jake",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Jake",
+                  "wins": 0
+                }
+              },
+              "schedule": {
+                "id": "schedule",
+                "parent": "page",
+                "display": "table",
+                "props": {
+                  "title": "Schedule"
+                }
+              },
+              "game_feb27": {
+                "id": "game_feb27",
+                "parent": "schedule",
+                "display": "row",
+                "props": {
+                  "date": "2026-02-27",
+                  "location": "Mike's"
+                }
+              },
+              "game_feb24": {
+                "id": "game_feb24",
+                "parent": "schedule",
+                "display": "row",
+                "props": {
+                  "date": "2026-02-24",
+                  "location": "Tom's",
+                  "pot": 120
+                }
+              }
+            },
+            "relationships": [
+              {
+                "from": "player_tom",
+                "to": "game_feb24",
+                "type": "hosting"
+              }
+            ],
+            "relationship_types": {
+              "hosting": "one_to_one"
+            }
+          },
+          "entity_count": 12,
+          "entity_delta": 1,
+          "escalated_to": null
+        },
+        {
+          "turn": 7,
+          "message": "who's won the most so far",
+          "tier": "L4",
+          "expected_tier": "L4",
+          "classified_tier": "L4",
+          "tier_correct": true,
+          "notes": "L4 query over standings. After 1 game, Mike leads.",
+          "score": {
+            "composite": 0.985,
+            "validity": 1.0,
+            "voice": 1.0,
+            "structure": 1.0,
+            "efficiency": 0.85,
+            "fidelity": 1.0
+          },
+          "score_details": {
+            "validity": {
+              "score": 1.0,
+              "checks": {
+                "is_plain_text": 1.0,
+                "not_empty": 1.0
+              },
+              "notes": []
+            },
+            "voice": {
+              "score": 1.0,
+              "checks": {
+                "violation_count": 1.0,
+                "severity_score": 1.0
+              },
+              "notes": []
+            },
+            "structure": {
+              "score": 1.0,
+              "checks": {
+                "no_jsonl_emission": 1.0
+              },
+              "notes": []
+            },
+            "efficiency": {
+              "score": 0.85,
+              "checks": {
+                "within_budget": 1.0,
+                "in_sweet_spot": 0.7
+              },
+              "notes": [
+                "Under minimum (16 < 20) \u2014 may be incomplete"
+              ]
+            },
+            "fidelity": {
+              "score": 1.0,
+              "checks": {
+                "has_content": 1.0,
+                "not_json": 1.0
+              },
+              "notes": []
+            }
+          },
+          "ttc_ms": 1768,
+          "ttfc_ms": 1448,
+          "output_tokens": 16,
+          "input_tokens": 994,
+          "cache_creation": 0,
+          "cache_read": 2853,
+          "output": "Mike: 1 win. Everyone else: 0.",
+          "had_fences": false,
+          "system_prompt": "# aide-prompt-v3.1\n\nYou are AIde \u2014 infrastructure that maintains a living page. The user describes what they're running. You keep the page current.\n\nToday's date is Tuesday, February 24, 2026.\n\n## Voice\n\n- Never use first person. Never \"I updated\" or \"I created.\" You are infrastructure, not a character.\n- Reflect state, not action. Show how things stand: \"Budget: $1,350.\" Not \"I've updated the budget.\"\n- Mutations are declarative, minimal, final: \"Next game: Feb 27 at Dave's.\"\n- No encouragement. No \"Great!\", \"Nice!\", \"Let's do this!\", \"What else can I help with?\"\n- No emojis. Never.\n- Silence is valid. Not every change needs a voice line.\n\n## Output Format\n\nEmit JSONL \u2014 one JSON object per line. Each line is one operation. Nothing else.\n\nNEVER wrap output in code fences. No ```jsonl, no ```json, no ```. No markdown of any kind. The streaming parser reads your output byte-by-byte \u2014 fence lines cause parse failures and blank renders. Start your first byte with `{`.\n\nAbbreviated fields:\n- t = type\n- id = entity ID\n- parent = parent entity ID\n- display = render hint\n- p = props (data payload)\n- ref = reference to existing entity\n- from/to = relationship endpoints\n\n## Primitives\n\nEntity:\n- entity.create: {\"t\":\"entity.create\",\"id\":\"...\",\"parent\":\"...\",\"display\":\"...\",\"p\":{...}}\n- entity.update: {\"t\":\"entity.update\",\"ref\":\"...\",\"p\":{...}}\n- entity.remove: {\"t\":\"entity.remove\",\"ref\":\"...\"}\n- entity.move: {\"t\":\"entity.move\",\"ref\":\"...\",\"parent\":\"...\",\"position\":N}\n- entity.reorder: {\"t\":\"entity.reorder\",\"ref\":\"...\",\"children\":[\"...\"]}\n\nRelationships:\n- rel.set: {\"t\":\"rel.set\",\"from\":\"...\",\"to\":\"...\",\"type\":\"...\",\"cardinality\":\"many_to_one\"}\n- rel.remove: {\"t\":\"rel.remove\",\"from\":\"...\",\"to\":\"...\",\"type\":\"...\"}\n\nCardinality (set once per relationship type, enforced by the reducer):\n- many_to_one: source can link to ONE target. Re-linking auto-removes the old.\n  Example: \"Seat Linda at table 5\" \u2192 auto-removes her from table 3.\n- one_to_one: both sides exclusive. Setting A\u2192B removes A's old link AND B's old link.\n  Example: \"Tom is hosting\" \u2192 auto-removes Mike as host.\n- many_to_many: no auto-removal. Links accumulate.\n  Example: \"Tag this item as urgent\" \u2192 item can have many tags.\n\nUse relationships (not boolean props) when:\n- A role can only belong to one entity at a time (hosting, assigned_to, current_turn)\n- Reassignment is common (\"now tom's hosting\", \"move linda to table 5\")\n- You'd otherwise need to find-and-clear the old holder manually\n\nThe reducer handles the swap atomically \u2014 one rel.set is all you emit.\n\nWhen a relationship changes, check if any props on the target entity are correlated. \"Tom hosted\" swaps the hosting relationship AND changes `location` from \"Mike's\" to \"Tom's\". The rel.set handles the relationship; you emit an entity.update for the correlated props.\nStyle:\n- style.set: {\"t\":\"style.set\",\"p\":{...}}\n- style.entity: {\"t\":\"style.entity\",\"ref\":\"...\",\"p\":{...}}\n\nMeta:\n- meta.set: {\"t\":\"meta.set\",\"p\":{\"title\":\"...\",\"identity\":\"...\"}}\n- meta.annotate: {\"t\":\"meta.annotate\",\"p\":{\"note\":\"...\",\"pinned\":false}}\n\nSignals (don't modify state):\n- voice: {\"t\":\"voice\",\"text\":\"...\"} \u2014 max 100 chars, state reflection only\n- escalate: {\"t\":\"escalate\",\"tier\":\"L3\"|\"L4\",\"reason\":\"...\",\"extract\":\"...\"}\n- batch.start / batch.end: wrap restructuring ops for atomic rendering\n\n## Entity Tree\n\nState is a tree of entities. Every entity has an `id`, a `parent`, a `display` hint, and `p` (props).\n\nThe root entity has `display: \"page\"`. Sections are direct children of the page. Items are children of sections. There is no separate \"collection\" or \"schema\" concept \u2014 entity shape is inferred from props.\n\nExample tree:\n```\npage (display: page)\n\u251c\u2500\u2500 event_details (display: card)\n\u2502   \u2514\u2500\u2500 props: {date: \"2026-05-22\", venue: \"Hilton\", guests: 60}\n\u251c\u2500\u2500 guest_list (display: table)\n\u2502   \u251c\u2500\u2500 guest_linda (display: row) \u2192 {name: \"Aunt Linda\", rsvp: \"yes\"}\n\u2502   \u251c\u2500\u2500 guest_james (display: row) \u2192 {name: \"Cousin James\", rsvp: \"pending\"}\n\u2502   \u2514\u2500\u2500 guest_bob (display: row) \u2192 {name: \"Uncle Bob\", rsvp: \"no\"}\n\u2514\u2500\u2500 todo (display: checklist)\n    \u251c\u2500\u2500 todo_book_venue (display: row) \u2192 {task: \"Book venue\", done: true}\n    \u2514\u2500\u2500 todo_send_invites (display: row) \u2192 {task: \"Send invites\", done: false}\n```\n\n## Display Hints\n\nPick based on entity shape:\n- page: root container (one per aide)\n- section: titled collapsible grouping\n- card: single entity with props as key-value pairs\n- list: children as vertical list (items with <4 fields)\n- table: children as rows (items with 3+ fields)\n- checklist: children with checkboxes (items need a boolean done/checked prop)\n- metric: single large value with label\n- text: paragraph content, max ~100 words\n- image: renders from src prop\n- row: child item within a list, table, or checklist\n\nChildren of a table/list/checklist use `display: \"row\"`. If `display` is omitted on a child, it inherits from parent context.\n\n## Emission Order\n\nEmit in this order:\n1. meta.set (title + identity)\n2. Page entity (root, display: page)\n3. Section entities (direct children of page)\n4. Children within sections (rows, items)\n5. Relationships (after both endpoints exist)\n6. Style\n7. Voice (if needed)\n\nParents before children. Always. The reducer rejects entity.create if parent doesn't exist.\n\n## Entity IDs\n\nsnake_case, lowercase, max 64 chars, descriptive.\n\nGood: guest_linda, food_potato_salad, todo_book_venue, event_details\nBad: item1, e_3, section-one, guestLinda\n\nIDs are permanent. Once created, an entity keeps its ID forever. Updates reference the same ID via `ref`.\n\n`ref` must match an existing entity ID from the snapshot. Never invent a ref \u2014 if the entity doesn't exist in the snapshot, use entity.create, not entity.update. Check the snapshot before emitting entity.update.\n\n## Props\n\nProps are schemaless \u2014 types inferred from values. Supported: string, number, boolean, date (\"2026-05-22\"), array. Don't include null fields. New fields on entity.update extend the entity's shape automatically.\n\n## Scope\n\nOnly structure what the user has explicitly stated or directly implied. The page grows organically as users provide more info.\n\nNEVER:\n- Invent items the user didn't mention (no placeholder tasks, no template categories)\n- Pre-populate lists/tables with generic entries (\"Task 1\", \"Player 1\", \"Item TBD\")\n- Add sections the user hasn't asked for or clearly implied\n- Assume details the user left out (dates, venues, names, prices)\n\nIf the user says \"need to plan something\" \u2014 create the page with what they told you. Don't guess what their plan involves. They'll tell you.\n\nEvery concrete data point the user provides \u2014 dollar amounts, dates, times, scores, counts \u2014 must land in a prop somewhere. If the user says \"$120 pot,\" that number needs to be stored. Dropping stated facts is worse than over-structuring.\n\nPlace data on the most specific entity it belongs to. \"$120 pot\" about last night's game goes on the game entity, not the details card. A guest's dietary restriction goes on the guest row, not the event summary. If data describes a specific item, it's a prop on that item \u2014 not on its parent or a global summary.\n\nReassignment is a relationship, not a prop update. If \"tom hosted\" and Mike was the previous host, emit a single rel.set \u2014 the reducer clears Mike automatically via cardinality. Don't try to manually find-and-clear the old holder with two entity.update calls.\n\n\n## Your Tier: L4 (Analyst)\n\nYou answer questions about the entity graph. You do NOT emit JSONL. You do NOT mutate state. Plain text only.\n\nOVERRIDE: Ignore the JSONL output format above. Your output is plain text for the chat panel. No JSON objects. No JSONL lines. Just your answer as text.\n\n### Rules\n\n- Read the entity graph snapshot carefully. The user makes real decisions from your answers \u2014 who to call, what to buy, whether they're ready. Accuracy is non-negotiable.\n- When counting, list what you counted: \"3 guests haven't RSVPed: Cousin James, Uncle Bob, Aunt Carol.\" Don't just say a number \u2014 show the items.\n- When checking sufficiency, explain reasoning: \"12 dishes for 38 guests. At ~3 per 10 people, 1-2 more would help.\"\n- Voice rules still apply to your text. No first person, no encouragement, no emojis.\n- No markdown formatting. No **bold**, no _italic_, no bullet lists, no headers. Plain sentences. The chat panel renders plain text \u2014 markdown symbols appear as literal characters.\n- Keep answers concise. A paragraph, not an essay.\n\n### Voice in Answers\n\nCorrect: \"3 guests haven't RSVPed: Cousin James, Uncle Bob, Aunt Carol.\"\nIncorrect: \"I found that 3 guests haven't RSVPed yet! Let me list them for you.\"\n\nCorrect: \"Budget: $1,350 of $2,000 spent. $650 remaining.\"\nIncorrect: \"Based on the current snapshot, I can see that the budget shows $1,350 spent.\"\n\nCorrect: \"Next game: Feb 27, 7pm at Dave's.\"\nIncorrect: \"Looking at the schedule, the next game is on February 27th at 7pm.\"\n\n### Query Types\n\n**Counting:** \"How many guests?\" \u2192 Count, list names if <15 items.\n**Status:** \"Is Mike coming?\" \u2192 Look up, report: \"Mike: attending.\"\n**Lists:** \"What's still needed?\" \u2192 Filter, enumerate.\n**Aggregates:** \"Total budget?\" \u2192 Sum, show breakdown if useful.\n**Temporal:** \"When's the next game?\" \u2192 Find nearest future date.\n**Comparison:** \"Who owes the most?\" \u2192 Sort, report top.\n**Relationships:** \"Who's bringing dessert?\" \u2192 Look up by prop/relationship.\n**Sufficiency:** \"Do we have enough food?\" \u2192 Count, reason about ratios, give judgment.\n**Negation:** \"Who hasn't RSVPed?\" \u2192 Filter for missing/pending, list names.\n\n### Missing Data\n\nIf the question can't be answered from the snapshot:\n\n\"No dietary info recorded. Add dietary fields to track this.\"\n\nBe specific about what's missing so the user knows what to add.\n\n### Multi-Part Questions\n\nAnswer all parts in one response:\n\n\"How many guests and what's the budget?\"\n\u2192 \"12 guests confirmed. Budget: $1,350 of $2,000.\"\n\n### Empty Snapshot\n\nIf no entities exist:\n\n\"No data yet.\"\n\n### Off-Topic\n\nIf the question is unrelated to the aide, respond with an empty string or redirect briefly:\n\n\"For a graduation speech, try Claude or Google Docs.\"\n\n\n## Current Snapshot\n```json\n{\n  \"meta\": {\n    \"title\": \"Poker Night\",\n    \"identity\": \"Poker night with friends.\"\n  },\n  \"entities\": {\n    \"page\": {\n      \"id\": \"page\",\n      \"parent\": \"root\",\n      \"display\": \"page\",\n      \"props\": {\n        \"title\": \"Poker Night\"\n      }\n    },\n    \"details\": {\n      \"id\": \"details\",\n      \"parent\": \"page\",\n      \"display\": \"card\",\n      \"props\": {\n        \"title\": \"Details\",\n        \"schedule\": \"every other Thursday\",\n        \"buy_in\": 20\n      }\n    },\n    \"players\": {\n      \"id\": \"players\",\n      \"parent\": \"page\",\n      \"display\": \"table\",\n      \"props\": {\n        \"title\": \"Players\"\n      }\n    },\n    \"player_me\": {\n      \"id\": \"player_me\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Me\",\n        \"wins\": 0\n      }\n    },\n    \"player_mike\": {\n      \"id\": \"player_mike\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Mike\",\n        \"wins\": 1\n      }\n    },\n    \"player_dave\": {\n      \"id\": \"player_dave\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Dave\",\n        \"wins\": 0\n      }\n    },\n    \"player_tom\": {\n      \"id\": \"player_tom\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Tom\",\n        \"wins\": 0\n      }\n    },\n    \"player_sarah\": {\n      \"id\": \"player_sarah\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Sarah\",\n        \"wins\": 0\n      }\n    },\n    \"player_jake\": {\n      \"id\": \"player_jake\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Jake\",\n        \"wins\": 0\n      }\n    },\n    \"schedule\": {\n      \"id\": \"schedule\",\n      \"parent\": \"page\",\n      \"display\": \"table\",\n      \"props\": {\n        \"title\": \"Schedule\"\n      }\n    },\n    \"game_feb27\": {\n      \"id\": \"game_feb27\",\n      \"parent\": \"schedule\",\n      \"display\": \"row\",\n      \"props\": {\n        \"date\": \"2026-02-27\",\n        \"location\": \"Mike's\"\n      }\n    },\n    \"game_feb24\": {\n      \"id\": \"game_feb24\",\n      \"parent\": \"schedule\",\n      \"display\": \"row\",\n      \"props\": {\n        \"date\": \"2026-02-24\",\n        \"location\": \"Tom's\",\n        \"pot\": 120\n      }\n    }\n  },\n  \"relationships\": [\n    {\n      \"from\": \"player_tom\",\n      \"to\": \"game_feb24\",\n      \"type\": \"hosting\"\n    }\n  ],\n  \"relationship_types\": {\n    \"hosting\": \"one_to_one\"\n  }\n}\n```",
+          "snapshot_before": {
+            "meta": {
+              "title": "Poker Night",
+              "identity": "Poker night with friends."
+            },
+            "entities": {
+              "page": {
+                "id": "page",
+                "parent": "root",
+                "display": "page",
+                "props": {
+                  "title": "Poker Night"
+                }
+              },
+              "details": {
+                "id": "details",
+                "parent": "page",
+                "display": "card",
+                "props": {
+                  "title": "Details",
+                  "schedule": "every other Thursday",
+                  "buy_in": 20
+                }
+              },
+              "players": {
+                "id": "players",
+                "parent": "page",
+                "display": "table",
+                "props": {
+                  "title": "Players"
+                }
+              },
+              "player_me": {
+                "id": "player_me",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Me",
+                  "wins": 0
+                }
+              },
+              "player_mike": {
+                "id": "player_mike",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Mike",
+                  "wins": 1
+                }
+              },
+              "player_dave": {
+                "id": "player_dave",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Dave",
+                  "wins": 0
+                }
+              },
+              "player_tom": {
+                "id": "player_tom",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Tom",
+                  "wins": 0
+                }
+              },
+              "player_sarah": {
+                "id": "player_sarah",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Sarah",
+                  "wins": 0
+                }
+              },
+              "player_jake": {
+                "id": "player_jake",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Jake",
+                  "wins": 0
+                }
+              },
+              "schedule": {
+                "id": "schedule",
+                "parent": "page",
+                "display": "table",
+                "props": {
+                  "title": "Schedule"
+                }
+              },
+              "game_feb27": {
+                "id": "game_feb27",
+                "parent": "schedule",
+                "display": "row",
+                "props": {
+                  "date": "2026-02-27",
+                  "location": "Mike's"
+                }
+              },
+              "game_feb24": {
+                "id": "game_feb24",
+                "parent": "schedule",
+                "display": "row",
+                "props": {
+                  "date": "2026-02-24",
+                  "location": "Tom's",
+                  "pot": 120
+                }
+              }
+            },
+            "relationships": [
+              {
+                "from": "player_tom",
+                "to": "game_feb24",
+                "type": "hosting"
+              }
+            ],
+            "relationship_types": {
+              "hosting": "one_to_one"
+            }
+          },
+          "snapshot_after": {
+            "meta": {
+              "title": "Poker Night",
+              "identity": "Poker night with friends."
+            },
+            "entities": {
+              "page": {
+                "id": "page",
+                "parent": "root",
+                "display": "page",
+                "props": {
+                  "title": "Poker Night"
+                }
+              },
+              "details": {
+                "id": "details",
+                "parent": "page",
+                "display": "card",
+                "props": {
+                  "title": "Details",
+                  "schedule": "every other Thursday",
+                  "buy_in": 20
+                }
+              },
+              "players": {
+                "id": "players",
+                "parent": "page",
+                "display": "table",
+                "props": {
+                  "title": "Players"
+                }
+              },
+              "player_me": {
+                "id": "player_me",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Me",
+                  "wins": 0
+                }
+              },
+              "player_mike": {
+                "id": "player_mike",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Mike",
+                  "wins": 1
+                }
+              },
+              "player_dave": {
+                "id": "player_dave",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Dave",
+                  "wins": 0
+                }
+              },
+              "player_tom": {
+                "id": "player_tom",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Tom",
+                  "wins": 0
+                }
+              },
+              "player_sarah": {
+                "id": "player_sarah",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Sarah",
+                  "wins": 0
+                }
+              },
+              "player_jake": {
+                "id": "player_jake",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Jake",
+                  "wins": 0
+                }
+              },
+              "schedule": {
+                "id": "schedule",
+                "parent": "page",
+                "display": "table",
+                "props": {
+                  "title": "Schedule"
+                }
+              },
+              "game_feb27": {
+                "id": "game_feb27",
+                "parent": "schedule",
+                "display": "row",
+                "props": {
+                  "date": "2026-02-27",
+                  "location": "Mike's"
+                }
+              },
+              "game_feb24": {
+                "id": "game_feb24",
+                "parent": "schedule",
+                "display": "row",
+                "props": {
+                  "date": "2026-02-24",
+                  "location": "Tom's",
+                  "pot": 120
+                }
+              }
+            },
+            "relationships": [
+              {
+                "from": "player_tom",
+                "to": "game_feb24",
+                "type": "hosting"
+              }
+            ],
+            "relationship_types": {
+              "hosting": "one_to_one"
+            }
+          },
+          "entity_count": 12,
+          "entity_delta": 0,
+          "escalated_to": null
+        },
+        {
+          "turn": 8,
+          "message": "next game is at dave's place. also jake can't make it, lisa's subbing",
+          "tier": "L2",
+          "expected_tier": "L2",
+          "classified_tier": "L2",
+          "tier_correct": true,
+          "notes": "Multi-intent: schedule next game + roster change (sub). Tests whether L2 handles the sub correctly.",
+          "score": {
+            "composite": 1.0,
+            "validity": 1.0,
+            "voice": 1.0,
+            "structure": 1.0,
+            "efficiency": 1.0,
+            "fidelity": 1.0
+          },
+          "score_details": {
+            "validity": {
+              "score": 1.0,
+              "checks": {
+                "parseable": 1.0,
+                "no_fences": 1.0,
+                "valid_types": 1.0,
+                "valid_structure": 1.0,
+                "not_empty": 1.0
+              },
+              "notes": []
+            },
+            "voice": {
+              "score": 1.0,
+              "checks": {
+                "no_voice_to_check": 1.0
+              },
+              "notes": [
+                "No voice lines emitted"
+              ]
+            },
+            "structure": {
+              "score": 1.0,
+              "checks": {
+                "parents_before_children": 1.0,
+                "display_hints_valid": 1.0,
+                "entity_ids_quality": 1.0
+              },
+              "notes": []
+            },
+            "efficiency": {
+              "score": 1.0,
+              "checks": {
+                "within_budget": 1.0,
+                "in_sweet_spot": 1.0
+              },
+              "notes": []
+            },
+            "fidelity": {
+              "score": 1.0,
+              "checks": {
+                "no_dangling_refs": 1.0,
+                "tier_appropriate": 1.0
+              },
+              "notes": []
+            }
+          },
+          "ttc_ms": 1430,
+          "ttfc_ms": 756,
+          "output_tokens": 82,
+          "input_tokens": 4410,
+          "cache_creation": 0,
+          "cache_read": 0,
+          "output": "{\"t\":\"entity.update\",\"ref\":\"game_feb27\",\"p\":{\"location\":\"Dave's\"}}\n{\"t\":\"entity.update\",\"ref\":\"player_jake\",\"p\":{\"status\":\"unavailable\"}}\n{\"t\":\"entity.create\",\"id\":\"player_lisa\",\"parent\":\"players\",\"display\":\"row\",\"p\":{\"name\":\"Lisa\",\"wins\":0}}",
+          "had_fences": false,
+          "system_prompt": "# aide-prompt-v3.1\n\nYou are AIde \u2014 infrastructure that maintains a living page. The user describes what they're running. You keep the page current.\n\nToday's date is Tuesday, February 24, 2026.\n\n## Voice\n\n- Never use first person. Never \"I updated\" or \"I created.\" You are infrastructure, not a character.\n- Reflect state, not action. Show how things stand: \"Budget: $1,350.\" Not \"I've updated the budget.\"\n- Mutations are declarative, minimal, final: \"Next game: Feb 27 at Dave's.\"\n- No encouragement. No \"Great!\", \"Nice!\", \"Let's do this!\", \"What else can I help with?\"\n- No emojis. Never.\n- Silence is valid. Not every change needs a voice line.\n\n## Output Format\n\nEmit JSONL \u2014 one JSON object per line. Each line is one operation. Nothing else.\n\nNEVER wrap output in code fences. No ```jsonl, no ```json, no ```. No markdown of any kind. The streaming parser reads your output byte-by-byte \u2014 fence lines cause parse failures and blank renders. Start your first byte with `{`.\n\nAbbreviated fields:\n- t = type\n- id = entity ID\n- parent = parent entity ID\n- display = render hint\n- p = props (data payload)\n- ref = reference to existing entity\n- from/to = relationship endpoints\n\n## Primitives\n\nEntity:\n- entity.create: {\"t\":\"entity.create\",\"id\":\"...\",\"parent\":\"...\",\"display\":\"...\",\"p\":{...}}\n- entity.update: {\"t\":\"entity.update\",\"ref\":\"...\",\"p\":{...}}\n- entity.remove: {\"t\":\"entity.remove\",\"ref\":\"...\"}\n- entity.move: {\"t\":\"entity.move\",\"ref\":\"...\",\"parent\":\"...\",\"position\":N}\n- entity.reorder: {\"t\":\"entity.reorder\",\"ref\":\"...\",\"children\":[\"...\"]}\n\nRelationships:\n- rel.set: {\"t\":\"rel.set\",\"from\":\"...\",\"to\":\"...\",\"type\":\"...\",\"cardinality\":\"many_to_one\"}\n- rel.remove: {\"t\":\"rel.remove\",\"from\":\"...\",\"to\":\"...\",\"type\":\"...\"}\n\nCardinality (set once per relationship type, enforced by the reducer):\n- many_to_one: source can link to ONE target. Re-linking auto-removes the old.\n  Example: \"Seat Linda at table 5\" \u2192 auto-removes her from table 3.\n- one_to_one: both sides exclusive. Setting A\u2192B removes A's old link AND B's old link.\n  Example: \"Tom is hosting\" \u2192 auto-removes Mike as host.\n- many_to_many: no auto-removal. Links accumulate.\n  Example: \"Tag this item as urgent\" \u2192 item can have many tags.\n\nUse relationships (not boolean props) when:\n- A role can only belong to one entity at a time (hosting, assigned_to, current_turn)\n- Reassignment is common (\"now tom's hosting\", \"move linda to table 5\")\n- You'd otherwise need to find-and-clear the old holder manually\n\nThe reducer handles the swap atomically \u2014 one rel.set is all you emit.\n\nWhen a relationship changes, check if any props on the target entity are correlated. \"Tom hosted\" swaps the hosting relationship AND changes `location` from \"Mike's\" to \"Tom's\". The rel.set handles the relationship; you emit an entity.update for the correlated props.\nStyle:\n- style.set: {\"t\":\"style.set\",\"p\":{...}}\n- style.entity: {\"t\":\"style.entity\",\"ref\":\"...\",\"p\":{...}}\n\nMeta:\n- meta.set: {\"t\":\"meta.set\",\"p\":{\"title\":\"...\",\"identity\":\"...\"}}\n- meta.annotate: {\"t\":\"meta.annotate\",\"p\":{\"note\":\"...\",\"pinned\":false}}\n\nSignals (don't modify state):\n- voice: {\"t\":\"voice\",\"text\":\"...\"} \u2014 max 100 chars, state reflection only\n- escalate: {\"t\":\"escalate\",\"tier\":\"L3\"|\"L4\",\"reason\":\"...\",\"extract\":\"...\"}\n- batch.start / batch.end: wrap restructuring ops for atomic rendering\n\n## Entity Tree\n\nState is a tree of entities. Every entity has an `id`, a `parent`, a `display` hint, and `p` (props).\n\nThe root entity has `display: \"page\"`. Sections are direct children of the page. Items are children of sections. There is no separate \"collection\" or \"schema\" concept \u2014 entity shape is inferred from props.\n\nExample tree:\n```\npage (display: page)\n\u251c\u2500\u2500 event_details (display: card)\n\u2502   \u2514\u2500\u2500 props: {date: \"2026-05-22\", venue: \"Hilton\", guests: 60}\n\u251c\u2500\u2500 guest_list (display: table)\n\u2502   \u251c\u2500\u2500 guest_linda (display: row) \u2192 {name: \"Aunt Linda\", rsvp: \"yes\"}\n\u2502   \u251c\u2500\u2500 guest_james (display: row) \u2192 {name: \"Cousin James\", rsvp: \"pending\"}\n\u2502   \u2514\u2500\u2500 guest_bob (display: row) \u2192 {name: \"Uncle Bob\", rsvp: \"no\"}\n\u2514\u2500\u2500 todo (display: checklist)\n    \u251c\u2500\u2500 todo_book_venue (display: row) \u2192 {task: \"Book venue\", done: true}\n    \u2514\u2500\u2500 todo_send_invites (display: row) \u2192 {task: \"Send invites\", done: false}\n```\n\n## Display Hints\n\nPick based on entity shape:\n- page: root container (one per aide)\n- section: titled collapsible grouping\n- card: single entity with props as key-value pairs\n- list: children as vertical list (items with <4 fields)\n- table: children as rows (items with 3+ fields)\n- checklist: children with checkboxes (items need a boolean done/checked prop)\n- metric: single large value with label\n- text: paragraph content, max ~100 words\n- image: renders from src prop\n- row: child item within a list, table, or checklist\n\nChildren of a table/list/checklist use `display: \"row\"`. If `display` is omitted on a child, it inherits from parent context.\n\n## Emission Order\n\nEmit in this order:\n1. meta.set (title + identity)\n2. Page entity (root, display: page)\n3. Section entities (direct children of page)\n4. Children within sections (rows, items)\n5. Relationships (after both endpoints exist)\n6. Style\n7. Voice (if needed)\n\nParents before children. Always. The reducer rejects entity.create if parent doesn't exist.\n\n## Entity IDs\n\nsnake_case, lowercase, max 64 chars, descriptive.\n\nGood: guest_linda, food_potato_salad, todo_book_venue, event_details\nBad: item1, e_3, section-one, guestLinda\n\nIDs are permanent. Once created, an entity keeps its ID forever. Updates reference the same ID via `ref`.\n\n`ref` must match an existing entity ID from the snapshot. Never invent a ref \u2014 if the entity doesn't exist in the snapshot, use entity.create, not entity.update. Check the snapshot before emitting entity.update.\n\n## Props\n\nProps are schemaless \u2014 types inferred from values. Supported: string, number, boolean, date (\"2026-05-22\"), array. Don't include null fields. New fields on entity.update extend the entity's shape automatically.\n\n## Scope\n\nOnly structure what the user has explicitly stated or directly implied. The page grows organically as users provide more info.\n\nNEVER:\n- Invent items the user didn't mention (no placeholder tasks, no template categories)\n- Pre-populate lists/tables with generic entries (\"Task 1\", \"Player 1\", \"Item TBD\")\n- Add sections the user hasn't asked for or clearly implied\n- Assume details the user left out (dates, venues, names, prices)\n\nIf the user says \"need to plan something\" \u2014 create the page with what they told you. Don't guess what their plan involves. They'll tell you.\n\nEvery concrete data point the user provides \u2014 dollar amounts, dates, times, scores, counts \u2014 must land in a prop somewhere. If the user says \"$120 pot,\" that number needs to be stored. Dropping stated facts is worse than over-structuring.\n\nPlace data on the most specific entity it belongs to. \"$120 pot\" about last night's game goes on the game entity, not the details card. A guest's dietary restriction goes on the guest row, not the event summary. If data describes a specific item, it's a prop on that item \u2014 not on its parent or a global summary.\n\nReassignment is a relationship, not a prop update. If \"tom hosted\" and Mike was the previous host, emit a single rel.set \u2014 the reducer clears Mike automatically via cardinality. Don't try to manually find-and-clear the old holder with two entity.update calls.\n\n\n## Your Tier: L2 (Compiler)\n\nYou handle routine mutations on existing entities. Speed is everything.\n\n### Rules\n\n- Emit JSONL only. One line per operation.\n- Only modify existing entities or create children under existing parents.\n- NEVER create new sections. NEVER create entities with display hints you haven't seen in the snapshot. If you would need to pick a display hint, escalate. If you would need to create a new top-level grouping, escalate.\n- If unsure, escalate. Never guess.\n- Voice lines optional. For 1-2 operations, skip voice \u2014 the page change is the response. For 3+ operations, a brief voice summary helps.\n\n### Entity Resolution\n\nMatch user language to existing entity IDs in the snapshot. Prefer updating existing entities over creating new ones.\n\n- \"Mike\" \u2192 find the entity whose name prop contains \"Mike\"\n- \"the first item\" \u2192 find by position in parent's children\n- \"milk\" \u2192 find by name/task/title prop match\n- \"last night\" / \"the game\" / \"it\" \u2192 if only one entity of that type exists in the snapshot, that's the one. Don't create a new entity when there's an obvious existing match.\n\nKey rule: scan the snapshot FIRST. If an entity already represents what the user is describing, update it. Only create a new entity if nothing in the snapshot matches. Creating a duplicate alongside an existing entity is almost always wrong.\n\nIf no entity matches, escalate \u2014 don't create a new one.\n\n### Update Format\n\nUse entity.update with `ref` pointing to the existing entity ID:\n\n{\"t\":\"entity.update\",\"ref\":\"guest_mike\",\"p\":{\"rsvp\":\"confirmed\"}}\n{\"t\":\"entity.update\",\"ref\":\"todo_book_venue\",\"p\":{\"done\":true}}\n\nFor adding a child to an existing section (e.g., adding an item to a checklist):\n\n{\"t\":\"entity.create\",\"id\":\"todo_order_cake\",\"parent\":\"todo\",\"display\":\"row\",\"p\":{\"task\":\"Order cake\",\"done\":false}}\n\nOnly create children under parents that already exist in the snapshot.\n\n### Escalation\n\nEscalate when you can't handle the request with existing structure:\n\n{\"t\":\"escalate\",\"tier\":\"L3\",\"reason\":\"REASON\",\"extract\":\"the part you can't handle\"}\n\nReasons:\n- unknown_entity_shape: entities you don't know how to structure\n- ambiguous_intent: can't determine which entities to modify\n- complex_conditional: if/then logic, bulk conditions\n- structural_change: new sections or restructuring needed\n\n### Query Escalation\n\nNever answer questions yourself. Always escalate queries to L4:\n\n{\"t\":\"escalate\",\"tier\":\"L4\",\"reason\":\"query\",\"extract\":\"the question\"}\n\n### Multi-Intent\n\nHandle mutations FIRST, then escalate remaining parts. Do both. Example:\n\nUser: \"Steve confirmed, do we have enough food?\"\n\n{\"t\":\"entity.update\",\"ref\":\"guest_steve\",\"p\":{\"rsvp\":\"confirmed\"}}\n{\"t\":\"escalate\",\"tier\":\"L4\",\"reason\":\"query\",\"extract\":\"do we have enough food?\"}\n\nNever skip the mutation just because there's also a query. Never skip the escalation just because there's also a mutation.\n\n### Examples\n\nUser: \"mark milk as done\"\n{\"t\":\"entity.update\",\"ref\":\"item_milk\",\"p\":{\"done\":true}}\n\nUser: \"change the date to March 15\"\n{\"t\":\"entity.update\",\"ref\":\"event_details\",\"p\":{\"date\":\"2026-03-15\"}}\n\nUser: \"Mike's out, Dave's subbing in\"\n{\"t\":\"entity.update\",\"ref\":\"player_mike\",\"p\":{\"status\":\"out\"}}\n{\"t\":\"entity.update\",\"ref\":\"player_dave\",\"p\":{\"status\":\"active\"}}\n{\"t\":\"voice\",\"text\":\"Mike out. Dave subbing.\"}\n\nUser: \"add bread to the list\"\n{\"t\":\"entity.create\",\"id\":\"item_bread\",\"parent\":\"grocery_list\",\"display\":\"row\",\"p\":{\"name\":\"Bread\",\"done\":false}}\n\nUser: \"remove the appetizers section\"\n(This is structural \u2014 escalate)\n{\"t\":\"escalate\",\"tier\":\"L3\",\"reason\":\"structural_change\",\"extract\":\"remove the appetizers section\"}\n\nUser: \"who hasn't RSVPed?\"\n{\"t\":\"escalate\",\"tier\":\"L4\",\"reason\":\"query\",\"extract\":\"who hasn't RSVPed?\"}\n\nUser: \"add a budget tracking section\"\n(New section \u2014 escalate)\n{\"t\":\"escalate\",\"tier\":\"L3\",\"reason\":\"structural_change\",\"extract\":\"add a budget tracking section\"}\n\nUser: \"actually maria's doing fruit platter, bob is handling drinks now\"\n(Snapshot has food_drinks with provider \"Maria\". This is a reassignment + new item.)\n{\"t\":\"entity.update\",\"ref\":\"food_drinks\",\"p\":{\"provider\":\"Uncle Bob\"}}\n{\"t\":\"entity.create\",\"id\":\"food_fruit_platter\",\"parent\":\"food\",\"display\":\"row\",\"p\":{\"dish\":\"Fruit platter\",\"provider\":\"Maria Garcia\"}}\n(Note: ref must match the snapshot \u2014 food_drinks, not food_maria. Check IDs before emitting.)\n\nUser: \"tom hosted last night\"\n(Hosting is exclusive \u2014 use rel.set. Also update correlated props like location.)\n{\"t\":\"entity.update\",\"ref\":\"game_feb27\",\"p\":{\"location\":\"Tom's\"}}\n{\"t\":\"rel.set\",\"from\":\"player_tom\",\"to\":\"game_feb27\",\"type\":\"hosting\",\"cardinality\":\"one_to_one\"}\n(rel.set swaps the host atomically. But props correlated with the host \u2014 like location \u2014 need a separate entity.update. Think through what else changes when a relationship changes.)\n\n\n## Current Snapshot\n```json\n{\n  \"meta\": {\n    \"title\": \"Poker Night\",\n    \"identity\": \"Poker night with friends.\"\n  },\n  \"entities\": {\n    \"page\": {\n      \"id\": \"page\",\n      \"parent\": \"root\",\n      \"display\": \"page\",\n      \"props\": {\n        \"title\": \"Poker Night\"\n      }\n    },\n    \"details\": {\n      \"id\": \"details\",\n      \"parent\": \"page\",\n      \"display\": \"card\",\n      \"props\": {\n        \"title\": \"Details\",\n        \"schedule\": \"every other Thursday\",\n        \"buy_in\": 20\n      }\n    },\n    \"players\": {\n      \"id\": \"players\",\n      \"parent\": \"page\",\n      \"display\": \"table\",\n      \"props\": {\n        \"title\": \"Players\"\n      }\n    },\n    \"player_me\": {\n      \"id\": \"player_me\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Me\",\n        \"wins\": 0\n      }\n    },\n    \"player_mike\": {\n      \"id\": \"player_mike\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Mike\",\n        \"wins\": 1\n      }\n    },\n    \"player_dave\": {\n      \"id\": \"player_dave\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Dave\",\n        \"wins\": 0\n      }\n    },\n    \"player_tom\": {\n      \"id\": \"player_tom\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Tom\",\n        \"wins\": 0\n      }\n    },\n    \"player_sarah\": {\n      \"id\": \"player_sarah\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Sarah\",\n        \"wins\": 0\n      }\n    },\n    \"player_jake\": {\n      \"id\": \"player_jake\",\n      \"parent\": \"players\",\n      \"display\": \"row\",\n      \"props\": {\n        \"name\": \"Jake\",\n        \"wins\": 0\n      }\n    },\n    \"schedule\": {\n      \"id\": \"schedule\",\n      \"parent\": \"page\",\n      \"display\": \"table\",\n      \"props\": {\n        \"title\": \"Schedule\"\n      }\n    },\n    \"game_feb27\": {\n      \"id\": \"game_feb27\",\n      \"parent\": \"schedule\",\n      \"display\": \"row\",\n      \"props\": {\n        \"date\": \"2026-02-27\",\n        \"location\": \"Mike's\"\n      }\n    },\n    \"game_feb24\": {\n      \"id\": \"game_feb24\",\n      \"parent\": \"schedule\",\n      \"display\": \"row\",\n      \"props\": {\n        \"date\": \"2026-02-24\",\n        \"location\": \"Tom's\",\n        \"pot\": 120\n      }\n    }\n  },\n  \"relationships\": [\n    {\n      \"from\": \"player_tom\",\n      \"to\": \"game_feb24\",\n      \"type\": \"hosting\"\n    }\n  ],\n  \"relationship_types\": {\n    \"hosting\": \"one_to_one\"\n  }\n}\n```",
+          "snapshot_before": {
+            "meta": {
+              "title": "Poker Night",
+              "identity": "Poker night with friends."
+            },
+            "entities": {
+              "page": {
+                "id": "page",
+                "parent": "root",
+                "display": "page",
+                "props": {
+                  "title": "Poker Night"
+                }
+              },
+              "details": {
+                "id": "details",
+                "parent": "page",
+                "display": "card",
+                "props": {
+                  "title": "Details",
+                  "schedule": "every other Thursday",
+                  "buy_in": 20
+                }
+              },
+              "players": {
+                "id": "players",
+                "parent": "page",
+                "display": "table",
+                "props": {
+                  "title": "Players"
+                }
+              },
+              "player_me": {
+                "id": "player_me",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Me",
+                  "wins": 0
+                }
+              },
+              "player_mike": {
+                "id": "player_mike",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Mike",
+                  "wins": 1
+                }
+              },
+              "player_dave": {
+                "id": "player_dave",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Dave",
+                  "wins": 0
+                }
+              },
+              "player_tom": {
+                "id": "player_tom",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Tom",
+                  "wins": 0
+                }
+              },
+              "player_sarah": {
+                "id": "player_sarah",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Sarah",
+                  "wins": 0
+                }
+              },
+              "player_jake": {
+                "id": "player_jake",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Jake",
+                  "wins": 0
+                }
+              },
+              "schedule": {
+                "id": "schedule",
+                "parent": "page",
+                "display": "table",
+                "props": {
+                  "title": "Schedule"
+                }
+              },
+              "game_feb27": {
+                "id": "game_feb27",
+                "parent": "schedule",
+                "display": "row",
+                "props": {
+                  "date": "2026-02-27",
+                  "location": "Mike's"
+                }
+              },
+              "game_feb24": {
+                "id": "game_feb24",
+                "parent": "schedule",
+                "display": "row",
+                "props": {
+                  "date": "2026-02-24",
+                  "location": "Tom's",
+                  "pot": 120
+                }
+              }
+            },
+            "relationships": [
+              {
+                "from": "player_tom",
+                "to": "game_feb24",
+                "type": "hosting"
+              }
+            ],
+            "relationship_types": {
+              "hosting": "one_to_one"
+            }
+          },
+          "snapshot_after": {
+            "meta": {
+              "title": "Poker Night",
+              "identity": "Poker night with friends."
+            },
+            "entities": {
+              "page": {
+                "id": "page",
+                "parent": "root",
+                "display": "page",
+                "props": {
+                  "title": "Poker Night"
+                }
+              },
+              "details": {
+                "id": "details",
+                "parent": "page",
+                "display": "card",
+                "props": {
+                  "title": "Details",
+                  "schedule": "every other Thursday",
+                  "buy_in": 20
+                }
+              },
+              "players": {
+                "id": "players",
+                "parent": "page",
+                "display": "table",
+                "props": {
+                  "title": "Players"
+                }
+              },
+              "player_me": {
+                "id": "player_me",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Me",
+                  "wins": 0
+                }
+              },
+              "player_mike": {
+                "id": "player_mike",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Mike",
+                  "wins": 1
+                }
+              },
+              "player_dave": {
+                "id": "player_dave",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Dave",
+                  "wins": 0
+                }
+              },
+              "player_tom": {
+                "id": "player_tom",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Tom",
+                  "wins": 0
+                }
+              },
+              "player_sarah": {
+                "id": "player_sarah",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Sarah",
+                  "wins": 0
+                }
+              },
+              "player_jake": {
+                "id": "player_jake",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Jake",
+                  "wins": 0,
+                  "status": "unavailable"
+                }
+              },
+              "schedule": {
+                "id": "schedule",
+                "parent": "page",
+                "display": "table",
+                "props": {
+                  "title": "Schedule"
+                }
+              },
+              "game_feb27": {
+                "id": "game_feb27",
+                "parent": "schedule",
+                "display": "row",
+                "props": {
+                  "date": "2026-02-27",
+                  "location": "Dave's"
+                }
+              },
+              "game_feb24": {
+                "id": "game_feb24",
+                "parent": "schedule",
+                "display": "row",
+                "props": {
+                  "date": "2026-02-24",
+                  "location": "Tom's",
+                  "pot": 120
+                }
+              },
+              "player_lisa": {
+                "id": "player_lisa",
+                "parent": "players",
+                "display": "row",
+                "props": {
+                  "name": "Lisa",
+                  "wins": 0
+                }
+              }
+            },
+            "relationships": [
+              {
+                "from": "player_tom",
+                "to": "game_feb24",
+                "type": "hosting"
+              }
+            ],
+            "relationship_types": {
+              "hosting": "one_to_one"
+            }
+          },
+          "entity_count": 13,
+          "entity_delta": 1,
+          "escalated_to": null
+        }
+      ]
+    }
+  ],
+  "overall_average": 0.968125
+}

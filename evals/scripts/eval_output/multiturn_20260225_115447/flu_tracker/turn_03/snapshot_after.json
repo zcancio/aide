@@ -1,0 +1,98 @@
+{
+  "meta": {
+    "title": "Fever Tracking",
+    "identity": "Temperature tracking for Ringo and George."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Fever Tracking"
+      }
+    },
+    "ringo_readings": {
+      "id": "ringo_readings",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Ringo's Readings"
+      }
+    },
+    "george_readings": {
+      "id": "george_readings",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "George's Readings"
+      }
+    },
+    "reading_ringo_1": {
+      "id": "reading_ringo_1",
+      "parent": "ringo_readings",
+      "display": "row",
+      "props": {
+        "time": "2025-12-29T10:30",
+        "temp": 103.7,
+        "meds": "tylenol"
+      }
+    },
+    "reading_ringo_2": {
+      "id": "reading_ringo_2",
+      "parent": "ringo_readings",
+      "display": "row",
+      "props": {
+        "time": "2025-12-29T13:30",
+        "temp": 101.5,
+        "meds": "motrin"
+      }
+    },
+    "reading_ringo_3": {
+      "id": "reading_ringo_3",
+      "parent": "ringo_readings",
+      "display": "row",
+      "props": {
+        "time": "2025-12-29T17:20",
+        "temp": 101,
+        "meds": "tylenol"
+      }
+    },
+    "reading_ringo_4": {
+      "id": "reading_ringo_4",
+      "parent": "ringo_readings",
+      "display": "row",
+      "props": {
+        "time": "2025-12-29T20:20",
+        "temp": 102,
+        "meds": "motrin"
+      }
+    },
+    "ringo_summary": {
+      "id": "ringo_summary",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "name": "Ringo",
+        "latest_temp": 102,
+        "latest_time": "2025-12-29T20:20",
+        "latest_meds": "motrin",
+        "reading_count": 4
+      }
+    },
+    "george_summary": {
+      "id": "george_summary",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "name": "George",
+        "latest_temp": null,
+        "latest_time": null,
+        "reading_count": 0
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {},
+  "orphans": []
+}

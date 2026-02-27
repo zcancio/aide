@@ -1,0 +1,146 @@
+{
+  "meta": {
+    "title": "Poker Night",
+    "identity": "Poker night with friends."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Poker Night"
+      }
+    },
+    "details": {
+      "id": "details",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "title": "Details",
+        "schedule": "Every other Thursday",
+        "buy_in": 20
+      }
+    },
+    "players": {
+      "id": "players",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Players"
+      }
+    },
+    "player_me": {
+      "id": "player_me",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "Me",
+        "wins": 0,
+        "total_winnings": 0
+      }
+    },
+    "player_mike": {
+      "id": "player_mike",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "Mike",
+        "wins": 0,
+        "total_winnings": 0
+      }
+    },
+    "player_dave": {
+      "id": "player_dave",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "Dave",
+        "wins": 0,
+        "total_winnings": 0
+      }
+    },
+    "player_tom": {
+      "id": "player_tom",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "Tom",
+        "wins": 0,
+        "total_winnings": 0
+      }
+    },
+    "player_sarah": {
+      "id": "player_sarah",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "Sarah",
+        "wins": 0,
+        "total_winnings": 0
+      }
+    },
+    "player_jake": {
+      "id": "player_jake",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "Jake",
+        "wins": 0,
+        "total_winnings": 0,
+        "status": "unavailable"
+      }
+    },
+    "schedule": {
+      "id": "schedule",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Schedule"
+      }
+    },
+    "game_feb19": {
+      "id": "game_feb19",
+      "parent": "schedule",
+      "display": "row",
+      "props": {
+        "date": "2026-02-19"
+      }
+    },
+    "game_mar05": {
+      "id": "game_mar05",
+      "parent": "schedule",
+      "display": "row",
+      "props": {
+        "date": "2026-03-05",
+        "location": "Dave's"
+      }
+    },
+    "player_lisa": {
+      "id": "player_lisa",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "Lisa",
+        "wins": 0,
+        "total_winnings": 0
+      }
+    }
+  },
+  "relationships": [
+    {
+      "from": "player_mike",
+      "to": "game_feb19",
+      "type": "hosting"
+    },
+    {
+      "from": "player_lisa",
+      "to": "game_mar05",
+      "type": "attending"
+    }
+  ],
+  "relationship_types": {
+    "hosting": "one_to_one",
+    "attending": "many_to_one"
+  }
+}

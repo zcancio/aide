@@ -1,0 +1,6 @@
+
+```
+{"t":"entity.create","id":"game_mar13","parent":"schedule","display":"row","p":{"date":"2026-03-13","location":"Dave's"}}
+{"t":"entity.update","ref":"player_jake","p":{"status":"unavailable"}}
+{"t":"entity.create","id":"player_lisa","parent":"roster","display":"row","p":{"name":"Lisa","wins":0}}
+```

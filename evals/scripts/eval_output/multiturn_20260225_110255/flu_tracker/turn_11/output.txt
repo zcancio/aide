@@ -1,0 +1,9 @@
+George's highest: 103.0°F at 16:00 on Dec 30.
+
+ER guidelines typically recommend going if:
+- Temp ≥ 104°F
+- Fever lasts >3 days
+- Child is lethargic, has trouble breathing, severe pain, or won't drink fluids
+- Seizures or unusual behavior
+
+George hit 103.0 once (41 hours ago), currently trending lower at 100.5°F. Duration: ~2 days so far. If temp spikes above 104 or he shows concerning symptoms (won't wake, labored breathing, dehydration), go to ER. Otherwise, monitor closely and call pediatrician in the morning if fever persists.

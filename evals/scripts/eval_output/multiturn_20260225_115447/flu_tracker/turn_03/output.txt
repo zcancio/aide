@@ -1,0 +1,10 @@
+```
+{"t":"entity.create","id":"ringo_summary","parent":"page","display":"card","p":{"name":"Ringo","latest_temp":102,"latest_time":"2025-12-29T20:20","latest_meds":"motrin","reading_count":4}}
+{"t":"entity.move","ref":"ringo_summary","parent":"page","position":0}
+{"t":"entity.move","ref":"ringo_readings","parent":"page","position":1}
+{"t":"voice","text":"Ringo summary created. Latest: 102°F at 8:20pm."}
+{"t":"entity.create","id":"george_summary","parent":"page","display":"card","p":{"name":"George","latest_temp":null,"latest_time":null,"reading_count":0}}
+{"t":"entity.move","ref":"george_summary","parent":"page","position":2}
+{"t":"entity.move","ref":"george_readings","parent":"page","position":3}
+{"t":"voice","text":"Summary cards ready. George waiting for first reading."}
+```

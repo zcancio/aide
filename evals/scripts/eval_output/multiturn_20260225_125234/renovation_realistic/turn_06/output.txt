@@ -1,0 +1,3 @@
+```json
+{"t":"escalate","tier":"L4","reason":"structural_change","extract":"plumber can start march 10, electrician march 3. need to get countertops measured before either"}
+```

@@ -1,0 +1,3 @@
+{"t":"entity.create","id":"item_milk","parent":"groceries","display":"row","p":{"name":"Milk","done":false}}
+{"t":"entity.create","id":"item_eggs","parent":"groceries","display":"row","p":{"name":"Eggs","done":false}}
+{"t":"entity.create","id":"item_bread","parent":"groceries","display":"row","p":{"name":"Bread","done":false}}

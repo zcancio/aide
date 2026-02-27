@@ -1,0 +1,29 @@
+```jsonl
+{"t":"meta.set","p":{"title":"Sophie's Graduation Party","identity":"Sophie's graduation party. Ceremony May 22, 10am at UC Davis. ~40 guests. Coordinating food, travel, tasks."}}
+{"t":"entity.create","id":"page","parent":"root","display":"page","p":{"title":"Sophie's Graduation Party"}}
+{"t":"entity.create","id":"event_details","parent":"page","display":"card","p":{"date":"2025-05-22","time":"10:00 AM","location":"UC Davis","guest_count":40}}
+{"t":"entity.create","id":"guest_list","parent":"page","display":"table","p":{"title":"Guest List"}}
+{"t":"entity.create","id":"guest_1","parent":"guest_list","display":"row","p":{"name":"Guest 1","rsvp":"pending","dietary":""}}
+{"t":"entity.create","id":"guest_2","parent":"guest_list","display":"row","p":{"name":"Guest 2","rsvp":"pending","dietary":""}}
+{"t":"entity.create","id":"guest_3","parent":"guest_list","display":"row","p":{"name":"Guest 3","rsvp":"pending","dietary":""}}
+{"t":"voice","text":"Event details set. Guest tracking started."}
+{"t":"entity.create","id":"food","parent":"page","display":"table","p":{"title":"Food"}}
+{"t":"entity.create","id":"food_main","parent":"food","display":"row","p":{"item":"Main course","quantity":"TBD","source":"","cost":0}}
+{"t":"entity.create","id":"food_sides","parent":"food","display":"row","p":{"item":"Sides","quantity":"TBD","source":"","cost":0}}
+{"t":"entity.create","id":"food_drinks","parent":"food","display":"row","p":{"item":"Drinks","quantity":"TBD","source":"","cost":0}}
+{"t":"entity.create","id":"food_dessert","parent":"food","display":"row","p":{"item":"Dessert","quantity":"TBD","source":"","cost":0}}
+{"t":"voice","text":"Food planning ready. 4 categories started."}
+{"t":"entity.create","id":"travel","parent":"page","display":"table","p":{"title":"Travel & Lodging"}}
+{"t":"entity.create","id":"travel_parking","parent":"travel","display":"row","p":{"item":"Parking arrangements","status":"pending","notes":""}}
+{"t":"entity.create","id":"travel_lodging","parent":"travel","display":"row","p":{"item":"Guest lodging","status":"pending","notes":""}}
+{"t":"entity.create","id":"travel_directions","parent":"travel","display":"row","p":{"item":"Directions sent","status":"pending","notes":""}}
+{"t":"entity.create","id":"todo","parent":"page","display":"checklist","p":{"title":"To-Do List"}}
+{"t":"entity.create","id":"task_invites","parent":"todo","display":"row","p":{"task":"Send invitations","done":false,"due":"2025-04-15"}}
+{"t":"entity.create","id":"task_catering","parent":"todo","display":"row","p":{"task":"Book catering","done":false,"due":"2025-05-01"}}
+{"t":"entity.create","id":"task_venue","parent":"todo","display":"row","p":{"task":"Confirm venue access","done":false,"due":"2025-05-10"}}
+{"t":"entity.create","id":"task_decorations","parent":"todo","display":"row","p":{"task":"Order decorations","done":false,"due":"2025-05-15"}}
+{"t":"entity.create","id":"task_photos","parent":"todo","display":"row","p":{"task":"Arrange photographer","done":false,"due":"2025-05-01"}}
+{"t":"voice","text":"Travel coordination ready. To-do list started."}
+{"t":"style.set","p":{"primary_color":"#2d3748","font_family":"Inter","density":"comfortable"}}
+{"t":"voice","text":"Party ready. May 22 at UC Davis, 40 guests. Food, travel, tasks tracked."}
+```

@@ -1,0 +1,6 @@
+```jsonl
+{"t":"meta.set","p":{"title":"Grocery Run","identity":"Grocery shopping list."}}
+{"t":"entity.create","id":"page","parent":"root","display":"page","p":{"title":"Grocery Run"}}
+{"t":"entity.create","id":"groceries","parent":"page","display":"checklist","p":{"title":"Items"}}
+{"t":"voice","text":"Grocery list ready. Add items to start."}
+```

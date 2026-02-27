@@ -1,0 +1,11 @@
+George's highest temp: 103.0°F at 4pm on Monday.
+
+That's concerning but typically not ER-threshold alone. Standard guidance is ER if:
+- Temp ≥ 105°F
+- Under 3 months with any fever
+- Fever lasts >3 days
+- Severe symptoms: difficulty breathing, extreme lethargy, stiff neck, persistent vomiting
+
+George hit 103.0°F once, but his other concerning signs: eyelid swelling at 10:30am and vomiting at 2pm. The swelling especially warrants a call to the pediatrician — could indicate infection spreading beyond typical viral illness.
+
+Not an immediate ER situation based on temp alone, but the combination (high fever + swelling + vomiting) justifies a same-day doctor call or urgent care visit if it's after hours.

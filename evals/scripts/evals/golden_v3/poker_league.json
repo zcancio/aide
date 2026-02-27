@@ -1,0 +1,477 @@
+{
+  "scenario_id": "poker_league",
+  "name": "Poker League",
+  "pattern": "roster + timeline + ledger",
+  "timestamp": "2026-02-26T13:37:19.857888",
+  "turns": [
+    {
+      "turn": 1,
+      "tier": "L4",
+      "message": "I run a poker league. 8 guys, we play every other Thursday at someone's house. We rotate who hosts and who brings snacks. The players are Mike, Dave, Chris, James, Zach, Tom, Ryan, and Jake. Next game is Feb 27 at Dave's. Mike's on snacks. Current standings: Zach 340, Chris 310, Dave 280, Mike 260, Tom 240, James 195, Ryan 180, Jake 150.",
+      "tool_calls": [
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "poker_league",
+            "parent": "root",
+            "display": "page",
+            "props": {
+              "name": "Poker League",
+              "schedule": "Every other Thursday"
+            }
+          }
+        }
+      ],
+      "text_blocks": [],
+      "usage": {
+        "input_tokens": 3012,
+        "output_tokens": 139,
+        "cache_read": 0
+      },
+      "ttfc_ms": 1434,
+      "ttc_ms": 2791,
+      "validation": {
+        "passed": false,
+        "issues": [
+          "mutate_entity: expected min 12, got 1"
+        ]
+      }
+    },
+    {
+      "turn": 2,
+      "tier": "L3",
+      "message": "Mike's out this week, Ryan is hosting instead.",
+      "tool_calls": [
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "next_game",
+            "parent": "poker_league",
+            "display": "section",
+            "props": {
+              "name": "Next Game"
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "game_feb27",
+            "parent": "next_game",
+            "display": "card",
+            "props": {
+              "date": "2025-02-27",
+              "host": "Ryan",
+              "snacks": "Mike"
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "standings",
+            "parent": "poker_league",
+            "display": "section",
+            "props": {
+              "name": "Standings",
+              "display": "table",
+              "_sort_by": "points",
+              "_sort_order": "desc"
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "player_zach",
+            "parent": "standings",
+            "props": {
+              "name": "Zach",
+              "points": 420
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "player_chris",
+            "parent": "standings",
+            "props": {
+              "name": "Chris",
+              "points": 350
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "player_dave",
+            "parent": "standings",
+            "props": {
+              "name": "Dave",
+              "points": 250
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "player_mike",
+            "parent": "standings",
+            "props": {
+              "name": "Mike",
+              "points": 260
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "player_tom",
+            "parent": "standings",
+            "props": {
+              "name": "Tom",
+              "points": 220
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "player_james",
+            "parent": "standings",
+            "props": {
+              "name": "James",
+              "points": 180
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "player_ryan",
+            "parent": "standings",
+            "props": {
+              "name": "Ryan",
+              "points": 155
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "player_jake",
+            "parent": "standings",
+            "props": {
+              "name": "Jake",
+              "points": 120
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "update",
+            "ref": "standings",
+            "props": {
+              "display": "table",
+              "_sort_by": "points",
+              "_sort_order": "desc"
+            }
+          }
+        }
+      ],
+      "text_blocks": [],
+      "usage": {
+        "input_tokens": 3385,
+        "output_tokens": 1273,
+        "cache_read": 0
+      },
+      "ttfc_ms": 1178,
+      "ttc_ms": 11255,
+      "validation": {
+        "passed": false,
+        "issues": [
+          "mutate_entity: expected max 3, got 12"
+        ]
+      }
+    },
+    {
+      "turn": 3,
+      "tier": "L3",
+      "message": "Game night results: Zach +80, Chris +40, Dave -30, Tom -20, Ryan -25, James -15, Jake -30.",
+      "tool_calls": [
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "update",
+            "ref": "player_zach",
+            "props": {
+              "points": 420
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "update",
+            "ref": "player_chris",
+            "props": {
+              "points": 350
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "update",
+            "ref": "player_dave",
+            "props": {
+              "points": 250
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "update",
+            "ref": "player_tom",
+            "props": {
+              "points": 220
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "update",
+            "ref": "player_ryan",
+            "props": {
+              "points": 155
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "update",
+            "ref": "player_james",
+            "props": {
+              "points": 180
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "update",
+            "ref": "player_jake",
+            "props": {
+              "points": 120
+            }
+          }
+        }
+      ],
+      "text_blocks": [],
+      "usage": {
+        "input_tokens": 6056,
+        "output_tokens": 557,
+        "cache_read": 0
+      },
+      "ttfc_ms": 1326,
+      "ttc_ms": 5936,
+      "validation": {
+        "passed": true,
+        "issues": []
+      }
+    },
+    {
+      "turn": 4,
+      "tier": "L3",
+      "message": "Who's in the lead?",
+      "tool_calls": [],
+      "text_blocks": [
+        "Zach leads with 420 points. Chris is second at 350."
+      ],
+      "usage": {
+        "input_tokens": 6827,
+        "output_tokens": 20,
+        "cache_read": 0
+      },
+      "ttfc_ms": 1436,
+      "ttc_ms": 1697,
+      "validation": {
+        "passed": true,
+        "issues": []
+      }
+    }
+  ],
+  "final_snapshot": {
+    "meta": {
+      "title": null,
+      "identity": null
+    },
+    "entities": {
+      "poker_league": {
+        "id": "poker_league",
+        "parent": "root",
+        "display": "page",
+        "props": {
+          "name": "Poker League",
+          "schedule": "Every other Thursday"
+        },
+        "_removed": false,
+        "_created_seq": 1,
+        "_updated_seq": 1
+      },
+      "next_game": {
+        "id": "next_game",
+        "parent": "poker_league",
+        "display": "section",
+        "props": {
+          "name": "Next Game"
+        },
+        "_removed": false,
+        "_created_seq": 2,
+        "_updated_seq": 2
+      },
+      "game_feb27": {
+        "id": "game_feb27",
+        "parent": "next_game",
+        "display": "card",
+        "props": {
+          "date": "2025-02-27",
+          "host": "Ryan",
+          "snacks": "Mike"
+        },
+        "_removed": false,
+        "_created_seq": 3,
+        "_updated_seq": 3
+      },
+      "standings": {
+        "id": "standings",
+        "parent": "poker_league",
+        "display": "section",
+        "props": {
+          "name": "Standings",
+          "display": "table",
+          "_sort_by": "points",
+          "_sort_order": "desc"
+        },
+        "_removed": false,
+        "_created_seq": 4,
+        "_updated_seq": 13
+      },
+      "player_zach": {
+        "id": "player_zach",
+        "parent": "standings",
+        "display": null,
+        "props": {
+          "name": "Zach",
+          "points": 420
+        },
+        "_removed": false,
+        "_created_seq": 5,
+        "_updated_seq": 14
+      },
+      "player_chris": {
+        "id": "player_chris",
+        "parent": "standings",
+        "display": null,
+        "props": {
+          "name": "Chris",
+          "points": 350
+        },
+        "_removed": false,
+        "_created_seq": 6,
+        "_updated_seq": 15
+      },
+      "player_dave": {
+        "id": "player_dave",
+        "parent": "standings",
+        "display": null,
+        "props": {
+          "name": "Dave",
+          "points": 250
+        },
+        "_removed": false,
+        "_created_seq": 7,
+        "_updated_seq": 16
+      },
+      "player_mike": {
+        "id": "player_mike",
+        "parent": "standings",
+        "display": null,
+        "props": {
+          "name": "Mike",
+          "points": 260
+        },
+        "_removed": false,
+        "_created_seq": 8,
+        "_updated_seq": 8
+      },
+      "player_tom": {
+        "id": "player_tom",
+        "parent": "standings",
+        "display": null,
+        "props": {
+          "name": "Tom",
+          "points": 220
+        },
+        "_removed": false,
+        "_created_seq": 9,
+        "_updated_seq": 17
+      },
+      "player_james": {
+        "id": "player_james",
+        "parent": "standings",
+        "display": null,
+        "props": {
+          "name": "James",
+          "points": 180
+        },
+        "_removed": false,
+        "_created_seq": 10,
+        "_updated_seq": 19
+      },
+      "player_ryan": {
+        "id": "player_ryan",
+        "parent": "standings",
+        "display": null,
+        "props": {
+          "name": "Ryan",
+          "points": 155
+        },
+        "_removed": false,
+        "_created_seq": 11,
+        "_updated_seq": 18
+      },
+      "player_jake": {
+        "id": "player_jake",
+        "parent": "standings",
+        "display": null,
+        "props": {
+          "name": "Jake",
+          "points": 120
+        },
+        "_removed": false,
+        "_created_seq": 12,
+        "_updated_seq": 20
+      }
+    },
+    "relationships": [],
+    "_sequence": 20
+  }
+}

@@ -1,0 +1,3 @@
+{"t":"entity.update","ref":"quote_cabinet_depot","p":{"selected":false}}
+{"t":"entity.update","ref":"quote_woodworks_unlimited","p":{"selected":true,"amount":9500}}
+{"t":"entity.update","ref":"budget_overview","p":{"spent":17500,"remaining":17500}}

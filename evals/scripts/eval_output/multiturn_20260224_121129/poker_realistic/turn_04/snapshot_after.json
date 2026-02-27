@@ -1,0 +1,84 @@
+{
+  "meta": {
+    "title": "Poker Night",
+    "identity": "Poker night with friends."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Poker Night"
+      }
+    },
+    "details": {
+      "id": "details",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "status": "Planning",
+        "schedule": "Every other Thursday",
+        "buy_in": 20
+      }
+    },
+    "roster": {
+      "id": "roster",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Players"
+      }
+    },
+    "player_me": {
+      "id": "player_me",
+      "parent": "roster",
+      "display": "row",
+      "props": {
+        "name": "Me"
+      }
+    },
+    "player_mike": {
+      "id": "player_mike",
+      "parent": "roster",
+      "display": "row",
+      "props": {
+        "name": "Mike"
+      }
+    },
+    "player_dave": {
+      "id": "player_dave",
+      "parent": "roster",
+      "display": "row",
+      "props": {
+        "name": "Dave"
+      }
+    },
+    "player_tom": {
+      "id": "player_tom",
+      "parent": "roster",
+      "display": "row",
+      "props": {
+        "name": "Tom"
+      }
+    },
+    "player_sarah": {
+      "id": "player_sarah",
+      "parent": "roster",
+      "display": "row",
+      "props": {
+        "name": "Sarah"
+      }
+    },
+    "player_jake": {
+      "id": "player_jake",
+      "parent": "roster",
+      "display": "row",
+      "props": {
+        "name": "Jake"
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {}
+}

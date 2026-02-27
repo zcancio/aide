@@ -1,0 +1,5 @@
+{"t":"entity.update","ref":"food_potato_salad","p":{"item":"Potato salad","contributor":"Aunt Linda","status":"confirmed"}}
+{"t":"entity.update","ref":"food_main_1","p":{"item":"Carne asada","contributor":"Carlos Garcia","status":"confirmed"}}
+{"t":"entity.update","ref":"food_drinks","p":{"item":"Drinks","contributor":"Maria Garcia","status":"confirmed"}}
+{"t":"entity.update","ref":"food_side_1","p":{"item":"Side dish","contributor":"TBD","status":"needed"}}
+{"t":"entity.update","ref":"food_dessert","p":{"item":"Dessert","contributor":"TBD","status":"needed"}}

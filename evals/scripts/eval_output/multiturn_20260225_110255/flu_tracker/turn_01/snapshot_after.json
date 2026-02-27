@@ -1,0 +1,51 @@
+{
+  "meta": {
+    "title": "Fever Tracking",
+    "identity": "Tracking fevers for two kids: Ringo and George."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Fever Tracking"
+      }
+    },
+    "kids": {
+      "id": "kids",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Kids"
+      }
+    },
+    "kid_ringo": {
+      "id": "kid_ringo",
+      "parent": "kids",
+      "display": "row",
+      "props": {
+        "name": "Ringo"
+      }
+    },
+    "kid_george": {
+      "id": "kid_george",
+      "parent": "kids",
+      "display": "row",
+      "props": {
+        "name": "George"
+      }
+    },
+    "readings": {
+      "id": "readings",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Temperature Readings"
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {},
+  "orphans": []
+}

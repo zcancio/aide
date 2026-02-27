@@ -1,0 +1,5 @@
+{"t":"entity.create","id":"chore_dishes","parent":"chores","display":"row","p":{"task":"Dishes","done":false}}
+{"t":"entity.create","id":"chore_vacuuming","parent":"chores","display":"row","p":{"task":"Vacuuming","done":false}}
+{"t":"entity.create","id":"chore_bathroom_cleaning","parent":"chores","display":"row","p":{"task":"Bathroom cleaning","done":false}}
+{"t":"entity.create","id":"chore_trash","parent":"chores","display":"row","p":{"task":"Trash","done":false}}
+{"t":"entity.create","id":"chore_mopping","parent":"chores","display":"row","p":{"task":"Mopping","done":false}}

@@ -1,0 +1,7 @@
+
+```
+{"t":"entity.update","ref":"player_mike","p":{"wins":1}}
+{"t":"entity.update","ref":"game_feb19","p":{"pot":120}}
+{"t":"rel.set","from":"player_tom","to":"game_feb19","type":"hosting","cardinality":"one_to_one"}
+{"t":"entity.update","ref":"game_feb19","p":{"location":"Tom's"}}
+```

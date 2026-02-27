@@ -1,0 +1,1 @@
+{"t":"entity.create","id":"reading_george_9","parent":"readings","display":"row","p":{"name":"George","date":"2025-12-31","time":"19:40","temp":100.5,"meds":"Tylenol"}}

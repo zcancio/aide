@@ -1,0 +1,5 @@
+{"t":"entity.create","id":"player_me","parent":"players","display":"row","p":{"name":"Me"}}
+{"t":"entity.create","id":"player_mike","parent":"players","display":"row","p":{"name":"Mike"}}
+{"t":"entity.create","id":"player_dave","parent":"players","display":"row","p":{"name":"Dave"}}
+{"t":"entity.create","id":"player_tom","parent":"players","display":"row","p":{"name":"Tom"}}
+{"t":"voice","text":"Four players added. Set date and location when ready."}

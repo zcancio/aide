@@ -1,0 +1,2 @@
+{"t":"rel.set","from":"page","to":"quote_cabinet_depot","type":"selected","cardinality":"one_to_one"}
+{"t":"voice","text":"Cabinet Depot selected: $9,500."}

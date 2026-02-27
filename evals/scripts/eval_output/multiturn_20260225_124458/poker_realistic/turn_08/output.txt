@@ -1,0 +1,3 @@
+{"t":"entity.create","id":"game_mar05","parent":"schedule","display":"row","p":{"date":"2026-03-05","location":"Dave's"}}
+{"t":"entity.create","id":"player_lisa","parent":"players","display":"row","p":{"name":"Lisa","wins":0}}
+{"t":"entity.remove","ref":"player_jake"}

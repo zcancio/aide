@@ -1,0 +1,7 @@
+
+```json
+{"t":"entity.update","ref":"game_jan09","p":{"date":"2026-02-27","pot":120,"host":"Tom"}}
+{"t":"entity.update","ref":"player_mike","p":{"wins":1}}
+{"t":"rel.set","from":"player_tom","to":"game_jan09","type":"hosting","cardinality":"one_to_one"}
+{"t":"entity.update","ref":"details","p":{"location":"Tom's"}}
+```

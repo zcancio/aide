@@ -1,0 +1,2 @@
+{"t":"entity.update","ref":"quote_cabinet_depot","p":{"status":"selected"}}
+{"t":"entity.update","ref":"project_overview","p":{"spent":17500,"remaining":17500}}

@@ -1,0 +1,59 @@
+{
+  "meta": {
+    "title": "Roommate Chores",
+    "identity": "Chore tracker for three roommates."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Roommate Chores"
+      }
+    },
+    "roommates": {
+      "id": "roommates",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Roommates"
+      }
+    },
+    "member_me": {
+      "id": "member_me",
+      "parent": "roommates",
+      "display": "row",
+      "props": {
+        "name": "Me"
+      }
+    },
+    "member_alex": {
+      "id": "member_alex",
+      "parent": "roommates",
+      "display": "row",
+      "props": {
+        "name": "Alex"
+      }
+    },
+    "member_jamie": {
+      "id": "member_jamie",
+      "parent": "roommates",
+      "display": "row",
+      "props": {
+        "name": "Jamie"
+      }
+    },
+    "chores": {
+      "id": "chores",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Chores"
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {},
+  "orphans": []
+}

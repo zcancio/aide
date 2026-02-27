@@ -1,0 +1,13 @@
+```json
+{"t":"entity.update","ref":"player_mike","p":{"wins":0,"total_winnings":0}}
+{"t":"entity.update","ref":"player_me","p":{"wins":0,"total_winnings":0}}
+{"t":"entity.update","ref":"player_dave","p":{"wins":0,"total_winnings":0}}
+{"t":"entity.update","ref":"player_tom","p":{"wins":0,"total_winnings":0}}
+{"t":"entity.update","ref":"player_sarah","p":{"wins":0,"total_winnings":0}}
+{"t":"entity.update","ref":"player_jake","p":{"wins":0,"total_winnings":0}}
+{"t":"voice","text":"Win tracking added."}
+{"t":"entity.create","id":"schedule","parent":"page","display":"table","p":{"title":"Schedule"}}
+{"t":"entity.create","id":"game_feb19","parent":"schedule","display":"row","p":{"date":"2026-02-19"}}
+{"t":"rel.set","from":"player_mike","to":"game_feb19","type":"hosting","cardinality":"one_to_one"}
+{"t":"voice","text":"Schedule started. First game Feb 19 at Mike's."}
+```

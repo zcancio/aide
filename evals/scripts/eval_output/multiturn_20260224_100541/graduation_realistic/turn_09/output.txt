@@ -1,0 +1,9 @@
+{"t":"escalate","tier":"L3","reason":"structural_change","extract":"need to create a todo/tasks section for: book park pavilion, order cake, get decorations, figure out parking"}
+```jsonl
+{"t":"entity.create","id":"todo","parent":"page","display":"checklist","p":{"title":"Tasks"}}
+{"t":"entity.create","id":"task_book_pavilion","parent":"todo","display":"row","p":{"task":"Book park pavilion","done":false}}
+{"t":"entity.create","id":"task_order_cake","parent":"todo","display":"row","p":{"task":"Order cake","done":false}}
+{"t":"entity.create","id":"task_get_decorations","parent":"todo","display":"row","p":{"task":"Get decorations","done":false}}
+{"t":"entity.create","id":"task_figure_parking","parent":"todo","display":"row","p":{"task":"Figure out parking","done":false}}
+{"t":"voice","text":"Tasks section created with 4 items."}
+```

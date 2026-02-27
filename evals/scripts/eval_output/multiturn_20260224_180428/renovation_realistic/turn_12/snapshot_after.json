@@ -1,0 +1,148 @@
+{
+  "meta": {
+    "title": "Kitchen Remodel",
+    "identity": "Kitchen renovation project tracking."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Kitchen Remodel"
+      }
+    },
+    "overview": {
+      "id": "overview",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "status": "Planning"
+      }
+    },
+    "budget_overview": {
+      "id": "budget_overview",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "total": 48000,
+        "spent": 20700,
+        "remaining": 27300
+      }
+    },
+    "expense_architect": {
+      "id": "expense_architect",
+      "parent": "page",
+      "display": "row",
+      "props": {
+        "category": "Design",
+        "description": "Architect plans",
+        "amount": 8000,
+        "date": "2026-02-24"
+      }
+    },
+    "cabinet_quotes": {
+      "id": "cabinet_quotes",
+      "parent": "page",
+      "display": "section",
+      "props": {
+        "title": "Cabinet Quotes"
+      }
+    },
+    "quote_woodworks_unlimited": {
+      "id": "quote_woodworks_unlimited",
+      "parent": "cabinet_quotes",
+      "display": "row",
+      "props": {
+        "vendor": "Woodworks Unlimited",
+        "amount": 9500,
+        "selected": true
+      }
+    },
+    "quote_cabinet_depot": {
+      "id": "quote_cabinet_depot",
+      "parent": "cabinet_quotes",
+      "display": "row",
+      "props": {
+        "vendor": "Cabinet Depot",
+        "amount": 11000,
+        "selected": false
+      }
+    },
+    "quote_custom_craft": {
+      "id": "quote_custom_craft",
+      "parent": "cabinet_quotes",
+      "display": "row",
+      "props": {
+        "vendor": "Custom Craft",
+        "amount": 15000
+      }
+    },
+    "task_countertop_measure": {
+      "id": "task_countertop_measure",
+      "parent": "page",
+      "display": "row",
+      "props": {
+        "task": "Get countertops measured",
+        "done": true,
+        "priority": "before_trades"
+      }
+    },
+    "task_plumber": {
+      "id": "task_plumber",
+      "parent": "page",
+      "display": "row",
+      "props": {
+        "task": "Plumber",
+        "date": "2026-03-24",
+        "done": false
+      }
+    },
+    "task_electrician": {
+      "id": "task_electrician",
+      "parent": "page",
+      "display": "row",
+      "props": {
+        "task": "Electrician",
+        "date": "2026-03-17",
+        "done": false
+      }
+    },
+    "expense_flooring": {
+      "id": "expense_flooring",
+      "parent": "page",
+      "display": "row",
+      "props": {
+        "category": "Materials",
+        "description": "Flooring",
+        "amount": 5000,
+        "estimate": true
+      }
+    },
+    "expense_appliances": {
+      "id": "expense_appliances",
+      "parent": "page",
+      "display": "row",
+      "props": {
+        "category": "Materials",
+        "description": "Appliances",
+        "amount": 8000,
+        "estimate": true
+      }
+    },
+    "expense_countertop": {
+      "id": "expense_countertop",
+      "parent": "page",
+      "display": "row",
+      "props": {
+        "category": "Materials",
+        "description": "Countertops",
+        "amount": 3200,
+        "date": "2026-02-24"
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {},
+  "orphans": []
+}

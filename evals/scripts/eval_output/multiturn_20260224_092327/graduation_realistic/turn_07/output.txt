@@ -1,0 +1,4 @@
+{"t":"entity.create","id":"food_carne_asada","parent":"food","display":"row","p":{"item":"Carne Asada","host":"Carlos"}}
+{"t":"entity.create","id":"food_drinks","parent":"food","display":"row","p":{"item":"Drinks","host":"Maria"}}
+{"t":"entity.create","id":"food_dessert","parent":"food","display":"row","p":{"item":"Dessert","host":""}}
+{"t":"entity.create","id":"food_sides","parent":"food","display":"row","p":{"item":"Sides","host":""}}

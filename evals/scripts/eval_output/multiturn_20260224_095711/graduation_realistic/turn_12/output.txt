@@ -1,0 +1,18 @@
+{
+  "t": "entity.create",
+  "id": "guest_james",
+  "parent": "guests",
+  "display": "row",
+  "p": {
+    "name": "James",
+    "rsvp": "yes",
+    "notes": "Flying in from Chicago"
+  }
+}
+{
+  "t": "entity.update",
+  "ref": "guest_dave",
+  "p": {
+    "rsvp": "no"
+  }
+}

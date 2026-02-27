@@ -1,0 +1,4 @@
+{"t":"entity.create","id":"section_timeline","parent":"page","display":"section","p":{"title":"Timeline"}}
+{"t":"entity.create","id":"task_countertops_measured","parent":"section_timeline","display":"row","p":{"task":"Get countertops measured","done":false,"priority":"before plumber and electrician"}}
+{"t":"entity.create","id":"task_electrician","parent":"section_timeline","display":"row","p":{"task":"Electrician","done":false,"date":"2026-03-03"}}
+{"t":"entity.create","id":"task_plumber","parent":"section_timeline","display":"row","p":{"task":"Plumber","done":false,"date":"2026-03-10"}}

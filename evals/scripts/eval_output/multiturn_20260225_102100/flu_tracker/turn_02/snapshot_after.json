@@ -1,0 +1,99 @@
+{
+  "meta": {
+    "title": "Fever Tracker",
+    "identity": "Tracking fevers for Ringo and George."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Fever Tracker"
+      }
+    },
+    "kids": {
+      "id": "kids",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Kids"
+      }
+    },
+    "kid_ringo": {
+      "id": "kid_ringo",
+      "parent": "kids",
+      "display": "row",
+      "props": {
+        "name": "Ringo"
+      }
+    },
+    "kid_george": {
+      "id": "kid_george",
+      "parent": "kids",
+      "display": "row",
+      "props": {
+        "name": "George"
+      }
+    },
+    "readings": {
+      "id": "readings",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Temperature Readings"
+      }
+    },
+    "reading_ringo_1030am_dec29": {
+      "id": "reading_ringo_1030am_dec29",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "name": "Ringo",
+        "date": "2025-12-29",
+        "time": "10:30",
+        "temp": 103.7,
+        "medication": "Tylenol"
+      }
+    },
+    "reading_ringo_135pm_dec29": {
+      "id": "reading_ringo_135pm_dec29",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "name": "Ringo",
+        "date": "2025-12-29",
+        "time": "13:30",
+        "temp": 101.5,
+        "medication": "Motrin"
+      }
+    },
+    "reading_ringo_520pm_dec29": {
+      "id": "reading_ringo_520pm_dec29",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "name": "Ringo",
+        "date": "2025-12-29",
+        "time": "17:20",
+        "temp": 101.0,
+        "medication": "Tylenol"
+      }
+    },
+    "reading_ringo_820pm_dec29": {
+      "id": "reading_ringo_820pm_dec29",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "name": "Ringo",
+        "date": "2025-12-29",
+        "time": "20:20",
+        "temp": 102.0,
+        "medication": "Motrin"
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {},
+  "orphans": []
+}

@@ -1,0 +1,6 @@
+```jsonl
+{"t":"meta.set","p":{"title":"Sophie's Graduation","identity":"Graduation party for Sophie in May 2026."}}
+{"t":"entity.create","id":"page","parent":"root","display":"page","p":{"title":"Sophie's Graduation"}}
+{"t":"entity.create","id":"event_details","parent":"page","display":"card","p":{"honoree":"Sophie","occasion":"Graduation","month":"May 2026"}}
+{"t":"voice","text":"Event created. Add date, venue, and guest details when ready."}
+```

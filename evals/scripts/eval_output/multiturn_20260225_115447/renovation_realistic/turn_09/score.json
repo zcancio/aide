@@ -1,0 +1,66 @@
+{
+  "name": "renovation_realistic_t9",
+  "tier": "L2",
+  "model": "claude-haiku-4-5-20251001",
+  "prompt_version": "v3.1",
+  "composite": 1.0,
+  "dimensions": {
+    "validity": {
+      "name": "validity",
+      "score": 1.0,
+      "checks": {
+        "parseable": 1.0,
+        "no_fences": 1.0,
+        "valid_types": 1.0,
+        "valid_structure": 1.0,
+        "not_empty": 1.0
+      },
+      "notes": []
+    },
+    "voice": {
+      "name": "voice",
+      "score": 1.0,
+      "checks": {
+        "violation_count": 1.0,
+        "severity_score": 1.0,
+        "under_100_chars": 1.0
+      },
+      "notes": []
+    },
+    "structure": {
+      "name": "structure",
+      "score": 1.0,
+      "checks": {
+        "parents_before_children": 1.0,
+        "display_hints_valid": 1.0,
+        "entity_ids_quality": 1.0
+      },
+      "notes": []
+    },
+    "efficiency": {
+      "name": "efficiency",
+      "score": 1.0,
+      "checks": {
+        "within_budget": 1.0,
+        "in_sweet_spot": 1.0
+      },
+      "notes": []
+    },
+    "fidelity": {
+      "name": "fidelity",
+      "score": 1.0,
+      "checks": {
+        "tier_appropriate": 1.0,
+        "l2_scope": 1.0,
+        "budget_items_added": 1.0,
+        "budget_ceiling": 1.0
+      },
+      "notes": [
+        "Added 2 line items under budget table \u2014 correct placement"
+      ]
+    }
+  },
+  "latency_ms": 1506,
+  "output_tokens": 104,
+  "cache_hit_pct": 0.0
+}

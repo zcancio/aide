@@ -1,0 +1,109 @@
+{
+  "meta": {
+    "title": "Kitchen Remodel",
+    "identity": "Kitchen remodel project tracking."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Kitchen Remodel"
+      }
+    },
+    "project_overview": {
+      "id": "project_overview",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "status": "Planning",
+        "budget": 35000,
+        "spent": 8000,
+        "remaining": 27000
+      }
+    },
+    "cabinet_quotes": {
+      "id": "cabinet_quotes",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Cabinet Quotes"
+      }
+    },
+    "quote_woodworks": {
+      "id": "quote_woodworks",
+      "parent": "cabinet_quotes",
+      "display": "row",
+      "props": {
+        "vendor": "Woodworks Unlimited",
+        "amount": 12000
+      }
+    },
+    "quote_depot": {
+      "id": "quote_depot",
+      "parent": "cabinet_quotes",
+      "display": "row",
+      "props": {
+        "vendor": "Cabinet Depot",
+        "amount": 11000
+      }
+    },
+    "quote_custom": {
+      "id": "quote_custom",
+      "parent": "cabinet_quotes",
+      "display": "row",
+      "props": {
+        "vendor": "Custom Craft",
+        "amount": 15000
+      }
+    },
+    "tasks": {
+      "id": "tasks",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Tasks"
+      }
+    },
+    "task_measure_countertops": {
+      "id": "task_measure_countertops",
+      "parent": "tasks",
+      "display": "row",
+      "props": {
+        "task": "Measure countertops",
+        "done": false,
+        "note": "before plumber and electrician"
+      }
+    },
+    "task_plumber": {
+      "id": "task_plumber",
+      "parent": "tasks",
+      "display": "row",
+      "props": {
+        "task": "Plumber",
+        "done": false
+      }
+    },
+    "task_electrician": {
+      "id": "task_electrician",
+      "parent": "tasks",
+      "display": "row",
+      "props": {
+        "task": "Electrician",
+        "done": false
+      }
+    }
+  },
+  "relationships": [
+    {
+      "from": "page",
+      "to": "quote_depot",
+      "type": "selected"
+    }
+  ],
+  "relationship_types": {
+    "selected": "one_to_one"
+  },
+  "orphans": []
+}

@@ -1,0 +1,81 @@
+{
+  "meta": {
+    "title": "Roommate Chores",
+    "identity": "Chore tracker for three roommates: me, Alex, and Jamie."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Roommate Chores"
+      }
+    },
+    "chores": {
+      "id": "chores",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Chores"
+      }
+    },
+    "chore_dishes": {
+      "id": "chore_dishes",
+      "parent": "chores",
+      "display": "row",
+      "props": {
+        "task": "Dishes",
+        "assigned_to": "Jamie"
+      }
+    },
+    "chore_vacuuming": {
+      "id": "chore_vacuuming",
+      "parent": "chores",
+      "display": "row",
+      "props": {
+        "task": "Vacuuming",
+        "assigned_to": "Alex",
+        "done": true
+      }
+    },
+    "chore_bathroom": {
+      "id": "chore_bathroom",
+      "parent": "chores",
+      "display": "row",
+      "props": {
+        "task": "Bathroom cleaning",
+        "assigned_to": "me"
+      }
+    },
+    "chore_trash": {
+      "id": "chore_trash",
+      "parent": "chores",
+      "display": "row",
+      "props": {
+        "task": "Trash",
+        "assigned_to": "Alex"
+      }
+    },
+    "chore_mopping": {
+      "id": "chore_mopping",
+      "parent": "chores",
+      "display": "row",
+      "props": {
+        "task": "Mopping",
+        "assigned_to": "Jamie"
+      }
+    },
+    "chore_counters": {
+      "id": "chore_counters",
+      "parent": "chores",
+      "display": "row",
+      "props": {
+        "task": "Wipe down kitchen counters",
+        "assigned_to": "Jamie"
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {}
+}

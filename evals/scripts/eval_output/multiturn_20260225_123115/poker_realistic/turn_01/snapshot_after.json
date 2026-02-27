@@ -1,0 +1,41 @@
+{
+  "meta": {
+    "title": "Poker Night",
+    "identity": "Poker night tracker."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Poker Night"
+      }
+    },
+    "details": {
+      "id": "details",
+      "parent": "page",
+      "display": "card",
+      "props": {}
+    },
+    "players": {
+      "id": "players",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Players"
+      }
+    },
+    "games": {
+      "id": "games",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Games"
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {},
+  "orphans": []
+}

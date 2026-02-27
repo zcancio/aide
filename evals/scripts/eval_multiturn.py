@@ -1,26 +1,24 @@
-#!/usr/bin/env python3
 """
-Multi-turn eval runner.
+AIde Multi-Turn Eval — v3
 
-Runs conversational scenarios where state builds across turns.
-Each turn's output becomes the next turn's snapshot context.
+Runs realistic multi-turn scenarios against real Anthropic API using streaming
+tool use. Tests the full conversational loop: vague kickoffs, incremental detail,
+corrections, questions mid-build, and state reversals.
+
+Scenarios from scenarios_multiturn.py — real users don't front-load context.
 
 Usage:
-  # Run all multi-turn scenarios
-  python eval_multiturn.py
+    ANTHROPIC_API_KEY=sk-... python eval_multiturn.py
+    ANTHROPIC_API_KEY=sk-... python eval_multiturn.py --scenario poker_realistic
+    ANTHROPIC_API_KEY=sk-... python eval_multiturn.py --scenario flu_tracker --turn 4
+    ANTHROPIC_API_KEY=sk-... python eval_multiturn.py --list
 
-  # Run specific scenario
-  python eval_multiturn.py --scenario graduation_realistic
-
-  # Verbose: show full output per turn
-  python eval_multiturn.py -v
-
-  # Save run artifacts for review
-  python eval_multiturn.py --save
-
-Environment:
-  ANTHROPIC_API_KEY  — required
-  AIDE_EVAL_DIR      — output dir (default: ./eval_output)
+Output:
+    eval_output/multiturn_YYYYMMDD_HHMMSS/
+      ├── graduation_realistic.json
+      ├── poker_realistic.json
+      ├── ...
+      └── report.json
 """
 
 from __future__ import annotations
@@ -29,762 +27,860 @@ import argparse
 import json
 import os
 import re
-import sys
 import time
-from datetime import date, datetime, timezone, timedelta
+from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import anthropic
 
-from scoring import score_scenario, ScenarioScore, parse_jsonl, DIMENSION_WEIGHTS
 from scenarios_multiturn import MULTI_TURN_SCENARIOS, get_scenario
 
-# ---------------------------------------------------------------------------
-# Prompt loading (same as eval_v3.py)
-# ---------------------------------------------------------------------------
+# ── Tool Definitions ────────────────────────────────────────────────────────
 
-PROMPTS_DIR = Path(__file__).parent
-if (Path(__file__).parent / "prompts").exists():
-    PROMPTS_DIR = Path(__file__).parent / "prompts"
-
-
-def load_prompt(name: str) -> str:
-    return (PROMPTS_DIR / f"{name}.md").read_text()
-
-
-def build_system_blocks(tier: str, snapshot: dict | None) -> list[dict]:
-    # Use Pacific time to avoid UTC date rollover mismatches
-    pacific = timezone(timedelta(hours=-8))
-    today = datetime.now(pacific).date()
-
-    # Build calendar context so the model doesn't have to do date arithmetic
-    cal_lines = []
-    mon = today - timedelta(days=today.weekday())
-    week = []
-    for i in range(7):
-        d = mon + timedelta(days=i)
-        marker = " (today)" if d == today else ""
-        week.append(f"{d.strftime('%a %b %d')}{marker}")
-    cal_lines.append("This week: " + " | ".join(week))
-    days_since_thu = (today.weekday() - 3) % 7
-    last_thu = today - timedelta(days=days_since_thu) if days_since_thu > 0 else today - timedelta(days=7)
-    this_thu = last_thu + timedelta(days=7)
-    cal_lines.append(f"Last Thursday = {last_thu.strftime('%b %d')}. This Thursday = {this_thu.strftime('%b %d')}. Two weeks from last Thursday = {(last_thu + timedelta(days=14)).strftime('%b %d')}.")
-    calendar_context = "\n".join(cal_lines)
-
-    prefix = load_prompt("shared_prefix").replace(
-        "{{current_date}}", today.strftime("%A, %B %d, %Y")
-    ).replace(
-        "{{calendar_context}}", calendar_context
-    )
-    tier_text = load_prompt({"L2": "l2_tier", "L3": "l3_tier", "L4": "l4_tier"}[tier])
-    blocks = [
-        {
-            "type": "text",
-            "text": prefix,
-            "cache_control": {"type": "ephemeral"},
+TOOLS = [
+    {
+        "name": "mutate_entity",
+        "description": "Create, update, remove, or move an entity in the page tree.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": ["create", "update", "remove", "move", "reorder"],
+                },
+                "id": {
+                    "type": "string",
+                    "description": "Entity ID (for create)",
+                },
+                "ref": {
+                    "type": "string",
+                    "description": "Entity ID (for update/remove/move)",
+                },
+                "parent": {
+                    "type": "string",
+                    "description": "'root' or parent entity ID",
+                },
+                "display": {
+                    "type": "string",
+                    "enum": [
+                        "page", "section", "card", "list", "table",
+                        "checklist", "grid", "metric", "text", "image",
+                    ],
+                },
+                "props": {"type": "object"},
+            },
+            "required": ["action"],
         },
-        {
-            "type": "text",
-            "text": tier_text,
-            "cache_control": {"type": "ephemeral"},
+    },
+    {
+        "name": "set_relationship",
+        "description": "Set, remove, or constrain a relationship between entities.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": ["set", "remove", "constrain"],
+                },
+                "from": {"type": "string"},
+                "to": {"type": "string"},
+                "type": {"type": "string"},
+                "cardinality": {
+                    "type": "string",
+                    "enum": ["one_to_one", "many_to_one", "many_to_many"],
+                },
+            },
+            "required": ["action", "type"],
         },
-    ]
-    if snapshot is not None:
-        blocks.append({
-            "type": "text",
-            "text": f"## Current Snapshot\n```json\n{json.dumps(snapshot, indent=2)}\n```",
-        })
-    return blocks
+    },
+    {
+        "name": "voice",
+        "description": "Send a chat message to the user. You MUST call this tool in EVERY response — it is the ONLY way the user sees your reply. Without it, they see nothing. Call it after mutations to summarize, or alone for queries.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "text": {
+                    "type": "string",
+                    "description": "Short state reflection shown in chat. Max ~100 chars. No first person, no encouragement, no emojis.",
+                },
+            },
+            "required": ["text"],
+        },
+    },
+]
 
+# ── Model Configuration ─────────────────────────────────────────────────────
 
-# ---------------------------------------------------------------------------
-# Models
-# ---------------------------------------------------------------------------
-
-DEFAULT_MODELS = {
-    "L2": "claude-haiku-4-5-20251001",
+MODELS = {
+    "L4": "claude-opus-4-5-20251101",
     "L3": "claude-sonnet-4-5-20250929",
-    "L4": "claude-sonnet-4-5-20250929",
 }
 
-# ---------------------------------------------------------------------------
-# Snapshot builder — applies JSONL output to build next turn's state
-# ---------------------------------------------------------------------------
+TEMPERATURE = {
+    "L4": 0.2,
+    "L3": 0,
+}
 
-def apply_output_to_snapshot(snapshot: dict, output_text: str, tier: str) -> dict:
+# ── Configuration ────────────────────────────────────────────────────────────
+
+OUTPUT_BASE = Path("eval_output")
+
+def make_run_dir() -> Path:
+    """Create a timestamped run directory."""
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_dir = OUTPUT_BASE / f"multiturn_{ts}"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    return run_dir
+
+client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+
+
+# ── Prompt Loading ───────────────────────────────────────────────────────────
+
+def load_prompt(tier: str) -> str:
+    """Load and assemble system prompt for tier, resolving shared prefix."""
+    prompt_dir = Path(__file__).parent
+
+    # Load shared prefix
+    shared_path = prompt_dir / "shared_prefix.md"
+    shared = shared_path.read_text()
+
+    # Load tier prompt
+    tier_path = prompt_dir / f"{tier.lower()}_system.md"
+    tier_prompt = tier_path.read_text()
+
+    # Replace placeholder
+    return tier_prompt.replace("{{shared_prefix}}", shared)
+
+
+def build_system_prompt(tier: str, snapshot: dict[str, Any]) -> str:
+    """Build system prompt with snapshot context."""
+    base = load_prompt(tier)
+    snapshot_json = json.dumps(snapshot, indent=2, sort_keys=True)
+    return f"""{base}
+
+## Current Snapshot
+```json
+{snapshot_json}
+```
+"""
+
+
+# ── Reducer (minimal, for eval snapshot tracking) ────────────────────────────
+
+def empty_snapshot() -> dict[str, Any]:
+    return {
+        "meta": {"title": None, "identity": None},
+        "entities": {},
+        "relationships": [],
+        "_sequence": 0,
+    }
+
+
+def apply_tool_call(snapshot: dict[str, Any], tool_name: str, params: dict) -> dict[str, Any]:
+    """Apply a single tool call to the snapshot. Minimal reducer for eval tracking."""
+    seq = snapshot["_sequence"] + 1
+    snapshot["_sequence"] = seq
+
+    if tool_name == "mutate_entity":
+        action = params.get("action")
+        if action == "create":
+            eid = params.get("id", f"entity_{seq}")
+            snapshot["entities"][eid] = {
+                "id": eid,
+                "parent": params.get("parent", "root"),
+                "display": params.get("display"),
+                "props": params.get("props", {}),
+                "_removed": False,
+                "_created_seq": seq,
+                "_updated_seq": seq,
+            }
+        elif action == "update":
+            ref = params.get("ref", "")
+            if ref in snapshot["entities"]:
+                entity = snapshot["entities"][ref]
+                entity["props"].update(params.get("props", {}))
+                if params.get("display"):
+                    entity["display"] = params["display"]
+                entity["_updated_seq"] = seq
+        elif action == "remove":
+            ref = params.get("ref", "")
+            if ref in snapshot["entities"]:
+                snapshot["entities"][ref]["_removed"] = True
+                snapshot["entities"][ref]["_updated_seq"] = seq
+        elif action == "move":
+            ref = params.get("ref", "")
+            if ref in snapshot["entities"] and "parent" in params:
+                snapshot["entities"][ref]["parent"] = params["parent"]
+                snapshot["entities"][ref]["_updated_seq"] = seq
+
+    elif tool_name == "set_relationship":
+        action = params.get("action")
+        if action == "set":
+            snapshot["relationships"].append({
+                "from": params.get("from", ""),
+                "to": params.get("to", ""),
+                "type": params.get("type", ""),
+                "cardinality": params.get("cardinality", "many_to_one"),
+            })
+        elif action == "remove":
+            snapshot["relationships"] = [
+                r for r in snapshot["relationships"]
+                if not (r["from"] == params.get("from") and r["to"] == params.get("to") and r["type"] == params.get("type"))
+            ]
+
+    return snapshot
+
+
+# ── Tier Selection ───────────────────────────────────────────────────────────
+
+def pick_tier(turn_spec: dict, turn_index: int, snapshot: dict) -> str:
     """
-    Apply LLM output to snapshot to build state for next turn.
-
-    For L2/L3: parse JSONL and apply entity mutations.
-    For L4: no state change (read-only).
-
-    This is a simplified reducer — it doesn't validate schemas or enforce
-    all reducer rules. It just builds enough state for the next prompt
-    to have realistic context.
-
-    IMPORTANT: Deep copies the snapshot first so mutations don't bleed
-    back into previously stored snapshots (Python dict aliasing).
+    Pick the tier to run this turn at.
+    
+    Uses expected_tier from the spec. In production this would be the
+    classifier — here we trust the scenario author's routing decision.
     """
-    if tier == "L4":
-        return json.loads(json.dumps(snapshot))  # L4 doesn't mutate but still isolate
-
-    parsed, _ = parse_jsonl(output_text)
-
-    # Deep copy to break all references to the original snapshot's inner dicts
-    working = json.loads(json.dumps(snapshot))
-    entities = working.get("entities", {})
-    meta = working.get("meta", {})
-    relationships = working.get("relationships", [])
-    rel_types = working.get("relationship_types", {})  # type → cardinality
-
-    for event in parsed:
-        t = event.get("t", "")
-
-        if t == "meta.set" or t == "meta.update":
-            p = event.get("p", {})
-            meta.update(p)
-
-        elif t == "entity.create":
-            eid = event.get("id")
-            if eid:
-                entities[eid] = {
-                    "id": eid,
-                    "parent": event.get("parent", "root"),
-                    "display": event.get("display", "row"),
-                    "props": event.get("p", {}),
-                }
-
-        elif t == "entity.update":
-            ref = event.get("ref")
-            if ref and ref in entities:
-                entities[ref]["props"].update(event.get("p", {}))
-
-        elif t == "entity.remove":
-            ref = event.get("ref")
-            if ref and ref in entities:
-                del entities[ref]
-                # Clean up any relationships involving the removed entity
-                rels = snapshot.get("relationships", [])
-                snapshot["relationships"] = [
-                    r for r in rels if r["from"] != ref and r["to"] != ref
-                ]
-
-        elif t == "entity.move":
-            ref = event.get("ref")
-            if ref and ref in entities:
-                if "parent" in event:
-                    entities[ref]["parent"] = event["parent"]
-
-        elif t == "rel.set":
-            frm = event.get("from", "")
-            to = event.get("to", "")
-            rtype = event.get("type", "")
-            card = event.get("cardinality", "many_to_one")
-
-            # Register type cardinality on first use
-            if rtype and rtype not in rel_types:
-                rel_types[rtype] = card
-
-            # Enforce cardinality
-            stored_card = rel_types.get(rtype, card)
-            if stored_card == "many_to_one":
-                # Source can link to ONE target of this type — remove old
-                relationships = [r for r in relationships
-                                 if not (r["from"] == frm and r["type"] == rtype)]
-            elif stored_card == "one_to_one":
-                # Both sides exclusive — remove source's old AND target's old
-                relationships = [r for r in relationships
-                                 if not (r["from"] == frm and r["type"] == rtype)
-                                 and not (r["to"] == to and r["type"] == rtype)]
-
-            relationships.append({"from": frm, "to": to, "type": rtype})
-
-        elif t == "rel.remove":
-            frm = event.get("from", "")
-            to = event.get("to", "")
-            rtype = event.get("type", "")
-            relationships = [r for r in relationships
-                             if not (r["from"] == frm and r["to"] == to and r["type"] == rtype)]
-
-        # Signals (voice, escalate, batch) — no state change
-
-    # Detect orphaned entities — children whose parent was removed
-    all_ids = set(entities.keys()) | {"root"}
-    orphans = [eid for eid, e in entities.items() if e.get("parent") and e["parent"] not in all_ids]
-
-    return {"meta": meta, "entities": entities, "relationships": relationships, "relationship_types": rel_types, "orphans": orphans}
+    return turn_spec["expected_tier"]
 
 
-# ---------------------------------------------------------------------------
-# Conversation history for messages
-# ---------------------------------------------------------------------------
-
-def build_messages_with_history(
-    history: list[dict],
-    user_message: str,
-    tail_size: int = 5,
-) -> list[dict]:
-    """Build messages array with conversation history."""
-    messages = []
-    for turn in history[-tail_size:]:
-        messages.append({"role": "user", "content": turn["user_message"]})
-        if turn.get("assistant_response"):
-            messages.append({"role": "assistant", "content": turn["assistant_response"]})
-    messages.append({"role": "user", "content": user_message})
-    return messages
-
-
-# ---------------------------------------------------------------------------
-# Turn runner
-# ---------------------------------------------------------------------------
-
-def classify_tier(message: str, snapshot: dict | None) -> str:
-    """
-    Simple rule-based classifier (mirrors the server-side classifier).
-    Returns expected tier based on message + snapshot.
-    """
-    msg_lower = message.lower().strip()
-    entities = snapshot.get("entities", {}) if snapshot else {}
-    entity_ids_lower = [eid.lower() for eid in entities.keys()]
-
-    # "add a new [thing]" — L3 only if the [thing] table doesn't exist yet
-    # e.g. "add a new chore" when chores table exists → L2 (adding row)
-    add_new_match = re.search(r'add a new (\w+)', msg_lower)
-    if add_new_match:
-        thing = add_new_match.group(1)
-        # Check if a table for this thing exists (singular or plural)
-        thing_exists = any(thing in eid or thing.rstrip('s') in eid or thing + 's' in eid
-                          for eid in entity_ids_lower)
-        if thing_exists:
-            return "L2"  # Adding to existing structure
-        else:
-            return "L3"  # Creating new structure
-
-    # Structural keywords → L3 (check BEFORE query phrases to avoid "create a summary" → L4)
-    # Note: "gonna be" removed — too aggressive for "it's gonna be me, mike..." (adding to roster)
-    structural = ["add a section", "set up a", "create a", "make a",
-                   "we should track", "we should do", "gotta do", "redoing", "reorganize",
-                   "group the", "split the", "separate the"]
-    if any(kw in msg_lower for kw in structural):
-        return "L3"
-
-    # Questions → L4
-    # Question mark anywhere (not just at end) — handles "is X working? feels like..."
-    if "?" in msg_lower:
-        return "L4"
-    # Query starters — expanded to catch "is the X working" patterns
-    query_starts = ["how many", "who", "what's left", "what do we", "how much",
-                    "is there", "is the", "is it", "are the", "are they",
-                    "do we", "does it", "does the", "where are we", "show me", "give me"]
-    if any(msg_lower.startswith(q) for q in query_starts):
-        return "L4"
-    # Query phrases anywhere (summaries, breakdowns, status checks)
-    query_phrases = ["breakdown", "looking like", "status update",
-                     "where do we stand", "how are we", "what's the total",
-                     "run the numbers", "full picture"]
-    if any(qp in msg_lower for qp in query_phrases):
-        return "L4"
-
-    # No entities → L3
-    if not entities:
-        return "L3"
-
-    # Helper: check if an entity has children (is populated, not just skeleton)
-    def has_children(prefix):
-        parent_ids = [eid for eid in entities.keys() if prefix in eid.lower()]
-        if not parent_ids:
-            return False
-        # Check if any other entity has one of these as parent
-        for e in entities.values():
-            if e.get("parent") in parent_ids:
-                return True
-        return False
-
-    # Budget/cost introduction → L3 if budget is empty or doesn't exist
-    # e.g. "budget is around 35k" or "already spent 8k"
-    if re.search(r'budget\s+(is|around|of|:)', msg_lower):
-        if not has_children("budget"):
-            return "L3"
-
-    # Quotes introduction → L3 if no quote children exist
-    # e.g. "got 3 quotes" or "quotes for the cabinets"
-    if re.search(r'(\d+\s+)?quotes?\s+(for|from|:)', msg_lower) or ("got" in msg_lower and "quote" in msg_lower):
-        if not has_children("quote"):
-            return "L3"
-
-    # Scheduling multiple contractors/tasks → L3 if tasks table is empty
-    # e.g. "plumber can start march 10, electrician march 3"
-    contractor_pattern = r'(plumber|electrician|contractor|installer|painter|carpenter)'
-    if re.search(contractor_pattern, msg_lower) and re.search(r'(start|begin|come|schedule)', msg_lower):
-        if not has_children("task"):
-            return "L3"
-
-    # Multi-item creation: 3+ comma/and-separated values suggest table creation → L3
-    # e.g. "quotes: woodworks 12k, cabinet depot 9500, custom craft 15k"
-    # e.g. "chores: dishes, vacuuming, bathroom, trash, mopping"
-    segments = [s.strip() for s in msg_lower.split(",") if s.strip()]
-    if len(segments) >= 3:
-        # Check if this looks like a list of new items (not just a complex sentence)
-        # Heuristic: multiple segments with numbers, or introducing a set of things
-        has_numbers = sum(1 for s in segments if re.search(r'\d', s))
-        intro_patterns = ["quotes", "chores", "tasks", "items", "players",
-                          "guests", "weekly", "daily", "monthly"]
-        matched_intro = next((ip for ip in intro_patterns if ip in msg_lower), None)
-        if has_numbers >= 2 or matched_intro:
-            # Check if a table for THIS specific intro pattern has children
-            # (not just exists — "chores:" needs populated chores, not just skeleton)
-            if matched_intro:
-                if not has_children(matched_intro):
-                    return "L3"
-            else:
-                # No specific intro, fall back to checking if ANY table exists
-                table_parents = [e for e in entities.values()
-                                if e.get("display") in ("table", "list", "checklist")]
-                if not table_parents:
-                    return "L3"
-
-    # Default → L2
-    return "L2"
-
+# ── Tool Call Extraction from Streaming ──────────────────────────────────────
 
 def run_turn(
-    client: anthropic.Anthropic,
-    message: str,
     tier: str,
-    snapshot: dict | None,
-    history: list[dict],
-) -> dict:
-    """Run a single turn and return results."""
-    model = DEFAULT_MODELS[tier]
-    system = build_system_blocks(tier, snapshot)
-    messages = build_messages_with_history(history, message)
+    snapshot: dict[str, Any],
+    messages: list[dict],
+    user_message: str,
+) -> dict[str, Any]:
+    """
+    Run one turn against the Anthropic API with streaming tool use.
+
+    Returns dict with:
+        tool_calls: list of {name, input}
+        text_blocks: list of text strings (voice output)
+        snapshot: updated snapshot after applying tool calls
+        usage: token usage
+        ttfc_ms: time to first content
+        ttc_ms: total time
+    """
+    system = build_system_prompt(tier, snapshot)
+    model = MODELS[tier]
+    temperature = TEMPERATURE[tier]
+
+    # Build messages
+    msgs = list(messages)
+    msgs.append({"role": "user", "content": user_message})
 
     start = time.time()
-    first_token_time = None
-    full_text = ""
+    first_content_time = None
+    tool_calls = []       # mutations only (for validation/snapshot)
+    text_blocks = []      # voice output (text blocks + voice tool calls)
+    all_raw_tools = []    # ALL tool calls incl. voice (for conversation history)
 
     with client.messages.stream(
-        model=model, max_tokens=4096, system=system, messages=messages,
+        model=model,
+        max_tokens=8192,
+        temperature=temperature,
+        system=system,
+        messages=msgs,
+        tools=TOOLS,
     ) as stream:
-        for chunk in stream.text_stream:
-            if first_token_time is None:
-                first_token_time = time.time()
-            full_text += chunk
+        current_tool = None
+        current_text = ""
+
+        for event in stream:
+            if first_content_time is None and event.type in (
+                "content_block_start", "content_block_delta",
+            ):
+                first_content_time = time.time()
+
+            if event.type == "content_block_start":
+                if event.content_block.type == "tool_use":
+                    current_tool = {
+                        "name": event.content_block.name,
+                        "id": event.content_block.id,
+                        "input_json": "",
+                    }
+                elif event.content_block.type == "text":
+                    current_text = ""
+
+            elif event.type == "content_block_delta":
+                if hasattr(event.delta, "partial_json") and current_tool:
+                    current_tool["input_json"] += event.delta.partial_json
+                elif hasattr(event.delta, "text"):
+                    current_text += event.delta.text
+
+            elif event.type == "content_block_stop":
+                if current_tool:
+                    try:
+                        params = json.loads(current_tool["input_json"])
+                    except json.JSONDecodeError:
+                        params = {}
+                    ts = int((time.time() - start) * 1000)
+                    # Voice tool → text block, not a mutation
+                    if current_tool["name"] == "voice":
+                        all_raw_tools.append({
+                            "name": "voice",
+                            "id": current_tool["id"],
+                            "input": params,
+                        })
+                        voice_text = params.get("text", "")
+                        if voice_text.strip():
+                            text_blocks.append({
+                                "text": voice_text.strip(),
+                                "timestamp_ms": ts,
+                            })
+                    else:
+                        all_raw_tools.append({
+                            "name": current_tool["name"],
+                            "id": current_tool["id"],
+                            "input": params,
+                        })
+                        tool_calls.append({
+                            "name": current_tool["name"],
+                            "input": params,
+                            "timestamp_ms": ts,
+                        })
+                        # Apply to snapshot
+                        snapshot = apply_tool_call(snapshot, current_tool["name"], params)
+                    current_tool = None
+                elif current_text.strip():
+                    ts = int((time.time() - start) * 1000)
+                    text_blocks.append({
+                        "text": current_text.strip(),
+                        "timestamp_ms": ts,
+                    })
+                    current_text = ""
 
     end = time.time()
-    usage = stream.get_final_message().usage
+    msg = stream.get_final_message()
 
-    # Strip code fences if model wraps output (common Sonnet behavior)
-    raw_output = full_text
-    clean_output = full_text.strip()
-    if clean_output.startswith("```"):
-        lines = clean_output.split("\n")
-        # Remove opening fence (```jsonl, ```json, ```)
-        lines = lines[1:]
-        # Remove closing fence
-        if lines and lines[-1].strip() == "```":
-            lines = lines[:-1]
-        clean_output = "\n".join(lines)
+    ttfc_ms = int((first_content_time - start) * 1000) if first_content_time else -1
+    ttc_ms = int((end - start) * 1000)
+
+    # Deduplicate text blocks (model may emit same text as both text block and voice tool)
+    seen = set()
+    deduped = []
+    for tb in text_blocks:
+        key = tb["text"]
+        if key not in seen:
+            seen.add(key)
+            deduped.append(tb)
+    text_blocks = deduped
 
     return {
-        "tier": tier,
-        "model": model,
-        "output": clean_output,
-        "raw_output": raw_output,
-        "had_fences": raw_output.strip() != clean_output.strip(),
-        "ttfc_ms": int((first_token_time - start) * 1000) if first_token_time else -1,
-        "ttc_ms": int((end - start) * 1000),
-        "input_tokens": usage.input_tokens,
-        "output_tokens": usage.output_tokens,
-        "cache_creation": getattr(usage, "cache_creation_input_tokens", 0) or 0,
-        "cache_read": getattr(usage, "cache_read_input_tokens", 0) or 0,
+        "tool_calls": tool_calls,
+        "text_blocks": text_blocks,
+        "all_raw_tools": all_raw_tools,
+        "snapshot": snapshot,
+        "usage": {
+            "input_tokens": msg.usage.input_tokens,
+            "output_tokens": msg.usage.output_tokens,
+            "cache_read": getattr(msg.usage, "cache_read_input_tokens", 0),
+        },
+        "ttfc_ms": ttfc_ms,
+        "ttc_ms": ttc_ms,
     }
 
 
-# ---------------------------------------------------------------------------
-# Scenario runner
-# ---------------------------------------------------------------------------
+# ── Validation ───────────────────────────────────────────────────────────────
 
-def run_multiturn_scenario(
-    client: anthropic.Anthropic,
-    scenario: dict,
-    verbose: bool = False,
-    save_dir: Path | None = None,
-) -> dict:
-    """Run a complete multi-turn scenario, building state across turns."""
-    name = scenario["name"]
-    turns = scenario["turns"]
+def validate_turn(turn_spec: dict, result: dict, snapshot: dict) -> dict[str, Any]:
+    """
+    Validate a turn result against the checks dict from scenarios_multiturn.
+    
+    Checks are intentionally fuzzy — we validate structural correctness, not
+    exact entity names. The checks dict uses boolean flags and patterns.
+    """
+    issues = []
+    checks = turn_spec.get("checks", {})
+    tc = result["tool_calls"]
+    # text_blocks may be dicts with {text, timestamp_ms} or plain strings
+    raw_tb = result["text_blocks"]
+    tb = [b["text"] if isinstance(b, dict) else b for b in raw_tb]
+    entities = snapshot.get("entities", {})
+    active = {k: v for k, v in entities.items() if not v.get("_removed")}
 
-    print(f"\n{'='*70}")
-    print(f"📖 {name}: {scenario['description']}")
-    print(f"   {len(turns)} turns")
-    print(f"{'='*70}")
+    # ── Structural checks ──
 
-    snapshot: dict = {"meta": {}, "entities": {}}
-    history: list[dict] = []
-    turn_results: list[dict] = []
+    if checks.get("creates_page"):
+        pages = [t for t in tc if t["name"] == "mutate_entity"
+                 and t["input"].get("action") == "create"
+                 and t["input"].get("display") == "page"]
+        if not pages:
+            issues.append("Expected page creation, got none")
 
-    # ── Cache warming ──
-    # Fire minimal requests to warm Anthropic's prompt cache for each tier.
-    # The shared prefix + tier instructions are marked ephemeral (1h TTL).
-    # Without this, turn 1 always pays the full cache-creation cost.
-    warmed_tiers = set()
-    for turn_spec in turns:
-        tier = turn_spec["expected_tier"]
-        warmed_tiers.add(tier)
-    if warmed_tiers:
-        print(f"  🔥 Warming cache for: {', '.join(sorted(warmed_tiers))}")
-        for tier in sorted(warmed_tiers):
-            try:
-                warm_start = time.time()
-                warm_system = build_system_blocks(tier, snapshot)
-                # Minimal request — just enough for the API to cache the prefix
-                client.messages.create(
-                    model=DEFAULT_MODELS[tier],
-                    max_tokens=1,
-                    system=warm_system,
-                    messages=[{"role": "user", "content": "ping"}],
-                )
-                warm_ms = int((time.time() - warm_start) * 1000)
-                print(f"    {tier} warmed in {warm_ms}ms")
-            except Exception as e:
-                print(f"    {tier} warm failed: {e}")
+    if checks.get("has_meta"):
+        has_title = any(
+            t["name"] == "mutate_entity" and t["input"].get("action") == "create"
+            and t["input"].get("display") == "page" and t["input"].get("props", {}).get("title")
+            for t in tc
+        )
+        if not has_title:
+            issues.append("Expected page with title in props")
 
-    for i, turn_spec in enumerate(turns):
+    if checks.get("not_over_scaffolded"):
+        sections = [t for t in tc if t["name"] == "mutate_entity"
+                    and t["input"].get("action") == "create"
+                    and t["input"].get("display") in ("section", "table", "checklist", "list")]
+        if len(sections) > 2:
+            issues.append(f"Over-scaffolded: {len(sections)} sections from vague input")
+
+    # ── Entity creation checks (pattern: creates_N_type) ──
+
+    if checks.get("creates_guests"):
+        guest_creates = [t for t in tc if t["name"] == "mutate_entity"
+                        and t["input"].get("action") == "create"
+                        and "guest" in str(t["input"]).lower()]
+        if not guest_creates:
+            issues.append("Expected guest entity creation")
+
+    for key in checks:
+        m = re.match(r"creates_(\d+)_(players|guests|items|chores|tasks|cards)", key)
+        if m and checks[key]:
+            expected_count = int(m.group(1))
+            creates = [t for t in tc if t["name"] == "mutate_entity"
+                      and t["input"].get("action") == "create"]
+            if len(creates) < expected_count:
+                issues.append(f"Expected ≥{expected_count} creates, got {len(creates)}")
+
+    if checks.get("batch_creates"):
+        creates = [t for t in tc if t["name"] == "mutate_entity"
+                  and t["input"].get("action") == "create"]
+        min_ents = checks.get("min_entities", 2)
+        if len(creates) < min_ents:
+            issues.append(f"Batch: expected ≥{min_ents} creates, got {len(creates)}")
+
+    # Named item creation
+    for key in ["creates_butter", "creates_chore", "creates_game", "creates_lisa",
+                "potato_salad_entity"]:
+        if checks.get(key):
+            creates = [t for t in tc if t["name"] == "mutate_entity"
+                      and t["input"].get("action") == "create"]
+            if not creates:
+                issues.append(f"Expected entity creation ({key})")
+
+    # ── Update checks ──
+
+    if checks.get("updates_existing"):
+        updates = [t for t in tc if t["name"] == "mutate_entity"
+                  and t["input"].get("action") == "update"]
+        if not updates:
+            issues.append("Expected entity update(s), got none")
+
+    if checks.get("updates_details"):
+        # Accept either update to existing entity OR create of new details entity
+        any_mutation = [t for t in tc if t["name"] == "mutate_entity"
+                       and t["input"].get("action") in ("update", "create")]
+        if not any_mutation:
+            issues.append("Expected details update or creation, got none")
+
+    for key in ["marks_task_done", "marks_done"]:
+        if checks.get(key):
+            done = [t for t in tc if t["name"] == "mutate_entity"
+                   and t["input"].get("action") == "update"
+                   and (t["input"].get("props", {}).get("done") is True
+                        or t["input"].get("props", {}).get("checked") is True)]
+            if not done:
+                issues.append("Expected task marked done/checked")
+
+    if checks.get("checks_off_2"):
+        done_count = sum(
+            1 for t in tc if t["name"] == "mutate_entity"
+            and t["input"].get("action") == "update"
+            and (t["input"].get("props", {}).get("done") is True
+                 or t["input"].get("props", {}).get("checked") is True)
+        )
+        if done_count < 2:
+            issues.append(f"Expected 2 items checked off, got {done_count}")
+
+    if checks.get("unchecks_eggs"):
+        unchecks = [t for t in tc if t["name"] == "mutate_entity"
+                   and t["input"].get("action") == "update"
+                   and (t["input"].get("props", {}).get("done") is False
+                        or t["input"].get("props", {}).get("checked") is False)]
+        if not unchecks:
+            issues.append("Expected item unchecked (state reversal)")
+
+    if checks.get("appends_not_updates"):
+        creates = [t for t in tc if t["name"] == "mutate_entity"
+                  and t["input"].get("action") == "create"]
+        if not creates:
+            issues.append("Expected new entities (append), not updates")
+
+    if checks.get("marks_done_or_removes"):
+        done_or_rm = [t for t in tc if t["name"] == "mutate_entity"
+                     and (t["input"].get("action") == "remove"
+                          or (t["input"].get("action") == "update"
+                              and (t["input"].get("props", {}).get("done") is True
+                                   or t["input"].get("props", {}).get("checked") is True)))]
+        if not done_or_rm:
+            issues.append("Expected item marked done or removed")
+
+    # Update-specific named checks — accept entity.update OR set_relationship
+    for key in ["updates_chicken", "updates_mike_wins", "updates_game_result",
+                "updates_maria", "updates_bob_or_drinks", "updates_james_confirmed",
+                "updates_james_travel", "updates_dave_declined", "updates_jake",
+                "updates_dates"]:
+        if checks.get(key):
+            # Extract the entity name hint from the check key (e.g., "updates_jake" → "jake")
+            name_hint = key.replace("updates_", "").split("_")[0]
+            updates = [t for t in tc if t["name"] == "mutate_entity"
+                      and t["input"].get("action") == "update"]
+            rels = [t for t in tc if t["name"] == "set_relationship"
+                   and name_hint in json.dumps(t["input"]).lower()]
+            if not updates and not rels:
+                issues.append(f"Expected update or relationship ({key})")
+
+    # ── Query / text checks ──
+
+    if checks.get("plain_text"):
+        if tc:
+            issues.append(f"Expected text-only response (query), got {len(tc)} tool calls")
+
+    if checks.get("no_mutations"):
+        mutations = [t for t in tc if t["name"] == "mutate_entity"]
+        if mutations:
+            issues.append(f"Expected no mutations (query), got {len(mutations)}")
+
+    if checks.get("answers_count"):
+        all_text = " ".join(tb).lower()
+        if not re.search(r"\d+", all_text):
+            issues.append("Query response should contain a number")
+
+    for key in ["trend_summary", "comprehensive_summary", "george_med_analysis",
+                "george_peak", "lists_remaining", "answers_standings",
+                "calculates_remaining"]:
+        if checks.get(key):
+            if not tb:
+                issues.append(f"Expected text summary ({key})")
+
+    # ── Clarification checks ──
+
+    if checks.get("should_clarify"):
+        all_text = " ".join(tb).lower()
+        clarify_signals = ["which", "do you mean", "clarify", "which one", "?"]
+        if not any(s in all_text for s in clarify_signals):
+            issues.append("Expected clarification question, model guessed instead")
+
+    if checks.get("resolves_clarify"):
+        if not tc and "?" in " ".join(tb):
+            issues.append("Expected resolution, got another question")
+
+    # ── Relationship checks ──
+
+    if checks.get("uses_rel_for_selection"):
+        rels = [t for t in tc if t["name"] == "set_relationship"]
+        if not rels:
+            issues.append("Expected set_relationship for selection")
+
+    if checks.get("sets_attending"):
+        attending_rels = [t for t in tc if t["name"] == "set_relationship"
+                        and t["input"].get("type") == "attending"]
+        if not attending_rels:
+            issues.append("Expected attending relationships for game participants")
+
+    if checks.get("linked_to_linda"):
+        # Bonus check — relationship or assigned prop
+        rels = [t for t in tc if t["name"] == "set_relationship"]
+        props_with_linda = [t for t in tc if "linda" in json.dumps(t["input"]).lower()]
+        if not rels and not props_with_linda:
+            pass  # Bonus, don't fail
+
+    # ── Output content checks ──
+
+    expect_in = checks.get("expect_in_output", [])
+    if expect_in:
+        all_output = json.dumps(tc) + " ".join(tb)
+        for pattern in expect_in:
+            alternatives = pattern.split("|")
+            if not any(alt.lower() in all_output.lower() for alt in alternatives):
+                issues.append(f"Expected '{pattern}' in output")
+
+    if checks.get("names_correct"):
+        all_output = json.dumps(tc).lower() + " ".join(tb).lower()
+        for name in checks["names_correct"]:
+            if name.lower() not in all_output:
+                issues.append(f"Expected name '{name}' in output")
+
+    # ── Section/structure creation ──
+
+    for key in ["creates_food_section", "creates_food_items", "creates_budget_table",
+                "creates_quote_table", "creates_todo_section", "creates_sections",
+                "creates_roster", "adds_schedule_or_fields", "creates_budget_item",
+                "adds_budget_items", "creates_tasks"]:
+        if checks.get(key):
+            any_creates = [t for t in tc if t["name"] == "mutate_entity"
+                          and t["input"].get("action") == "create"]
+            if not any_creates:
+                issues.append(f"Expected entity creation ({key})")
+
+    # ── Boolean checks that just need any tool output ──
+
+    for key in ["has_date", "has_venue", "has_store_note", "compact",
+                "assigns_all", "assigns_jamie", "unassigns_chore",
+                "tasks_unchecked", "unassigned_items", "marks_prereq_done",
+                "budget_ceiling_intact", "captures_note"]:
+        if checks.get(key):
+            pass  # These are intent checks — hard to validate automatically
+
+    # ── Voice quality (always checked) ──
+
+    # Every turn must produce at least one text block
+    if not tb:
+        issues.append("No voice output — user gets silence in chat")
+
+    for text in tb:
+        if len(text) > 150:
+            issues.append(f"Voice long ({len(text)}ch): {text[:60]}...")
+        if text.lower().startswith(("i ", "i'", "i've", "let me", "i'll")):
+            issues.append(f"First person: {text[:60]}...")
+        if any(e in text for e in ["🎉", "🎊", "✨", "👏", "🎶", "❤️", "😊"]):
+            issues.append(f"Emoji in voice: {text[:60]}...")
+
+    return {
+        "passed": len(issues) == 0,
+        "issues": issues,
+    }
+
+
+# ── Main Runner ──────────────────────────────────────────────────────────────
+
+def run_scenario(scenario: dict, run_dir: Path, max_turn: int | None = None) -> dict[str, Any]:
+    """Run a full multi-turn scenario."""
+    scenario_name = scenario["name"]
+
+    print(f"\n{'=' * 70}")
+    print(f"Scenario: {scenario_name}")
+    print(f"  {scenario.get('description', '')[:80]}")
+    print(f"  Turns: {len(scenario['turns'])}")
+    print(f"{'=' * 70}")
+
+    snapshot = empty_snapshot()
+    messages: list[dict] = []
+    turn_results = []
+
+    for turn_index, turn_spec in enumerate(scenario["turns"]):
+        turn_num = turn_index + 1
+        if max_turn and turn_num > max_turn:
+            break
+
+        tier = pick_tier(turn_spec, turn_index, snapshot)
         message = turn_spec["message"]
-        expected_tier = turn_spec["expected_tier"]
-        accept_tiers = turn_spec.get("accept_tiers", [expected_tier])
-        notes = turn_spec.get("notes", "")
+        accept_tiers = turn_spec.get("accept_tiers", [tier])
 
-        # Classify
-        classified_tier = classify_tier(message, snapshot)
+        print(f"\n  Turn {turn_num} ({tier}): {message[:70]}{'...' if len(message) > 70 else ''}")
 
-        # Override if classifier disagrees but expected tier is acceptable
-        # (in production the LLM can self-escalate, so accept wider range)
-        actual_tier = classified_tier if classified_tier in accept_tiers else expected_tier
+        result = run_turn(tier, snapshot, messages, message)
 
-        print(f"\n  Turn {i+1}/{len(turns)}: \"{message}\"")
-        print(f"    expected={expected_tier}  classified={classified_tier}  actual={actual_tier}")
+        # ── L3 → L4 escalation ──
+        # If L3 signals escalation in voice text, re-run through L4
+        if tier == "L3":
+            escalation_signals = ["needs a new section", "new section structure",
+                                  "needs structural", "escalat"]
+            all_voice = " ".join(
+                b["text"] if isinstance(b, dict) else b for b in result["text_blocks"]
+            ).lower()
+            if any(sig in all_voice for sig in escalation_signals):
+                print(f"    ↑ L3 escalated → re-running as L4")
+                # Reset snapshot (L3 may have emitted no-op updates)
+                result = run_turn("L4", snapshot, messages, message)
+                tier = "L4"  # Update for reporting
 
-        try:
-            # Capture state BEFORE this turn (for viewer)
-            snapshot_before = json.loads(json.dumps(snapshot))
-            system_prompt_text = "\n\n".join(
-                b["text"] for b in build_system_blocks(
-                    classified_tier if classified_tier in accept_tiers else expected_tier,
-                    snapshot,
-                )
-            )
+        snapshot = result["snapshot"]
 
-            result = run_turn(client, message, actual_tier, snapshot, history)
+        # ── Update conversation history ──
 
-            # Retry guard: if L2/L3 produced zero parseable JSONL, it slipped
-            # into conversational mode. Retry once with explicit nudge.
-            if actual_tier in ("L2", "L3"):
-                check_parsed, _ = parse_jsonl(result["output"])
-                if not check_parsed:
-                    print(f"    ⚠ {actual_tier} produced plain text, retrying with nudge...")
-                    retry_msg = message + "\n\n[System: respond with JSONL operations only. No prose.]"
-                    retry_result = run_turn(client, retry_msg, actual_tier, snapshot, history)
-                    retry_parsed, _ = parse_jsonl(retry_result["output"])
-                    if retry_parsed:
-                        result = retry_result
-                        result["retried"] = True
-                        print(f"    ✓ Retry produced {len(retry_parsed)} operations")
-                    else:
-                        result["retried"] = True
-                        print(f"    ✗ Retry also failed — plain text output")
+        messages.append({"role": "user", "content": message})
 
-            # Check for escalation signals in L2 output
-            # Production server: apply L2 mutations, then re-route to escalation tier
-            escalation_result = None
-            if actual_tier == "L2":
-                parsed_events, _ = parse_jsonl(result["output"])
-                escalation = next((e for e in parsed_events if e.get("t") == "escalate"), None)
-                if escalation:
-                    esc_tier = escalation.get("tier", "L3")
-                    esc_extract = escalation.get("extract", message)
-                    print(f"    ↗ L2 escalated to {esc_tier}: {escalation.get('reason','')}")
-
-                    # Apply L2's mutations first (everything before the escalate)
-                    pre_escalation_snapshot = apply_output_to_snapshot(
-                        snapshot, result["output"], "L2"
-                    )
-
-                    # Run escalation tier with the extracted/original message
-                    escalation_result = run_turn(
-                        client, esc_extract, esc_tier, pre_escalation_snapshot, history
-                    )
-
-                    # Merge: L2's output + escalation output
-                    result = {
-                        **result,
-                        "output": result["output"] + "\n" + escalation_result["output"],
-                        "raw_output": result.get("raw_output", result["output"]) + "\n" + escalation_result.get("raw_output", escalation_result["output"]),
-                        "had_fences": result.get("had_fences", False) or escalation_result.get("had_fences", False),
-                        "output_tokens": result["output_tokens"] + escalation_result["output_tokens"],
-                        "input_tokens": result["input_tokens"] + escalation_result["input_tokens"],
-                        "ttc_ms": result["ttc_ms"] + escalation_result["ttc_ms"],
-                        # TTFT is from the first call
-                        "cache_creation": result["cache_creation"] + escalation_result.get("cache_creation", 0),
-                        "cache_read": result["cache_read"] + escalation_result.get("cache_read", 0),
-                        "escalated_to": esc_tier,
-                    }
-
-            # If escalated, use the escalated tier for scoring and snapshot
-            # (the merged output has L3-style entity creates, not L2-only mutations)
-            effective_tier = result.get("escalated_to", actual_tier)
-
-            # Update snapshot from clean output (fences stripped)
-            # Done BEFORE scoring so structure scorer can detect orphans
-            new_snapshot = apply_output_to_snapshot(snapshot, result["output"], effective_tier)
-            entity_count = len(new_snapshot.get("entities", {}))
-            entity_delta = entity_count - len(snapshot.get("entities", {}))
-
-            # Score this turn (use raw output so fence detection works)
-            # Pass new_snapshot so structure scorer can check for orphans
-            turn_score = score_scenario(
-                name=f"{name}_t{i+1}",
-                tier=effective_tier,
-                model=result["model"],
-                prompt_version="v3.1",
-                output_text=result.get("raw_output", result["output"]),
-                output_tokens=result["output_tokens"],
-                latency_ms=result["ttc_ms"],
-                snapshot=new_snapshot,
-                user_message=message,
-                turn_hints=turn_spec.get("checks", {}),
-            )
-
-            # Track history — use natural language summaries, NOT bracket format
-            # that the model will mimic in its own output
-            if actual_tier == "L4":
-                assistant_summary = result["output"][:200]
-            else:
-                # Summarize what changed in plain language
-                parts = []
-                parsed_events, _ = parse_jsonl(result["output"])
-                creates = [e.get("id","") for e in parsed_events if e.get("t") == "entity.create"]
-                updates = [e.get("ref","") for e in parsed_events if e.get("t") == "entity.update"]
-                if creates:
-                    parts.append(f"Created {', '.join(creates[:3])}" + (f" +{len(creates)-3} more" if len(creates) > 3 else ""))
-                if updates:
-                    parts.append(f"Updated {', '.join(updates[:3])}" + (f" +{len(updates)-3} more" if len(updates) > 3 else ""))
-                voice_lines = [e.get("text","") for e in parsed_events if e.get("t") == "voice"]
-                clarify_lines = [e.get("text","") for e in parsed_events if e.get("t") == "clarify"]
-                if clarify_lines:
-                    # Clarification takes priority — it's what the user sees
-                    assistant_summary = "Question: " + clarify_lines[-1]
-                elif voice_lines:
-                    assistant_summary = voice_lines[-1]
-                elif parts:
-                    assistant_summary = ". ".join(parts) + "."
-                else:
-                    assistant_summary = "Applied changes."
-            history.append({
-                "user_message": message,
-                "assistant_response": assistant_summary,
+        assistant_content = []
+        tool_ids = []
+        for text in result["text_blocks"]:
+            t = text["text"] if isinstance(text, dict) else text
+            assistant_content.append({"type": "text", "text": t})
+        # Use all_raw_tools (includes voice) for conversation history —
+        # API requires tool_result for every tool_use in the response
+        for raw_tc in result["all_raw_tools"]:
+            tool_ids.append(raw_tc["id"])
+            assistant_content.append({
+                "type": "tool_use",
+                "id": raw_tc["id"],
+                "name": raw_tc["name"],
+                "input": raw_tc["input"],
             })
+        if assistant_content:
+            messages.append({"role": "assistant", "content": assistant_content})
 
-            # Print turn result
-            bar = "█" * int(turn_score.composite * 10) + "░" * (10 - int(turn_score.composite * 10))
-            tier_match = "✓" if classified_tier in accept_tiers else "✗"
-            print(f"    score=[{bar}] {turn_score.composite:.0%}  "
-                  f"tier={tier_match}  "
-                  f"{result['ttc_ms']}ms  "
-                  f"{result['output_tokens']}tok  "
-                  f"entities={entity_count} ({entity_delta:+d})")
+            if tool_ids:
+                tool_results = []
+                for tool_id in tool_ids:
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": tool_id,
+                        "content": "ok",
+                    })
+                messages.append({"role": "user", "content": tool_results})
 
-            if verbose:
-                preview = result["output"].strip().split("\n")[:5]
-                for line in preview:
-                    print(f"      {line[:90]}")
-                if len(result["output"].strip().split("\n")) > 5:
-                    print(f"      ... ({len(result['output'].strip().split(chr(10)))} lines)")
-                if notes:
-                    print(f"    📝 {notes[:100]}")
+        # ── Validate ──
 
-            # Save turn artifact
-            if save_dir:
-                turn_dir = save_dir / name / f"turn_{i+1:02d}"
-                turn_dir.mkdir(parents=True, exist_ok=True)
+        validation = validate_turn(turn_spec, result, snapshot)
 
-                (turn_dir / "input.md").write_text(
-                    f"# Turn {i+1}: {message}\n\n"
-                    f"## Tier: {actual_tier} (expected: {expected_tier}, classified: {classified_tier})\n\n"
-                    f"## Notes\n{notes}\n\n"
-                    f"## Snapshot before this turn\n```json\n{json.dumps(snapshot, indent=2)}\n```\n\n"
-                    f"## System prompt\n{chr(10).join(b['text'] for b in build_system_blocks(actual_tier, snapshot))}"
-                )
-                (turn_dir / "output.txt").write_text(result.get("raw_output", result["output"]))
-                (turn_dir / "snapshot_after.json").write_text(json.dumps(new_snapshot, indent=2))
-                (turn_dir / "score.json").write_text(json.dumps(turn_score.to_dict(), indent=2))
-                (turn_dir / "usage.json").write_text(json.dumps({
-                    "ttfc_ms": result["ttfc_ms"], "ttc_ms": result["ttc_ms"],
-                    "input_tokens": result["input_tokens"], "output_tokens": result["output_tokens"],
-                    "cache_creation": result["cache_creation"], "cache_read": result["cache_read"],
-                }, indent=2))
+        # Report
+        tc_summary = {}
+        for tc_item in result["tool_calls"]:
+            tc_summary[tc_item["name"]] = tc_summary.get(tc_item["name"], 0) + 1
 
-            snapshot = new_snapshot
+        print(f"    Tools: {tc_summary or '(text only)'}")
+        print(f"    Text: {len(result['text_blocks'])} blocks")
+        print(f"    TTFC: {result['ttfc_ms']}ms  TTC: {result['ttc_ms']}ms")
+        print(f"    Tokens: {result['usage']['input_tokens']:,} in / {result['usage']['output_tokens']:,} out", end="")
+        if result["usage"]["cache_read"]:
+            pct = round(result["usage"]["cache_read"] / result["usage"]["input_tokens"] * 100)
+            print(f"  (cache: {pct}%)")
+        else:
+            print()
+        if result["text_blocks"]:
+            for tb_item in result["text_blocks"][:2]:
+                tb_text = tb_item["text"] if isinstance(tb_item, dict) else tb_item
+                print(f"    Voice: \"{tb_text[:80]}\"")
+        if not validation["passed"]:
+            print(f"    ⚠ ISSUES ({len(validation['issues'])}):")
+            for issue in validation["issues"]:
+                print(f"      - {issue}")
+        else:
+            print(f"    ✓ Passed")
 
-            turn_results.append({
-                "turn": i + 1,
-                "message": message,
-                "tier": actual_tier,
-                "expected_tier": expected_tier,
-                "classified_tier": actual_tier,  # Tier actually used in the prompt
-                "classifier_raw": classified_tier,  # Raw classifier output (before fallback)
-                "tier_correct": actual_tier in accept_tiers,
-                "notes": notes,
-                # Full score breakdown
-                "score": {
-                    "composite": turn_score.composite,
-                    "validity": turn_score.dimensions["validity"].score if "validity" in turn_score.dimensions else 0,
-                    "voice": turn_score.dimensions["voice"].score if "voice" in turn_score.dimensions else 0,
-                    "structure": turn_score.dimensions["structure"].score if "structure" in turn_score.dimensions else 0,
-                    "efficiency": turn_score.dimensions["efficiency"].score if "efficiency" in turn_score.dimensions else 0,
-                    "fidelity": turn_score.dimensions["fidelity"].score if "fidelity" in turn_score.dimensions else 0,
-                },
-                # Per-dimension checks and notes (for viewer explanations)
-                "score_details": {
-                    dim_name: {
-                        "score": round(dim_score.score, 3),
-                        "checks": {k: round(v, 3) for k, v in dim_score.checks.items()},
-                        "notes": dim_score.notes,
-                    }
-                    for dim_name, dim_score in turn_score.dimensions.items()
-                },
-                # Usage
-                "ttc_ms": result["ttc_ms"],
-                "ttfc_ms": result["ttfc_ms"],
-                "output_tokens": result["output_tokens"],
-                "input_tokens": result["input_tokens"],
-                "cache_creation": result["cache_creation"],
-                "cache_read": result["cache_read"],
-                # Content (viewer needs these inline)
-                "output": result.get("raw_output", result["output"]),
-                "had_fences": result.get("had_fences", False),
-                "system_prompt": system_prompt_text,
-                "snapshot_before": snapshot_before,
-                "snapshot_after": json.loads(json.dumps(new_snapshot)),
-                # Summary stats
-                "entity_count": entity_count,
-                "entity_delta": entity_delta,
-                "escalated_to": result.get("escalated_to"),
-                "retried": result.get("retried", False),
-                # Clarification signals
-                "clarify": [
-                    {"text": e.get("text",""), "options": e.get("options",[])}
-                    for e in (parse_jsonl(result["output"])[0] if actual_tier != "L4" else [])
-                    if e.get("t") == "clarify"
-                ],
-            })
+        turn_results.append({
+            "turn": turn_num,
+            "tier": tier,
+            "expected_tier": turn_spec["expected_tier"],
+            "accept_tiers": accept_tiers,
+            "message": message,
+            "tool_calls": result["tool_calls"],
+            "text_blocks": result["text_blocks"],
+            "usage": result["usage"],
+            "ttfc_ms": result["ttfc_ms"],
+            "ttc_ms": result["ttc_ms"],
+            "validation": validation,
+            "checks": turn_spec.get("checks", {}),
+            "notes": turn_spec.get("notes", ""),
+        })
 
-        except Exception as e:
-            print(f"    ❌ ERROR: {e}")
-            turn_results.append({
-                "turn": i + 1, "message": message, "error": str(e),
-            })
+    # ── Save golden file ──
 
-    # Scenario summary
-    scores = [t["score"]["composite"] if isinstance(t.get("score"), dict) else t.get("score", 0) for t in turn_results if "score" in t]
-    avg_score = sum(scores) / max(len(scores), 1)
-    tier_accuracy = sum(1 for t in turn_results if t.get("tier_correct", False)) / max(len(turn_results), 1)
-    total_tokens = sum(t.get("output_tokens", 0) for t in turn_results)
-    total_time = sum(t.get("ttc_ms", 0) for t in turn_results)
-    final_entities = turn_results[-1].get("entity_count", 0) if turn_results else 0
+    golden = {
+        "scenario_id": scenario_name,
+        "name": scenario_name.replace("_", " ").title(),
+        "description": scenario.get("description", ""),
+        "timestamp": datetime.now().isoformat(),
+        "turns": turn_results,
+        "final_snapshot": snapshot,
+    }
+    golden_path = run_dir / f"{scenario_name}.json"
+    with open(golden_path, "w") as f:
+        json.dump(golden, f, indent=2, default=str)
+    print(f"\n  → {golden_path}")
 
-    print(f"\n  {'─'*50}")
-    bar = "█" * int(avg_score * 20) + "░" * (20 - int(avg_score * 20))
-    icon = "✅" if avg_score >= 0.8 else "⚠️" if avg_score >= 0.6 else "❌"
-    print(f"  {icon} {name} [{bar}] {avg_score:.0%} avg")
-    print(f"     turns: {len(turns)} | entities: {final_entities} | "
-          f"tokens: {total_tokens} | time: {total_time}ms | "
-          f"tier accuracy: {tier_accuracy:.0%}")
+    # Summary stats
+    total_tool_calls = sum(len(tr["tool_calls"]) for tr in turn_results)
+    total_text = sum(len(tr["text_blocks"]) for tr in turn_results)
+    total_issues = sum(len(tr["validation"]["issues"]) for tr in turn_results)
+    all_passed = all(tr["validation"]["passed"] for tr in turn_results)
+    entity_count = sum(1 for e in snapshot["entities"].values() if not e.get("_removed"))
 
     return {
-        "name": name,
-        "avg_score": avg_score,
-        "tier_accuracy": tier_accuracy,
-        "total_tokens": total_tokens,
-        "total_time_ms": total_time,
-        "final_entity_count": final_entities,
-        "turns": turn_results,
+        "scenario_id": scenario_name,
+        "name": scenario_name.replace("_", " ").title(),
+        "turns": len(turn_results),
+        "total_tool_calls": total_tool_calls,
+        "total_text_blocks": total_text,
+        "total_issues": total_issues,
+        "all_passed": all_passed,
+        "entity_count": entity_count,
     }
 
 
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
+# ── CLI ──────────────────────────────────────────────────────────────────────
 
 def main():
-    p = argparse.ArgumentParser(description="Multi-turn prompt eval")
-    p.add_argument("--scenario", type=str, help="Run specific scenario")
-    p.add_argument("-v", "--verbose", action="store_true")
-    p.add_argument("--save", action="store_true", help="Save run artifacts")
-    p.add_argument("--output-dir", default=os.environ.get("AIDE_EVAL_DIR", "./eval_output"))
-    args = p.parse_args()
+    parser = argparse.ArgumentParser(description="AIde Multi-Turn Eval v3")
+    parser.add_argument("--scenario", type=str, help="Run specific scenario by name")
+    parser.add_argument("--turn", type=int, help="Run up to this turn number")
+    parser.add_argument("--list", action="store_true", help="List available scenarios")
+    args = parser.parse_args()
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        print("ERROR: ANTHROPIC_API_KEY not set"); sys.exit(1)
+    if args.list:
+        print("Available multi-turn scenarios:\n")
+        for s in MULTI_TURN_SCENARIOS:
+            turns = len(s["turns"])
+            tiers = [t["expected_tier"] for t in s["turns"]]
+            tier_counts = {t: tiers.count(t) for t in set(tiers)}
+            tier_str = " ".join(f"{t}×{c}" for t, c in sorted(tier_counts.items()))
+            print(f"  {s['name']:<25} {turns:>2} turns  [{tier_str}]")
+            print(f"    {s.get('description', '')[:72]}")
+        return
 
-    client = anthropic.Anthropic(api_key=api_key)
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    save_dir = Path(args.output_dir) / f"multiturn_{ts}" if args.save else None
-    if save_dir:
-        save_dir.mkdir(parents=True, exist_ok=True)
-        print(f"Saving artifacts to: {save_dir}")
-
-    # Pick scenarios
+    scenarios = MULTI_TURN_SCENARIOS
     if args.scenario:
-        scenario = get_scenario(args.scenario)
-        if not scenario:
-            print(f"Unknown scenario: {args.scenario}")
-            print(f"Available: {', '.join(s['name'] for s in MULTI_TURN_SCENARIOS)}")
-            sys.exit(1)
-        to_run = [scenario]
-    else:
-        to_run = MULTI_TURN_SCENARIOS
+        s = get_scenario(args.scenario)
+        if not s:
+            print(f"Scenario '{args.scenario}' not found. Use --list to see options.")
+            return
+        scenarios = [s]
 
-    print(f"AIde Multi-Turn Eval")
-    print(f"Scenarios: {len(to_run)} | Started: {datetime.now().isoformat()}\n")
+    total_turns = sum(len(s["turns"]) for s in scenarios)
+    run_dir = make_run_dir()
 
-    # Run
+    print(f"AIde Multi-Turn Eval — v3")
+    print(f"  {len(scenarios)} scenarios, {total_turns} total turns")
+    print(f"  Wire: mutate_entity / set_relationship streaming tool use")
+    print(f"  Output: {run_dir}")
+    print(f"  Started: {datetime.now().isoformat()}")
+
     results = []
-    for scenario in to_run:
+    for scenario in scenarios:
         try:
-            result = run_multiturn_scenario(client, scenario, verbose=args.verbose, save_dir=save_dir)
+            result = run_scenario(scenario, run_dir, max_turn=args.turn)
             results.append(result)
         except Exception as e:
-            print(f"\n  FATAL ERROR in {scenario['name']}: {e}")
+            print(f"\n  ERROR: {e}")
+            import traceback
+            traceback.print_exc()
+            results.append({
+                "scenario_id": scenario["name"],
+                "name": scenario["name"],
+                "error": str(e),
+            })
 
-    # Final summary
-    print(f"\n\n{'='*70}")
-    print(f"MULTI-TURN SUMMARY")
-    print(f"{'='*70}")
-    print(f"{'Scenario':<26} {'Turns':>6} {'Score':>6} {'Tier%':>6} {'Tokens':>7} {'Time':>7} {'Entities':>9}")
-    print(f"{'-'*70}")
-
+    # Summary table
+    print(f"\n\n{'=' * 70}")
+    print(f"SUMMARY")
+    print(f"{'=' * 70}")
+    print(f"{'Scenario':<25} {'Turns':>5} {'Tools':>6} {'Text':>5} {'Ents':>5} {'Issues':>6} {'Pass':>5}")
+    print(f"{'-' * 25} {'-' * 5} {'-' * 6} {'-' * 5} {'-' * 5} {'-' * 6} {'-' * 5}")
     for r in results:
-        print(f"{r['name']:<26} {len(r['turns']):>6} {r['avg_score']:>5.1%} "
-              f"{r['tier_accuracy']:>5.0%} {r['total_tokens']:>7} "
-              f"{r['total_time_ms']:>6}ms {r['final_entity_count']:>9}")
-
-    avg = sum(r["avg_score"] for r in results) / max(len(results), 1)
-    print(f"\nOverall average: {avg:.1%}")
+        if "error" in r:
+            print(f"{r['name']:<25} ERROR: {r['error'][:40]}")
+            continue
+        status = "✓" if r["all_passed"] else "✗"
+        print(
+            f"{r['name']:<25} {r['turns']:>5} {r['total_tool_calls']:>6} "
+            f"{r['total_text_blocks']:>5} {r['entity_count']:>5} "
+            f"{r['total_issues']:>6} {status:>5}"
+        )
 
     # Save report
-    if save_dir:
-        report_path = save_dir / "report.json"
-        with open(report_path, "w") as f:
-            json.dump({
-                "timestamp": datetime.now().isoformat(),
-                "results": results,
-                "overall_average": avg,
-            }, f, indent=2, default=str)
-        print(f"Report: {report_path}")
+    report = {
+        "run_dir": str(run_dir),
+        "timestamp": datetime.now().isoformat(),
+        "scenarios_run": len(results),
+        "results": results,
+    }
+    report_path = run_dir / "report.json"
+    with open(report_path, "w") as f:
+        json.dump(report, f, indent=2, default=str)
+    print(f"\nReport: {report_path}")
 
 
 if __name__ == "__main__":

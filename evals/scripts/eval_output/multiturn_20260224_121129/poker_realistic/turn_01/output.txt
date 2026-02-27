@@ -1,0 +1,6 @@
+```json
+{"t":"meta.set","p":{"title":"Poker Night","identity":"Poker night with friends."}}
+{"t":"entity.create","id":"page","parent":"root","display":"page","p":{"title":"Poker Night"}}
+{"t":"entity.create","id":"details","parent":"page","display":"card","p":{"status":"Planning"}}
+{"t":"voice","text":"Poker night created. Add details to build it out."}
+```

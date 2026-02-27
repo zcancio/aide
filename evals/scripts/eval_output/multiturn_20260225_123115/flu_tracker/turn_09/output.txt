@@ -1,0 +1,12 @@
+Tylenol shows minimal effect for George. Looking at his readings:
+
+After Tylenol doses:
+- 2am 102.7°F → 6:30am still 102.7°F (no change over 4.5 hours)
+- 2pm 101.3°F → 3pm 101.9°F (increased 0.6°)
+- 7:40pm 100.5°F (too recent to assess)
+
+After Motrin doses:
+- 10:30am 102.9°F → 1:15pm 100.3°F (dropped 2.6°)
+- 4pm 103.0°F → (no reading yet, but previously effective)
+
+Motrin consistently brings his temp down 2-3 degrees. Tylenol holds or climbs. The pattern suggests George responds significantly better to Motrin than Tylenol.

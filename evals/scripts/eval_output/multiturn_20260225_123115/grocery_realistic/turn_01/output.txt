@@ -1,0 +1,6 @@
+```json
+{"t":"meta.set","p":{"title":"Grocery List","identity":"Shopping list for grocery run."}}
+{"t":"entity.create","id":"page","parent":"root","display":"page","p":{"title":"Grocery List"}}
+{"t":"entity.create","id":"items","parent":"page","display":"checklist","p":{"title":"Items"}}
+{"t":"voice","text":"Grocery list ready. Add items to start shopping."}
+```

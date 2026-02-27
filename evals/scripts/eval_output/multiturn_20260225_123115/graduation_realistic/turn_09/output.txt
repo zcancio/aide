@@ -1,0 +1,5 @@
+{"t":"entity.create","id":"todo","parent":"page","display":"checklist","p":{"title":"To-Do"}}
+{"t":"entity.create","id":"todo_book_pavilion","parent":"todo","display":"row","p":{"task":"Book the park pavilion","done":false}}
+{"t":"entity.create","id":"todo_order_cake","parent":"todo","display":"row","p":{"task":"Order a cake","done":false}}
+{"t":"entity.create","id":"todo_decorations","parent":"todo","display":"row","p":{"task":"Get decorations","done":false}}
+{"t":"entity.create","id":"todo_parking","parent":"todo","display":"row","p":{"task":"Figure out parking","done":false}}

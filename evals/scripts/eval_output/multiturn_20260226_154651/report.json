@@ -1,0 +1,17 @@
+{
+  "run_dir": "eval_output/multiturn_20260226_154651",
+  "timestamp": "2026-02-26T15:47:19.980874",
+  "scenarios_run": 1,
+  "results": [
+    {
+      "scenario_id": "poker_realistic",
+      "name": "Poker Realistic",
+      "turns": 8,
+      "total_tool_calls": 20,
+      "total_text_blocks": 1,
+      "total_issues": 2,
+      "all_passed": false,
+      "entity_count": 11
+    }
+  ]
+}

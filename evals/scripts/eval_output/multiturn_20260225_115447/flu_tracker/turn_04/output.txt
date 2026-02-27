@@ -1,0 +1,8 @@
+{"t":"entity.create","id":"reading_ringo_5","parent":"ringo_readings","display":"row","p":{"time":"2025-12-30T00:00","temp":101.6,"meds":"tylenol","note":"woke him back to sleep"}}
+{"t":"entity.create","id":"reading_ringo_6","parent":"ringo_readings","display":"row","p":{"time":"2025-12-30T02:00","temp":103.5,"meds":"motrin","note":"down to 101 by 2:45am"}}
+{"t":"entity.create","id":"reading_ringo_7","parent":"ringo_readings","display":"row","p":{"time":"2025-12-30T06:30","temp":98.6,"meds":null}}
+{"t":"entity.create","id":"reading_ringo_8","parent":"ringo_readings","display":"row","p":{"time":"2025-12-30T09:25","temp":99.8,"meds":"tylenol"}}
+{"t":"entity.create","id":"reading_ringo_9","parent":"ringo_readings","display":"row","p":{"time":"2025-12-30T10:30","temp":100.3,"meds":null}}
+{"t":"entity.create","id":"reading_ringo_10","parent":"ringo_readings","display":"row","p":{"time":"2025-12-30T13:15","temp":101.1,"meds":"motrin"}}
+{"t":"entity.create","id":"reading_ringo_11","parent":"ringo_readings","display":"row","p":{"time":"2025-12-30T14:00","temp":101.4,"meds":null}}
+{"t":"entity.update","ref":"ringo_summary","p":{"latest_temp":101.4,"latest_time":"2025-12-30T14:00","latest_meds":null,"reading_count":11}}

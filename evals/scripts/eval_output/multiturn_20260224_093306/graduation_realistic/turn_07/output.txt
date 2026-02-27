@@ -1,0 +1,4 @@
+{"t":"entity.update","ref":"guest_carlos","p":{"rsvp":"confirmed","dish":"Carne asada"}}
+{"t":"entity.update","ref":"guest_maria","p":{"rsvp":"confirmed","dish":"Drinks"}}
+{"t":"entity.create","id":"food_dessert","parent":"food","display":"row","p":{"dish":"Dessert","bringing":"TBD"}}
+{"t":"entity.create","id":"food_sides","parent":"food","display":"row","p":{"dish":"Sides","bringing":"TBD"}}

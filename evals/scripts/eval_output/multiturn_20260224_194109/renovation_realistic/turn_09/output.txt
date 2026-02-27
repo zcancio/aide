@@ -1,0 +1,3 @@
+{"t":"entity.create","id":"task_flooring","parent":"tasks","display":"row","p":{"task":"Flooring","done":false,"note":"4–6k"}}
+{"t":"entity.create","id":"task_appliances","parent":"tasks","display":"row","p":{"task":"Appliances","done":false,"note":"~8k"}}
+{"t":"entity.update","ref":"project_overview","p":{"spent":8000,"remaining":27000}}

@@ -1,0 +1,2 @@
+{"t":"entity.create","id":"line_architect","parent":"budget","display":"row","p":{"item":"Architect plans","cost":8000,"status":"paid"}}
+{"t":"entity.update","ref":"budget","p":{"total":35000,"spent":8000}}

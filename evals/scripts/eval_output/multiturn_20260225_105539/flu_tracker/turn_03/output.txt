@@ -1,0 +1,5 @@
+```jsonl
+{"t":"entity.create","id":"summary_ringo","parent":"page","display":"card","p":{"title":"Ringo Summary","latest_temp":102.0,"latest_datetime":"2025-12-29T20:20","latest_meds":"Motrin","reading_count":4}}
+{"t":"entity.create","id":"summary_george","parent":"page","display":"card","p":{"title":"George Summary","reading_count":0}}
+{"t":"voice","text":"Summary cards added for Ringo and George."}
+```

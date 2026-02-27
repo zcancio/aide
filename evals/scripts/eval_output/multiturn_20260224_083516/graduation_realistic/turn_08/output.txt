@@ -1,0 +1,4 @@
+{"t":"entity.update","ref":"food_drinks","p":{"item":"Drinks","contributor":"Uncle Bob","status":"confirmed"}}
+{"t":"entity.update","ref":"food_side_1","p":{"item":"Fruit platter","contributor":"Maria Garcia","status":"confirmed"}}
+{"t":"entity.remove","ref":"food_side_1"}
+{"t":"entity.create","id":"food_fruit_platter","parent":"food","display":"row","p":{"item":"Fruit platter","contributor":"Maria Garcia","status":"confirmed"}}

@@ -1,0 +1,2 @@
+{"t":"entity.update","ref":"quote_depot","p":{"cost":11000}}
+{"t":"rel.set","from":"page","to":"quote_depot","type":"selected","cardinality":"one_to_one"}

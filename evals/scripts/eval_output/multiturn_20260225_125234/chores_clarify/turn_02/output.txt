@@ -1,0 +1,8 @@
+```json
+{"t":"entity.create","id":"chore_dishes","parent":"chores","display":"row","p":{"task":"Dishes","frequency":"weekly","done":false}}
+{"t":"entity.create","id":"chore_vacuuming","parent":"chores","display":"row","p":{"task":"Vacuuming","frequency":"weekly","done":false}}
+{"t":"entity.create","id":"chore_bathroom","parent":"chores","display":"row","p":{"task":"Bathroom cleaning","frequency":"weekly","done":false}}
+{"t":"entity.create","id":"chore_trash","parent":"chores","display":"row","p":{"task":"Trash","frequency":"weekly","done":false}}
+{"t":"entity.create","id":"chore_mopping","parent":"chores","display":"row","p":{"task":"Mopping","frequency":"weekly","done":false}}
+{"t":"voice","text":"Five weekly chores added. Ready to assign."}
+```

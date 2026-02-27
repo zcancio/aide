@@ -1,0 +1,4 @@
+{"t":"entity.create","id":"budget_section","parent":"page","display":"table","p":{"label":"Budget"}}
+{"t":"entity.create","id":"budget_total","parent":"budget_section","display":"row","p":{"item":"Total Budget","amount":35000}}
+{"t":"entity.create","id":"expense_architect","parent":"budget_section","display":"row","p":{"item":"Architect Plans","amount":8000,"paid":true}}
+{"t":"entity.update","ref":"details","p":{"budget":35000,"spent":8000}}

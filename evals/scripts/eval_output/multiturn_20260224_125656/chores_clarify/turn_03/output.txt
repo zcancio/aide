@@ -1,0 +1,5 @@
+{"t":"rel.set","from":"page_me","to":"chore_dishes","type":"assigned_to","cardinality":"many_to_one"}
+{"t":"rel.set","from":"page_me","to":"chore_mopping","type":"assigned_to","cardinality":"many_to_one"}
+{"t":"rel.set","from":"page_alex","to":"chore_vacuuming","type":"assigned_to","cardinality":"many_to_one"}
+{"t":"rel.set","from":"page_alex","to":"chore_trash","type":"assigned_to","cardinality":"many_to_one"}
+{"t":"rel.set","from":"page_jamie","to":"chore_bathroom","type":"assigned_to","cardinality":"many_to_one"}

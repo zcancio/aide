@@ -1,0 +1,8 @@
+
+```json
+{"t":"entity.create","id":"players","parent":"page","display":"table","p":{}}
+{"t":"entity.create","id":"player_me","parent":"players","display":"row","p":{"name":"Me"}}
+{"t":"entity.create","id":"player_mike","parent":"players","display":"row","p":{"name":"Mike"}}
+{"t":"entity.create","id":"player_dave","parent":"players","display":"row","p":{"name":"Dave"}}
+{"t":"entity.create","id":"player_tom","parent":"players","display":"row","p":{"name":"Tom"}}
+```

@@ -1,0 +1,2 @@
+{"t":"entity.update","ref":"quote_cabinet_depot","p":{"cost":11000}}
+{"t":"entity.update","ref":"details","p":{"cabinet_cost":11000,"spent":9000}}

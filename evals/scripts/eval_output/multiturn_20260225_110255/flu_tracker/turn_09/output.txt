@@ -1,0 +1,20 @@
+Tylenol shows minimal impact for George. Checking doses where temp was measured before and ~1 hour after:
+
+Dec 30, 06:30 — 102.7°F, gave Tylenol
+Dec 30, 09:25 — 101.0°F (down 1.7°)
+
+Dec 30, 14:00 — 101.3°F, gave Tylenol (then threw up)
+Dec 30, 15:00 — 101.9°F (up 0.6°)
+
+Dec 31, 19:40 — 100.5°F, gave Tylenol
+(no follow-up reading yet)
+
+Motrin performed better:
+
+Dec 30, 10:30 — 102.9°F, gave Motrin
+Dec 30, 13:15 — 100.3°F (down 2.6°)
+
+Dec 30, 16:00 — 103.0°F, gave Motrin
+(no immediate follow-up, but trend suggests better control)
+
+Tylenol dropped temp once (1.7°) but failed when he threw it up. Motrin consistently brought higher spikes down more effectively.

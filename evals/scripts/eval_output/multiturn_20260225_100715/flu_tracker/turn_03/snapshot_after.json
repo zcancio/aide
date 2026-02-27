@@ -1,0 +1,185 @@
+{
+  "meta": {
+    "title": "Fever Tracker",
+    "identity": "Tracking fevers for Ringo and George."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Fever Tracker"
+      }
+    },
+    "kids": {
+      "id": "kids",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Kids"
+      }
+    },
+    "kid_ringo": {
+      "id": "kid_ringo",
+      "parent": "kids",
+      "display": "row",
+      "props": {
+        "name": "Ringo"
+      }
+    },
+    "kid_george": {
+      "id": "kid_george",
+      "parent": "kids",
+      "display": "row",
+      "props": {
+        "name": "George"
+      }
+    },
+    "readings": {
+      "id": "readings",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Temperature Readings"
+      }
+    },
+    "reading_ringo_1": {
+      "id": "reading_ringo_1",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "name": "Ringo",
+        "date": "2025-12-29",
+        "time": "10:30",
+        "temp": 103.7,
+        "meds": "Tylenol"
+      }
+    },
+    "reading_ringo_2": {
+      "id": "reading_ringo_2",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "name": "Ringo",
+        "date": "2025-12-29",
+        "time": "13:35",
+        "temp": 101.5,
+        "meds": "Motrin"
+      }
+    },
+    "reading_ringo_3": {
+      "id": "reading_ringo_3",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "name": "Ringo",
+        "date": "2025-12-29",
+        "time": "17:20",
+        "temp": 101.0,
+        "meds": "Tylenol"
+      }
+    },
+    "reading_ringo_4": {
+      "id": "reading_ringo_4",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "name": "Ringo",
+        "date": "2025-12-29",
+        "time": "20:20",
+        "temp": 102.0,
+        "meds": "Motrin"
+      }
+    },
+    "reading_ringo_5": {
+      "id": "reading_ringo_5",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "name": "Ringo",
+        "date": "2025-12-30",
+        "time": "00:00",
+        "temp": 101.6,
+        "meds": "Tylenol",
+        "note": "woke him back to sleep"
+      }
+    },
+    "reading_ringo_6": {
+      "id": "reading_ringo_6",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "name": "Ringo",
+        "date": "2025-12-30",
+        "time": "02:00",
+        "temp": 103.5,
+        "meds": "Motrin",
+        "note": "down to 101 by 2:45am"
+      }
+    },
+    "reading_ringo_7": {
+      "id": "reading_ringo_7",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "name": "Ringo",
+        "date": "2025-12-30",
+        "time": "06:30",
+        "temp": 98.6,
+        "meds": ""
+      }
+    },
+    "reading_ringo_8": {
+      "id": "reading_ringo_8",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "name": "Ringo",
+        "date": "2025-12-30",
+        "time": "09:25",
+        "temp": 99.8,
+        "meds": "Tylenol"
+      }
+    },
+    "reading_ringo_9": {
+      "id": "reading_ringo_9",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "name": "Ringo",
+        "date": "2025-12-30",
+        "time": "10:30",
+        "temp": 100.3,
+        "meds": ""
+      }
+    },
+    "reading_ringo_10": {
+      "id": "reading_ringo_10",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "name": "Ringo",
+        "date": "2025-12-30",
+        "time": "13:15",
+        "temp": 101.1,
+        "meds": "Motrin"
+      }
+    },
+    "reading_ringo_11": {
+      "id": "reading_ringo_11",
+      "parent": "readings",
+      "display": "row",
+      "props": {
+        "name": "Ringo",
+        "date": "2025-12-30",
+        "time": "14:00",
+        "temp": 101.4,
+        "meds": ""
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {},
+  "orphans": []
+}

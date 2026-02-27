@@ -1,0 +1,5 @@
+```
+{"t":"entity.create","id":"summary_ringo","parent":"page","display":"card","p":{"title":"Ringo Summary","last_reading":"2025-12-29T20:20","last_temp":102,"last_medication":"Motrin"}}
+{"t":"entity.create","id":"summary_george","parent":"page","display":"card","p":{"title":"George Summary"}}
+{"t":"voice","text":"Summary cards added for Ringo and George."}
+```

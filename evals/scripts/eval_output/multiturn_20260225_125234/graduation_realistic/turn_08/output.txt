@@ -1,0 +1,5 @@
+{"t":"entity.update","ref":"food_drinks","p":{"name":"Drinks"}}
+{"t":"rel.remove","from":"food_drinks","to":"guest_maria","type":"bringing"}
+{"t":"rel.set","from":"food_drinks","to":"guest_bob","type":"bringing","cardinality":"many_to_one"}
+{"t":"entity.create","id":"food_fruit_platter","parent":"food","display":"row","p":{"name":"Fruit platter"}}
+{"t":"rel.set","from":"food_fruit_platter","to":"guest_maria","type":"bringing","cardinality":"many_to_one"}

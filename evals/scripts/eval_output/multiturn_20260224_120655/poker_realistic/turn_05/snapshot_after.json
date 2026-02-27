@@ -1,0 +1,121 @@
+{
+  "meta": {
+    "title": "Poker Night",
+    "identity": "Poker night with friends."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Poker Night"
+      }
+    },
+    "details": {
+      "id": "details",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "title": "Details",
+        "schedule": "every other Thursday",
+        "buy_in": 20
+      }
+    },
+    "players": {
+      "id": "players",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Players"
+      }
+    },
+    "player_you": {
+      "id": "player_you",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "You",
+        "wins": 0
+      }
+    },
+    "player_mike": {
+      "id": "player_mike",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "Mike",
+        "wins": 1
+      }
+    },
+    "player_dave": {
+      "id": "player_dave",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "Dave",
+        "wins": 0
+      }
+    },
+    "player_tom": {
+      "id": "player_tom",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "Tom",
+        "wins": 0
+      }
+    },
+    "player_sarah": {
+      "id": "player_sarah",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "Sarah",
+        "wins": 0
+      }
+    },
+    "player_jake": {
+      "id": "player_jake",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "Jake",
+        "wins": 0
+      }
+    },
+    "games": {
+      "id": "games",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Games"
+      }
+    },
+    "game_feb13": {
+      "id": "game_feb13",
+      "parent": "games",
+      "display": "row",
+      "props": {
+        "date": "2026-02-13",
+        "location": "Mike's"
+      }
+    }
+  },
+  "relationships": [
+    {
+      "from": "player_mike",
+      "to": "game_feb13",
+      "type": "hosting"
+    },
+    {
+      "from": "player_mike",
+      "to": "game_feb13",
+      "type": "won"
+    }
+  ],
+  "relationship_types": {
+    "hosting": "one_to_one",
+    "won": "many_to_many"
+  }
+}

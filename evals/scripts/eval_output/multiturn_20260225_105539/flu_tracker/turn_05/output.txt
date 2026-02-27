@@ -1,0 +1,9 @@
+{"t":"entity.create","id":"reading_george_0200am","parent":"readings","display":"row","p":{"kid":"George","datetime":"2025-12-30T02:00","temp":102.7,"meds":"Tylenol"}}
+{"t":"entity.create","id":"reading_george_0630am","parent":"readings","display":"row","p":{"kid":"George","datetime":"2025-12-30T06:30","temp":102.7,"meds":"Tylenol"}}
+{"t":"entity.create","id":"reading_george_0925am","parent":"readings","display":"row","p":{"kid":"George","datetime":"2025-12-30T09:25","temp":101.0}}
+{"t":"entity.create","id":"reading_george_1030am","parent":"readings","display":"row","p":{"kid":"George","datetime":"2025-12-30T10:30","temp":102.9,"meds":"Motrin","note":"eyelids swelling at 11:30am"}}
+{"t":"entity.create","id":"reading_george_0115pm","parent":"readings","display":"row","p":{"kid":"George","datetime":"2025-12-30T13:15","temp":100.3}}
+{"t":"entity.create","id":"reading_george_0200pm","parent":"readings","display":"row","p":{"kid":"George","datetime":"2025-12-30T14:00","temp":101.3,"meds":"Tylenol","note":"threw up"}}
+{"t":"entity.create","id":"reading_george_0300pm","parent":"readings","display":"row","p":{"kid":"George","datetime":"2025-12-30T15:00","temp":101.9}}
+{"t":"entity.create","id":"reading_george_0400pm","parent":"readings","display":"row","p":{"kid":"George","datetime":"2025-12-30T16:00","temp":103.0,"meds":"Motrin"}}
+{"t":"entity.update","ref":"summary_george","p":{"latest_temp":103.0,"latest_datetime":"2025-12-30T16:00","latest_meds":"Motrin","reading_count":8}}

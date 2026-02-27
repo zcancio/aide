@@ -1,0 +1,1 @@
+{"t":"entity.update","ref":"details","p":{"schedule":"every other Thursday","buy_in":20}}

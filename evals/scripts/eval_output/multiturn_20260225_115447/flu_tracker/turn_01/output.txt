@@ -1,0 +1,7 @@
+```json
+{"t":"meta.set","p":{"title":"Fever Tracking","identity":"Temperature tracking for Ringo and George."}}
+{"t":"entity.create","id":"page","parent":"root","display":"page","p":{"title":"Fever Tracking"}}
+{"t":"entity.create","id":"ringo_readings","parent":"page","display":"table","p":{"title":"Ringo's Readings"}}
+{"t":"entity.create","id":"george_readings","parent":"page","display":"table","p":{"title":"George's Readings"}}
+{"t":"voice","text":"Fever tracker ready. Add temperature readings as you take them."}
+```

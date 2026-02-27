@@ -1,0 +1,1 @@
+{"t":"clarify","text":"Alex has 2 chores: vacuuming and trash. Which one should be removed?","options":["Vacuuming","Trash"]}

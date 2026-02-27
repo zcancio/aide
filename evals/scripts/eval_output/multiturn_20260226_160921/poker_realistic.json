@@ -1,0 +1,597 @@
+{
+  "scenario_id": "poker_realistic",
+  "name": "Poker Realistic",
+  "description": "User sets up poker league incrementally, names arrive in batches.",
+  "timestamp": "2026-02-26T16:09:50.932976",
+  "turns": [
+    {
+      "turn": 1,
+      "tier": "L4",
+      "expected_tier": "L4",
+      "accept_tiers": [
+        "L4"
+      ],
+      "message": "starting a poker night with some guys",
+      "tool_calls": [
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "page",
+            "parent": "root",
+            "display": "page",
+            "props": {
+              "title": "Poker Night"
+            }
+          }
+        }
+      ],
+      "text_blocks": [],
+      "usage": {
+        "input_tokens": 3415,
+        "output_tokens": 129,
+        "cache_read": 0
+      },
+      "ttfc_ms": 1675,
+      "ttc_ms": 2475,
+      "validation": {
+        "passed": false,
+        "issues": [
+          "No voice output \u2014 user gets silence in chat"
+        ]
+      },
+      "checks": {
+        "creates_page": true,
+        "has_meta": true
+      },
+      "notes": "Vague. Should create minimal page. Should NOT create 8 player slots."
+    },
+    {
+      "turn": 2,
+      "tier": "L3",
+      "expected_tier": "L3",
+      "accept_tiers": [
+        "L3"
+      ],
+      "message": "it's gonna be me, mike, dave and tom to start",
+      "tool_calls": [
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "players",
+            "parent": "page",
+            "display": "table",
+            "props": {
+              "title": "Players",
+              "_pattern": "roster"
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "player_you",
+            "parent": "players",
+            "props": {
+              "name": "You",
+              "wins": 0
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "player_mike",
+            "parent": "players",
+            "props": {
+              "name": "Mike",
+              "wins": 1
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "player_dave",
+            "parent": "players",
+            "props": {
+              "name": "Dave",
+              "wins": 0
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "player_tom",
+            "parent": "players",
+            "props": {
+              "name": "Tom",
+              "wins": 0
+            }
+          }
+        }
+      ],
+      "text_blocks": [
+        "4 players on the roster."
+      ],
+      "usage": {
+        "input_tokens": 3779,
+        "output_tokens": 552,
+        "cache_read": 0
+      },
+      "ttfc_ms": 1296,
+      "ttc_ms": 5487,
+      "validation": {
+        "passed": true,
+        "issues": []
+      },
+      "checks": {
+        "creates_4_players": true
+      },
+      "notes": "Adds first batch of players. If no roster exists, may escalate to L3."
+    },
+    {
+      "turn": 3,
+      "tier": "L3",
+      "expected_tier": "L3",
+      "accept_tiers": [
+        "L3"
+      ],
+      "message": "every other thursday, $20 buy in",
+      "tool_calls": [
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "details",
+            "parent": "page",
+            "display": "section",
+            "props": {
+              "title": "Details",
+              "_pattern": "flat_list"
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "schedule",
+            "parent": "details",
+            "display": "card",
+            "props": {
+              "schedule": "Every other Thursday",
+              "buy_in": 20
+            }
+          }
+        }
+      ],
+      "text_blocks": [
+        "Schedule: every other Thursday, $20 buy-in."
+      ],
+      "usage": {
+        "input_tokens": 4931,
+        "output_tokens": 299,
+        "cache_read": 0
+      },
+      "ttfc_ms": 1195,
+      "ttc_ms": 3907,
+      "validation": {
+        "passed": false,
+        "issues": [
+          "Expected entity update(s), got none"
+        ]
+      },
+      "checks": {
+        "updates_details": true
+      },
+      "notes": "Adds schedule + buy-in to existing details."
+    },
+    {
+      "turn": 4,
+      "tier": "L3",
+      "expected_tier": "L3",
+      "accept_tiers": [
+        "L3"
+      ],
+      "message": "sarah and jake want in too",
+      "tool_calls": [
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "player_sarah",
+            "parent": "players",
+            "props": {
+              "name": "Sarah",
+              "wins": 0
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "player_jake",
+            "parent": "players",
+            "props": {
+              "name": "Jake",
+              "wins": 0
+            }
+          }
+        }
+      ],
+      "text_blocks": [
+        "Sarah and Jake added. 6 players total."
+      ],
+      "usage": {
+        "input_tokens": 5522,
+        "output_tokens": 250,
+        "cache_read": 0
+      },
+      "ttfc_ms": 1522,
+      "ttc_ms": 3743,
+      "validation": {
+        "passed": true,
+        "issues": []
+      },
+      "checks": {
+        "creates_2_players": true
+      },
+      "notes": "Adds 2 more players to existing roster."
+    },
+    {
+      "turn": 5,
+      "tier": "L3",
+      "expected_tier": "L3",
+      "accept_tiers": [
+        "L3"
+      ],
+      "message": "we should track wins and who's hosting. first game was at mike's last thursday",
+      "tool_calls": [
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "update",
+            "ref": "player_you",
+            "props": {
+              "wins": 0
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "update",
+            "ref": "player_mike",
+            "props": {
+              "wins": 0
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "update",
+            "ref": "player_dave",
+            "props": {
+              "wins": 0
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "update",
+            "ref": "player_tom",
+            "props": {
+              "wins": 0
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "update",
+            "ref": "player_sarah",
+            "props": {
+              "wins": 0
+            }
+          }
+        },
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "update",
+            "ref": "player_jake",
+            "props": {
+              "wins": 0
+            }
+          }
+        }
+      ],
+      "text_blocks": [
+        "This needs a new section structure."
+      ],
+      "usage": {
+        "input_tokens": 6057,
+        "output_tokens": 518,
+        "cache_read": 0
+      },
+      "ttfc_ms": 1417,
+      "ttc_ms": 5365,
+      "validation": {
+        "passed": false,
+        "issues": [
+          "Expected entity creation (adds_schedule_or_fields)"
+        ]
+      },
+      "checks": {
+        "adds_schedule_or_fields": true
+      },
+      "notes": "May need L3 for new fields (wins, hosting) or schedule section. Should create a game/schedule entry for the first game."
+    },
+    {
+      "turn": 6,
+      "tier": "L3",
+      "expected_tier": "L3",
+      "accept_tiers": [
+        "L3"
+      ],
+      "message": "mike won, $120 pot. tom ended up hosting",
+      "tool_calls": [
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "update",
+            "ref": "player_mike",
+            "props": {
+              "wins": 1
+            }
+          }
+        }
+      ],
+      "text_blocks": [
+        "Mike: 1 win, $120 pot. Tom hosted."
+      ],
+      "usage": {
+        "input_tokens": 6871,
+        "output_tokens": 141,
+        "cache_read": 0
+      },
+      "ttfc_ms": 1395,
+      "ttc_ms": 2513,
+      "validation": {
+        "passed": true,
+        "issues": []
+      },
+      "checks": {
+        "updates_game_result": true,
+        "updates_mike_wins": true
+      },
+      "notes": "Post-game update on the existing game. Should UPDATE game entity, not create new one."
+    },
+    {
+      "turn": 7,
+      "tier": "L4",
+      "expected_tier": "L4",
+      "accept_tiers": [
+        "L4"
+      ],
+      "message": "who's won the most so far",
+      "tool_calls": [],
+      "text_blocks": [
+        "Mike leads with 1 win. Everyone else has 0."
+      ],
+      "usage": {
+        "input_tokens": 6983,
+        "output_tokens": 63,
+        "cache_read": 0
+      },
+      "ttfc_ms": 2611,
+      "ttc_ms": 3109,
+      "validation": {
+        "passed": true,
+        "issues": []
+      },
+      "checks": {
+        "answers_standings": true,
+        "plain_text": true
+      },
+      "notes": "L4 query over standings. After 1 game, Mike leads."
+    },
+    {
+      "turn": 8,
+      "tier": "L3",
+      "expected_tier": "L3",
+      "accept_tiers": [
+        "L3"
+      ],
+      "message": "next game is at dave's place. also jake can't make it, lisa's subbing",
+      "tool_calls": [
+        {
+          "name": "mutate_entity",
+          "input": {
+            "action": "create",
+            "id": "player_lisa",
+            "parent": "players",
+            "props": {
+              "name": "Lisa",
+              "wins": 0
+            }
+          }
+        }
+      ],
+      "text_blocks": [
+        "Next game at Dave's. Lisa subbing for Jake.",
+        "Next game at Dave's. Lisa subbing for Jake."
+      ],
+      "usage": {
+        "input_tokens": 7219,
+        "output_tokens": 174,
+        "cache_read": 0
+      },
+      "ttfc_ms": 1095,
+      "ttc_ms": 2849,
+      "validation": {
+        "passed": false,
+        "issues": [
+          "Expected update (updates_jake)"
+        ]
+      },
+      "checks": {
+        "creates_game": true,
+        "updates_jake": true,
+        "creates_lisa": true
+      },
+      "notes": "Multi-intent: schedule next game + roster change (sub). Tests whether L2 handles the sub correctly."
+    }
+  ],
+  "final_snapshot": {
+    "meta": {
+      "title": null,
+      "identity": null
+    },
+    "entities": {
+      "page": {
+        "id": "page",
+        "parent": "root",
+        "display": "page",
+        "props": {
+          "title": "Poker Night"
+        },
+        "_removed": false,
+        "_created_seq": 1,
+        "_updated_seq": 1
+      },
+      "players": {
+        "id": "players",
+        "parent": "page",
+        "display": "table",
+        "props": {
+          "title": "Players",
+          "_pattern": "roster"
+        },
+        "_removed": false,
+        "_created_seq": 2,
+        "_updated_seq": 2
+      },
+      "player_you": {
+        "id": "player_you",
+        "parent": "players",
+        "display": null,
+        "props": {
+          "name": "You",
+          "wins": 0
+        },
+        "_removed": false,
+        "_created_seq": 3,
+        "_updated_seq": 11
+      },
+      "player_mike": {
+        "id": "player_mike",
+        "parent": "players",
+        "display": null,
+        "props": {
+          "name": "Mike",
+          "wins": 1
+        },
+        "_removed": false,
+        "_created_seq": 4,
+        "_updated_seq": 17
+      },
+      "player_dave": {
+        "id": "player_dave",
+        "parent": "players",
+        "display": null,
+        "props": {
+          "name": "Dave",
+          "wins": 0
+        },
+        "_removed": false,
+        "_created_seq": 5,
+        "_updated_seq": 13
+      },
+      "player_tom": {
+        "id": "player_tom",
+        "parent": "players",
+        "display": null,
+        "props": {
+          "name": "Tom",
+          "wins": 0
+        },
+        "_removed": false,
+        "_created_seq": 6,
+        "_updated_seq": 14
+      },
+      "details": {
+        "id": "details",
+        "parent": "page",
+        "display": "section",
+        "props": {
+          "title": "Details",
+          "_pattern": "flat_list"
+        },
+        "_removed": false,
+        "_created_seq": 7,
+        "_updated_seq": 7
+      },
+      "schedule": {
+        "id": "schedule",
+        "parent": "details",
+        "display": "card",
+        "props": {
+          "schedule": "Every other Thursday",
+          "buy_in": 20
+        },
+        "_removed": false,
+        "_created_seq": 8,
+        "_updated_seq": 8
+      },
+      "player_sarah": {
+        "id": "player_sarah",
+        "parent": "players",
+        "display": null,
+        "props": {
+          "name": "Sarah",
+          "wins": 0
+        },
+        "_removed": false,
+        "_created_seq": 9,
+        "_updated_seq": 15
+      },
+      "player_jake": {
+        "id": "player_jake",
+        "parent": "players",
+        "display": null,
+        "props": {
+          "name": "Jake",
+          "wins": 0
+        },
+        "_removed": false,
+        "_created_seq": 10,
+        "_updated_seq": 16
+      },
+      "player_lisa": {
+        "id": "player_lisa",
+        "parent": "players",
+        "display": null,
+        "props": {
+          "name": "Lisa",
+          "wins": 0
+        },
+        "_removed": false,
+        "_created_seq": 18,
+        "_updated_seq": 18
+      }
+    },
+    "relationships": [],
+    "_sequence": 18
+  }
+}

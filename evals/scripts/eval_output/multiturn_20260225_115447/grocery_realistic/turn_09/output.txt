@@ -1,0 +1,10 @@
+```jsonl
+{"t":"batch.start"}
+{"t":"entity.create","id":"tonight_dinner","parent":"page","display":"checklist","p":{"title":"Tonight's Dinner"}}
+{"t":"entity.move","ref":"item_chicken_thighs","parent":"tonight_dinner","position":0}
+{"t":"entity.move","ref":"item_soy_sauce","parent":"tonight_dinner","position":1}
+{"t":"entity.move","ref":"item_ginger","parent":"tonight_dinner","position":2}
+{"t":"entity.move","ref":"item_green_onions","parent":"tonight_dinner","position":3}
+{"t":"batch.end"}
+{"t":"voice","text":"Dinner items grouped separately."}
+```

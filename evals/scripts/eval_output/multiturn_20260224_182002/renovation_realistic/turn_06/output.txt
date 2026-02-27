@@ -1,0 +1,8 @@
+{"t":"escalate","tier":"L3","reason":"structural_change","extract":"Add timeline section with plumber start (Mar 10), electrician start (Mar 3), and countertop measurement task"}
+```json
+{"t":"entity.create","id":"timeline","parent":"page","display":"table","p":{"title":"Timeline"}}
+{"t":"entity.create","id":"task_electrician","parent":"timeline","display":"row","p":{"task":"Electrician start","date":"2026-03-03"}}
+{"t":"entity.create","id":"task_plumber","parent":"timeline","display":"row","p":{"task":"Plumber start","date":"2026-03-10"}}
+{"t":"entity.create","id":"task_countertop","parent":"timeline","display":"row","p":{"task":"Countertop measurement"}}
+{"t":"voice","text":"Timeline section added with 3 tasks."}
+```

@@ -1,0 +1,4 @@
+{"t":"rel.remove","from":"member_me","to":"chore_mopping","type":"assigned_to"}
+{"t":"rel.remove","from":"member_jamie","to":"chore_bathroom","type":"assigned_to"}
+{"t":"rel.set","from":"member_me","to":"chore_bathroom","type":"assigned_to","cardinality":"many_to_one"}
+{"t":"rel.set","from":"member_jamie","to":"chore_mopping","type":"assigned_to","cardinality":"many_to_one"}

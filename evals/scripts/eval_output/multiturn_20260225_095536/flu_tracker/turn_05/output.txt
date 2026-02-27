@@ -1,0 +1,1 @@
+{"t":"entity.create","id":"reading_george_5am","parent":"readings","display":"row","p":{"patient":"George","time":"2026-02-25T05:00","temp":102.5,"meds":"motrin"}}

@@ -1,0 +1,11 @@
+Tylenol shows minimal effect for George. Evidence:
+
+Dec 30, 2am: 102.7°F → Tylenol given → 6:30am still 102.7°F (no drop)
+Dec 30, 2pm: 101.3°F → Tylenol given → 3pm rose to 101.9°F (increased)
+Dec 31, 7:40pm: 100.5°F after Tylenol
+
+Motrin performs better:
+Dec 30, 10:30am: 102.9°F → Motrin given → 1:15pm dropped to 100.3°F (2.6° drop)
+Dec 30, 4pm: 103°F → Motrin given (no follow-up reading recorded)
+
+Tylenol fails to reduce George's fever in both tracked instances. Motrin achieves significant reduction.

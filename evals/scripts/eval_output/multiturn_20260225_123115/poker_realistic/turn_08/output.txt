@@ -1,0 +1,4 @@
+{"t":"entity.create","id":"game_feb26","parent":"games","display":"row","p":{"date":"2026-02-26","location":"Dave's"}}
+{"t":"rel.set","from":"player_dave","to":"game_feb26","type":"hosting","cardinality":"one_to_one"}
+{"t":"entity.create","id":"player_lisa","parent":"players","display":"row","p":{"name":"Lisa","wins":0}}
+{"t":"rel.remove","from":"player_jake","to":"game_feb26","type":"attending"}

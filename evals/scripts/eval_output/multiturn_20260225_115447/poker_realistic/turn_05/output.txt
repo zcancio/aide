@@ -1,0 +1,8 @@
+{"t":"entity.update","ref":"player_mike","p":{"wins":0,"losses":0}}
+{"t":"entity.update","ref":"player_dave","p":{"wins":0,"losses":0}}
+{"t":"entity.update","ref":"player_tom","p":{"wins":0,"losses":0}}
+{"t":"entity.update","ref":"player_sarah","p":{"wins":0,"losses":0}}
+{"t":"entity.update","ref":"player_jake","p":{"wins":0,"losses":0}}
+{"t":"entity.update","ref":"player_me","p":{"wins":0,"losses":0}}
+{"t":"entity.create","id":"game_feb19","parent":"page","display":"card","p":{"date":"2026-02-19","location":"Mike's"}}
+{"t":"rel.set","from":"player_mike","to":"game_feb19","type":"hosting","cardinality":"one_to_one"}

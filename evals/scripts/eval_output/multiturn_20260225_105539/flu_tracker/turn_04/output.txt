@@ -1,0 +1,8 @@
+{"t":"entity.create","id":"reading_ringo_1200am","parent":"readings","display":"row","p":{"kid":"Ringo","datetime":"2025-12-30T00:00","temp":101.6,"meds":"Tylenol","note":"woke him back to sleep"}}
+{"t":"entity.create","id":"reading_ringo_0200am","parent":"readings","display":"row","p":{"kid":"Ringo","datetime":"2025-12-30T02:00","temp":103.5,"meds":"Motrin","note":"down to 101 by 2:45am"}}
+{"t":"entity.create","id":"reading_ringo_0630am","parent":"readings","display":"row","p":{"kid":"Ringo","datetime":"2025-12-30T06:30","temp":98.6}}
+{"t":"entity.create","id":"reading_ringo_0925am","parent":"readings","display":"row","p":{"kid":"Ringo","datetime":"2025-12-30T09:25","temp":99.8,"meds":"Tylenol"}}
+{"t":"entity.create","id":"reading_ringo_1030am_mon","parent":"readings","display":"row","p":{"kid":"Ringo","datetime":"2025-12-30T10:30","temp":100.3}}
+{"t":"entity.create","id":"reading_ringo_0115pm","parent":"readings","display":"row","p":{"kid":"Ringo","datetime":"2025-12-30T13:15","temp":101.1,"meds":"Motrin"}}
+{"t":"entity.create","id":"reading_ringo_0200pm","parent":"readings","display":"row","p":{"kid":"Ringo","datetime":"2025-12-30T14:00","temp":101.4}}
+{"t":"entity.update","ref":"summary_ringo","p":{"latest_temp":101.4,"latest_datetime":"2025-12-30T14:00","reading_count":11}}

@@ -1,0 +1,120 @@
+{
+  "meta": {
+    "title": "Poker Night",
+    "identity": "Poker night with friends."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Poker Night"
+      }
+    },
+    "details": {
+      "id": "details",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "title": "Details",
+        "schedule": "Every other Thursday",
+        "buy_in": 20
+      }
+    },
+    "players": {
+      "id": "players",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Players"
+      }
+    },
+    "player_me": {
+      "id": "player_me",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "Me",
+        "wins": 0,
+        "total_winnings": 0
+      }
+    },
+    "player_mike": {
+      "id": "player_mike",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "Mike",
+        "wins": 0,
+        "total_winnings": 0
+      }
+    },
+    "player_dave": {
+      "id": "player_dave",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "Dave",
+        "wins": 0,
+        "total_winnings": 0
+      }
+    },
+    "player_tom": {
+      "id": "player_tom",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "Tom",
+        "wins": 0,
+        "total_winnings": 0
+      }
+    },
+    "player_sarah": {
+      "id": "player_sarah",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "Sarah",
+        "wins": 0,
+        "total_winnings": 0
+      }
+    },
+    "player_jake": {
+      "id": "player_jake",
+      "parent": "players",
+      "display": "row",
+      "props": {
+        "name": "Jake",
+        "wins": 0,
+        "total_winnings": 0
+      }
+    },
+    "schedule": {
+      "id": "schedule",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Schedule"
+      }
+    },
+    "game_feb19": {
+      "id": "game_feb19",
+      "parent": "schedule",
+      "display": "row",
+      "props": {
+        "date": "2026-02-19"
+      }
+    }
+  },
+  "relationships": [
+    {
+      "from": "player_mike",
+      "to": "game_feb19",
+      "type": "hosting"
+    }
+  ],
+  "relationship_types": {
+    "hosting": "one_to_one"
+  }
+}

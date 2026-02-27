@@ -1,0 +1,5 @@
+{"t":"rel.set","from":"page","to":"quote_woodworks","type":"selected","cardinality":"one_to_one"}
+{"t":"entity.update","ref":"quote_woodworks","p":{"amount":9500}}
+{"t":"entity.update","ref":"expense_cabinets","p":{"name":"Cabinets (Woodworks Unlimited)","cost":9500}}
+{"t":"entity.update","ref":"details","p":{"spent":17500,"remaining":17500}}
+{"t":"voice","text":"Switched to Woodworks Unlimited at $9,500."}

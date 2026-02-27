@@ -1,0 +1,150 @@
+{
+  "meta": {
+    "title": "Kitchen Remodel",
+    "identity": "Kitchen remodeling project. Tracking tasks, budget, and timeline."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Kitchen Remodel"
+      }
+    },
+    "overview": {
+      "id": "overview",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "status": "Planning"
+      }
+    },
+    "budget": {
+      "id": "budget",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Budget",
+        "total": 35000,
+        "spent": 21500,
+        "remaining": 13500
+      }
+    },
+    "tasks": {
+      "id": "tasks",
+      "parent": "page",
+      "display": "checklist",
+      "props": {
+        "title": "Tasks"
+      }
+    },
+    "line_architect_plans": {
+      "id": "line_architect_plans",
+      "parent": "budget",
+      "display": "row",
+      "props": {
+        "item": "Architect plans",
+        "cost": 8000,
+        "status": "paid"
+      }
+    },
+    "cabinet_quotes": {
+      "id": "cabinet_quotes",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Cabinet Quotes"
+      }
+    },
+    "quote_woodworks": {
+      "id": "quote_woodworks",
+      "parent": "cabinet_quotes",
+      "display": "row",
+      "props": {
+        "vendor": "Woodworks Unlimited",
+        "cost": 9500
+      }
+    },
+    "quote_cabinet_depot": {
+      "id": "quote_cabinet_depot",
+      "parent": "cabinet_quotes",
+      "display": "row",
+      "props": {
+        "vendor": "Cabinet Depot",
+        "cost": 11000
+      }
+    },
+    "quote_custom_craft": {
+      "id": "quote_custom_craft",
+      "parent": "cabinet_quotes",
+      "display": "row",
+      "props": {
+        "vendor": "Custom Craft",
+        "cost": 15000
+      }
+    },
+    "task_measure_countertops": {
+      "id": "task_measure_countertops",
+      "parent": "tasks",
+      "display": "row",
+      "props": {
+        "task": "Measure countertops",
+        "done": false,
+        "note": "before plumber and electrician"
+      }
+    },
+    "task_plumber": {
+      "id": "task_plumber",
+      "parent": "tasks",
+      "display": "row",
+      "props": {
+        "task": "Plumber",
+        "done": false,
+        "date": "2026-03-24"
+      }
+    },
+    "task_electrician": {
+      "id": "task_electrician",
+      "parent": "tasks",
+      "display": "row",
+      "props": {
+        "task": "Electrician",
+        "done": false,
+        "date": "2026-03-17"
+      }
+    },
+    "line_flooring": {
+      "id": "line_flooring",
+      "parent": "budget",
+      "display": "row",
+      "props": {
+        "item": "Flooring",
+        "cost": 5500,
+        "status": "estimate",
+        "note": "4-6k range"
+      }
+    },
+    "line_appliances": {
+      "id": "line_appliances",
+      "parent": "budget",
+      "display": "row",
+      "props": {
+        "item": "Appliances",
+        "cost": 8000,
+        "status": "estimate"
+      }
+    }
+  },
+  "relationships": [
+    {
+      "from": "page",
+      "to": "quote_woodworks",
+      "type": "selected"
+    }
+  ],
+  "relationship_types": {
+    "selected": "one_to_one"
+  },
+  "orphans": []
+}

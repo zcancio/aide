@@ -1,0 +1,5 @@
+{"t":"entity.update","ref":"details","p":{"schedule":"Every other Thursday","buy_in":20}}
+{"t":"entity.update","ref":"player_me","p":{"buy_in":20}}
+{"t":"entity.update","ref":"player_mike","p":{"buy_in":20}}
+{"t":"entity.update","ref":"player_dave","p":{"buy_in":20}}
+{"t":"entity.update","ref":"player_tom","p":{"buy_in":20}}

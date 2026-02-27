@@ -1,0 +1,7 @@
+```json
+{"t":"entity.create","id":"quotes_cabinets","parent":"page","display":"table","p":{"title":"Cabinet Quotes"}}
+{"t":"entity.create","id":"quote_woodworks","parent":"quotes_cabinets","display":"row","p":{"vendor":"Woodworks Unlimited","cost":12000}}
+{"t":"entity.create","id":"quote_depot","parent":"quotes_cabinets","display":"row","p":{"vendor":"Cabinet Depot","cost":9500}}
+{"t":"entity.create","id":"quote_custom","parent":"quotes_cabinets","display":"row","p":{"vendor":"Custom Craft","cost":15000}}
+{"t":"voice","text":"Cabinet quotes added. Three vendors to compare."}
+```

@@ -1,0 +1,4 @@
+{"t":"entity.update","ref":"quote_cabinet_depot","p":{"status":null}}
+{"t":"entity.update","ref":"quote_woodworks","p":{"status":"selected","cost":9500}}
+{"t":"entity.update","ref":"project_overview","p":{"spent":17500,"remaining":17500}}
+{"t":"voice","text":"Switched to Woodworks Unlimited at $9,500."}

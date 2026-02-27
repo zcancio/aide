@@ -1,0 +1,132 @@
+{
+  "meta": {
+    "title": "Roommate Chores",
+    "identity": "Chore tracker for three roommates."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Roommate Chores"
+      }
+    },
+    "roommates": {
+      "id": "roommates",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Roommates"
+      }
+    },
+    "member_me": {
+      "id": "member_me",
+      "parent": "roommates",
+      "display": "row",
+      "props": {
+        "name": "Me"
+      }
+    },
+    "member_alex": {
+      "id": "member_alex",
+      "parent": "roommates",
+      "display": "row",
+      "props": {
+        "name": "Alex"
+      }
+    },
+    "member_jamie": {
+      "id": "member_jamie",
+      "parent": "roommates",
+      "display": "row",
+      "props": {
+        "name": "Jamie"
+      }
+    },
+    "chores": {
+      "id": "chores",
+      "parent": "page",
+      "display": "checklist",
+      "props": {
+        "title": "Chores"
+      }
+    },
+    "chore_dishes": {
+      "id": "chore_dishes",
+      "parent": "chores",
+      "display": "row",
+      "props": {
+        "task": "Dishes",
+        "done": false
+      }
+    },
+    "chore_vacuuming": {
+      "id": "chore_vacuuming",
+      "parent": "chores",
+      "display": "row",
+      "props": {
+        "task": "Vacuuming",
+        "done": false
+      }
+    },
+    "chore_bathroom_cleaning": {
+      "id": "chore_bathroom_cleaning",
+      "parent": "chores",
+      "display": "row",
+      "props": {
+        "task": "Bathroom cleaning",
+        "done": false
+      }
+    },
+    "chore_trash": {
+      "id": "chore_trash",
+      "parent": "chores",
+      "display": "row",
+      "props": {
+        "task": "Trash",
+        "done": false
+      }
+    },
+    "chore_mopping": {
+      "id": "chore_mopping",
+      "parent": "chores",
+      "display": "row",
+      "props": {
+        "task": "Mopping",
+        "done": false
+      }
+    }
+  },
+  "relationships": [
+    {
+      "from": "chore_dishes",
+      "to": "member_me",
+      "type": "assigned_to"
+    },
+    {
+      "from": "chore_mopping",
+      "to": "member_me",
+      "type": "assigned_to"
+    },
+    {
+      "from": "chore_vacuuming",
+      "to": "member_alex",
+      "type": "assigned_to"
+    },
+    {
+      "from": "chore_trash",
+      "to": "member_alex",
+      "type": "assigned_to"
+    },
+    {
+      "from": "chore_bathroom_cleaning",
+      "to": "member_jamie",
+      "type": "assigned_to"
+    }
+  ],
+  "relationship_types": {
+    "assigned_to": "many_to_one"
+  },
+  "orphans": []
+}

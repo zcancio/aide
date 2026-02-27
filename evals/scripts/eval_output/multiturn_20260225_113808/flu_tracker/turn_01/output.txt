@@ -1,0 +1,10 @@
+```json
+{"t":"meta.set","p":{"title":"Fever Log","identity":"Temperature tracking for Ringo and George."}}
+{"t":"entity.create","id":"page","parent":"root","display":"page","p":{"title":"Fever Log"}}
+{"t":"entity.create","id":"ringo_section","parent":"page","display":"section","p":{"title":"Ringo"}}
+{"t":"entity.create","id":"ringo_readings","parent":"ringo_section","display":"table","p":{"title":"Readings"}}
+{"t":"voice","text":"Ringo's log ready. George coming next."}
+{"t":"entity.create","id":"george_section","parent":"page","display":"section","p":{"title":"George"}}
+{"t":"entity.create","id":"george_readings","parent":"george_section","display":"table","p":{"title":"Readings"}}
+{"t":"voice","text":"Fever tracking set up for both kids. Add readings as you take them."}
+```

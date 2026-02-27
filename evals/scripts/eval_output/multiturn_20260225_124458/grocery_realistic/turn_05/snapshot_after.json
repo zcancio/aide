@@ -1,0 +1,64 @@
+{
+  "meta": {
+    "title": "Grocery List",
+    "identity": "Shopping list tracker."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Grocery List"
+      }
+    },
+    "items": {
+      "id": "items",
+      "parent": "page",
+      "display": "checklist",
+      "props": {
+        "title": "Items"
+      }
+    },
+    "item_milk": {
+      "id": "item_milk",
+      "parent": "items",
+      "display": "row",
+      "props": {
+        "name": "Milk",
+        "done": true
+      }
+    },
+    "item_eggs": {
+      "id": "item_eggs",
+      "parent": "items",
+      "display": "row",
+      "props": {
+        "name": "Eggs",
+        "done": true
+      }
+    },
+    "item_bread": {
+      "id": "item_bread",
+      "parent": "items",
+      "display": "row",
+      "props": {
+        "name": "Bread",
+        "done": false
+      }
+    },
+    "item_butter": {
+      "id": "item_butter",
+      "parent": "items",
+      "display": "row",
+      "props": {
+        "name": "Butter",
+        "note": "good kind from trader joes",
+        "done": false
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {},
+  "orphans": []
+}

@@ -1,0 +1,104 @@
+{
+  "meta": {
+    "title": "Grocery Run",
+    "identity": "Grocery shopping list."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Grocery Run"
+      }
+    },
+    "groceries": {
+      "id": "groceries",
+      "parent": "page",
+      "display": "checklist",
+      "props": {
+        "title": "Items"
+      }
+    },
+    "item_milk": {
+      "id": "item_milk",
+      "parent": "groceries",
+      "display": "row",
+      "props": {
+        "name": "Milk",
+        "done": true
+      }
+    },
+    "item_eggs": {
+      "id": "item_eggs",
+      "parent": "groceries",
+      "display": "row",
+      "props": {
+        "name": "Eggs",
+        "done": true
+      }
+    },
+    "item_bread": {
+      "id": "item_bread",
+      "parent": "groceries",
+      "display": "row",
+      "props": {
+        "name": "Bread",
+        "done": false
+      }
+    },
+    "item_butter": {
+      "id": "item_butter",
+      "parent": "groceries",
+      "display": "row",
+      "props": {
+        "name": "Butter",
+        "note": "the good kind from trader joes",
+        "done": false
+      }
+    },
+    "item_chicken_thighs": {
+      "id": "item_chicken_thighs",
+      "parent": "groceries",
+      "display": "row",
+      "props": {
+        "name": "Chicken thighs",
+        "note": "2 lbs, bone-in, for tonight",
+        "done": false
+      }
+    },
+    "item_soy_sauce": {
+      "id": "item_soy_sauce",
+      "parent": "groceries",
+      "display": "row",
+      "props": {
+        "name": "Soy sauce",
+        "note": "for tonight",
+        "done": false
+      }
+    },
+    "item_ginger": {
+      "id": "item_ginger",
+      "parent": "groceries",
+      "display": "row",
+      "props": {
+        "name": "Ginger",
+        "note": "for tonight",
+        "done": false
+      }
+    },
+    "item_green_onions": {
+      "id": "item_green_onions",
+      "parent": "groceries",
+      "display": "row",
+      "props": {
+        "name": "Green onions",
+        "note": "for tonight",
+        "done": false
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {},
+  "orphans": []
+}

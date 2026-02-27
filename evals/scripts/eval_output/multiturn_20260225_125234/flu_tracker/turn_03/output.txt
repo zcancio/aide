@@ -1,0 +1,4 @@
+```json
+{"t":"entity.create","id":"summary_ringo","parent":"page","display":"card","p":{"title":"Ringo Summary","latest_temp":102.0,"latest_time":"2025-12-29T20:20","trend":"Up from 101.0","last_medication":"Motrin at 8:20pm"}}
+{"t":"entity.create","id":"summary_george","parent":"page","display":"card","p":{"title":"George Summary","status":"No readings yet"}}
+```

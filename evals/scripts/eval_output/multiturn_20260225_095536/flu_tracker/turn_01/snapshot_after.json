@@ -1,0 +1,51 @@
+{
+  "meta": {
+    "title": "Flu Tracker",
+    "identity": "Temperature tracking for Ringo and George during flu."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Flu Tracker"
+      }
+    },
+    "patients": {
+      "id": "patients",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Patients"
+      }
+    },
+    "patient_ringo": {
+      "id": "patient_ringo",
+      "parent": "patients",
+      "display": "row",
+      "props": {
+        "name": "Ringo"
+      }
+    },
+    "patient_george": {
+      "id": "patient_george",
+      "parent": "patients",
+      "display": "row",
+      "props": {
+        "name": "George"
+      }
+    },
+    "readings": {
+      "id": "readings",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Temperature Readings"
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {},
+  "orphans": []
+}

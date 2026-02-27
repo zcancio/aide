@@ -1,0 +1,3 @@
+{"t":"entity.create","id":"reading_ringo_dec31_5pm","parent":"readings","display":"row","p":{"name":"Ringo","time":"2025-12-31T17:00-08:00","temp":101.0,"med":"Tylenol"}}
+{"t":"entity.create","id":"reading_ringo_dec31_830pm","parent":"readings","display":"row","p":{"name":"Ringo","time":"2025-12-31T20:30-08:00","temp":99.7,"med":"Motrin"}}
+{"t":"entity.update","ref":"summary_ringo","p":{"last_reading":"2025-12-31T20:30-08:00","last_temp":99.7,"last_med":"Motrin","readings_today":13}}

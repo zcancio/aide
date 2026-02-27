@@ -1,0 +1,2 @@
+{"t":"entity.create","id":"task_countertops","parent":"tasks","display":"row","p":{"task":"Countertops","done":true,"cost":3200}}
+{"t":"entity.update","ref":"project_overview","p":{"spent":11200,"remaining":23800}}

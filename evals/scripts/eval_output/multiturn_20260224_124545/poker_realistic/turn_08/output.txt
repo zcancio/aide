@@ -1,0 +1,4 @@
+{"t":"entity.create","id":"game_mar05","parent":"schedule","display":"row","p":{"date":"2026-03-05","location":"Dave's"}}
+{"t":"entity.update","ref":"player_jake","p":{"status":"unavailable"}}
+{"t":"entity.create","id":"player_lisa","parent":"players","display":"row","p":{"name":"Lisa","wins":0,"total_winnings":0}}
+{"t":"rel.set","from":"player_lisa","to":"game_mar05","type":"attending","cardinality":"many_to_one"}

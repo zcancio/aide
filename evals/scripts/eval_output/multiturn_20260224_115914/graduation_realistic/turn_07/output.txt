@@ -1,0 +1,4 @@
+{"t":"entity.create","id":"food_carne_asada","parent":"potluck","display":"row","p":{"dish":"Carne Asada","bringing":"Carlos Garcia"}}
+{"t":"entity.create","id":"food_drinks","parent":"potluck","display":"row","p":{"dish":"Drinks","bringing":"Maria Garcia"}}
+{"t":"entity.create","id":"food_dessert","parent":"potluck","display":"row","p":{"dish":"Dessert","bringing":""}}
+{"t":"entity.create","id":"food_sides","parent":"potluck","display":"row","p":{"dish":"Sides","bringing":""}}

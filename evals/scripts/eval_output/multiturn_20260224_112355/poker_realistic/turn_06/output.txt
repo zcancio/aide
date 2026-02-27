@@ -1,0 +1,5 @@
+{"t":"entity.create","id":"game_feb20","parent":"games","display":"row","p":{"date":"2026-02-20","location":"Tom's","pot":120,"winner":"Mike"}}
+{"t":"entity.update","ref":"player_mike","p":{"wins":1}}
+{"t":"rel.set","from":"player_tom","to":"game_feb20","type":"hosting","cardinality":"one_to_one"}
+{"t":"rel.remove","from":"player_mike","to":"game_jan09","type":"hosting"}
+{"t":"rel.set","from":"player_mike","to":"game_jan09","type":"hosting","cardinality":"one_to_one"}

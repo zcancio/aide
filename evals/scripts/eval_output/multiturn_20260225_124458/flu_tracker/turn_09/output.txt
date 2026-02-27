@@ -1,0 +1,14 @@
+Tylenol's effectiveness for George is weak — temperatures stay elevated or rise after doses:
+
+Dec 30
+2am: 102.7°F (Tylenol) → 6:30am: still 102.7°F (4.5 hours later, no drop)
+2pm: 101.3°F (Tylenol, threw up) → 3pm: 101.9°F (rose 0.6°F within 1 hour)
+
+Dec 31
+7:40pm: 100.5°F (Tylenol) — no follow-up reading yet
+
+Motrin shows stronger response:
+Dec 30: 10:30am 102.9°F (Motrin) → 1:15pm 100.3°F (dropped 2.6°F in 2.75 hours)
+Dec 30: 4pm 103.0°F (Motrin) — trend afterward unknown
+
+The 2pm dose he threw up may not have absorbed. Overall pattern: Motrin reduces fever more reliably for George. Tylenol either maintains or allows rise.

@@ -1,0 +1,4 @@
+{"t":"entity.create","id":"reading_ringo_1030am","parent":"readings","display":"row","p":{"name":"Ringo","time":"2025-12-29T10:30-08:00","temp":103.7,"med":"Tylenol"}}
+{"t":"entity.create","id":"reading_ringo_135pm","parent":"readings","display":"row","p":{"name":"Ringo","time":"2025-12-29T13:45-08:00","temp":101.5,"med":"Motrin"}}
+{"t":"entity.create","id":"reading_ringo_520pm","parent":"readings","display":"row","p":{"name":"Ringo","time":"2025-12-29T17:20-08:00","temp":101.0,"med":"Tylenol"}}
+{"t":"entity.create","id":"reading_ringo_820pm","parent":"readings","display":"row","p":{"name":"Ringo","time":"2025-12-29T20:20-08:00","temp":102.0,"med":"Motrin"}}

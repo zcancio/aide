@@ -1,0 +1,59 @@
+{
+  "name": "flu_tracker_t11",
+  "tier": "L4",
+  "model": "claude-sonnet-4-5-20250929",
+  "prompt_version": "v3.1",
+  "composite": 1.0,
+  "dimensions": {
+    "validity": {
+      "name": "validity",
+      "score": 1.0,
+      "checks": {
+        "is_plain_text": 1.0,
+        "not_empty": 1.0
+      },
+      "notes": []
+    },
+    "voice": {
+      "name": "voice",
+      "score": 1.0,
+      "checks": {
+        "violation_count": 1.0,
+        "severity_score": 1.0
+      },
+      "notes": []
+    },
+    "structure": {
+      "name": "structure",
+      "score": 1.0,
+      "checks": {
+        "no_jsonl_emission": 1.0
+      },
+      "notes": []
+    },
+    "efficiency": {
+      "name": "efficiency",
+      "score": 1.0,
+      "checks": {
+        "within_budget": 1.0,
+        "in_sweet_spot": 1.0
+      },
+      "notes": []
+    },
+    "fidelity": {
+      "name": "fidelity",
+      "score": 1.0,
+      "checks": {
+        "has_content": 1.0,
+        "not_json": 1.0,
+        "peak_and_symptoms": 1.0
+      },
+      "notes": [
+        "Identified George's peak temp and concerning symptoms"
+      ]
+    }
+  },
+  "latency_ms": 6637,
+  "output_tokens": 199,
+  "cache_hit_pct": 0.0
+}

@@ -1,0 +1,51 @@
+{
+  "meta": {
+    "title": "Fever Log",
+    "identity": "Temperature tracking for Ringo and George."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Fever Log"
+      }
+    },
+    "ringo_section": {
+      "id": "ringo_section",
+      "parent": "page",
+      "display": "section",
+      "props": {
+        "title": "Ringo"
+      }
+    },
+    "ringo_readings": {
+      "id": "ringo_readings",
+      "parent": "ringo_section",
+      "display": "table",
+      "props": {
+        "title": "Readings"
+      }
+    },
+    "george_section": {
+      "id": "george_section",
+      "parent": "page",
+      "display": "section",
+      "props": {
+        "title": "George"
+      }
+    },
+    "george_readings": {
+      "id": "george_readings",
+      "parent": "george_section",
+      "display": "table",
+      "props": {
+        "title": "Readings"
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {},
+  "orphans": []
+}

@@ -1,0 +1,5 @@
+{"t":"entity.update","ref":"chore_dishes","p":{"assigned_to":"me"}}
+{"t":"entity.update","ref":"chore_mopping","p":{"assigned_to":"me"}}
+{"t":"entity.update","ref":"chore_vacuuming","p":{"assigned_to":"Alex"}}
+{"t":"entity.update","ref":"chore_trash","p":{"assigned_to":"Alex"}}
+{"t":"entity.update","ref":"chore_bathroom","p":{"assigned_to":"Jamie"}}

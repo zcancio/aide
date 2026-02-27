@@ -1,0 +1,5 @@
+```jsonl
+{"t":"entity.create","id":"food","parent":"page","display":"table","p":{"title":"Food"}}
+{"t":"entity.create","id":"food_potato_salad","parent":"food","display":"row","p":{"dish":"Potato salad","contributor":"Aunt Linda"}}
+{"t":"voice","text":"Food tracking started. Potato salad logged from Linda."}
+```

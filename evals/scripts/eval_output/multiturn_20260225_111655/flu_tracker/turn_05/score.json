@@ -1,0 +1,71 @@
+{
+  "name": "flu_tracker_t5",
+  "tier": "L2",
+  "model": "claude-haiku-4-5-20251001",
+  "prompt_version": "v3.1",
+  "composite": 0.965,
+  "dimensions": {
+    "validity": {
+      "name": "validity",
+      "score": 1.0,
+      "checks": {
+        "parseable": 1.0,
+        "no_fences": 1.0,
+        "valid_types": 1.0,
+        "valid_structure": 1.0,
+        "not_empty": 1.0
+      },
+      "notes": []
+    },
+    "voice": {
+      "name": "voice",
+      "score": 1.0,
+      "checks": {
+        "no_voice_to_check": 1.0
+      },
+      "notes": [
+        "No voice lines emitted"
+      ]
+    },
+    "structure": {
+      "name": "structure",
+      "score": 1.0,
+      "checks": {
+        "parents_before_children": 1.0,
+        "display_hints_valid": 1.0,
+        "entity_ids_quality": 1.0
+      },
+      "notes": []
+    },
+    "efficiency": {
+      "name": "efficiency",
+      "score": 0.649,
+      "checks": {
+        "within_budget": 0.5,
+        "in_sweet_spot": 0.797
+      },
+      "notes": [
+        "481 tokens (budget: 120-400)"
+      ]
+    },
+    "fidelity": {
+      "name": "fidelity",
+      "score": 1.0,
+      "checks": {
+        "data_preserved": 1.0,
+        "context_captured": 1.0,
+        "tier_appropriate": 1.0,
+        "l2_scope": 1.0,
+        "note_captured": 1.0,
+        "batch_created": 1.0
+      },
+      "notes": [
+        "Inline note/comment captured as prop",
+        "Created 8 entities from batch entry (expected \u22658)"
+      ]
+    }
+  },
+  "latency_ms": 2839,
+  "output_tokens": 481,
+  "cache_hit_pct": 0.0
+}

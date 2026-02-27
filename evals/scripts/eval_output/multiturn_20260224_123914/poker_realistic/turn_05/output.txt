@@ -1,0 +1,12 @@
+```json
+{"t":"entity.update","ref":"player_me","p":{"wins":0}}
+{"t":"entity.update","ref":"player_mike","p":{"wins":0}}
+{"t":"entity.update","ref":"player_dave","p":{"wins":0}}
+{"t":"entity.update","ref":"player_tom","p":{"wins":0}}
+{"t":"entity.update","ref":"player_sarah","p":{"wins":0}}
+{"t":"entity.update","ref":"player_jake","p":{"wins":0}}
+{"t":"entity.create","id":"games","parent":"page","display":"table","p":{"title":"Games"}}
+{"t":"entity.create","id":"game_feb13","parent":"games","display":"row","p":{"date":"2026-02-13"}}
+{"t":"rel.set","from":"player_mike","to":"game_feb13","type":"hosting","cardinality":"one_to_one"}
+{"t":"voice","text":"Win tracking added. First game logged at Mike's on Feb 13."}
+```

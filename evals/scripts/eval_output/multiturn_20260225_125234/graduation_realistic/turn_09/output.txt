@@ -1,0 +1,8 @@
+```json
+{"t":"entity.create","id":"todo","parent":"page","display":"checklist","p":{"title":"To Do"}}
+{"t":"entity.create","id":"todo_pavilion","parent":"todo","display":"row","p":{"task":"Book park pavilion","done":false}}
+{"t":"entity.create","id":"todo_cake","parent":"todo","display":"row","p":{"task":"Order cake","done":false}}
+{"t":"entity.create","id":"todo_decorations","parent":"todo","display":"row","p":{"task":"Get decorations","done":false}}
+{"t":"entity.create","id":"todo_parking","parent":"todo","display":"row","p":{"task":"Figure out parking","done":false}}
+{"t":"voice","text":"Four tasks added. Track progress as you go."}
+```

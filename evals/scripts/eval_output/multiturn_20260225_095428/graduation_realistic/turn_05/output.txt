@@ -1,0 +1,11 @@
+6 guests total:
+
+Confirmed (4)
+- Aunt Linda
+- Uncle Bob
+- Maria Garcia
+- Carlos Garcia
+
+Maybe (2)
+- Cousin James
+- Dave

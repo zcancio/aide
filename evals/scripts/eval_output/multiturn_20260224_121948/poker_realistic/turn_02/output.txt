@@ -1,0 +1,8 @@
+```jsonl
+{"t":"entity.create","id":"roster","parent":"page","display":"table","p":{"title":"Roster"}}
+{"t":"entity.create","id":"player_you","parent":"roster","display":"row","p":{"name":"You"}}
+{"t":"entity.create","id":"player_mike","parent":"roster","display":"row","p":{"name":"Mike"}}
+{"t":"entity.create","id":"player_dave","parent":"roster","display":"row","p":{"name":"Dave"}}
+{"t":"entity.create","id":"player_tom","parent":"roster","display":"row","p":{"name":"Tom"}}
+{"t":"voice","text":"Roster set: You, Mike, Dave, Tom."}
+```

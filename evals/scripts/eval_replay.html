@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIde Eval Replay</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #08080e;
+  --bg-card: #0c0c14;
+  --border: #1a1a2c;
+  --text: #e2e8f0;
+  --text-dim: #64748b;
+  --accent-green: #4ade80;
+  --accent-blue: #60a5fa;
+  --accent-amber: #fbbf24;
+  --accent-purple: #a78bfa;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:'DM Sans',system-ui,sans-serif; height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+
+/* Top bar */
+.topbar { display:flex; align-items:center; justify-content:space-between; padding:0 20px; height:40px; border-bottom:1px solid var(--border); background:var(--bg-card); flex-shrink:0; }
+.topbar-left { display:flex; align-items:center; gap:12px; }
+.topbar-left .dot { width:8px; height:8px; border-radius:50%; background:var(--accent-green); }
+.topbar-title { font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--text-dim); }
+.topbar-right { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-dim); display:flex; gap:16px; align-items:center; }
+.speed-btn { background:none; border:1px solid var(--border); color:var(--text-dim); font-family:'JetBrains Mono',monospace; font-size:10px; padding:2px 8px; border-radius:3px; cursor:pointer; }
+.speed-btn.active { border-color:var(--accent-blue); color:var(--accent-blue); }
+
+/* Main layout */
+.main { flex:1; display:flex; overflow:hidden; }
+
+/* Chat panel */
+.chat-panel { width:420px; border-right:1px solid var(--border); display:flex; flex-direction:column; background:var(--bg-card); }
+.chat-header { padding:6px 14px; font-size:9px; font-weight:600; letter-spacing:0.8px; text-transform:uppercase; color:var(--text-dim); border-bottom:1px solid var(--border); background:#111119; }
+.chat-scroll { flex:1; overflow-y:auto; padding:12px 16px; }
+
+.msg { margin-bottom:12px; animation: fadeSlideIn 0.3s ease; }
+@keyframes fadeSlideIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+.msg-user { display:flex; justify-content:flex-end; }
+.msg-user .bubble { background:#1e293b; border-radius:12px 12px 2px 12px; padding:8px 12px; max-width:85%; font-size:13px; line-height:1.5; color:#e2e8f0; }
+.msg-aide { display:flex; flex-direction:column; gap:4px; }
+.msg-aide .bubble { background:transparent; border-left:2px solid var(--accent-green); padding:4px 10px; max-width:85%; font-size:13px; line-height:1.5; color:#94a3b8; }
+.msg-aide .mutations { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-dim); padding:2px 10px; }
+.msg-aide .mutations .mut-line { padding:1px 0; }
+.msg-aide .mutations .tag { display:inline-block; font-size:8px; font-weight:600; padding:1px 4px; border-radius:2px; margin-right:4px; text-transform:uppercase; }
+.tag-create { background:#052e22; color:#4ade80; }
+.tag-update { background:#0c2d48; color:#60a5fa; }
+.tag-rel { background:#1e1b4b; color:#a78bfa; }
+
+/* Typing indicator */
+.typing { display:flex; gap:4px; padding:8px 12px; }
+.typing .dot { width:6px; height:6px; border-radius:50%; background:var(--text-dim); animation:typingPulse 1.2s infinite; }
+.typing .dot:nth-child(2) { animation-delay:0.2s; }
+.typing .dot:nth-child(3) { animation-delay:0.4s; }
+@keyframes typingPulse { 0%,60%,100% { opacity:0.3; transform:scale(0.8); } 30% { opacity:1; transform:scale(1); } }
+
+/* Timer display */
+.timer-bar { padding:8px 16px; border-top:1px solid var(--border); display:flex; justify-content:space-between; font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-dim); background:#111119; }
+.timer-val { color:var(--accent-amber); }
+
+/* Right panel: page preview */
+.preview-panel { flex:1; display:flex; flex-direction:column; }
+.preview-header { padding:6px 14px; font-size:9px; font-weight:600; letter-spacing:0.8px; text-transform:uppercase; color:var(--text-dim); border-bottom:1px solid var(--border); background:#111119; }
+.preview-frame { flex:1; border:none; background:#F7F5F2; }
+
+/* Controls */
+.controls { display:flex; align-items:center; gap:12px; padding:8px 20px; border-top:1px solid var(--border); background:var(--bg-card); }
+.play-btn { background:none; border:1px solid var(--border); color:var(--text); width:32px; height:32px; border-radius:4px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:14px; }
+.play-btn:hover { border-color:var(--accent-green); color:var(--accent-green); }
+.progress { flex:1; display:flex; align-items:center; gap:8px; }
+.progress-bar { flex:1; height:3px; background:var(--border); border-radius:2px; position:relative; cursor:pointer; }
+.progress-fill { height:100%; background:var(--accent-green); border-radius:2px; transition:width 0.3s; }
+.progress-dots { position:absolute; top:-3px; left:0; right:0; height:9px; display:flex; align-items:center; }
+.progress-dot { width:9px; height:9px; border-radius:50%; border:2px solid var(--border); background:var(--bg); position:absolute; cursor:pointer; transition:all 0.2s; }
+.progress-dot.done { border-color:var(--accent-green); background:var(--accent-green); }
+.progress-dot.active { border-color:var(--accent-amber); background:var(--accent-amber); transform:scale(1.3); }
+.turn-label { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-dim); min-width:60px; }
+
+/* Load */
+.load-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:var(--bg); z-index:10; }
+.load-box { text-align:center; }
+.load-box input[type=file] { display:none; }
+.load-box label { display:inline-block; padding:12px 24px; border:2px dashed var(--border); border-radius:8px; cursor:pointer; font-size:13px; color:var(--text-dim); transition:all 0.2s; }
+.load-box label:hover { border-color:var(--accent-green); color:var(--accent-green); }
+.load-box .title { font-family:'JetBrains Mono',monospace; font-size:14px; font-weight:600; margin-bottom:12px; color:var(--text); }
+.load-box .sub { font-size:11px; color:var(--text-dim); margin-top:8px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="dot" id="statusDot"></div>
+    <span class="topbar-title" id="scenarioTitle">AIDE REPLAY</span>
+  </div>
+  <div class="topbar-right">
+    <span>Speed:</span>
+    <button class="speed-btn" data-speed="1" onclick="setSpeed(1)">1×</button>
+    <button class="speed-btn active" data-speed="2" onclick="setSpeed(2)">2×</button>
+    <button class="speed-btn" data-speed="5" onclick="setSpeed(5)">5×</button>
+    <button class="speed-btn" data-speed="0" onclick="setSpeed(0)">instant</button>
+    <button class="speed-btn" onclick="loadFile()" style="margin-left:8px">Load JSON</button>
+    <input type="file" id="fileInput" accept=".json" style="display:none">
+  </div>
+</div>
+
+<div class="main">
+  <div class="chat-panel">
+    <div class="chat-header">Conversation</div>
+    <div class="chat-scroll" id="chatScroll"></div>
+    <div class="timer-bar">
+      <span id="timerLabel">—</span>
+      <span>TTFC: <span class="timer-val" id="ttfcVal">—</span> · TTC: <span class="timer-val" id="ttcVal">—</span></span>
+    </div>
+  </div>
+  <div class="preview-panel">
+    <div class="preview-header">Living Page</div>
+    <iframe class="preview-frame" id="previewFrame" sandbox="allow-same-origin"></iframe>
+  </div>
+</div>
+
+<div class="controls">
+  <button class="play-btn" id="playBtn" onclick="togglePlay()">▶</button>
+  <div class="progress">
+    <div class="progress-bar" id="progressBar">
+      <div class="progress-fill" id="progressFill"></div>
+      <div class="progress-dots" id="progressDots"></div>
+    </div>
+    <span class="turn-label" id="turnLabel">—</span>
+  </div>
+</div>
+
+<div class="load-overlay" id="loadOverlay">
+  <div class="load-box">
+    <div class="title">◆ AIde Eval Replay</div>
+    <label for="fileInputOverlay">Drop a golden JSON file here</label>
+    <input type="file" id="fileInputOverlay" accept=".json">
+    <div class="sub">or click to browse · replays the conversation at real speed</div>
+  </div>
+</div>
+
+<script>
+// ── State ──
+let golden = null;
+let currentTurn = -1;
+let playing = false;
+let speed = 2;    // 1=realtime, 2=2x, 5=5x, 0=instant
+let playTimer = null;
+
+// ── Helpers ──
+const $ = id => document.getElementById(id);
+const esc = s => { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; };
+const hum = s => s.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+
+function delay(ms) {
+  if (speed === 0) return Promise.resolve();
+  return new Promise(r => { playTimer = setTimeout(r, ms / speed); });
+}
+
+// ── Snapshot builder ──
+function buildSnap(turns, upTo) {
+  const s = { entities:{}, rels:[] };
+  for (let i = 0; i <= upTo; i++) {
+    const t = turns[i]; if (!t) break;
+    for (const tc of t.tool_calls) {
+      if (tc.name === "mutate_entity") {
+        const p = tc.input;
+        if (p.action === "create") s.entities[p.id] = { id:p.id, parent:p.parent||"root", display:p.display||null, props:{...(p.props||{})}, _removed:false };
+        else if (p.action === "update" && s.entities[p.ref]) { Object.assign(s.entities[p.ref].props, p.props||{}); if (p.display) s.entities[p.ref].display = p.display; }
+        else if (p.action === "remove" && s.entities[p.ref]) s.entities[p.ref]._removed = true;
+        else if (p.action === "move" && s.entities[p.ref]) s.entities[p.ref].parent = p.parent;
+      } else if (tc.name === "set_relationship") {
+        const r = tc.input;
+        if (r.action === "set") {
+          if (r.cardinality === "one_to_one") s.rels = s.rels.filter(x => !(x.from === r.from && x.type === r.type));
+          s.rels.push({ from:r.from, to:r.to, type:r.type, cardinality:r.cardinality });
+        } else if (r.action === "remove") {
+          s.rels = s.rels.filter(x => !(x.from === r.from && x.to === r.to && x.type === r.type));
+        }
+      }
+    }
+  }
+  return s;
+}
+
+// ── Render snapshot → HTML for preview ──
+function renderPage(s) {
+  const E = s.entities, rels = s.rels || [];
+  const ch = pid => Object.values(E).filter(e => e.parent === pid && !e._removed).sort((a,b) => a.id > b.id ? 1 : -1);
+
+  const inRels = {}, outRels = {};
+  rels.forEach(r => {
+    if (!inRels[r.to]) inRels[r.to] = [];
+    inRels[r.to].push(r);
+    if (!outRels[r.from]) outRels[r.from] = [];
+    outRels[r.from].push(r);
+  });
+  const relBadges = eid => {
+    const all = [...(inRels[eid]||[]).map(r=>({d:"in",r})),...(outRels[eid]||[]).map(r=>({d:"out",r}))];
+    if (!all.length) return "";
+    return all.map(({d,r})=>{
+      const o = d==="in"?r.from:r.to;
+      const nm = E[o]?.props?.name||E[o]?.props?.title||hum(o);
+      const c = r.type==="absent"?"#dc2626":r.type==="sub"?"#f59e0b":r.type==="selected"?"#22c55e":"#6366f1";
+      return `<span style="font-size:10px;padding:1px 6px;border-radius:3px;background:${c}18;color:${c};border:1px solid ${c}40;margin-left:4px">${esc(r.type)} ${d==="in"?"←":"→"} ${esc(nm)}</span>`;
+    }).join("");
+  };
+
+  const tbl = sec => {
+    const c = ch(sec.id); if (!c.length) return `<p class="em">No entries yet.</p>`;
+    const ks = [...new Set(c.flatMap(x=>Object.keys(x.props).filter(k=>!k.startsWith("_"))))];
+    const hasR = c.some(x=>inRels[x.id]||outRels[x.id]);
+    return `<table><thead><tr>${ks.map(k=>`<th>${esc(hum(k))}</th>`).join("")}${hasR?"<th></th>":""}</tr></thead><tbody>${c.map(x=>`<tr>${ks.map(k=>{const v=x.props[k];return`<td>${esc(v===true?"✓":v===false?"✗":String(v??"—"))}</td>`;}).join("")}${hasR?`<td>${relBadges(x.id)}</td>`:""}</tr>`).join("")}</tbody></table>`;
+  };
+  const ckl = sec => { const c=ch(sec.id); if(!c.length) return `<p class="em">Empty.</p>`; return c.map(x=>{const d=x.props.done||x.props.checked||false;return`<div class="${d?"ck done":"ck"}">${d?"☑":"☐"} ${esc(x.props.name||x.props.label||hum(x.id))}</div>`;}).join(""); };
+  const grid = sec => {
+    const rows=sec.props._rows||8,cols=sec.props._cols||8,c=ch(sec.id),map={};
+    c.forEach(x=>{if(x.props.row!==undefined&&x.props.col!==undefined) map[x.props.row+"_"+x.props.col]=x;});
+    let h=`<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:1px;background:#bbb;padding:1px;border-radius:4px;overflow:hidden">`;
+    for(let r=0;r<rows;r++) for(let c2=0;c2<cols;c2++){const cell=map[r+"_"+c2];h+=`<div style="background:${(r+c2)%2===0?"#f0d9b5":"#b58863"};min-height:26px;display:flex;align-items:center;justify-content:center;font-size:10px">${esc(cell?.props.piece||cell?.props.owner||"")}</div>`;}
+    return h+"</div>";
+  };
+
+  const rend = e => {
+    const c2=ch(e.id), d=e.display||"card", nm=e.props.title||e.props.name||hum(e.id);
+    const h2=`<h2>${esc(nm)}</h2>`;
+    if(d==="page") return `<h1>${esc(nm)}</h1>`+c2.map(rend).join("");
+    if(d==="table") return `<div class="sec">${h2}${tbl(e)}</div>`;
+    if(d==="section"||d==="list") return `<div class="sec">${h2}${c2.map(rend).join("")||'<p class="em">Empty.</p>'}</div>`;
+    if(d==="checklist") return `<div class="sec">${h2}${ckl(e)}</div>`;
+    if(d==="grid") return `<div class="sec">${h2}${grid(e)}</div>`;
+    if(d==="metric") return `<div class="met"><div class="mv">${esc(String(e.props.value||e.props.count||"—"))}</div><div class="ml">${esc(nm)}</div></div>`;
+    if(d==="text") return `<p class="txt">${esc(e.props.content||e.props.text||"")}</p>`;
+    return `<div class="card"><b>${esc(nm)}</b>${relBadges(e.id)}<br/><span class="ps">${Object.entries(e.props).filter(([k])=>!k.startsWith("_")&&k!=="title"&&k!=="name").map(([k,v])=>`${esc(hum(k))}: ${esc(String(v??"—"))}`).join(" · ")}</span>${c2.map(rend).join("")}</div>`;
+  };
+
+  return `<!DOCTYPE html><html><head>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'DM Sans',system-ui,sans-serif;background:#F7F5F2;color:#2D2D2A;padding:28px 36px;transition:all 0.3s}h1{font-family:'Playfair Display',serif;font-size:26px;font-weight:600;margin-bottom:24px}h2{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:1.5px;color:#6B6963;margin-bottom:10px}.sec{margin-bottom:20px}table{width:100%;border-collapse:collapse}th{text-align:left;padding:5px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#8B8680;border-bottom:2px solid #E0DDD8;font-weight:500}td{padding:7px 10px;border-bottom:1px solid #E8E5E0;font-size:13px}.card{background:#fff;border:1px solid #E0DDD8;border-radius:6px;padding:12px;margin-bottom:8px}.ps{font-size:12px;color:#8B8680}.met{text-align:center;padding:16px}.mv{font-family:'Playfair Display',serif;font-size:32px;font-weight:700}.ml{font-size:11px;color:#8B8680;text-transform:uppercase;letter-spacing:1px;margin-top:3px}.txt{font-size:13px;line-height:1.6;color:#4A4A46;margin-bottom:16px}.ck{padding:3px 0;font-size:13px}.ck.done{text-decoration:line-through;opacity:.5}.em{color:#B5B0A8;font-style:italic;font-size:13px;padding:12px 0}tr{transition:background 0.2s}</style>
+</head><body>${ch("root").map(rend).join("")}</body></html>`;
+}
+
+// ── Chat rendering ──
+function addUserMsg(text) {
+  const chat = $("chatScroll");
+  const div = document.createElement("div");
+  div.className = "msg msg-user";
+  div.innerHTML = `<div class="bubble">${esc(text)}</div>`;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function addTypingIndicator() {
+  const chat = $("chatScroll");
+  const div = document.createElement("div");
+  div.className = "msg msg-aide";
+  div.id = "typingIndicator";
+  div.innerHTML = `<div class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function removeTyping() {
+  const el = $("typingIndicator");
+  if (el) el.remove();
+}
+
+function createAideContainer() {
+  const chat = $("chatScroll");
+  const div = document.createElement("div");
+  div.className = "msg msg-aide";
+  div.innerHTML = `<div class="mutations"></div>`;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return div;
+}
+
+function appendMutation(container, tc) {
+  const mutsDiv = container.querySelector(".mutations");
+  const action = tc.input?.action || "call";
+  const id = tc.input?.id || tc.input?.ref || tc.input?.from || "";
+  const tagClass = tc.name === "set_relationship" ? "tag-rel" : action === "create" ? "tag-create" : "tag-update";
+  const label = tc.name === "set_relationship" ? `rel.${action}` : action;
+  const line = document.createElement("div");
+  line.className = "mut-line";
+  line.style.animation = "fadeSlideIn 0.2s ease";
+  line.innerHTML = `<span class="tag ${tagClass}">${esc(label)}</span>${esc(id)}${tc.name==="set_relationship"?` → ${esc(tc.input.to||"")}`:""}`; 
+  mutsDiv.appendChild(line);
+  $("chatScroll").scrollTop = $("chatScroll").scrollHeight;
+}
+
+function appendVoice(container, text) {
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+  bubble.style.animation = "fadeSlideIn 0.3s ease";
+  bubble.textContent = text;
+  container.appendChild(bubble);
+  $("chatScroll").scrollTop = $("chatScroll").scrollHeight;
+}
+
+// Keep the batch version for jumpToTurn
+function addAideResponse(turn) {
+  const chat = $("chatScroll");
+  const div = document.createElement("div");
+  div.className = "msg msg-aide";
+
+  let html = "";
+  if (turn.tool_calls.length > 0) {
+    html += `<div class="mutations">`;
+    for (const tc of turn.tool_calls) {
+      const action = tc.input?.action || "call";
+      const id = tc.input?.id || tc.input?.ref || tc.input?.from || "";
+      const tagClass = tc.name === "set_relationship" ? "tag-rel" : action === "create" ? "tag-create" : "tag-update";
+      const label = tc.name === "set_relationship" ? `rel.${action}` : action;
+      html += `<div class="mut-line"><span class="tag ${tagClass}">${esc(label)}</span>${esc(id)}${tc.name==="set_relationship"?` → ${esc(tc.input.to||"")}`:""}</div>`;
+    }
+    html += `</div>`;
+  }
+  for (const tb of turn.text_blocks) {
+    const text = typeof tb === "string" ? tb : tb.text;
+    html += `<div class="bubble">${esc(text)}</div>`;
+  }
+
+  div.innerHTML = html;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+// ── Playback ──
+async function playTurn(idx) {
+  if (idx >= golden.turns.length) { stopPlay(); return; }
+  const turn = golden.turns[idx];
+  currentTurn = idx;
+  updateProgress();
+
+  const ttfc = turn.ttfc_ms || 1000;
+  const ttc = turn.ttc_ms || 2000;
+  const streamTime = ttc - ttfc;
+
+  // Show timer label
+  $("turnLabel").textContent = `Turn ${idx+1}/${golden.turns.length}`;
+  $("timerLabel").textContent = `Turn ${idx+1} · ${turn.tier}`;
+  $("ttfcVal").textContent = "…";
+  $("ttcVal").textContent = "…";
+
+  // 1. User message appears
+  addUserMsg(turn.message);
+  await delay(400);
+
+  // 2. Typing indicator (TTFC wait)
+  addTypingIndicator();
+  $("statusDot").style.background = "var(--accent-amber)";
+
+  await delay(ttfc);
+  $("ttfcVal").textContent = `${ttfc}ms`;
+  removeTyping();
+
+  // Helper: update preview efficiently
+  // First call uses srcdoc (sets up head/styles), subsequent calls patch body only
+  let previewInitialized = false;
+  function updatePreview(snapData) {
+    const html = renderPage(snapData);
+    const frame = $("previewFrame");
+    if (!previewInitialized) {
+      frame.srcdoc = html;
+      previewInitialized = true;
+      // Wait for load so subsequent patches have a valid contentDocument
+      return new Promise(resolve => {
+        frame.onload = () => resolve();
+        // Fallback timeout in case onload doesn't fire
+        setTimeout(resolve, 150);
+      });
+    } else {
+      try {
+        const doc = frame.contentDocument;
+        if (doc && doc.body) {
+          const match = html.match(/<body>([\s\S]*)<\/body>/);
+          doc.body.innerHTML = match ? match[1] : html;
+        }
+      } catch(e) {
+        frame.srcdoc = html;
+      }
+      return Promise.resolve();
+    }
+  }
+
+  // 3. Stream using real timestamps if available, else heuristic timing
+  $("statusDot").style.background = "var(--accent-blue)";
+  const muts = turn.tool_calls;
+  // text_blocks can be strings or {text, timestamp_ms} dicts
+  const voices = turn.text_blocks.map(v => typeof v === "string" ? {text:v} : v);
+  const container = createAideContainer();
+  let partialTCs = [];
+
+  // Check if we have real timestamps
+  const hasTimestamps = (muts.length > 0 && muts[0].timestamp_ms !== undefined)
+                     || (voices.length > 0 && voices[0].timestamp_ms !== undefined);
+
+  if (hasTimestamps) {
+    // ── Real timestamp replay ──
+    const events = [
+      ...muts.map(m => ({type:"mut", data:m, ts:m.timestamp_ms || 0})),
+      ...voices.map(v => ({type:"voice", data:v, ts:v.timestamp_ms || 0})),
+    ].sort((a,b) => a.ts - b.ts);
+
+    let lastTs = ttfc;
+    for (const evt of events) {
+      const gap = evt.ts - lastTs;
+      if (gap > 0) await delay(gap);
+      lastTs = evt.ts;
+
+      if (evt.type === "mut") {
+        appendMutation(container, evt.data);
+        partialTCs.push(evt.data);
+        // Update preview on every mutation — body patch is fast
+        const partialTurn = { ...turn, tool_calls: partialTCs };
+        const partialTurns = [...golden.turns.slice(0, currentTurn), partialTurn];
+        await updatePreview(buildSnap(partialTurns, partialTurns.length - 1));
+      } else {
+        appendVoice(container, evt.data.text);
+      }
+    }
+  } else if (muts.length > 0) {
+    // ── Heuristic: think → burst → pause → voice ──
+    const thinkTime = Math.max(300, streamTime * 0.25);
+    await delay(thinkTime);
+
+    const mutBudget = streamTime * 0.50;
+    const perMut = Math.max(80, Math.min(400, mutBudget / muts.length));
+
+    for (let i = 0; i < muts.length; i++) {
+      appendMutation(container, muts[i]);
+      partialTCs.push(muts[i]);
+      // Update preview on every mutation
+      const partialTurn = { ...turn, tool_calls: partialTCs };
+      const partialTurns = [...golden.turns.slice(0, currentTurn), partialTurn];
+      updatePreview(buildSnap(partialTurns, partialTurns.length - 1));
+      await delay(perMut);
+    }
+
+    const elapsed = thinkTime + (perMut * muts.length);
+    const remaining = Math.max(200, streamTime - elapsed);
+    await delay(remaining * 0.6);
+
+    for (const v of voices) {
+      appendVoice(container, v.text);
+      await delay(remaining * 0.4 / Math.max(1, voices.length));
+    }
+  } else {
+    // Query-only: thinking pause then voice
+    const thinkTime = Math.max(300, streamTime * 0.6);
+    await delay(thinkTime);
+    for (const v of voices) {
+      appendVoice(container, v.text);
+      await delay(Math.max(100, (streamTime - thinkTime) / Math.max(1, voices.length)));
+    }
+  }
+
+  // 4. Final state — full srcdoc render for clean state
+  const finalSnap = buildSnap(golden.turns, idx);
+  $("previewFrame").srcdoc = renderPage(finalSnap);
+  previewInitialized = false; // reset for next turn
+  $("statusDot").style.background = "var(--accent-green)";
+  $("ttcVal").textContent = `${ttc}ms`;
+
+  await delay(500);
+}
+
+async function playAll() {
+  playing = true;
+  $("playBtn").textContent = "⏸";
+  for (let i = currentTurn + 1; i < golden.turns.length; i++) {
+    if (!playing) break;
+    await playTurn(i);
+  }
+  stopPlay();
+}
+
+function stopPlay() {
+  playing = false;
+  if (playTimer) { clearTimeout(playTimer); playTimer = null; }
+  $("playBtn").textContent = "▶";
+}
+
+function togglePlay() {
+  if (!golden) return;
+  if (playing) {
+    stopPlay();
+  } else {
+    if (currentTurn >= golden.turns.length - 1) {
+      // Reset
+      currentTurn = -1;
+      $("chatScroll").innerHTML = "";
+      $("previewFrame").srcdoc = "";
+    }
+    playAll();
+  }
+}
+
+function jumpToTurn(idx) {
+  stopPlay();
+  // Rebuild up to this turn
+  $("chatScroll").innerHTML = "";
+  for (let i = 0; i <= idx; i++) {
+    addUserMsg(golden.turns[i].message);
+    addAideResponse(golden.turns[i]);
+  }
+  const snap = buildSnap(golden.turns, idx);
+  $("previewFrame").srcdoc = renderPage(snap);
+  currentTurn = idx;
+  updateProgress();
+  $("turnLabel").textContent = `Turn ${idx+1}/${golden.turns.length}`;
+  $("timerLabel").textContent = `Turn ${idx+1} · ${golden.turns[idx].tier}`;
+  $("ttfcVal").textContent = `${golden.turns[idx].ttfc_ms}ms`;
+  $("ttcVal").textContent = `${golden.turns[idx].ttc_ms}ms`;
+}
+
+// ── Progress ──
+function updateProgress() {
+  if (!golden) return;
+  const pct = (currentTurn + 1) / golden.turns.length * 100;
+  $("progressFill").style.width = pct + "%";
+  document.querySelectorAll(".progress-dot").forEach((dot, i) => {
+    dot.classList.toggle("done", i <= currentTurn);
+    dot.classList.toggle("active", i === currentTurn);
+  });
+}
+
+function buildProgressDots() {
+  const container = $("progressDots");
+  container.innerHTML = "";
+  for (let i = 0; i < golden.turns.length; i++) {
+    const dot = document.createElement("div");
+    dot.className = "progress-dot";
+    dot.style.left = `${(i + 0.5) / golden.turns.length * 100}%`;
+    dot.title = `Turn ${i+1}: ${golden.turns[i].message.slice(0,40)}...`;
+    dot.onclick = () => jumpToTurn(i);
+    container.appendChild(dot);
+  }
+}
+
+// ── Speed ──
+function setSpeed(s) {
+  speed = s;
+  document.querySelectorAll(".speed-btn[data-speed]").forEach(b => {
+    b.classList.toggle("active", parseInt(b.dataset.speed) === s);
+  });
+}
+
+// ── Load ──
+function loadGolden(data) {
+  golden = data;
+  currentTurn = -1;
+  $("loadOverlay").style.display = "none";
+  $("scenarioTitle").textContent = `REPLAY · ${data.name || data.scenario_id}`;
+  $("chatScroll").innerHTML = "";
+  $("previewFrame").srcdoc = "";
+  buildProgressDots();
+  updateProgress();
+  $("turnLabel").textContent = `${golden.turns.length} turns`;
+}
+
+function loadFile() {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".json";
+  input.onchange = e => handleFile(e.target.files[0]);
+  input.click();
+}
+
+function handleFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      loadGolden(data);
+    } catch(err) {
+      alert("Failed to parse JSON: " + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+$("fileInputOverlay").addEventListener("change", e => handleFile(e.target.files[0]));
+
+// Keyboard
+document.addEventListener("keydown", e => {
+  if (e.code === "Space") { e.preventDefault(); togglePlay(); }
+  if (e.code === "ArrowRight" && golden && !playing) {
+    const next = Math.min(currentTurn + 1, golden.turns.length - 1);
+    jumpToTurn(next);
+  }
+  if (e.code === "ArrowLeft" && golden && !playing) {
+    const prev = Math.max(currentTurn - 1, 0);
+    jumpToTurn(prev);
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+{
+  "meta": {
+    "title": "Fever Tracking",
+    "identity": "Temperature tracking for Ringo and George."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Fever Tracking"
+      }
+    },
+    "ringo_readings": {
+      "id": "ringo_readings",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Ringo's Readings"
+      }
+    },
+    "george_readings": {
+      "id": "george_readings",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "George's Readings"
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {},
+  "orphans": []
+}

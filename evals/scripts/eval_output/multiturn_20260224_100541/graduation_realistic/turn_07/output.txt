@@ -1,0 +1,4 @@
+{"t":"entity.create","id":"food_carne_asada","parent":"food","display":"row","p":{"item":"Carne asada","who":"Carlos Garcia","status":"confirmed"}}
+{"t":"entity.create","id":"food_drinks","parent":"food","display":"row","p":{"item":"Drinks","who":"Maria Garcia","status":"confirmed"}}
+{"t":"entity.create","id":"food_dessert","parent":"food","display":"row","p":{"item":"Dessert","who":"","status":"needed"}}
+{"t":"entity.create","id":"food_sides","parent":"food","display":"row","p":{"item":"Sides","who":"","status":"needed"}}

@@ -1,0 +1,8 @@
+{
+  "ttfc_ms": 665,
+  "ttc_ms": 1372,
+  "input_tokens": 3840,
+  "output_tokens": 101,
+  "cache_creation": 0,
+  "cache_read": 0
+}

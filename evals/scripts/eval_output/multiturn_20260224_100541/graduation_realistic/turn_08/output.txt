@@ -1,0 +1,3 @@
+{"t":"entity.update","ref":"food_drinks","p":{"item":"Fruit platter","who":"Maria Garcia"}}
+{"t":"entity.update","ref":"food_carne_asada","p":{"who":"Carlos Garcia"}}
+{"t":"entity.create","id":"food_drinks_bob","parent":"food","display":"row","p":{"item":"Drinks","who":"Uncle Bob","status":"confirmed"}}

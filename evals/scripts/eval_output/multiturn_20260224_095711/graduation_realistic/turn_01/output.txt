@@ -1,0 +1,10 @@
+{
+  "t": "meta.set",
+  "p": {
+    "title": "Sophie's Graduation",
+    "identity": "Planning Sophie's graduation celebration in May."
+  }
+}
+{"t":"entity.create","id":"page","parent":"root","display":"page","p":{"title":"Sophie's Graduation"}}
+{"t":"entity.create","id":"details","parent":"page","display":"card","p":{"person":"Sophie","event":"Graduation","when":"May"}}
+{"t":"voice","text":"Graduation event created. Add venue, date, and guest details as they're decided."}

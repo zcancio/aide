@@ -1,0 +1,6 @@
+{"t":"entity.create","id":"item_chicken_thighs","parent":"items","display":"row","p":{"name":"Chicken thighs","note":"for tonight","done":false}}
+{"t":"entity.create","id":"item_rice","parent":"items","display":"row","p":{"name":"Rice","note":"for tonight","done":false}}
+{"t":"entity.create","id":"item_soy_sauce","parent":"items","display":"row","p":{"name":"Soy sauce","note":"for tonight","done":false}}
+{"t":"entity.create","id":"item_ginger","parent":"items","display":"row","p":{"name":"Ginger","note":"for tonight","done":false}}
+{"t":"entity.create","id":"item_green_onions","parent":"items","display":"row","p":{"name":"Green onions","note":"for tonight","done":false}}
+{"t":"voice","text":"5 items added for tonight's dinner."}

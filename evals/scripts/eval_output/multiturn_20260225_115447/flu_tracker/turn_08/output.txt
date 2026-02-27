@@ -1,0 +1,2 @@
+{"t":"entity.create","id":"reading_george_9","parent":"george_readings","display":"row","p":{"time":"2026-01-02T19:40","temp":100.5,"meds":"tylenol"}}
+{"t":"entity.update","ref":"george_summary","p":{"latest_temp":100.5,"latest_time":"2026-01-02T19:40","latest_meds":"tylenol","reading_count":9}}

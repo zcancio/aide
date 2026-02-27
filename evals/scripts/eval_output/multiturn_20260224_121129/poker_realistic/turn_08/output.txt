@@ -1,0 +1,4 @@
+{"t":"entity.create","id":"game_feb27","parent":"schedule","display":"row","p":{"date":"2026-02-27","location":"Dave's"}}
+{"t":"entity.update","ref":"player_jake","p":{"status":"unavailable"}}
+{"t":"entity.create","id":"player_lisa","parent":"roster","display":"row","p":{"name":"Lisa","wins":0}}
+{"t":"voice","text":"Next game Feb 27 at Dave's. Jake out, Lisa in."}

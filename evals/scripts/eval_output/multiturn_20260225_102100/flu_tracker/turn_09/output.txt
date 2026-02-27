@@ -1,0 +1,11 @@
+Tylenol appears ineffective for George. After doses:
+- 2am → 102.7°F, still 102.7°F at 6:30am (no drop)
+- 6:30am → 102.7°F, rose to 102.9°F by 10:30am
+- 2pm → 101.3°F, climbed to 101.9°F within an hour (then threw up)
+- 7:40pm (latest) → 100.5°F, no follow-up yet
+
+Motrin shows better response:
+- 10:30am → 102.9°F, dropped to 100.3°F by 1:15pm
+- 4pm → 103.0°F (no follow-up recorded)
+
+George's fevers seem more resistant to Tylenol than Ringo's. Motrin may be the more effective option for him.

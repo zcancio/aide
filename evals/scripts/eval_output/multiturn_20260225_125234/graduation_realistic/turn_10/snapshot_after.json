@@ -1,0 +1,213 @@
+{
+  "meta": {
+    "title": "Sophie's Graduation",
+    "identity": "Graduation celebration planning for Sophie in May."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Sophie's Graduation"
+      }
+    },
+    "event_details": {
+      "id": "event_details",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "date": "2026-05-22",
+        "graduate": "Sophie",
+        "location": "UC Davis",
+        "time": "10:00"
+      }
+    },
+    "guests": {
+      "id": "guests",
+      "parent": "page",
+      "display": "table",
+      "props": {}
+    },
+    "guest_linda": {
+      "id": "guest_linda",
+      "parent": "guests",
+      "display": "row",
+      "props": {
+        "name": "Aunt Linda",
+        "rsvp": "yes"
+      }
+    },
+    "guest_bob": {
+      "id": "guest_bob",
+      "parent": "guests",
+      "display": "row",
+      "props": {
+        "name": "Uncle Bob",
+        "rsvp": "yes"
+      }
+    },
+    "guest_james": {
+      "id": "guest_james",
+      "parent": "guests",
+      "display": "row",
+      "props": {
+        "name": "Cousin James",
+        "rsvp": "pending"
+      }
+    },
+    "guest_maria": {
+      "id": "guest_maria",
+      "parent": "guests",
+      "display": "row",
+      "props": {
+        "name": "Maria Garcia",
+        "rsvp": "yes"
+      }
+    },
+    "guest_carlos": {
+      "id": "guest_carlos",
+      "parent": "guests",
+      "display": "row",
+      "props": {
+        "name": "Carlos Garcia",
+        "rsvp": "yes"
+      }
+    },
+    "guest_dave": {
+      "id": "guest_dave",
+      "parent": "guests",
+      "display": "row",
+      "props": {
+        "name": "Dave",
+        "rsvp": "pending"
+      }
+    },
+    "food": {
+      "id": "food",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Food"
+      }
+    },
+    "food_potato_salad": {
+      "id": "food_potato_salad",
+      "parent": "food",
+      "display": "row",
+      "props": {
+        "name": "Potato salad"
+      }
+    },
+    "food_carne_asada": {
+      "id": "food_carne_asada",
+      "parent": "food",
+      "display": "row",
+      "props": {
+        "name": "Carne asada"
+      }
+    },
+    "food_drinks": {
+      "id": "food_drinks",
+      "parent": "food",
+      "display": "row",
+      "props": {
+        "name": "Drinks"
+      }
+    },
+    "food_dessert": {
+      "id": "food_dessert",
+      "parent": "food",
+      "display": "row",
+      "props": {
+        "name": "Dessert"
+      }
+    },
+    "food_sides": {
+      "id": "food_sides",
+      "parent": "food",
+      "display": "row",
+      "props": {
+        "name": "Sides"
+      }
+    },
+    "food_fruit_platter": {
+      "id": "food_fruit_platter",
+      "parent": "food",
+      "display": "row",
+      "props": {
+        "name": "Fruit platter"
+      }
+    },
+    "todo": {
+      "id": "todo",
+      "parent": "page",
+      "display": "checklist",
+      "props": {
+        "title": "To Do"
+      }
+    },
+    "todo_pavilion": {
+      "id": "todo_pavilion",
+      "parent": "todo",
+      "display": "row",
+      "props": {
+        "task": "Book park pavilion",
+        "done": true
+      }
+    },
+    "todo_cake": {
+      "id": "todo_cake",
+      "parent": "todo",
+      "display": "row",
+      "props": {
+        "task": "Order cake",
+        "done": false
+      }
+    },
+    "todo_decorations": {
+      "id": "todo_decorations",
+      "parent": "todo",
+      "display": "row",
+      "props": {
+        "task": "Get decorations",
+        "done": false
+      }
+    },
+    "todo_parking": {
+      "id": "todo_parking",
+      "parent": "todo",
+      "display": "row",
+      "props": {
+        "task": "Figure out parking",
+        "done": false
+      }
+    }
+  },
+  "relationships": [
+    {
+      "from": "food_carne_asada",
+      "to": "guest_carlos",
+      "type": "bringing"
+    },
+    {
+      "from": "food_potato_salad",
+      "to": "guest_linda",
+      "type": "bringing"
+    },
+    {
+      "from": "food_drinks",
+      "to": "guest_bob",
+      "type": "bringing"
+    },
+    {
+      "from": "food_fruit_platter",
+      "to": "guest_maria",
+      "type": "bringing"
+    }
+  ],
+  "relationship_types": {
+    "bringing": "many_to_one"
+  },
+  "orphans": []
+}

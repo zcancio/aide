@@ -1,0 +1,2 @@
+{"t":"entity.create","id":"food_carne_asada","parent":"food","display":"row","p":{"dish":"Carne asada","by":"Carlos Garcia"}}
+{"t":"entity.create","id":"food_drinks","parent":"food","display":"row","p":{"dish":"Drinks","by":"Maria Garcia"}}

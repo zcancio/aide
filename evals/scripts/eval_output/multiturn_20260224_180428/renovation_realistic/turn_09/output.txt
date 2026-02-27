@@ -1,0 +1,3 @@
+{"t":"entity.create","id":"expense_flooring","parent":"page","display":"row","p":{"category":"Materials","description":"Flooring","amount":5000,"estimate":true}}
+{"t":"entity.create","id":"expense_appliances","parent":"page","display":"row","p":{"category":"Materials","description":"Appliances","amount":8000,"estimate":true}}
+{"t":"entity.update","ref":"budget_overview","p":{"total":48000,"spent":17500,"remaining":13000}}

@@ -1,0 +1,2 @@
+{"t":"entity.update","ref":"task_countertop","p":{"date":"2026-02-24","done":true}}
+{"t":"entity.update","ref":"details","p":{"spent":12700,"remaining":22300}}

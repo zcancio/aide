@@ -1,0 +1,7 @@
+```
+{"t":"entity.create","id":"summary_ringo","parent":"page","display":"card","p":{"name":"Ringo","latest_temp":102.0,"latest_time":"2025-12-29T20:20","trend":"Fluctuating","last_meds":"Motrin"}}
+{"t":"entity.create","id":"summary_george","parent":"page","display":"card","p":{"name":"George","status":"No readings yet"}}
+{"t":"entity.move","ref":"summary_ringo","parent":"page","position":0}
+{"t":"entity.move","ref":"summary_george","parent":"page","position":1}
+{"t":"voice","text":"Summary cards created for Ringo and George."}
+```

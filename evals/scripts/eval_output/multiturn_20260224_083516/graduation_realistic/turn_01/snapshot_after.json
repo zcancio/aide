@@ -1,0 +1,79 @@
+{
+  "meta": {
+    "title": "Sophie's Graduation",
+    "identity": "Graduation planning for Sophie in May."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Sophie's Graduation"
+      }
+    },
+    "event_details": {
+      "id": "event_details",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "date": "May 2025",
+        "honoree": "Sophie",
+        "event_type": "Graduation celebration"
+      }
+    },
+    "todo": {
+      "id": "todo",
+      "parent": "page",
+      "display": "checklist",
+      "props": {
+        "title": "Planning Tasks"
+      }
+    },
+    "task_venue": {
+      "id": "task_venue",
+      "parent": "todo",
+      "display": "row",
+      "props": {
+        "task": "Book venue",
+        "done": false
+      }
+    },
+    "task_invites": {
+      "id": "task_invites",
+      "parent": "todo",
+      "display": "row",
+      "props": {
+        "task": "Send invitations",
+        "done": false
+      }
+    },
+    "task_catering": {
+      "id": "task_catering",
+      "parent": "todo",
+      "display": "row",
+      "props": {
+        "task": "Arrange catering",
+        "done": false
+      }
+    },
+    "task_decorations": {
+      "id": "task_decorations",
+      "parent": "todo",
+      "display": "row",
+      "props": {
+        "task": "Get decorations",
+        "done": false
+      }
+    },
+    "task_photographer": {
+      "id": "task_photographer",
+      "parent": "todo",
+      "display": "row",
+      "props": {
+        "task": "Book photographer",
+        "done": false
+      }
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "meta": {
+    "title": "Grocery Run",
+    "identity": "Shopping list for a grocery run."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Grocery Run"
+      }
+    },
+    "shopping_list": {
+      "id": "shopping_list",
+      "parent": "page",
+      "display": "checklist",
+      "props": {
+        "title": "Shopping List"
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {}
+}

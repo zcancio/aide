@@ -1,0 +1,128 @@
+{
+  "meta": {
+    "title": "Kitchen Remodel",
+    "identity": "Kitchen renovation project tracker."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Kitchen Remodel"
+      }
+    },
+    "project_details": {
+      "id": "project_details",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "status": "Planning",
+        "budget": 35000,
+        "spent": 8000
+      }
+    },
+    "section_quotes": {
+      "id": "section_quotes",
+      "parent": "page",
+      "display": "section",
+      "props": {
+        "title": "Cabinet Quotes"
+      }
+    },
+    "quote_woodworks": {
+      "id": "quote_woodworks",
+      "parent": "section_quotes",
+      "display": "row",
+      "props": {
+        "vendor": "Woodworks Unlimited",
+        "cost": 9500
+      }
+    },
+    "quote_cabinet_depot": {
+      "id": "quote_cabinet_depot",
+      "parent": "section_quotes",
+      "display": "row",
+      "props": {
+        "vendor": "Cabinet Depot",
+        "cost": 11000
+      }
+    },
+    "quote_custom_craft": {
+      "id": "quote_custom_craft",
+      "parent": "section_quotes",
+      "display": "row",
+      "props": {
+        "vendor": "Custom Craft",
+        "cost": 15000
+      }
+    },
+    "section_timeline": {
+      "id": "section_timeline",
+      "parent": "page",
+      "display": "section",
+      "props": {
+        "title": "Timeline"
+      }
+    },
+    "task_countertops_measured": {
+      "id": "task_countertops_measured",
+      "parent": "section_timeline",
+      "display": "row",
+      "props": {
+        "task": "Get countertops measured",
+        "done": false,
+        "priority": "before plumber and electrician"
+      }
+    },
+    "task_electrician": {
+      "id": "task_electrician",
+      "parent": "section_timeline",
+      "display": "row",
+      "props": {
+        "task": "Electrician",
+        "done": false,
+        "date": "2026-03-03"
+      }
+    },
+    "task_plumber": {
+      "id": "task_plumber",
+      "parent": "section_timeline",
+      "display": "row",
+      "props": {
+        "task": "Plumber",
+        "done": false,
+        "date": "2026-03-10"
+      }
+    },
+    "item_flooring": {
+      "id": "item_flooring",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "category": "Flooring",
+        "estimated_cost": "4-6k"
+      }
+    },
+    "item_appliances": {
+      "id": "item_appliances",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "category": "Appliances",
+        "estimated_cost": "8k"
+      }
+    }
+  },
+  "relationships": [
+    {
+      "from": "page",
+      "to": "quote_woodworks",
+      "type": "selected"
+    }
+  ],
+  "relationship_types": {
+    "selected": "one_to_one"
+  },
+  "orphans": []
+}

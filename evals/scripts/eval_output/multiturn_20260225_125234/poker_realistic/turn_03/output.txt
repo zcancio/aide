@@ -1,0 +1,2 @@
+{"t":"entity.update","ref":"details","p":{"schedule":"Every other Thursday","buy_in":20}}
+{"t":"entity.create","id":"game_feb27","parent":"games","display":"row","p":{"date":"2026-02-27","buy_in":20}}

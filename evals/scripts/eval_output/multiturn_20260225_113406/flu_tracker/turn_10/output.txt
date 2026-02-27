@@ -1,0 +1,1 @@
+{"t":"entity.update","ref":"reading_george_925am","p":{"temp":101.5}}

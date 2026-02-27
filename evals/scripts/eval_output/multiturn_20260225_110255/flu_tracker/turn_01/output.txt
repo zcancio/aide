@@ -1,0 +1,9 @@
+```json
+{"t":"meta.set","p":{"title":"Fever Tracking","identity":"Tracking fevers for two kids: Ringo and George."}}
+{"t":"entity.create","id":"page","parent":"root","display":"page","p":{"title":"Fever Tracking"}}
+{"t":"entity.create","id":"kids","parent":"page","display":"table","p":{"title":"Kids"}}
+{"t":"entity.create","id":"kid_ringo","parent":"kids","display":"row","p":{"name":"Ringo"}}
+{"t":"entity.create","id":"kid_george","parent":"kids","display":"row","p":{"name":"George"}}
+{"t":"entity.create","id":"readings","parent":"page","display":"table","p":{"title":"Temperature Readings"}}
+{"t":"voice","text":"Fever tracker set up for Ringo and George. Log temperatures as you take them."}
+```

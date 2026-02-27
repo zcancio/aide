@@ -1,0 +1,7 @@
+```json
+{"t":"entity.create","id":"cabinet_quotes","parent":"page","display":"table","p":{"title":"Cabinet Quotes"}}
+{"t":"entity.create","id":"quote_woodworks","parent":"cabinet_quotes","display":"row","p":{"vendor":"Woodworks Unlimited","amount":12000}}
+{"t":"entity.create","id":"quote_depot","parent":"cabinet_quotes","display":"row","p":{"vendor":"Cabinet Depot","amount":9500}}
+{"t":"entity.create","id":"quote_custom","parent":"cabinet_quotes","display":"row","p":{"vendor":"Custom Craft","amount":15000}}
+{"t":"voice","text":"Three cabinet quotes added. $9.5k to $15k range."}
+```

@@ -1,0 +1,6 @@
+Looking at the snapshot, I need to create a guest list section to track RSVPs. Let me set that up.
+
+{"t":"entity.create","id":"guest_list","parent":"page","display":"table","p":{}}
+{"t":"entity.create","id":"guest_aunt_linda","parent":"guest_list","display":"row","p":{"name":"Aunt Linda","rsvp":"yes"}}
+{"t":"entity.create","id":"guest_uncle_bob","parent":"guest_list","display":"row","p":{"name":"Uncle Bob","rsvp":"yes"}}
+{"t":"entity.create","id":"guest_cousin_james","parent":"guest_list","display":"row","p":{"name":"Cousin James","rsvp":"maybe"}}

@@ -1,0 +1,2 @@
+{"t":"entity.update","ref":"guest_james","p":{"rsvp":"confirmed","note":"Flying in from Chicago"}}
+{"t":"entity.update","ref":"guest_dave","p":{"rsvp":"no"}}

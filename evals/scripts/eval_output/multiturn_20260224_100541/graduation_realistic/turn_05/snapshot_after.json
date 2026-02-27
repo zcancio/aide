@@ -1,0 +1,91 @@
+{
+  "meta": {
+    "title": "Sophie's Graduation",
+    "identity": "Graduation celebration for Sophie in May. Planning in progress."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Sophie's Graduation"
+      }
+    },
+    "event_details": {
+      "id": "event_details",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "title": "Event Details",
+        "graduate": "Sophie",
+        "month": "May 2026",
+        "date": "2026-05-22",
+        "venue": "UC Davis",
+        "time": "10:00"
+      }
+    },
+    "guest_list": {
+      "id": "guest_list",
+      "parent": "page",
+      "display": "table",
+      "props": {
+        "title": "Guest List"
+      }
+    },
+    "guest_linda": {
+      "id": "guest_linda",
+      "parent": "guest_list",
+      "display": "row",
+      "props": {
+        "name": "Aunt Linda",
+        "rsvp": "yes"
+      }
+    },
+    "guest_bob": {
+      "id": "guest_bob",
+      "parent": "guest_list",
+      "display": "row",
+      "props": {
+        "name": "Uncle Bob",
+        "rsvp": "yes"
+      }
+    },
+    "guest_james": {
+      "id": "guest_james",
+      "parent": "guest_list",
+      "display": "row",
+      "props": {
+        "name": "Cousin James",
+        "rsvp": "maybe"
+      }
+    },
+    "guest_maria": {
+      "id": "guest_maria",
+      "parent": "guest_list",
+      "display": "row",
+      "props": {
+        "name": "Maria Garcia",
+        "rsvp": "yes"
+      }
+    },
+    "guest_carlos": {
+      "id": "guest_carlos",
+      "parent": "guest_list",
+      "display": "row",
+      "props": {
+        "name": "Carlos Garcia",
+        "rsvp": "yes"
+      }
+    },
+    "guest_dave": {
+      "id": "guest_dave",
+      "parent": "guest_list",
+      "display": "row",
+      "props": {
+        "name": "Dave",
+        "rsvp": "maybe"
+      }
+    }
+  }
+}

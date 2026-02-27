@@ -1,378 +1,530 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 
-const DEMO = {
-  scenario: "graduation_realistic",
-  description: "Graduation party built over 8 turns.",
-  turns: [
-    { turn: 1, message: "sophie's graduating in may, need to plan something", tier: "L3", expected_tier: "L3", classified_tier: "L3", ttc_ms: 3420, output_tokens: 387, cache_creation: 2510, cache_read: 0, score: { composite: 0.88, validity: 0.95, voice: 1.0, structure: 0.85, efficiency: 0.80, fidelity: 0.75 }, notes: "Minimal input. Should create basic page, NOT pre-create sections.", system_prompt: "# AIde Engine — Shared Prefix\n\nYou are AIde's mutation engine.\nEmit JSONL — one JSON object per line.\n\n## Voice Rules\n- No first person\n- No encouragement\n- No emoji\n\n## Primitives\n- entity.create: {t, id, parent, display, p}\n- entity.update: {t, ref, p}\n- meta.set: {t, p}\n- voice: {t, text}\n\n## Display Hints\npage, section, card, table, checklist, row\n\n# L3 — Architect\nCreate pages from scratch.\nEmit: meta -> page -> sections -> children\n\n## Current Snapshot\n{\"meta\": {}, \"entities\": {}}", output: '{"t":"meta.set","p":{"title":"Sophie\'s Graduation","identity":"Graduation party, May 2026."}}\n{"t":"voice","text":"Setting up graduation page."}\n{"t":"entity.create","id":"page","parent":"root","display":"page","p":{"title":"Sophie\'s Graduation"}}\n{"t":"entity.create","id":"details","parent":"page","display":"card","p":{"event":"Graduation","who":"Sophie","when":"May 2026"}}\n{"t":"voice","text":"Basic details captured."}', snapshot_before: { meta: {}, entities: {} }, snapshot_after: { meta: { title: "Sophie's Graduation" }, entities: { page: { id: "page", parent: "root", display: "page", props: { title: "Sophie's Graduation" } }, details: { id: "details", parent: "page", display: "card", props: { event: "Graduation", who: "Sophie", when: "May 2026" } } } } },
-    { turn: 2, message: "ceremony is may 22 at UC Davis, starts at 10", tier: "L2", expected_tier: "L2", classified_tier: "L2", ttc_ms: 739, output_tokens: 43, cache_creation: 0, cache_read: 2510, score: { composite: 0.94, validity: 1.0, voice: 1.0, structure: 0.95, efficiency: 1.0, fidelity: 0.80 }, notes: "Should update existing details entity.", system_prompt: "# L2 — Compiler\nHandle simple mutations on existing entities.\n\n## Snapshot\n{page, details}", output: '{"t":"entity.update","ref":"details","p":{"date":"2026-05-22","venue":"UC Davis","time":"10:00 AM"}}', snapshot_before: { meta: { title: "Sophie's Graduation" }, entities: { page: { id: "page", parent: "root", display: "page", props: {} }, details: { id: "details", parent: "page", display: "card", props: { when: "May 2026" } } } }, snapshot_after: { meta: { title: "Sophie's Graduation" }, entities: { page: { id: "page", parent: "root", display: "page", props: {} }, details: { id: "details", parent: "page", display: "card", props: { when: "May 2026", date: "2026-05-22", venue: "UC Davis", time: "10:00 AM" } } } } },
-    { turn: 3, message: "aunt linda and uncle bob are coming. cousin james is a maybe", tier: "L3", expected_tier: "L2", classified_tier: "L3", ttc_ms: 4200, output_tokens: 280, cache_creation: 0, cache_read: 2510, score: { composite: 0.82, validity: 0.95, voice: 0.90, structure: 0.78, efficiency: 0.70, fidelity: 0.85 }, notes: "No guest section existed. L3 escalation correct.", system_prompt: "# L3 — Architect\n\n## Snapshot\n{page, details}", output: '{"t":"voice","text":"Adding guest tracking."}\n{"t":"entity.create","id":"guests","parent":"page","display":"table","p":{"title":"Guest List"}}\n{"t":"entity.create","id":"guest_linda","parent":"guests","display":"row","p":{"name":"Aunt Linda","rsvp":"confirmed"}}\n{"t":"entity.create","id":"guest_bob","parent":"guests","display":"row","p":{"name":"Uncle Bob","rsvp":"confirmed"}}\n{"t":"entity.create","id":"guest_james","parent":"guests","display":"row","p":{"name":"Cousin James","rsvp":"maybe"}}', snapshot_before: { meta: {}, entities: { page: { id: "page", parent: "root", display: "page", props: {} }, details: { id: "details", parent: "page", display: "card", props: {} } } }, snapshot_after: { meta: {}, entities: { page: { id: "page", parent: "root", display: "page", props: {} }, details: { id: "details", parent: "page", display: "card", props: {} }, guests: { id: "guests", parent: "page", display: "table", props: { title: "Guest List" } }, guest_linda: { id: "guest_linda", parent: "guests", display: "row", props: { name: "Aunt Linda", rsvp: "confirmed" } }, guest_bob: { id: "guest_bob", parent: "guests", display: "row", props: { name: "Uncle Bob", rsvp: "confirmed" } }, guest_james: { id: "guest_james", parent: "guests", display: "row", props: { name: "Cousin James", rsvp: "maybe" } } } } },
-    { turn: 4, message: "also the garcias - maria and carlos. prob my friend dave", tier: "L2", expected_tier: "L2", classified_tier: "L2", ttc_ms: 920, output_tokens: 95, cache_creation: 0, cache_read: 2510, score: { composite: 0.91, validity: 1.0, voice: 1.0, structure: 0.90, efficiency: 0.95, fidelity: 0.75 }, notes: "'prob' = maybe for Dave.", system_prompt: "# L2 — Compiler\n\n## Snapshot\n{guests table, 3 rows}", output: '{"t":"entity.create","id":"guest_maria","parent":"guests","display":"row","p":{"name":"Maria Garcia","rsvp":"confirmed"}}\n{"t":"entity.create","id":"guest_carlos","parent":"guests","display":"row","p":{"name":"Carlos Garcia","rsvp":"confirmed"}}\n{"t":"entity.create","id":"guest_dave","parent":"guests","display":"row","p":{"name":"Dave","rsvp":"maybe"}}', snapshot_before: { meta: {}, entities: { guests: { id: "guests", parent: "page", display: "table", props: {} }, guest_linda: { id: "guest_linda", parent: "guests", display: "row", props: { name: "Aunt Linda" } }, guest_bob: { id: "guest_bob", parent: "guests", display: "row", props: { name: "Uncle Bob" } }, guest_james: { id: "guest_james", parent: "guests", display: "row", props: { name: "Cousin James" } } } }, snapshot_after: { meta: {}, entities: { guests: { id: "guests", parent: "page", display: "table", props: {} }, guest_linda: { id: "guest_linda", parent: "guests", display: "row", props: { name: "Aunt Linda" } }, guest_bob: { id: "guest_bob", parent: "guests", display: "row", props: { name: "Uncle Bob" } }, guest_james: { id: "guest_james", parent: "guests", display: "row", props: { name: "Cousin James" } }, guest_maria: { id: "guest_maria", parent: "guests", display: "row", props: { name: "Maria Garcia" } }, guest_carlos: { id: "guest_carlos", parent: "guests", display: "row", props: { name: "Carlos Garcia" } }, guest_dave: { id: "guest_dave", parent: "guests", display: "row", props: { name: "Dave", rsvp: "maybe" } } } } },
-    { turn: 5, message: "how many people is that so far?", tier: "L4", expected_tier: "L4", classified_tier: "L4", ttc_ms: 1840, output_tokens: 42, cache_creation: 0, cache_read: 2510, score: { composite: 0.92, validity: 1.0, voice: 0.85, structure: 1.0, efficiency: 1.0, fidelity: 0.90 }, notes: "L4 query. Should count 6 guests.", system_prompt: "# L4 — Analyst\nPlain text only. No JSONL.\n\n## Snapshot\n{6 guests}", output: "6 guests tracked: Aunt Linda, Uncle Bob, Cousin James, Maria Garcia, Carlos Garcia, and Dave. 4 confirmed, 2 tentative.", snapshot_before: { meta: {}, entities: {} }, snapshot_after: { meta: {}, entities: {} } },
-    { turn: 6, message: "we should do potluck. linda's bringing potato salad", tier: "L3", expected_tier: "L3", classified_tier: "L3", ttc_ms: 3800, output_tokens: 210, cache_creation: 0, cache_read: 2510, score: { composite: 0.86, validity: 0.95, voice: 0.90, structure: 0.85, efficiency: 0.75, fidelity: 0.85 }, notes: "New section (food). Link potato salad to Linda.", system_prompt: "# L3 — Architect\n\n## Snapshot\n{page, details, 6 guests}", output: '{"t":"voice","text":"Adding potluck tracking."}\n{"t":"entity.create","id":"food","parent":"page","display":"table","p":{"title":"Potluck"}}\n{"t":"entity.create","id":"food_potato","parent":"food","display":"row","p":{"item":"Potato salad","assigned":"Aunt Linda"}}', snapshot_before: { meta: {}, entities: { page: { id: "page", parent: "root", display: "page", props: {} } } }, snapshot_after: { meta: {}, entities: { page: { id: "page", parent: "root", display: "page", props: {} }, food: { id: "food", parent: "page", display: "table", props: { title: "Potluck" } }, food_potato: { id: "food_potato", parent: "food", display: "row", props: { item: "Potato salad", assigned: "Aunt Linda" } } } } },
-    { turn: 7, message: "carlos does carne asada, maria handles drinks. need dessert and sides", tier: "L2", expected_tier: "L2", classified_tier: "L2", ttc_ms: 1100, output_tokens: 130, cache_creation: 0, cache_read: 2510, score: { composite: 0.89, validity: 1.0, voice: 1.0, structure: 0.90, efficiency: 0.85, fidelity: 0.80 }, notes: "4 food items: 2 assigned, 2 TBD.", system_prompt: "# L2 — Compiler\n\n## Snapshot\n{food table, 1 item}", output: '{"t":"entity.create","id":"food_carne","parent":"food","display":"row","p":{"item":"Carne asada","assigned":"Carlos"}}\n{"t":"entity.create","id":"food_drinks","parent":"food","display":"row","p":{"item":"Drinks","assigned":"Maria"}}\n{"t":"entity.create","id":"food_dessert","parent":"food","display":"row","p":{"item":"Dessert","assigned":"TBD"}}\n{"t":"entity.create","id":"food_sides","parent":"food","display":"row","p":{"item":"Sides","assigned":"TBD"}}', snapshot_before: { meta: {}, entities: { food: { id: "food", parent: "page", display: "table", props: { title: "Potluck" } }, food_potato: { id: "food_potato", parent: "food", display: "row", props: { item: "Potato salad" } } } }, snapshot_after: { meta: {}, entities: { food: { id: "food", parent: "page", display: "table", props: { title: "Potluck" } }, food_potato: { id: "food_potato", parent: "food", display: "row", props: { item: "Potato salad" } }, food_carne: { id: "food_carne", parent: "food", display: "row", props: { item: "Carne asada", assigned: "Carlos" } }, food_drinks: { id: "food_drinks", parent: "food", display: "row", props: { item: "Drinks", assigned: "Maria" } }, food_dessert: { id: "food_dessert", parent: "food", display: "row", props: { item: "Dessert", assigned: "TBD" } }, food_sides: { id: "food_sides", parent: "food", display: "row", props: { item: "Sides", assigned: "TBD" } } } } },
-    { turn: 8, message: "scratch that - maria does fruit platter not drinks. bob handles drinks", tier: "L2", expected_tier: "L2", classified_tier: "L2", ttc_ms: 850, output_tokens: 65, cache_creation: 0, cache_read: 2510, score: { composite: 0.90, validity: 1.0, voice: 1.0, structure: 0.88, efficiency: 0.95, fidelity: 0.82 }, notes: "Correction: update, not delete+recreate.", system_prompt: "# L2 — Compiler\n\n## Snapshot\n{food table, drinks -> Maria}", output: '{"t":"entity.update","ref":"food_drinks","p":{"assigned":"Uncle Bob"}}\n{"t":"entity.create","id":"food_fruit","parent":"food","display":"row","p":{"item":"Fruit platter","assigned":"Maria"}}', snapshot_before: { meta: {}, entities: { food_drinks: { id: "food_drinks", parent: "food", display: "row", props: { item: "Drinks", assigned: "Maria" } } } }, snapshot_after: { meta: {}, entities: { food_drinks: { id: "food_drinks", parent: "food", display: "row", props: { item: "Drinks", assigned: "Uncle Bob" } }, food_fruit: { id: "food_fruit", parent: "food", display: "row", props: { item: "Fruit platter", assigned: "Maria" } } } } },
-  ],
+// ── Model/tier constants ────────────────────────────────────────────────────
+
+const MODELS = {
+  L4: "claude-opus-4-5-20251101",
+  L3: "claude-sonnet-4-5-20250929",
 };
+const TEMPS = { L4: 0.2, L3: 0 };
 
-const TC = { L2: { bg: "#0c4a6e", tx: "#7dd3fc", bd: "#0369a1", lb: "L2 Haiku" }, L3: { bg: "#4c1d95", tx: "#c4b5fd", bd: "#6d28d9", lb: "L3 Sonnet" }, L4: { bg: "#713f12", tx: "#fde68a", bd: "#a16207", lb: "L4 Opus" } };
-const EC = { "entity.create": { bg: "#064e3b", tx: "#6ee7b7", bd: "#047857" }, "entity.update": { bg: "#1e3a5f", tx: "#93c5fd", bd: "#2563eb" }, "meta.set": { bg: "#422006", tx: "#fdba74", bd: "#c2410c" }, voice: { bg: "#1a2e05", tx: "#bef264", bd: "#4d7c0f" }, clarify: { bg: "#4a1d96", tx: "#e9d5ff", bd: "#7c3aed" }, "rel.set": { bg: "#3b0764", tx: "#c4b5fd", bd: "#6d28d9" }, escalate: { bg: "#1e1b4b", tx: "#a5b4fc", bd: "#4338ca" } };
-const DIMS = ["validity", "voice", "structure", "efficiency", "fidelity"];
-const DLBL = { validity: "Valid", voice: "Voice", structure: "Struct", efficiency: "Effic", fidelity: "Fidel" };
-const DDESC = {
-  validity: "Can the pipeline parse this? JSON syntax, valid primitives, required fields.",
-  voice: "Follows AIde voice rules? No first person, no encouragement, no emoji.",
-  structure: "Correct emission order, display hints, entity IDs, tier behavior.",
-  efficiency: "Token economy. Output size vs expected range for this tier.",
-  fidelity: "Does the output actually do what the user asked?",
-};
-const mono = "ui-monospace, 'SF Mono', Monaco, Consolas, monospace";
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
-function parseEv(s) { if (!s) return []; const r = []; for (const l of s.split("\n")) { const x = l.trim(); if (!x || x[0]==='`') continue; try { r.push(JSON.parse(x)); } catch(e) {} } return r; }
+const hum = (s) => (s ? s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : "");
+const esc = (s) => String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const tbText = (tb) => typeof tb === "string" ? tb : (tb?.text || "");
 
-function mkTree(ents, removedEnts) {
-  if (!ents) return [];
-  // Merge: all live entities + removed entities marked with _removed flag
-  const merged = { ...ents };
-  if (removedEnts) {
-    for (const [id, e] of Object.entries(removedEnts)) {
-      if (!merged[id]) merged[id] = { ...e, _removed: true };
-    }
-  }
-  const all = Object.values(merged).filter(e => e && e.id);
-  const allIds = new Set(all.map(e => e.id));
-  allIds.add("root");
-  const ch = {};
-  all.forEach(e => { const p = e.parent || "root"; (ch[p] = ch[p] || []).push(e); });
-  // Sort: live entities first, then removed ones at the end of each group
-  for (const p of Object.keys(ch)) {
-    ch[p].sort((a, b) => (a._removed ? 1 : 0) - (b._removed ? 1 : 0));
-  }
-  const out = [];
-  const visited = new Set();
-  const walk = (pid, d) => { (ch[pid] || []).forEach(c => { visited.add(c.id); out.push({ ...c, depth: d }); walk(c.id, d + 1); }); };
-  walk("root", 0);
-  // Collect orphans — entities whose parent doesn't exist in the tree
-  const orphans = all.filter(e => !visited.has(e.id) && !allIds.has(e.parent || "root"));
-  if (orphans.length > 0) {
-    orphans.forEach(o => { out.push({ ...o, depth: 0, _orphan: true }); });
-  }
-  return out;
+function tierStyle(t) {
+  return t === "L4" ? { bg: "#312e81", color: "#c4b5fd" } : { bg: "#0c3547", color: "#7dd3fc" };
+}
+function actionCls(a) {
+  return ["create","update","remove","move","set"].includes(a) ? a : "unknown";
 }
 
-function eDiff(b, a) {
-  const bk = new Set(Object.keys(b || {}));
-  const ak = new Set(Object.keys(a || {}));
-  const add = [...ak].filter(k => !bk.has(k));
-  const rem = [...bk].filter(k => !ak.has(k));
-  // Detect prop changes and parent changes on entities that exist in both
-  const mod = [];
-  const modDetails = {};
-  const moved = {}; // id -> { from, to }
-  for (const k of ak) {
-    if (!bk.has(k)) continue;
-    const bp = JSON.stringify((b[k]?.props || b[k]?.p || {}));
-    const ap = JSON.stringify((a[k]?.props || a[k]?.p || {}));
-    const bParent = b[k]?.parent;
-    const aParent = a[k]?.parent;
-    const parentChanged = bParent !== aParent;
-    if (bp !== ap || parentChanged) {
-      mod.push(k);
-      // Find which props changed
-      const bObj = b[k]?.props || b[k]?.p || {};
-      const aObj = a[k]?.props || a[k]?.p || {};
-      const changed = [];
-      const allKeys = new Set([...Object.keys(bObj), ...Object.keys(aObj)]);
-      for (const pk of allKeys) {
-        if (JSON.stringify(bObj[pk]) !== JSON.stringify(aObj[pk])) {
-          changed.push(bObj[pk] === undefined ? `+${pk}` : aObj[pk] === undefined ? `-${pk}` : `${pk}: ${JSON.stringify(bObj[pk])}→${JSON.stringify(aObj[pk])}`);
+// ── Snapshot builder ────────────────────────────────────────────────────────
+
+function buildSnap(g, ti) {
+  const s = { entities: {}, rels: [], meta: {} };
+  for (let i = 0; i <= ti; i++) {
+    const t = g.turns[i];
+    if (!t) break;
+    for (const tc of t.tool_calls) {
+      if (tc.name === "mutate_entity") {
+        const p = tc.input;
+        if (p.action === "create") s.entities[p.id] = { id: p.id, parent: p.parent || "root", display: p.display || null, props: { ...(p.props || {}) }, _removed: false };
+        else if (p.action === "update" && s.entities[p.ref]) { Object.assign(s.entities[p.ref].props, p.props || {}); if (p.display) s.entities[p.ref].display = p.display; }
+        else if (p.action === "remove" && s.entities[p.ref]) s.entities[p.ref]._removed = true;
+        else if (p.action === "move" && s.entities[p.ref]) s.entities[p.ref].parent = p.parent;
+      } else if (tc.name === "set_relationship") {
+        const r = tc.input;
+        if (r.action === "set") {
+          if (r.cardinality === "one_to_one") s.rels = s.rels.filter(x => !(x.from === r.from && x.type === r.type));
+          s.rels.push({ from: r.from, to: r.to, type: r.type, cardinality: r.cardinality || "many_to_one" });
+        } else if (r.action === "remove") {
+          s.rels = s.rels.filter(x => !(x.from === r.from && x.to === r.to && x.type === r.type));
         }
       }
-      if (parentChanged) {
-        changed.push(`parent: ${bParent}→${aParent}`);
-        moved[k] = { from: bParent, to: aParent };
-      }
-      modDetails[k] = changed;
     }
   }
-  return { add, rem, mod, modDetails, moved };
+  const pg = Object.values(s.entities).find((e) => e.parent === "root" && e.display === "page");
+  if (pg) s.meta.title = pg.props.title || g.name;
+  return s;
 }
 
-export default function Viewer() {
-  const [run, setRun] = useState(DEMO);
-  const [idx, setIdx] = useState(0);
-  const [tab, setTab] = useState("output");
-  const [playing, setPlaying] = useState(false);
-  const [expandedDim, setExpandedDim] = useState(null);
-  const fileRef = useRef(null);
+// ── Diff computation ────────────────────────────────────────────────────────
 
-  const turns = useMemo(() => run.turns.map(t => {
-    // Normalize score: old format was just a float, new format is {composite, validity, ...}
-    if (typeof t.score === "number") {
-      return { ...t, score: { composite: t.score, validity: 0, voice: 0, structure: 0, efficiency: 0, fidelity: 0 } };
+function computeDiff(g, ti) {
+  const before = ti > 0 ? buildSnap(g, ti - 1) : { entities: {} };
+  const after = buildSnap(g, ti);
+  const added = [], updated = [], removed = [];
+
+  for (const [id, e] of Object.entries(after.entities)) {
+    if (!before.entities[id]) added.push(e);
+    else if (e._removed && !before.entities[id]._removed) removed.push(e);
+    else if (JSON.stringify(e.props) !== JSON.stringify(before.entities[id].props) || e.display !== before.entities[id].display) {
+      updated.push({ id, before: before.entities[id], after: e });
     }
-    return t;
-  }), [run.turns]);
-  const N = turns.length;
-  const t = turns[idx];
-  const evts = useMemo(() => parseEv(t.output), [t.output]);
-  const diff = useMemo(() => eDiff(t.snapshot_before?.entities, t.snapshot_after?.entities), [t]);
-  const removedEnts = useMemo(() => {
-    if (!diff.rem.length) return null;
-    const before = t.snapshot_before?.entities || {};
-    const out = {};
-    for (const id of diff.rem) { if (before[id]) out[id] = before[id]; }
-    return out;
-  }, [diff.rem, t.snapshot_before]);
-  const tree = useMemo(() => mkTree(t.snapshot_after?.entities, removedEnts), [t.snapshot_after, removedEnts]);
-  const isL4 = t.tier === "L4";
-  const pct = Math.round((t.score?.composite || 0) * 100);
+  }
+  for (const id of Object.keys(before.entities)) {
+    if (!after.entities[id]) removed.push(before.entities[id]);
+  }
+  return { before, after, added, updated, removed };
+}
 
-  useEffect(() => { if (!playing) return; const id = setInterval(() => setIdx(p => { if (p>=N-1) { setPlaying(false); return p; } return p+1; }), 2500); return () => clearInterval(id); }, [playing, N]);
-  useEffect(() => { const fn = e => { if (e.target.tagName==="INPUT") return; if (e.key==="ArrowRight") { setIdx(p=>Math.min(p+1,N-1)); setPlaying(false); } else if (e.key==="ArrowLeft") { setIdx(p=>Math.max(p-1,0)); setPlaying(false); } else if (e.key===" ") { e.preventDefault(); setPlaying(p=>!p); } else if (e.key>="1"&&e.key<="4") setTab(["output","prompt","snapshot","tree"][+e.key-1]); }; window.addEventListener("keydown",fn); return ()=>window.removeEventListener("keydown",fn); }, [N]);
+// ── Render snapshot → HTML string for iframe ────────────────────────────────
 
-  const sc = v => v>=0.9?"#4ade80":v>=0.75?"#facc15":v>=0.6?"#fb923c":"#f87171";
-  const Bar = ({v,w,h}) => <div style={{width:w||60,height:h||5,background:"#1e293b",borderRadius:3,overflow:"hidden",display:"inline-block",verticalAlign:"middle"}}><div style={{width:`${(v||0)*100}%`,height:"100%",background:sc(v||0),borderRadius:3}}/></div>;
-  const Tier = ({tier,small}) => { const c=TC[tier]||TC.L2; return <span style={{padding:small?"1px 5px":"2px 7px",borderRadius:3,background:c.bg,border:`1px solid ${c.bd}`,color:c.tx,fontWeight:600,fontSize:small?9:11,fontFamily:mono,display:"inline-block"}}>{c.lb}</span>; };
-  const Lbl = ({children}) => <div style={{fontSize:10,textTransform:"uppercase",letterSpacing:1.5,color:"#64748b",marginBottom:8,fontWeight:700,fontFamily:mono}}>{children}</div>;
-  const Pre = ({text,mh}) => <pre style={{background:"#08080f",border:"1px solid #1e1e2e",borderRadius:6,padding:12,fontSize:12,lineHeight:1.6,fontFamily:mono,color:"#c9d1d9",overflow:"auto",maxHeight:mh||9999,whiteSpace:"pre-wrap",wordBreak:"break-word",margin:0}}>{text||"(empty)"}</pre>;
+function renderHTML(s) {
+  const E = s.entities;
+  const rels = s.rels || [];
+  const ch = (pid) => Object.values(E).filter((e) => e.parent === pid && !e._removed).sort((a, b) => (a.id > b.id ? 1 : -1));
+
+  // Build rel lookups
+  const inRels = {}, outRels = {};
+  rels.forEach(r => {
+    if (!inRels[r.to]) inRels[r.to] = [];
+    inRels[r.to].push(r);
+    if (!outRels[r.from]) outRels[r.from] = [];
+    outRels[r.from].push(r);
+  });
+  const relTags = (eid) => {
+    const all = [...(inRels[eid]||[]).map(r=>({dir:"in",r})), ...(outRels[eid]||[]).map(r=>({dir:"out",r}))];
+    if (!all.length) return "";
+    return all.map(({dir,r})=>{
+      const other = dir==="in"?r.from:r.to;
+      const nm = E[other]?.props?.name||E[other]?.props?.title||hum(other);
+      const c = r.type==="absent"?"#dc2626":r.type==="sub"?"#f59e0b":r.type==="selected"?"#22c55e":"#6366f1";
+      return `<span style="display:inline-block;font-size:10px;padding:1px 6px;border-radius:3px;background:${c}18;color:${c};border:1px solid ${c}40;margin-left:4px">${esc(r.type)}${dir==="in"?" ← ":" → "}${esc(nm)}</span>`;
+    }).join("");
+  };
+
+  function tbl(sec) {
+    const c = ch(sec.id);
+    if (!c.length) return `<p class="em">Empty.</p>`;
+    const ks = [...new Set(c.flatMap((x) => Object.keys(x.props).filter((k) => !k.startsWith("_"))))];
+    const hasRels = c.some(x => inRels[x.id] || outRels[x.id]);
+    return `<table><thead><tr>${ks.map((k) => `<th>${esc(hum(k))}</th>`).join("")}${hasRels?`<th></th>`:""}</tr></thead><tbody>${c.map((x) => `<tr>${ks.map((k) => { const v = x.props[k]; return `<td>${esc(v === true ? "✓" : v === false ? "✗" : String(v ?? "—"))}</td>`; }).join("")}${hasRels?`<td>${relTags(x.id)}</td>`:""}</tr>`).join("")}</tbody></table>`;
+  }
+
+  function gridH(sec) {
+    const rows = sec.props._rows || 8, cols = sec.props._cols || 8, c = ch(sec.id), map = {};
+    c.forEach((x) => { if (x.props.row !== undefined && x.props.col !== undefined) map[x.props.row + "_" + x.props.col] = x; });
+    let h = `<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:1px;background:#bbb;padding:1px;border-radius:4px;overflow:hidden">`;
+    for (let r = 0; r < rows; r++) for (let c2 = 0; c2 < cols; c2++) { const cell = map[r + "_" + c2]; h += `<div style="background:${(r + c2) % 2 === 0 ? "#f0d9b5" : "#b58863"};min-height:26px;display:flex;align-items:center;justify-content:center;font-size:10px">${esc(cell?.props.piece || cell?.props.owner || "")}</div>`; }
+    return h + "</div>";
+  }
+
+  function rend(e) {
+    const c2 = ch(e.id), d = e.display || "card", nm = e.props.title || e.props.name || hum(e.id);
+    const h2 = `<h2>${esc(nm)}</h2>`;
+    if (d === "page") return `<h1>${esc(nm)}</h1>` + c2.map(rend).join("");
+    if (d === "table") return `<div class="sec">${h2}${tbl(e)}</div>`;
+    if (d === "section" || d === "list") return `<div class="sec">${h2}${c2.map(rend).join("") || '<p class="em">Empty.</p>'}</div>`;
+    if (d === "checklist") return `<div class="sec">${h2}${ch(e.id).map((x) => { const done = x.props.done || x.props.checked || false; return `<div class="${done ? "ck done" : "ck"}">${done ? "☑" : "☐"} ${esc(x.props.name || hum(x.id))}</div>`; }).join("") || '<p class="em">Empty.</p>'}</div>`;
+    if (d === "grid") return `<div class="sec">${h2}${gridH(e)}</div>`;
+    if (d === "metric") return `<div class="met"><div class="mv">${esc(String(e.props.value || e.props.count || "—"))}</div><div class="ml">${esc(nm)}</div></div>`;
+    if (d === "text") return `<p class="txt">${esc(e.props.content || e.props.text || "")}</p>`;
+    return `<div class="card"><b>${esc(nm)}</b>${relTags(e.id)}<br/><span class="ps">${Object.entries(e.props).filter(([k]) => !k.startsWith("_") && k !== "title" && k !== "name").map(([k, v]) => `${esc(hum(k))}: ${esc(String(v ?? "—"))}`).join(" · ")}</span>${c2.map(rend).join("")}</div>`;
+  }
+
+  return `<!DOCTYPE html><html><head><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'DM Sans',system-ui,sans-serif;background:#F7F5F2;color:#2D2D2A;padding:28px 36px}h1{font-family:'Playfair Display',serif;font-size:26px;font-weight:600;margin-bottom:24px}h2{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:1.5px;color:#6B6963;margin-bottom:10px}.sec{margin-bottom:20px}table{width:100%;border-collapse:collapse}th{text-align:left;padding:5px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#8B8680;border-bottom:2px solid #E0DDD8;font-weight:500}td{padding:7px 10px;border-bottom:1px solid #E8E5E0;font-size:13px}.card{background:#fff;border:1px solid #E0DDD8;border-radius:6px;padding:12px;margin-bottom:8px}.ps{font-size:12px;color:#8B8680}.met{text-align:center;padding:16px}.mv{font-family:'Playfair Display',serif;font-size:32px;font-weight:700}.ml{font-size:11px;color:#8B8680;text-transform:uppercase;letter-spacing:1px;margin-top:3px}.txt{font-size:13px;line-height:1.6;color:#4A4A46;margin-bottom:16px}.ck{padding:3px 0;font-size:13px}.ck.done{text-decoration:line-through;opacity:.5}.em{color:#B5B0A8;font-style:italic;font-size:13px;padding:12px 0}</style></head><body>${ch("root").map(rend).join("")}</body></html>`;
+}
+
+// ── Styles ───────────────────────────────────────────────────────────────────
+
+const S = {
+  root: { height: "100vh", width: "100vw", display: "flex", flexDirection: "column", background: "#08080e", color: "#e2e8f0", fontFamily: "'DM Sans',system-ui,sans-serif", overflow: "hidden" },
+  topbar: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 20px", borderBottom: "1px solid #1a1a2c", background: "#0c0c14", height: 40, flexShrink: 0 },
+  main: { flex: 1, display: "flex", overflow: "hidden" },
+  panelLeft: { width: 320, minWidth: 260, borderRight: "1px solid #1a1a2c", display: "flex", flexDirection: "column", background: "#0c0c14" },
+  panelCenter: { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 },
+  panelRight: { width: 260, minWidth: 220, borderLeft: "1px solid #1a1a2c", display: "flex", flexDirection: "column", background: "#0c0c14", overflowY: "auto" },
+  panelHeader: { padding: "6px 14px", fontSize: 9, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "#4e5468", borderBottom: "1px solid #1a1a2c", background: "#111119" },
+  chatScroll: { flex: 1, overflowY: "auto", padding: "10px 12px" },
+  viewTabs: { display: "flex", borderBottom: "1px solid #1a1a2c", background: "#0c0c14", flexShrink: 0 },
+  viewContent: { flex: 1, overflow: "hidden", position: "relative" },
+  timeline: { flexShrink: 0, background: "#0c0c14", borderTop: "1px solid #1a1a2c", padding: "8px 20px 12px" },
+};
+
+const vtabStyle = (active) => ({
+  padding: "7px 16px", fontSize: 10, fontWeight: 500, letterSpacing: "0.3px",
+  color: active ? "#3b82f6" : "#4e5468", cursor: "pointer",
+  borderBottom: active ? "2px solid #3b82f6" : "2px solid transparent",
+  userSelect: "none", transition: "0.15s",
+});
+
+const monoSm = { fontFamily: "'JetBrains Mono',monospace", fontSize: 10 };
+const mrow = { display: "flex", justifyContent: "space-between", padding: "3px 0", fontSize: 11 };
+const msec = { padding: "12px 14px", borderBottom: "1px solid #1a1a2c" };
+const mhdr = { fontSize: 9, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "#4e5468", marginBottom: 8 };
+
+// ── Components ──────────────────────────────────────────────────────────────
+
+function ToolPill({ tc }) {
+  const a = tc.input?.action || "unknown";
+  const id = tc.input?.id || tc.input?.ref || "";
+  const cls = actionCls(a);
+  const colors = {
+    create: { bg: "#052e22", color: "#6ee7b7", border: "#065f46" },
+    update: { bg: "#0c2d48", color: "#7dd3fc", border: "#0c4a6e" },
+    remove: { bg: "#3b0f0f", color: "#fca5a5", border: "#7f1d1d" },
+    move: { bg: "#2e1065", color: "#c4b5fd", border: "#4c1d95" },
+    set: { bg: "#3d2800", color: "#fde68a", border: "#713f12" },
+    unknown: { bg: "#1a1a28", color: "#94a3b8", border: "#252538" },
+  };
+  const c = colors[cls];
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "1px 6px", borderRadius: 3, ...monoSm, fontSize: 9, background: c.bg, color: c.color, border: `1px solid ${c.border}`, whiteSpace: "nowrap" }}>
+      <b>{a}</b>{id && <span style={{ opacity: 0.65 }}>{id}</span>}
+    </span>
+  );
+}
+
+function MetricsPanel({ golden, turnIdx }) {
+  const t = golden.turns[turnIdx];
+  const s = buildSnap(golden, turnIdx);
+  const entCount = Object.values(s.entities).filter((e) => !e._removed).length;
+  const tcSum = {};
+  t.tool_calls.forEach((tc) => { const a = tc.input?.action || "?"; tcSum[a] = (tcSum[a] || 0) + 1; });
+
+  let totalTools = 0, totalIn = 0, totalOut = 0;
+  for (let i = 0; i <= turnIdx; i++) {
+    totalTools += golden.turns[i].tool_calls.length;
+    totalIn += golden.turns[i].usage?.input_tokens || 0;
+    totalOut += golden.turns[i].usage?.output_tokens || 0;
+  }
+
+  const costIn = t.tier === "L4" ? (t.usage?.input_tokens || 0) * 15 / 1e6 : (t.usage?.input_tokens || 0) * 3 / 1e6;
+  const costOut = t.tier === "L4" ? (t.usage?.output_tokens || 0) * 75 / 1e6 : (t.usage?.output_tokens || 0) * 15 / 1e6;
+
+  const ts = tierStyle(t.tier);
 
   return (
-    <div style={{
-      width: "100%",
-      height: "100vh",
-      display: "grid",
-      gridTemplateRows: "44px 1fr 48px",
-      gridTemplateColumns: "280px 1fr 220px",
-      background: "#0b0b13",
-      color: "#e2e8f0",
-      fontFamily: "system-ui, sans-serif",
-      overflow: "hidden",
-    }}>
-
-      {/* ═══ TOP BAR ═══ */}
-      <div style={{ gridColumn: "1/-1", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 16px", borderBottom: "1px solid #1a1a2a", background: "#0e0e18" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width:8, height:8, borderRadius:"50%", background: playing?"#ef4444":"#4ade80" }} />
-          <span style={{ fontSize:11, fontWeight:700, letterSpacing:1, textTransform:"uppercase", color:"#64748b", fontFamily:mono }}>Eval Viewer</span>
-          <span style={{ fontSize:13, color:"#94a3b8" }}>{run.scenario}</span>
+    <>
+      <div style={msec}>
+        <div style={mhdr}>Routing</div>
+        <div style={mrow}><span style={{ color: "#4e5468" }}>Tier</span><span style={{ padding: "1px 8px", borderRadius: 3, fontWeight: 600, fontSize: 10, background: ts.bg, color: ts.color }}>{t.tier}</span></div>
+        <div style={mrow}><span style={{ color: "#4e5468" }}>Model</span><span style={{ ...monoSm, color: "#4e5468", wordBreak: "break-all" }}>{MODELS[t.tier]}</span></div>
+        <div style={mrow}><span style={{ color: "#4e5468" }}>Temperature</span><span style={{ ...monoSm, color: "#94a3b8" }}>{TEMPS[t.tier]}</span></div>
+      </div>
+      <div style={msec}>
+        <div style={mhdr}>Latency</div>
+        <div style={mrow}><span style={{ color: "#4e5468" }}>TTFC</span><span style={{ ...monoSm, color: t.ttfc_ms < 500 ? "#4ade80" : t.ttfc_ms < 1500 ? "#94a3b8" : "#fbbf24" }}>{t.ttfc_ms}ms</span></div>
+        <div style={mrow}><span style={{ color: "#4e5468" }}>TTC</span><span style={{ ...monoSm, color: t.ttc_ms < 2000 ? "#4ade80" : t.ttc_ms < 5000 ? "#94a3b8" : "#fbbf24" }}>{t.ttc_ms}ms</span></div>
+        <div style={mrow}><span style={{ color: "#4e5468" }}>ms/tool</span><span style={{ ...monoSm, color: "#94a3b8" }}>{t.tool_calls.length ? Math.round(t.ttc_ms / t.tool_calls.length) : "—"}</span></div>
+      </div>
+      <div style={msec}>
+        <div style={mhdr}>Tokens</div>
+        <div style={mrow}><span style={{ color: "#4e5468" }}>Input</span><span style={monoSm}>{(t.usage?.input_tokens || 0).toLocaleString()}</span></div>
+        <div style={mrow}><span style={{ color: "#4e5468" }}>Output</span><span style={monoSm}>{(t.usage?.output_tokens || 0).toLocaleString()}</span></div>
+        {t.usage?.cache_read > 0 && <div style={mrow}><span style={{ color: "#4e5468" }}>Cache</span><span style={{ ...monoSm, color: "#4ade80" }}>{t.usage.cache_read.toLocaleString()} ({Math.round(t.usage.cache_read / t.usage.input_tokens * 100)}%)</span></div>}
+        <div style={mrow}><span style={{ color: "#4e5468" }}>Est. cost</span><span style={{ ...monoSm, color: (costIn + costOut) < 0.01 ? "#4ade80" : "#94a3b8" }}>${(costIn + costOut).toFixed(4)}</span></div>
+      </div>
+      <div style={msec}>
+        <div style={mhdr}>Tool Calls</div>
+        <div style={mrow}><span style={{ color: "#4e5468" }}>Total</span><span style={monoSm}>{t.tool_calls.length}</span></div>
+        {Object.entries(tcSum).map(([a, c]) => <div key={a} style={mrow}><span style={{ color: "#4e5468" }}>{a}</span><span style={monoSm}>{c}</span></div>)}
+        <div style={mrow}><span style={{ color: "#4e5468" }}>Text blocks</span><span style={monoSm}>{t.text_blocks?.length || 0}</span></div>
+      </div>
+      <div style={msec}>
+        <div style={mhdr}>Snapshot</div>
+        <div style={mrow}><span style={{ color: "#4e5468" }}>Entities</span><span style={monoSm}>{entCount}</span></div>
+        <div style={mrow}><span style={{ color: "#4e5468" }}>Relationships</span><span style={monoSm}>{s.rels.length}</span></div>
+      </div>
+      {t.validation && (
+        <div style={msec}>
+          <div style={mhdr}>Validation</div>
+          {t.validation.passed ? <div style={{ color: "#4ade80", fontSize: 10 }}>✓ All checks passed</div> : t.validation.issues.map((iss, i) => <div key={i} style={{ color: "#fca5a5", fontSize: 10 }}>⚠ {iss}</div>)}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize:12, color:"#64748b", fontFamily:mono }}>Turn {idx+1}/{N}</span>
-          <Tier tier={t.tier} />
-          <span style={{ fontSize:11, color:"#475569", fontFamily:mono }}>{t.ttfc_ms!=null?t.ttfc_ms+"ms ttft · ":""}{t.ttc_ms}ms ttc · {t.output_tokens}tok</span>
-          <button onClick={()=>fileRef.current?.click()} style={{ padding:"3px 8px", fontSize:10, background:"#1e293b", border:"1px solid #334155", borderRadius:4, color:"#94a3b8", cursor:"pointer", fontFamily:mono }}>Load JSON</button>
-          <input ref={fileRef} type="file" accept=".json" onChange={e=>{ const f=e.target.files?.[0]; if(!f)return; const r=new FileReader(); r.onload=ev=>{ try{ const d=JSON.parse(ev.target.result); let loaded; if(d.turns) { loaded=d; } else if(d.results?.length) { const pick=d.results[0]; loaded={ scenario:pick.name||pick.scenario||"loaded", description:pick.description||`${pick.turns?.length||0} turns`, turns:pick.turns||[] }; } if(loaded?.turns?.length){loaded.scenario=loaded.scenario||loaded.name||"loaded"; setRun(loaded);setIdx(0);} }catch(err){console.error(err);} }; r.readAsText(f); }} style={{ display:"none" }} />
+      )}
+      <div style={msec}>
+        <div style={mhdr}>Cumulative (1–{turnIdx + 1})</div>
+        <div style={mrow}><span style={{ color: "#4e5468" }}>Tools</span><span style={monoSm}>{totalTools}</span></div>
+        <div style={mrow}><span style={{ color: "#4e5468" }}>Tokens in</span><span style={monoSm}>{totalIn.toLocaleString()}</span></div>
+        <div style={mrow}><span style={{ color: "#4e5468" }}>Tokens out</span><span style={monoSm}>{totalOut.toLocaleString()}</span></div>
+      </div>
+    </>
+  );
+}
+
+// ── Demo Data ────────────────────────────────────────────────────────────────
+
+const DEMO_GOLDEN = {"scenario_id":"poker_league_demo","name":"Poker League","pattern":"roster + timeline + ledger","timestamp":"2026-02-26T15:00:00Z","turns":[{"turn":1,"tier":"L4","message":"I'm running a poker league. 8 players, Thursday nights biweekly, rotating hosts and snack duty. Players are Mike, Dave, Sarah, Linda, Tom, Amy, Jake, and Priya. Mike's hosting first game, Dave's on snacks.","tool_calls":[{"name":"mutate_entity","input":{"action":"create","id":"page","parent":"root","display":"page","props":{"title":"Poker League — Spring 2026"}}},{"name":"mutate_entity","input":{"action":"create","id":"roster","parent":"page","display":"table","props":{"title":"Roster","_pattern":"roster"}}},{"name":"mutate_entity","input":{"action":"create","id":"player_mike","parent":"roster","props":{"name":"Mike","status":"active","snack_duty":false}}},{"name":"mutate_entity","input":{"action":"create","id":"player_dave","parent":"roster","props":{"name":"Dave","status":"active","snack_duty":true}}},{"name":"mutate_entity","input":{"action":"create","id":"player_sarah","parent":"roster","props":{"name":"Sarah","status":"active","snack_duty":false}}},{"name":"mutate_entity","input":{"action":"create","id":"player_linda","parent":"roster","props":{"name":"Linda","status":"active","snack_duty":false}}},{"name":"mutate_entity","input":{"action":"create","id":"player_tom","parent":"roster","props":{"name":"Tom","status":"active","snack_duty":false}}},{"name":"mutate_entity","input":{"action":"create","id":"player_amy","parent":"roster","props":{"name":"Amy","status":"active","snack_duty":false}}},{"name":"mutate_entity","input":{"action":"create","id":"player_jake","parent":"roster","props":{"name":"Jake","status":"active","snack_duty":false}}},{"name":"mutate_entity","input":{"action":"create","id":"player_priya","parent":"roster","props":{"name":"Priya","status":"active","snack_duty":false}}},{"name":"mutate_entity","input":{"action":"create","id":"schedule","parent":"page","display":"table","props":{"title":"Schedule","_pattern":"timeline"}}},{"name":"mutate_entity","input":{"action":"create","id":"game_1","parent":"schedule","props":{"date":"2026-02-19","host":"Mike","snacks":"Dave","status":"upcoming"}}}],"text_blocks":["Poker league. 8 players, biweekly Thursday.","Roster and schedule set. Mike hosting game 1, Dave on snacks."],"usage":{"input_tokens":1850,"output_tokens":680,"cache_read":0},"ttfc_ms":1320,"ttc_ms":4800,"validation":{"passed":true,"issues":[]}},{"turn":2,"tier":"L3","message":"We need to track standings too. Points, wins, and losses.","tool_calls":[{"name":"mutate_entity","input":{"action":"create","id":"standings","parent":"page","display":"table","props":{"title":"Standings","_pattern":"ledger","_sort_by":"points","_sort_order":"desc"}}}],"text_blocks":["Standings section added. Tracking points, wins, losses."],"usage":{"input_tokens":2400,"output_tokens":220,"cache_read":1600},"ttfc_ms":420,"ttc_ms":1200,"validation":{"passed":true,"issues":[]}},{"turn":3,"tier":"L3","message":"Mike's out this week. Dave's subbing in for hosting. Dave's on snacks since it was Mike's rotation.","tool_calls":[{"name":"mutate_entity","input":{"action":"update","ref":"player_mike","props":{"status":"out"}}},{"name":"mutate_entity","input":{"action":"update","ref":"player_dave","props":{"snack_duty":true}}},{"name":"mutate_entity","input":{"action":"update","ref":"game_1","props":{"host":"Dave","snacks":"Dave"}}}],"text_blocks":["Mike out. Dave hosting and on snacks. 7 active."],"usage":{"input_tokens":2600,"output_tokens":190,"cache_read":1800},"ttfc_ms":350,"ttc_ms":980,"validation":{"passed":true,"issues":[]}},{"turn":4,"tier":"L3","message":"Game 1 results: Sarah won, Tom second, Linda third. Sarah 10 pts, Tom 7, Linda 5. Everyone else 2 points for showing up.","tool_calls":[{"name":"mutate_entity","input":{"action":"update","ref":"game_1","props":{"status":"complete","winner":"Sarah"}}},{"name":"mutate_entity","input":{"action":"create","id":"standing_sarah","parent":"standings","props":{"name":"Sarah","points":10,"wins":1,"losses":0}}},{"name":"mutate_entity","input":{"action":"create","id":"standing_tom","parent":"standings","props":{"name":"Tom","points":7,"wins":0,"losses":1}}},{"name":"mutate_entity","input":{"action":"create","id":"standing_linda","parent":"standings","props":{"name":"Linda","points":5,"wins":0,"losses":1}}},{"name":"mutate_entity","input":{"action":"create","id":"standing_dave","parent":"standings","props":{"name":"Dave","points":2,"wins":0,"losses":1}}},{"name":"mutate_entity","input":{"action":"create","id":"standing_amy","parent":"standings","props":{"name":"Amy","points":2,"wins":0,"losses":1}}},{"name":"mutate_entity","input":{"action":"create","id":"standing_jake","parent":"standings","props":{"name":"Jake","points":2,"wins":0,"losses":1}}},{"name":"mutate_entity","input":{"action":"create","id":"standing_priya","parent":"standings","props":{"name":"Priya","points":2,"wins":0,"losses":1}}}],"text_blocks":["Game 1 recorded. Sarah leads with 10 points."],"usage":{"input_tokens":2900,"output_tokens":420,"cache_read":2000},"ttfc_ms":380,"ttc_ms":2100,"validation":{"passed":true,"issues":[]}},{"turn":5,"tier":"L3","message":"Actually let's also track a buy-in amount per player. Default $20.","tool_calls":[{"name":"mutate_entity","input":{"action":"update","ref":"player_mike","props":{"buy_in":20}}},{"name":"mutate_entity","input":{"action":"update","ref":"player_dave","props":{"buy_in":20}}},{"name":"mutate_entity","input":{"action":"update","ref":"player_sarah","props":{"buy_in":20}}},{"name":"mutate_entity","input":{"action":"update","ref":"player_linda","props":{"buy_in":20}}},{"name":"mutate_entity","input":{"action":"update","ref":"player_tom","props":{"buy_in":20}}},{"name":"mutate_entity","input":{"action":"update","ref":"player_amy","props":{"buy_in":20}}},{"name":"mutate_entity","input":{"action":"update","ref":"player_jake","props":{"buy_in":20}}},{"name":"mutate_entity","input":{"action":"update","ref":"player_priya","props":{"buy_in":20}}}],"text_blocks":["Buy-in field added. $20 default across all 8 players."],"usage":{"input_tokens":3100,"output_tokens":340,"cache_read":2200},"ttfc_ms":360,"ttc_ms":1600,"validation":{"passed":true,"issues":[]}},{"turn":6,"tier":"L3","message":"Mike's back for game 2. Jake can't make it. Sarah's hosting, Priya on snacks.","tool_calls":[{"name":"mutate_entity","input":{"action":"update","ref":"player_mike","props":{"status":"active"}}},{"name":"mutate_entity","input":{"action":"update","ref":"player_jake","props":{"status":"out"}}},{"name":"mutate_entity","input":{"action":"update","ref":"player_dave","props":{"snack_duty":false}}},{"name":"mutate_entity","input":{"action":"create","id":"game_2","parent":"schedule","props":{"date":"2026-03-05","host":"Sarah","snacks":"Priya","status":"upcoming"}}}],"text_blocks":["Mike active. Jake out for game 2. Sarah hosting, Priya on snacks."],"usage":{"input_tokens":3400,"output_tokens":250,"cache_read":2600},"ttfc_ms":330,"ttc_ms":1100,"validation":{"passed":true,"issues":[]}},{"turn":7,"tier":"L3","message":"Who's in the lead right now?","tool_calls":[],"text_blocks":["Sarah leads with 10 points and 1 win. Tom is second with 7, Linda third with 5. Dave, Amy, Jake, and Priya each have 2 points."],"usage":{"input_tokens":3600,"output_tokens":120,"cache_read":2800},"ttfc_ms":280,"ttc_ms":650,"validation":{"passed":true,"issues":[]}},{"turn":8,"tier":"L3","message":"Game 2 results: Mike won! Tom second again, Amy third. Mike 10, Tom 7, Amy 5, everyone else 2. Update the standings.","tool_calls":[{"name":"mutate_entity","input":{"action":"update","ref":"game_2","props":{"status":"complete","winner":"Mike"}}},{"name":"mutate_entity","input":{"action":"create","id":"standing_mike","parent":"standings","props":{"name":"Mike","points":10,"wins":1,"losses":0}}},{"name":"mutate_entity","input":{"action":"update","ref":"standing_tom","props":{"points":14,"losses":2}}},{"name":"mutate_entity","input":{"action":"update","ref":"standing_amy","props":{"points":7,"losses":2}}},{"name":"mutate_entity","input":{"action":"update","ref":"standing_sarah","props":{"points":12,"losses":1}}},{"name":"mutate_entity","input":{"action":"update","ref":"standing_linda","props":{"points":7,"losses":2}}},{"name":"mutate_entity","input":{"action":"update","ref":"standing_dave","props":{"points":4,"losses":2}}},{"name":"mutate_entity","input":{"action":"update","ref":"standing_priya","props":{"points":4,"losses":2}}}],"text_blocks":["Game 2 recorded. Tom leads overall at 14 points. Sarah 12, Mike 10."],"usage":{"input_tokens":3900,"output_tokens":380,"cache_read":3000},"ttfc_ms":340,"ttc_ms":1900,"validation":{"passed":true,"issues":[]}}]};
+
+// ── Main App ────────────────────────────────────────────────────────────────
+
+export default function EvalViewer() {
+  const [golden, setGolden] = useState(DEMO_GOLDEN);
+  const [cur, setCur] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [view, setView] = useState("rendered");
+  const iframeRef = useRef(null);
+  const chatEnd = useRef(null);
+  const fileRef = useRef(null);
+
+  const total = golden?.turns?.length || 0;
+  const turn = golden?.turns?.[cur];
+  const snapshot = useMemo(() => golden ? buildSnap(golden, cur) : null, [golden, cur]);
+  const diff = useMemo(() => golden ? computeDiff(golden, cur) : null, [golden, cur]);
+
+  // iframe update
+  useEffect(() => { if (iframeRef.current && snapshot) iframeRef.current.srcdoc = renderHTML(snapshot); }, [snapshot]);
+
+  // scroll chat
+  useEffect(() => { chatEnd.current?.scrollIntoView({ behavior: "smooth" }); }, [cur]);
+
+  // playback
+  useEffect(() => {
+    if (!playing) return;
+    const iv = setInterval(() => { setCur((p) => { if (p >= total - 1) { setPlaying(false); return p; } return p + 1; }); }, 2500);
+    return () => clearInterval(iv);
+  }, [playing, total]);
+
+  // keyboard
+  useEffect(() => {
+    const h = (e) => {
+      if (e.key === "ArrowRight") { setCur((p) => Math.min(p + 1, total - 1)); setPlaying(false); }
+      else if (e.key === "ArrowLeft") { setCur((p) => Math.max(p - 1, 0)); setPlaying(false); }
+      else if (e.key === " ") { e.preventDefault(); setPlaying((p) => !p); }
+      else if (e.key === "1") setView("rendered");
+      else if (e.key === "2") setView("raw");
+      else if (e.key === "3") setView("diff");
+      else if (e.key === "4") setView("tree");
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [total]);
+
+  const goTo = useCallback((n) => { setCur(Math.max(0, Math.min(n, total - 1))); setPlaying(false); }, [total]);
+
+  const handleFile = useCallback((e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = (ev) => { try { const d = JSON.parse(ev.target.result); if (d.turns?.length) { setGolden(d); setCur(0); setPlaying(false); } } catch {} };
+    r.readAsText(f);
+  }, []);
+
+  const entCount = snapshot ? Object.values(snapshot.entities).filter((e) => !e._removed).length : 0;
+  const progress = total > 1 ? (cur / (total - 1)) * 100 : 0;
+
+  const VIEWS = ["rendered", "raw", "diff", "tree"];
+  const VIEW_LABELS = { rendered: "Rendered", raw: "Raw Output", diff: "Before / After", tree: "Entity Tree" };
+
+  return (
+    <div style={S.root}>
+      {/* Top bar */}
+      <div style={S.topbar}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ width: 6, height: 6, borderRadius: "50%", background: playing ? "#ef4444" : "#4ade80", boxShadow: playing ? "0 0 8px #ef4444" : "0 0 6px rgba(74,222,128,.3)" }} />
+          <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.7px", textTransform: "uppercase", color: "#4e5468" }}>Eval Viewer v3</span>
+          <span style={{ fontSize: 12, color: "#94a3b8" }}>{golden?.name || "—"}</span>
+          <span style={{ fontSize: 9, color: "#4e5468", background: "#111119", padding: "1px 6px", borderRadius: 3, border: "1px solid #1a1a2c" }}>{golden?.pattern || "—"}</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <span style={{ fontSize: 10, color: "#4e5468" }}>Turn {cur + 1}/{total || "—"} · {entCount} entities</span>
+          <button onClick={() => fileRef.current?.click()} style={{ background: "#111119", border: "1px solid #252538", color: "#94a3b8", padding: "2px 10px", borderRadius: 4, cursor: "pointer", fontSize: 10, fontFamily: "inherit" }}>Load File</button>
+          <input ref={fileRef} type="file" accept=".json" onChange={handleFile} style={{ display: "none" }} />
         </div>
       </div>
 
-      {/* ═══ LEFT: CHAT ═══ */}
-      <div style={{ borderRight: "1px solid #1a1a2a", overflowY: "auto", padding: 12 }}>
-        <Lbl>Conversation</Lbl>
-        {turns.slice(0, idx+1).map((tr, i) => (
-          <div key={i} onClick={()=>{setIdx(i);setPlaying(false);}} style={{ cursor:"pointer", marginBottom:12, opacity: i===idx?1:0.3 }}>
-            <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:3 }}>
-              <div style={{ maxWidth:"92%", padding:"6px 10px", borderRadius:"10px 10px 3px 10px", background:"#1a1a2e", color:"#cbd5e1", fontSize:12.5, lineHeight:1.4 }}>{tr.message}</div>
-            </div>
-            <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:2 }}>
-              <Tier tier={tr.tier} small />
-              <Bar v={tr.score?.composite} w={28} h={3} />
-              <span style={{ fontSize:9, color:"#64748b", fontFamily:mono }}>{Math.round((tr.score?.composite||0)*100)}%</span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* ═══ CENTER: TABS + CONTENT ═══ */}
-      <div style={{ display: "grid", gridTemplateRows: "36px 1fr", overflow: "hidden" }}>
-        {/* Tab bar */}
-        <div style={{ display:"flex", gap:3, padding:"4px 12px", borderBottom:"1px solid #1a1a2a", background:"#0e0e18", alignItems:"center" }}>
-          {["output","prompt","snapshot","tree"].map((k,i)=>(
-            <button key={k} onClick={()=>setTab(k)} style={{ padding:"4px 10px", fontSize:11, fontWeight:tab===k?600:400, fontFamily:mono, color:tab===k?"#e2e8f0":"#64748b", background:tab===k?"#1e293b":"transparent", border:tab===k?"1px solid #334155":"1px solid transparent", borderRadius:4, cursor:"pointer" }}>
-              {i+1}. {k[0].toUpperCase()+k.slice(1)}
-            </button>
-          ))}
-        </div>
-        {/* Content - key forces re-render on tab change */}
-        <div key={tab + "-" + idx} style={{ overflowY:"auto", padding:14 }}>
-
-          {tab === "output" && <>
-            {t.had_fences && <div style={{ marginBottom:10, padding:"4px 10px", background:"#422006", border:"1px solid #a16207", borderRadius:4, fontSize:11, color:"#fde68a" }}>⚠ Model wrapped output in code fences (stripped for processing)</div>}
-            {t.clarify && t.clarify.length > 0 && t.clarify.map((c,ci) => <div key={ci} style={{ marginBottom:10, padding:"8px 12px", background:"#2e1065", border:"1px solid #7c3aed", borderRadius:6 }}>
-              <div style={{ fontSize:11, color:"#c4b5fd", fontWeight:600, marginBottom:4 }}>❓ Clarification requested</div>
-              <div style={{ fontSize:12, color:"#e9d5ff" }}>{c.text}</div>
-              {c.options && c.options.length > 0 && <div style={{ display:"flex", gap:6, marginTop:6, flexWrap:"wrap" }}>
-                {c.options.map((o,oi) => <span key={oi} style={{ padding:"2px 8px", fontSize:10, borderRadius:4, background:"#4a1d96", border:"1px solid #7c3aed", color:"#e9d5ff" }}>{o}</span>)}
-              </div>}
-            </div>)}
-            {!isL4 && evts.length > 0 && <div style={{ marginBottom:14, lineHeight:2.2 }}>
-              {evts.map((e,i)=>{ const c=EC[e.t]||{bg:"#1e293b",tx:"#94a3b8",bd:"#334155"}; return <span key={i} style={{ display:"inline-block", padding:"2px 7px", borderRadius:4, background:c.bg, border:`1px solid ${c.bd}`, color:c.tx, fontSize:11, fontFamily:mono, marginRight:5, marginBottom:4 }}><b>{e.t}</b>{(e.id||e.ref)?" "+(e.id||e.ref):""}</span>; })}
-            </div>}
-            <Lbl>{isL4 ? "L4 Plain Text Response" : "Clean JSONL"}</Lbl>
-            {isL4
-              ? <pre style={{ background:"#111118", border:"1px solid #1e1e2e", borderRadius:6, padding:16, fontSize:13, lineHeight:1.7, fontFamily:mono, color:"#d1d5db", minHeight:40, whiteSpace:"pre-wrap", wordBreak:"break-word", margin:0 }}>{t.output||"(empty)"}</pre>
-              : <Pre text={t.output} mh={400} />}
-            {t.notes && <div style={{ marginTop:12, padding:"8px 12px", background:"#1a1a0e", border:"1px solid #333318", borderRadius:6, fontSize:12, color:"#d4d484" }}>{"📝 "}{t.notes}</div>}
-          </>}
-
-          {tab === "prompt" && <>
-            <Lbl>System Prompt Sent to Model</Lbl>
-            <Pre text={t.system_prompt} mh={600} />
-          </>}
-
-          {tab === "snapshot" && <>
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
-              <div><Lbl>Before</Lbl><Pre text={JSON.stringify(t.snapshot_before,null,2)} mh={360} /></div>
-              <div><Lbl>After</Lbl><Pre text={JSON.stringify(t.snapshot_after,null,2)} mh={360} /></div>
-            </div>
-            <div style={{ marginTop:14 }}>
-              <Lbl>Entity Diff</Lbl>
-              <div>
-                {diff.add.map(k=><span key={k} style={{ display:"inline-block", padding:"2px 7px", borderRadius:4, background:"#064e3b", border:"1px solid #047857", color:"#6ee7b7", fontSize:11, fontFamily:mono, marginRight:5, marginBottom:4 }}>+ {k}</span>)}
-                {diff.mod.filter(k=>!diff.moved[k]).map(k=><span key={k} style={{ display:"inline-block", padding:"2px 7px", borderRadius:4, background:"#1e3a5f", border:"1px solid #2563eb", color:"#93c5fd", fontSize:11, fontFamily:mono, marginRight:5, marginBottom:4 }} title={(diff.modDetails[k]||[]).join(", ")}>~ {k}</span>)}
-                {Object.keys(diff.moved).map(k=><span key={k} style={{ display:"inline-block", padding:"2px 7px", borderRadius:4, background:"#3b1f63", border:"1px solid #7c3aed", color:"#c4b5fd", fontSize:11, fontFamily:mono, marginRight:5, marginBottom:4 }} title={`${diff.moved[k].from} → ${diff.moved[k].to}`}>↗ {k}</span>)}
-                {diff.rem.map(k=><span key={k} style={{ display:"inline-block", padding:"2px 7px", borderRadius:4, background:"#4c0519", border:"1px solid #be123c", color:"#fda4af", fontSize:11, fontFamily:mono, marginRight:5, marginBottom:4 }}>- {k}</span>)}
-                {tree.filter(e=>e._orphan).map(e=><span key={e.id} style={{ display:"inline-block", padding:"2px 7px", borderRadius:4, background:"#431407", border:"1px solid #c2410c", color:"#fb923c", fontSize:11, fontFamily:mono, marginRight:5, marginBottom:4 }} title={`parent "${e.parent}" deleted`}>⚠ {e.id}</span>)}
-                {diff.add.length===0 && diff.rem.length===0 && diff.mod.length===0 && <span style={{ fontSize:12, color:"#64748b" }}>No entity changes</span>}
-              </div>
-              {diff.mod.length > 0 && <div style={{ marginTop:8 }}>
-                {diff.mod.map(k=><div key={k} style={{ fontSize:11, fontFamily:mono, color:"#93c5fd", marginBottom:2 }}>{k}: {(diff.modDetails[k]||[]).join(", ")}</div>)}
-              </div>}
-            </div>
-          </>}
-
-          {tab === "tree" && <>
-            <Lbl>Entity Tree — Turn {t.turn}</Lbl>
-            {tree.length > 0 ? (
-              <div style={{ background:"#08080f", border:"1px solid #1e1e2e", borderRadius:6, padding:12 }}>
-                {tree.map((e,i)=>{ const nw=diff.add.includes(e.id); const md=diff.mod.includes(e.id); const rm=!!e._removed; const mv=!!diff.moved[e.id]; const orph=!!e._orphan; const clr=rm?"#f87171":orph?"#fb923c":nw?"#6ee7b7":md?"#93c5fd":"#cbd5e1"; return (
-                  <div key={i} style={{ paddingLeft:e.depth*20, paddingTop:3, paddingBottom:3, fontSize:12, fontFamily:mono, opacity:rm?0.5:1 }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-                      <span style={{ color:"#475569" }}>{e.depth>0?"├─":"◆"}</span>
-                      <span style={{ color:clr, fontWeight:nw||md||rm||orph?700:400, textDecoration:rm?"line-through":"none" }}>{e.id}</span>
-                      {rm && <span style={{ fontSize:9, padding:"0 4px", borderRadius:3, background:"#4c0519", color:"#fda4af", border:"1px solid #be123c" }}>del</span>}
-                      {orph && <span style={{ fontSize:9, padding:"0 4px", borderRadius:3, background:"#431407", color:"#fb923c", border:"1px solid #c2410c" }} title={`parent "${e.parent}" was deleted`}>⚠ orphan</span>}
-                      {nw && <span style={{ fontSize:9, padding:"0 4px", borderRadius:3, background:"#064e3b", color:"#6ee7b7", border:"1px solid #047857" }}>new</span>}
-                      {mv && <span style={{ fontSize:9, padding:"0 4px", borderRadius:3, background:"#3b1f63", color:"#c4b5fd", border:"1px solid #7c3aed" }} title={`from ${diff.moved[e.id].from} → ${diff.moved[e.id].to}`}>↗ moved</span>}
-                      {md && !mv && !orph && <span style={{ fontSize:9, padding:"0 4px", borderRadius:3, background:"#1e3a5f", color:"#93c5fd", border:"1px solid #2563eb" }}>mod</span>}
-                      {e.display && <span style={{ fontSize:10, padding:"0 4px", marginLeft:2, borderRadius:3, background:rm?"#1a0a0a":"#1e293b", color:rm?"#6b7280":"#94a3b8" }}>{e.display}</span>}
-                    </div>
-                    {e.props && Object.keys(e.props).length>0 && <div style={{ paddingLeft:20, fontSize:11, color:rm?"#6b7280":"#475569", fontFamily:mono, textDecoration:rm?"line-through":"none" }}>
-                      {Object.entries(e.props).slice(0,5).map(([k,v])=>{
-                        const changes = diff.modDetails[e.id] || [];
-                        const isChanged = !rm && changes.some(c => c.startsWith(k+":") || c === "+"+k);
-                        return <span key={k} style={{ marginRight:8, color:rm?"#6b7280":isChanged?"#93c5fd":"#475569", fontWeight:isChanged?600:400 }}>{k}={JSON.stringify(v).slice(0,24)}</span>;
-                      })}
-                    </div>}
-                  </div>
-                );})}
-              </div>
-            ) : <div style={{ color:"#64748b", fontSize:13, padding:12, background:"#08080f", border:"1px solid #1e1e2e", borderRadius:6 }}>No entities. Snapshot may be abbreviated or L4 read-only.</div>}
-
-            {/* Relationships */}
-            {(() => { const rels = t.snapshot_after?.relationships || []; const prevRels = t.snapshot_before?.relationships || [];
-              if (rels.length === 0 && prevRels.length === 0) return null;
-              const prevSet = new Set(prevRels.map(r => `${r.from}→${r.to}:${r.type}`));
-              const curSet = new Set(rels.map(r => `${r.from}→${r.to}:${r.type}`));
-              return <div style={{ marginTop:12 }}>
-                <Lbl>Relationships</Lbl>
-                <div style={{ background:"#08080f", border:"1px solid #1e1e2e", borderRadius:6, padding:12 }}>
-                  {rels.map((r,i) => {
-                    const key = `${r.from}→${r.to}:${r.type}`;
-                    const isNew = !prevSet.has(key);
-                    return <div key={i} style={{ fontSize:11, fontFamily:mono, marginBottom:3, color: isNew ? "#c4b5fd" : "#94a3b8" }}>
-                      <span style={{ color:"#64748b" }}>{r.from}</span> <span style={{ color:"#c084fc" }}>—{r.type}→</span> <span style={{ color:"#64748b" }}>{r.to}</span>
-                      {isNew && <span style={{ fontSize:9, padding:"0 4px", marginLeft:4, borderRadius:3, background:"#2e1065", color:"#c4b5fd", border:"1px solid #7c3aed" }}>new</span>}
-                    </div>;
-                  })}
-                  {[...prevSet].filter(k => !curSet.has(k)).map((k,i) => <div key={`rm${i}`} style={{ fontSize:11, fontFamily:mono, marginBottom:3, color:"#f87171", textDecoration:"line-through" }}>{k}</div>)}
+      {/* Main 3 panels */}
+      <div style={S.main}>
+        {/* LEFT: Chat */}
+        <div style={S.panelLeft}>
+          <div style={S.panelHeader}>Conversation</div>
+          <div style={S.chatScroll}>
+            {!golden && <p style={{ color: "#4e5468", padding: 16, fontSize: 12 }}>Load a golden file to begin.</p>}
+            {golden?.turns.map((t, i) => (
+              <div key={i} style={{ marginBottom: 12, opacity: i <= cur ? 1 : 0.12 }}>
+                <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
+                  <div style={{ maxWidth: "92%", padding: "7px 11px", fontSize: 12, lineHeight: 1.5, whiteSpace: "pre-wrap", wordBreak: "break-word", background: "#12122a", color: "#b8c0d6", borderRadius: "11px 11px 2px 11px", border: "1px solid #1a1a2c" }}>{t.message}</div>
                 </div>
-              </div>;
-            })()}
-          </>}
-
-        </div>
-      </div>
-
-      {/* ═══ RIGHT: SCORES ═══ */}
-      <div style={{ borderLeft: "1px solid #1a1a2a", overflowY: "auto", padding: 12 }}>
-        <Lbl>Score</Lbl>
-        <div style={{ fontSize:26, fontWeight:700, color:sc(t.score?.composite||0), fontFamily:mono }}>{pct}%</div>
-        <Bar v={t.score?.composite||0} w={170} h={6} />
-        <div style={{ fontSize:9, color:"#475569", fontFamily:mono, marginTop:4 }}>rule-based · not LLM-as-judge</div>
-
-        <div style={{ marginTop:12 }}>
-          {DIMS.map(d=>{
-            const detail = t.score_details?.[d];
-            const dimV = t.score?.[d]||0;
-            const expanded = expandedDim === d;
-            return <div key={d} style={{ marginBottom:2 }}>
-              <div onClick={()=>setExpandedDim(expanded?null:d)} style={{ display:"flex", alignItems:"center", gap:4, cursor:"pointer", padding:"3px 0" }}>
-                <span style={{ fontSize:9, color:expanded?"#e2e8f0":"#94a3b8", width:36, fontFamily:mono, fontWeight:expanded?600:400 }}>{DLBL[d]}</span>
-                <Bar v={dimV} w={62} h={4} />
-                <span style={{ fontSize:10, fontFamily:mono, color:"#64748b" }}>{Math.round(dimV*100)}</span>
-                <span style={{ fontSize:8, color:"#334155", marginLeft:"auto" }}>{expanded?"▾":"▸"}</span>
-              </div>
-              {expanded && detail && <div style={{ paddingLeft:4, paddingBottom:6, borderLeft:"2px solid #1e293b", marginLeft:2, marginBottom:4 }}>
-                <div style={{ fontSize:9, color:"#64748b", marginBottom:4, fontStyle:"italic" }}>{DDESC[d]}</div>
-                {Object.entries(detail.checks||{}).map(([ck,cv])=>(
-                  <div key={ck} style={{ display:"flex", alignItems:"center", gap:4, marginBottom:2, paddingLeft:4 }}>
-                    <span style={{ width:6, height:6, borderRadius:"50%", background:cv>=0.9?"#4ade80":cv>=0.5?"#facc15":"#f87171", flexShrink:0 }} />
-                    <span style={{ fontSize:10, color:"#94a3b8", fontFamily:mono, flex:1 }}>{ck.replace(/_/g," ")}</span>
-                    <span style={{ fontSize:10, fontFamily:mono, color:"#64748b" }}>{typeof cv==="number"?Math.round(cv*100):cv}</span>
+                {t.text_blocks?.map((tb, j) => (
+                  <div key={j} style={{ display: "flex", marginBottom: 4 }}>
+                    <div style={{ maxWidth: "92%", padding: "7px 11px", fontSize: 12, lineHeight: 1.5, whiteSpace: "pre-wrap", background: "#fff", color: "#2D2D2A", borderRadius: "11px 11px 11px 2px", border: "1px solid #ddd" }}>{tbText(tb)}</div>
                   </div>
                 ))}
-                {(detail.notes||[]).length > 0 && <div style={{ marginTop:4 }}>
-                  {detail.notes.map((n,ni)=><div key={ni} style={{ fontSize:9, color:"#d4d484", paddingLeft:4, marginBottom:1, lineHeight:1.4 }}>{n}</div>)}
-                </div>}
-              </div>}
-            </div>;
+                {!t.text_blocks?.length && t.tool_calls.length > 0 && i <= cur && (
+                  <div style={{ fontSize: 10, color: "#4e5468", fontStyle: "italic", padding: "2px 8px" }}>[{t.tool_calls.length} mutations]</div>
+                )}
+              </div>
+            ))}
+            <div ref={chatEnd} />
+          </div>
+        </div>
+
+        {/* CENTER: 4 views */}
+        <div style={S.panelCenter}>
+          <div style={S.viewTabs}>
+            {VIEWS.map((v) => (
+              <div key={v} style={vtabStyle(view === v)} onClick={() => setView(v)}>{VIEW_LABELS[v]}</div>
+            ))}
+          </div>
+          <div style={S.viewContent}>
+            {view === "rendered" && (
+              <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 12px", background: "#f8f8f6", borderBottom: "1px solid #E0DDD8", flexShrink: 0 }}>
+                  <div style={{ display: "flex", gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#fecaca" }} /><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#fef3c7" }} /><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#dcfce7" }} /></div>
+                  <span style={{ fontSize: 10, color: "#999", fontFamily: "monospace" }}>toaide.com/s/{(golden?.scenario_id || "demo").replace(/_/g, "-")}</span>
+                </div>
+                <iframe ref={iframeRef} style={{ flex: 1, width: "100%", border: "none", background: "#F7F5F2" }} sandbox="allow-same-origin" title="Preview" />
+              </div>
+            )}
+            {view === "raw" && turn && (
+              <div style={{ padding: 16, fontFamily: "'JetBrains Mono',monospace", fontSize: 11, lineHeight: 1.7, color: "#94a3b8", overflow: "auto", height: "100%" }}>
+                {turn.text_blocks?.map((tb, i) => <div key={"t" + i} style={{ padding: "2px 0", borderBottom: "1px solid #1a1a2c" }}><span style={{ fontWeight: 600, color: "#22d3ee", marginRight: 6 }}>TEXT</span>{tbText(tb)}</div>)}
+                {turn.tool_calls.map((tc, i) => <div key={i} style={{ padding: "2px 0", borderBottom: "1px solid #1a1a2c" }}><span style={{ fontWeight: 600, color: "#8b5cf6", marginRight: 6 }}>{tc.name}</span><span style={{ color: "#64748b" }}>{JSON.stringify(tc.input)}</span></div>)}
+              </div>
+            )}
+            {view === "diff" && diff && (
+              <div style={{ display: "flex", height: "100%" }}>
+                <div style={{ flex: 1, overflow: "auto", padding: 16, fontFamily: "'JetBrains Mono',monospace", fontSize: 11, lineHeight: 1.6, borderRight: "1px solid #1a1a2c" }}>
+                  <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.6px", textTransform: "uppercase", color: "#4e5468", marginBottom: 10, paddingBottom: 6, borderBottom: "1px solid #1a1a2c" }}>Before (Turn {cur})</div>
+                  {diff.updated.map(({ id, before: b }) => (
+                    <div key={id} style={{ marginBottom: 8, padding: "6px 8px", borderRadius: 4, border: "1px solid #0c4a6e", background: "rgba(59,130,246,.04)" }}>
+                      <div style={{ fontWeight: 600, fontSize: 11 }}>{id}</div>
+                      {Object.entries(b.props).filter(([k]) => !k.startsWith("_")).map(([k, v]) => JSON.stringify(v) !== JSON.stringify(diff.after.entities[id]?.props[k]) ? <div key={k} style={{ fontSize: 10, color: "#fca5a5", textDecoration: "line-through", marginTop: 2 }}>{k}: {String(v)}</div> : null)}
+                    </div>
+                  ))}
+                </div>
+                <div style={{ flex: 1, overflow: "auto", padding: 16, fontFamily: "'JetBrains Mono',monospace", fontSize: 11, lineHeight: 1.6 }}>
+                  <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.6px", textTransform: "uppercase", color: "#4e5468", marginBottom: 10, paddingBottom: 6, borderBottom: "1px solid #1a1a2c" }}>After (Turn {cur + 1})</div>
+                  {diff.added.map((e) => (
+                    <div key={e.id} style={{ marginBottom: 8, padding: "6px 8px", borderRadius: 4, border: "1px solid #065f46", background: "rgba(74,222,128,.04)" }}>
+                      <div style={{ fontWeight: 600, fontSize: 11 }}>+ {e.id}</div>
+                      {Object.entries(e.props).filter(([k]) => !k.startsWith("_")).map(([k, v]) => <div key={k} style={{ fontSize: 10, color: "#6ee7b7", marginTop: 2 }}>{k}: {String(v)}</div>)}
+                    </div>
+                  ))}
+                  {diff.updated.map(({ id, after: a }) => (
+                    <div key={id} style={{ marginBottom: 8, padding: "6px 8px", borderRadius: 4, border: "1px solid #0c4a6e", background: "rgba(59,130,246,.04)" }}>
+                      <div style={{ fontWeight: 600, fontSize: 11 }}>~ {id}</div>
+                      {Object.entries(a.props).filter(([k]) => !k.startsWith("_")).map(([k, v]) => JSON.stringify(v) !== JSON.stringify(diff.before.entities[id]?.props[k]) ? <div key={k} style={{ fontSize: 10, color: "#6ee7b7", marginTop: 2 }}>{k}: {String(v)}</div> : null)}
+                    </div>
+                  ))}
+                  {diff.removed.map((e) => (
+                    <div key={e.id} style={{ marginBottom: 8, padding: "6px 8px", borderRadius: 4, border: "1px solid #7f1d1d", background: "rgba(252,165,165,.04)" }}>
+                      <div style={{ fontWeight: 600, fontSize: 11, textDecoration: "line-through" }}>- {e.id}</div>
+                    </div>
+                  ))}
+                  {!diff.added.length && !diff.updated.length && !diff.removed.length && <div style={{ color: "#4e5468", fontSize: 11 }}>No changes (query only).</div>}
+                </div>
+              </div>
+            )}
+            {view === "tree" && snapshot && (() => {
+              const ch = (pid) => Object.values(snapshot.entities).filter((e) => e.parent === pid && !e._removed).sort((a, b) => (a.id > b.id ? 1 : -1));
+              const addedIds = diff ? new Set(diff.added.map((e) => e.id)) : new Set();
+              const updatedIds = diff ? new Set(diff.updated.map((c) => c.id)) : new Set();
+
+              const Badge = ({ type, label }) => {
+                const colors = { new: { bg: "#052e22", color: "#4ade80", border: "#166534" }, mod: { bg: "#0c2d48", color: "#60a5fa", border: "#1e40af" }, del: { bg: "#3b0f0f", color: "#f87171", border: "#991b1b" }, display: { bg: "#1e293b", color: "#94a3b8", border: "#334155" } };
+                const c = colors[type] || colors.display;
+                return <span style={{ display: "inline-block", fontSize: 9, fontWeight: 600, padding: "1px 5px", borderRadius: 3, marginLeft: 4, background: c.bg, color: c.color, border: `1px solid ${c.border}`, verticalAlign: "middle", lineHeight: 1.4 }}>{label}</span>;
+              };
+
+              const PropVal = ({ v }) => {
+                if (v === null || v === undefined) return <span style={{ color: "#64748b" }}>null</span>;
+                if (typeof v === "boolean") return <span style={{ color: "#c084fc" }}>{String(v)}</span>;
+                if (typeof v === "number") return <span style={{ color: "#fbbf24" }}>{v}</span>;
+                const s = String(v);
+                return <span style={{ color: "#86efac" }}>"{s.length > 24 ? s.slice(0, 22) + "…" : s}"</span>;
+              };
+
+              function TreeNode({ e, prefix, isLast, isRoot }) {
+                const kids = ch(e.id);
+                const isNew = addedIds.has(e.id);
+                const isUpd = updatedIds.has(e.id);
+                const isDel = e._removed;
+                const propEntries = Object.entries(e.props).filter(([k]) => !k.startsWith("_")).slice(0, 6);
+                const childPrefix = isRoot ? "" : prefix + (isLast ? "    " : "│   ");
+
+                return (
+                  <>
+                    <div style={{ padding: "1px 0", fontFamily: "'JetBrains Mono',monospace", fontSize: 11.5, lineHeight: 1.7, whiteSpace: "nowrap", ...(isDel ? { opacity: 0.3 } : {}) }}>
+                      {isRoot
+                        ? <span style={{ color: "#4ade80", marginRight: 4 }}>◆</span>
+                        : <span style={{ color: "#444", whiteSpace: "pre" }}>{prefix}{isLast ? "└── " : "├── "}</span>
+                      }
+                      <span style={{ color: "#e2e8f0", fontWeight: 600, letterSpacing: "0.02em", ...(isDel ? { textDecoration: "line-through" } : {}) }}>{e.id}</span>
+                      {isNew && <Badge type="new" label="new" />}
+                      {isUpd && !isNew && <Badge type="mod" label="mod" />}
+                      {isDel && <Badge type="del" label="del" />}
+                      {e.display && <Badge type="display" label={e.display} />}
+                      {e.props._pattern && <span style={{ display: "inline-block", fontSize: 9, fontWeight: 600, padding: "1px 5px", borderRadius: 3, marginLeft: 4, background: "#1e293b", color: "#a78bfa", border: "1px solid #6d28d9", verticalAlign: "middle", lineHeight: 1.4 }}>{e.props._pattern}</span>}
+                      {propEntries.length > 0 && (
+                        <>
+                          <br />
+                          <span style={{ color: "#444", whiteSpace: "pre" }}>{isRoot ? "  " : childPrefix.slice(0, -2) + "  "}</span>
+                          <span style={{ color: "#64748b", fontSize: 10.5 }}>
+                            {propEntries.map(([k, v], i) => (
+                              <span key={k}>{i > 0 ? "  " : ""}<span style={{ color: "#94a3b8" }}>{k}</span>=<PropVal v={v} /></span>
+                            ))}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    {kids.map((k, i) => <TreeNode key={k.id} e={k} prefix={childPrefix} isLast={i === kids.length - 1} isRoot={false} />)}
+                  </>
+                );
+              }
+
+              const roots = ch("root");
+              const prevRels = cur > 0 ? buildSnap(golden, cur - 1).rels : [];
+              const prevRelKeys = new Set(prevRels.map(r => `${r.from}→${r.to}:${r.type}`));
+
+              return (
+                <div style={{ padding: 16, overflow: "auto", height: "100%", fontFamily: "'JetBrains Mono',monospace" }}>
+                  <div style={{ color: "#64748b", marginBottom: 8, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em" }}>Entity Tree — Turn {cur + 1}</div>
+                  {roots.length === 0 ? <div style={{ color: "#4e5468", padding: 12 }}>No entities yet.</div> : roots.map((r, i) => <TreeNode key={r.id} e={r} prefix="" isLast={i === roots.length - 1} isRoot={true} />)}
+                  {snapshot.rels.length > 0 && (
+                    <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid #1e293b" }}>
+                      <div style={{ color: "#64748b", marginBottom: 6, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em" }}>Relationships</div>
+                      {snapshot.rels.map((r, i) => {
+                        const key = `${r.from}→${r.to}:${r.type}`;
+                        const isNewRel = !prevRelKeys.has(key);
+                        return (
+                          <div key={i} style={{ padding: "2px 0", fontSize: 11.5, lineHeight: 1.7, whiteSpace: "nowrap" }}>
+                            <span style={{ color: "#94a3b8" }}>{r.from}</span>
+                            <span style={{ color: "#fbbf24", margin: "0 6px" }}>─{r.type}→</span>
+                            <span style={{ color: "#94a3b8" }}>{r.to}</span>
+                            {r.cardinality && <span style={{ display: "inline-block", fontSize: 8, fontWeight: 600, padding: "1px 5px", borderRadius: 3, marginLeft: 4, background: "#1e293b", color: "#a78bfa", border: "1px solid #6d28d9", verticalAlign: "middle", lineHeight: 1.4 }}>{r.cardinality}</span>}
+                            {isNewRel && <span style={{ display: "inline-block", fontSize: 9, fontWeight: 600, padding: "1px 5px", borderRadius: 3, marginLeft: 4, background: "#052e22", color: "#4ade80", border: "1px solid #166534", verticalAlign: "middle", lineHeight: 1.4 }}>new</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+
+        {/* RIGHT: Metrics */}
+        <div style={S.panelRight}>
+          <div style={S.panelHeader}>Turn Metrics</div>
+          {golden && turn ? <MetricsPanel golden={golden} turnIdx={cur} /> : <div style={{ padding: 16, color: "#4e5468", fontSize: 12 }}>No data loaded.</div>}
+        </div>
+      </div>
+
+      {/* Timeline */}
+      <div style={S.timeline}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 6 }}>
+          <button onClick={() => goTo(0)} style={{ background: "none", border: "none", color: "#4e5468", cursor: "pointer", fontSize: 13, padding: "2px 4px" }}>⏮</button>
+          <button onClick={() => goTo(cur - 1)} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 13, padding: "2px 4px" }}>◂</button>
+          <button onClick={() => setPlaying((p) => !p)} style={{ width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#fff", border: "none", cursor: "pointer", background: playing ? "#ef4444" : "#3b82f6", boxShadow: playing ? "0 0 12px rgba(239,68,68,.3)" : "0 0 12px rgba(59,130,246,.3)" }}>{playing ? "⏸" : "▶"}</button>
+          <button onClick={() => goTo(cur + 1)} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 13, padding: "2px 4px" }}>▸</button>
+          <button onClick={() => goTo(total - 1)} style={{ background: "none", border: "none", color: "#4e5468", cursor: "pointer", fontSize: 13, padding: "2px 4px" }}>⏭</button>
+          <span style={{ fontSize: 9, color: "#4e5468", marginLeft: 8 }}>←→ step · Space play · 1-4 views</span>
+        </div>
+        <div onClick={(e) => { if (!golden) return; const r = e.currentTarget.getBoundingClientRect(); goTo(Math.round(((e.clientX - r.left) / r.width) * (total - 1))); }} style={{ height: 5, background: "#111119", borderRadius: 3, cursor: "pointer", position: "relative" }}>
+          <div style={{ height: "100%", width: `${progress}%`, borderRadius: 3, background: "linear-gradient(90deg,#3b82f6,#8b5cf6)", transition: "width 0.2s" }} />
+          {golden?.turns.map((t, i) => {
+            const pos = total > 1 ? (i / (total - 1)) * 100 : 0;
+            const ts = tierStyle(t.tier);
+            return <div key={i} onClick={(e) => { e.stopPropagation(); goTo(i); }} style={{ position: "absolute", left: `${pos}%`, top: -4, width: 12, height: 12, borderRadius: "50%", transform: "translateX(-50%)", cursor: "pointer", border: `2px solid ${i <= cur ? ts.bg : "#252538"}`, background: i <= cur ? ts.bg : "#111119", transition: "0.15s" }} title={`Turn ${i + 1} (${t.tier})`} />;
           })}
         </div>
-
-        <div style={{ marginTop:14 }}>
-          <Lbl>Latency</Lbl>
-          {[["TTFT", t.ttfc_ms!=null?(t.ttfc_ms+"ms"):"—"], ["TTC", t.ttc_ms+"ms"]].map(([k,v])=>(
-            <div key={k} style={{ display:"flex", justifyContent:"space-between", fontSize:11, marginBottom:3 }}>
-              <span style={{ color:"#64748b" }}>{k}</span>
-              <span style={{ fontFamily:mono, color:k==="TTFT"?"#c4b5fd":"#94a3b8" }}>{v}</span>
-            </div>
-          ))}
-        </div>
-        <div style={{ marginTop:10 }}>
-          <Lbl>Tokens</Lbl>
-          {[["In", t.input_tokens], ["Out", t.output_tokens], ["Cache W", t.cache_creation], ["Cache R", t.cache_read]].map(([k,v])=>(
-            <div key={k} style={{ display:"flex", justifyContent:"space-between", fontSize:11, marginBottom:3 }}>
-              <span style={{ color:"#64748b" }}>{k}</span>
-              <span style={{ fontFamily:mono, color:k==="Cache R"&&v>0?"#4ade80":"#94a3b8" }}>{v!=null?v:"—"}</span>
-            </div>
-          ))}
-        </div>
-        <div style={{ marginTop:14 }}>
-          <Lbl>Routing</Lbl>
-          <div style={{ fontSize:11, marginBottom:3 }}>Expect <Tier tier={t.expected_tier} small /></div>
-          <div style={{ fontSize:11, marginBottom:3 }}>Class <Tier tier={t.classified_tier} small /></div>
-          <div style={{ fontSize:11 }}>Actual <Tier tier={t.tier} small /></div>
-          {t.classified_tier !== t.expected_tier && <div style={{ marginTop:4, fontSize:10, color:"#fb923c" }}>⚠ mismatch</div>}
-          {t.escalated_to && <div style={{ marginTop:4, fontSize:10, color:"#c4b5fd" }}>↗ escalated to <Tier tier={t.escalated_to} small /></div>}
-          {t.retried && <div style={{ marginTop:4, fontSize:10, color:"#fb923c" }}>⟳ retried (plain text on first attempt)</div>}
-          {t.clarify && t.clarify.length > 0 && <div style={{ marginTop:4, fontSize:10, color:"#e9d5ff" }}>❓ asked clarification</div>}
-        </div>
       </div>
-
-      {/* ═══ BOTTOM: TIMELINE ═══ */}
-      <div style={{ gridColumn:"1/-1", display:"flex", alignItems:"center", gap:8, padding:"0 16px", borderTop:"1px solid #1a1a2a", background:"#0e0e18" }}>
-        <button onClick={()=>{setIdx(p=>Math.max(p-1,0));setPlaying(false);}} style={{ background:"none", border:"none", color:"#64748b", fontSize:15, cursor:"pointer" }}>◀</button>
-        <button onClick={()=>setPlaying(p=>!p)} style={{ background:"none", border:"none", color:playing?"#ef4444":"#4ade80", fontSize:17, cursor:"pointer", width:22, textAlign:"center" }}>{playing?"⏸":"▶"}</button>
-        <button onClick={()=>{setIdx(p=>Math.min(p+1,N-1));setPlaying(false);}} style={{ background:"none", border:"none", color:"#64748b", fontSize:15, cursor:"pointer" }}>▶</button>
-        <div onClick={e=>{const r=e.currentTarget.getBoundingClientRect();const p=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));setIdx(Math.round(p*(N-1)));setPlaying(false);}} style={{ flex:1, height:28, cursor:"pointer", position:"relative", display:"flex", alignItems:"center" }}>
-          <div style={{ position:"absolute", left:0, right:0, height:3, background:"#1e293b", borderRadius:2 }} />
-          <div style={{ position:"absolute", left:0, width:`${(idx/Math.max(N-1,1))*100}%`, height:3, background:"#3b82f6", borderRadius:2 }} />
-          {turns.map((tr,i)=>{const c=TC[tr.tier]||TC.L2;const a=i===idx; return <div key={i} style={{ position:"absolute", left:`${(i/Math.max(N-1,1))*100}%`, transform:"translateX(-50%)" }}><div style={{ width:a?12:8, height:a?12:8, borderRadius:"50%", background:a?c.tx:c.bg, border:`2px solid ${c.bd}` }} /></div>;})}
-        </div>
-        <span style={{ fontSize:9, color:"#334155", fontFamily:mono }}>←→ spc 1-4</span>
-      </div>
-
     </div>
   );
 }

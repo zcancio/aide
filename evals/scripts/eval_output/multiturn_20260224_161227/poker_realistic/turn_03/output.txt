@@ -1,0 +1,2 @@
+{"t":"entity.update","ref":"details","p":{"schedule":"Every other Thursday","buy_in":20}}
+{"t":"voice","text":"Every other Thursday, $20 buy-in."}

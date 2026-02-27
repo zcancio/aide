@@ -1,0 +1,3 @@
+{"t":"entity.create","id":"quote_woodworks","parent":"page","display":"card","p":{"vendor":"Woodworks Unlimited","cost":12000,"item":"Cabinets"}}
+{"t":"entity.create","id":"quote_cabinet_depot","parent":"page","display":"card","p":{"vendor":"Cabinet Depot","cost":9500,"item":"Cabinets"}}
+{"t":"entity.create","id":"quote_custom_craft","parent":"page","display":"card","p":{"vendor":"Custom Craft","cost":15000,"item":"Cabinets"}}

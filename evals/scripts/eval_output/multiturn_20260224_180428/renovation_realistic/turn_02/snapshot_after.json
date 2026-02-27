@@ -1,0 +1,48 @@
+{
+  "meta": {
+    "title": "Kitchen Remodel",
+    "identity": "Kitchen renovation project tracking."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Kitchen Remodel"
+      }
+    },
+    "overview": {
+      "id": "overview",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "status": "Planning"
+      }
+    },
+    "budget_overview": {
+      "id": "budget_overview",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "total": 35000,
+        "spent": 8000,
+        "remaining": 27000
+      }
+    },
+    "expense_architect": {
+      "id": "expense_architect",
+      "parent": "page",
+      "display": "row",
+      "props": {
+        "category": "Design",
+        "description": "Architect plans",
+        "amount": 8000,
+        "date": "2026-02-24"
+      }
+    }
+  },
+  "relationships": [],
+  "relationship_types": {},
+  "orphans": []
+}

@@ -1,0 +1,7 @@
+
+```
+{"t":"entity.update","ref":"food_drinks","p":{"bringing":"Uncle Bob"}}
+{"t":"entity.create","id":"food_fruit_platter","parent":"potluck","display":"row","p":{"dish":"Fruit platter","bringing":"Maria Garcia"}}
+{"t":"entity.remove","ref":"food_drinks"}
+{"t":"entity.create","id":"food_drinks","parent":"potluck","display":"row","p":{"dish":"Drinks","bringing":"Uncle Bob"}}
+```

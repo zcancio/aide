@@ -1,0 +1,64 @@
+{
+  "name": "flu_tracker_t3",
+  "tier": "L3",
+  "model": "claude-sonnet-4-5-20250929",
+  "prompt_version": "v3.1",
+  "composite": 0.94,
+  "dimensions": {
+    "validity": {
+      "name": "validity",
+      "score": 0.8,
+      "checks": {
+        "parseable": 1.0,
+        "no_fences": 0.0,
+        "valid_types": 1.0,
+        "valid_structure": 1.0,
+        "not_empty": 1.0
+      },
+      "notes": []
+    },
+    "voice": {
+      "name": "voice",
+      "score": 1.0,
+      "checks": {
+        "no_voice_to_check": 1.0
+      },
+      "notes": [
+        "No voice lines emitted"
+      ]
+    },
+    "structure": {
+      "name": "structure",
+      "score": 1.0,
+      "checks": {
+        "parents_before_children": 1.0,
+        "display_hints_valid": 1.0,
+        "entity_ids_quality": 1.0
+      },
+      "notes": []
+    },
+    "efficiency": {
+      "name": "efficiency",
+      "score": 1.0,
+      "checks": {
+        "within_budget": 1.0,
+        "in_sweet_spot": 1.0
+      },
+      "notes": []
+    },
+    "fidelity": {
+      "name": "fidelity",
+      "score": 1.0,
+      "checks": {
+        "tier_appropriate": 1.0,
+        "summary_cards": 1.0
+      },
+      "notes": [
+        "Created 2 summary cards for both kids"
+      ]
+    }
+  },
+  "latency_ms": 3261,
+  "output_tokens": 124,
+  "cache_hit_pct": 0.0
+}

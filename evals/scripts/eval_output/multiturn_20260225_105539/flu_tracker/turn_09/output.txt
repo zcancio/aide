@@ -1,0 +1,15 @@
+Tylenol appears ineffective for George. Evidence from Monday-Tuesday:
+
+TYLENOL DOSES
+2am Monday: 102.7°F → 4.5hrs later still 102.7°F (6:30am)
+6:30am: 102.7°F → 3hrs later dropped to 101.0°F (9:25am, but no meds at 9:25)
+2pm: 101.3°F → 1hr later rose to 101.9°F (3pm)
+7:40pm Tuesday: 100.5°F (most recent)
+
+MOTRIN DOSES (for comparison)
+10:30am Monday: 102.9°F → 2.75hrs later dropped to 100.3°F (1:15pm)
+4pm: 103.0°F → no follow-up reading recorded
+
+Pattern: Tylenol shows minimal temperature reduction. Motrin shows consistent 2-2.5°F drops. The 6:30am dose appeared to hold fever stable for 4.5 hours but didn't reduce it. The 2pm dose preceded a rise (though he vomited, which may have affected absorption).
+
+Motrin has been more reliably effective for George.

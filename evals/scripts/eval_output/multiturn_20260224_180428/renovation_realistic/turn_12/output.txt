@@ -1,0 +1,3 @@
+{"t":"entity.create","id":"expense_countertop","parent":"page","display":"row","p":{"category":"Materials","description":"Countertops","amount":3200,"date":"2026-02-24"}}
+{"t":"entity.update","ref":"task_countertop_measure","p":{"done":true}}
+{"t":"entity.update","ref":"budget_overview","p":{"spent":20700,"remaining":27300}}

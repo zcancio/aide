@@ -1,0 +1,5 @@
+```jsonl
+{"t":"entity.create","id":"food","parent":"page","display":"section","p":{"title":"Food"}}
+{"t":"entity.create","id":"food_potato_salad","parent":"food","display":"row","p":{"dish":"Potato salad","bringing":"Aunt Linda"}}
+{"t":"voice","text":"Potluck started. Potato salad from Linda logged."}
+```

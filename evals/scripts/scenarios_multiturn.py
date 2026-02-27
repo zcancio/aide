@@ -5,11 +5,11 @@ Real users don't front-load all context. They drip-feed over multiple messages,
 often vague, sometimes contradicting themselves, sometimes asking questions
 mid-build. These scenarios test the full conversational loop:
 
-  Turn 1: L3 creates initial structure from vague input
-  Turn 2: L2 updates with more detail
-  Turn 3: L2 adds entities
-  Turn 4: L4 answers a question
-  Turn 5: L2 updates based on the answer
+  Turn 1: L4 creates initial structure from first message
+  Turn 2: L3 updates with more detail
+  Turn 3: L3 adds entities
+  Turn 4: L4 answers a complex question
+  Turn 5: L3 updates based on the answer
   ...
 
 Each turn specifies:
@@ -32,7 +32,7 @@ GRADUATION_REALISTIC = {
         # ── Turn 1: Vague kickoff ──
         {
             "message": "sophie's graduating in may, need to plan something",
-            "expected_tier": "L3",
+            "expected_tier": "L4",
             "checks": {
                 "creates_page": True,
                 "has_meta": True,
@@ -45,7 +45,7 @@ GRADUATION_REALISTIC = {
         # ── Turn 2: Adds basic details ──
         {
             "message": "ceremony is may 22 at UC Davis, starts at 10",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {
                 "updates_existing": True,  # should update the ceremony/details entity
                 "has_date": True,
@@ -57,7 +57,7 @@ GRADUATION_REALISTIC = {
         # ── Turn 3: Guest info starts flowing ──
         {
             "message": "ok so aunt linda and uncle bob are definitely coming. cousin james is a maybe",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {
                 "creates_guests": True,  # might need L3 if no guest section exists yet
             },
@@ -65,12 +65,12 @@ GRADUATION_REALISTIC = {
                      "escalate to L3 (new structure needed). If Turn 1 did create one, L2 handles it. "
                      "Either way: 3 entities with names, linda/bob = confirmed, james = maybe/pending. "
                      "Accept either L2 or L3 — both are correct depending on Turn 1's output.",
-            "accept_tiers": ["L2", "L3"],
+            "accept_tiers": ["L3"],
         },
         # ── Turn 4: More guests, casual style ──
         {
             "message": "also the garcias - maria and carlos. and prob my friend dave",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {
                 "creates_3_guests": True,
                 "names_correct": ["maria", "carlos", "dave"],
@@ -104,12 +104,12 @@ GRADUATION_REALISTIC = {
             "notes": "New structural element (food section) → L3. Should create a food section "
                      "and at least one entity for potato salad. Bonus if it links to Linda via "
                      "an assigned/bringing field or relationship.",
-            "accept_tiers": ["L2", "L3"],
+            "accept_tiers": ["L3"],
         },
         # ── Turn 7: Batch of food items ──
         {
             "message": "carlos said he'll do carne asada, maria's handling drinks. we still need dessert and sides",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {
                 "creates_food_items": True,
                 "unassigned_items": True,  # dessert and sides should be TBD/unassigned
@@ -120,7 +120,7 @@ GRADUATION_REALISTIC = {
         # ── Turn 8: Contradiction/correction ──
         {
             "message": "actually scratch that - maria's doing a fruit platter, not drinks. bob said he'll handle drinks",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {
                 "updates_maria": True,  # maria's food item changes
                 "updates_bob_or_drinks": True,  # drinks reassigned to bob
@@ -139,12 +139,12 @@ GRADUATION_REALISTIC = {
             },
             "notes": "New section (todo/checklist) → L3 or L2 if todo section exists. Should create "
                      "a checklist with 4 items, all unchecked. Display should be checklist, not table.",
-            "accept_tiers": ["L2", "L3"],
+            "accept_tiers": ["L3"],
         },
         # ── Turn 10: Quick update ──
         {
             "message": "booked the pavilion!",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {
                 "marks_task_done": True,
                 "compact": True,  # should be 1-2 lines max
@@ -169,7 +169,7 @@ GRADUATION_REALISTIC = {
         # ── Turn 12: Guest update with travel info ──
         {
             "message": "james confirmed! he's flying in from chicago. and dave can't make it after all",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {
                 "updates_james_confirmed": True,
                 "updates_james_travel": True,
@@ -192,40 +192,41 @@ POKER_REALISTIC = {
     "turns": [
         {
             "message": "starting a poker night with some guys",
-            "expected_tier": "L3",
+            "expected_tier": "L4",
             "checks": {"creates_page": True, "has_meta": True},
             "notes": "Vague. Should create minimal page. Should NOT create 8 player slots.",
         },
         {
             "message": "it's gonna be me, mike, dave and tom to start",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"creates_4_players": True},
-            "accept_tiers": ["L2", "L3"],
+            "accept_tiers": ["L3"],
             "notes": "Adds first batch of players. If no roster exists, may escalate to L3.",
         },
         {
             "message": "every other thursday, $20 buy in",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"updates_details": True},
             "notes": "Adds schedule + buy-in to existing details.",
         },
         {
             "message": "sarah and jake want in too",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"creates_2_players": True},
             "notes": "Adds 2 more players to existing roster.",
         },
         {
             "message": "we should track wins and who's hosting. first game was at mike's last thursday",
             "expected_tier": "L3",
-            "checks": {"adds_schedule_or_fields": True},
-            "accept_tiers": ["L2", "L3"],
+            "checks": {"adds_schedule_or_fields": True, "sets_attending": True},
+            "accept_tiers": ["L3"],
             "notes": "May need L3 for new fields (wins, hosting) or schedule section. "
-                     "Should create a game/schedule entry for the first game.",
+                     "Should create a game/schedule entry for the first game. "
+                     "Should set attending relationships from game to each player.",
         },
         {
             "message": "mike won, $120 pot. tom ended up hosting",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"updates_game_result": True, "updates_mike_wins": True},
             "notes": "Post-game update on the existing game. Should UPDATE game entity, not create new one.",
         },
@@ -237,11 +238,13 @@ POKER_REALISTIC = {
         },
         {
             "message": "next game is at dave's place. also jake can't make it, lisa's subbing",
-            "expected_tier": "L2",
-            "checks": {"creates_game": True, "updates_jake": True, "creates_lisa": True},
-            "accept_tiers": ["L2", "L3"],
+            "expected_tier": "L3",
+            "checks": {"creates_game": True, "sets_attending": True,
+                       "updates_jake": True, "creates_lisa": True},
+            "accept_tiers": ["L3"],
             "notes": "Multi-intent: schedule next game + roster change (sub). "
-                     "Tests whether L2 handles the sub correctly.",
+                     "Should set attending rels for active players, "
+                     "absent rel for Jake, sub+attending for Lisa.",
         },
     ],
 }
@@ -258,27 +261,27 @@ GROCERY_REALISTIC = {
     "turns": [
         {
             "message": "grocery run",
-            "expected_tier": "L3",
+            "expected_tier": "L4",
             "checks": {"creates_page": True},
             "notes": "Two words. L3 should create a minimal grocery list page.",
         },
         {
             "message": "milk eggs bread",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"creates_3_items": True},
-            "accept_tiers": ["L2", "L3"],
+            "accept_tiers": ["L3"],
             "notes": "No punctuation, no 'add'. Just items. Should create 3 checklist items.",
         },
         {
             "message": "oh and butter. the good kind from trader joes",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"creates_butter": True, "has_store_note": True},
             "notes": "Adds butter with a store/note qualifier. Tests whether 'trader joes' "
                      "gets captured as a field or note.",
         },
         {
             "message": "got the milk and eggs",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"checks_off_2": True},
             "notes": "'got' = done. Should check off milk and eggs. Classic L2.",
         },
@@ -290,7 +293,7 @@ GROCERY_REALISTIC = {
         },
         {
             "message": "add chicken thighs, rice, soy sauce, ginger, and green onions for tonight",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"creates_5_items": True,
                        "expect_in_output": ["tonight"]},
             "notes": "Batch add 5 items. 'For tonight' is meaningful context — should appear "
@@ -299,7 +302,7 @@ GROCERY_REALISTIC = {
         },
         {
             "message": "actually I already have rice at home",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"marks_done_or_removes": True},
             "notes": "'Already have at home' = don't need to buy. Should mark rice done or "
                      "remove it. Either is acceptable — the key is the item leaves the "
@@ -307,7 +310,7 @@ GROCERY_REALISTIC = {
         },
         {
             "message": "the chicken should be 2 lbs, bone-in",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"updates_chicken": True,
                        "expect_in_output": ["2", "bone"]},
             "notes": "Adds quantity detail to existing chicken item. Should entity.update "
@@ -324,7 +327,7 @@ GROCERY_REALISTIC = {
         },
         {
             "message": "wait I didn't actually get the eggs yet",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"unchecks_eggs": True},
             "notes": "Correction — reverses turn 4's check-off. Should set eggs done=false. "
                      "Tests that the model can undo previous state, not just advance it.",
@@ -345,7 +348,7 @@ RENOVATION_REALISTIC = {
     "turns": [
         {
             "message": "redoing our kitchen, gonna be a project",
-            "expected_tier": "L3",
+            "expected_tier": "L4",
             "checks": {"creates_page": True},
             "notes": "Vague kickoff. Minimal page creation.",
         },
@@ -353,7 +356,7 @@ RENOVATION_REALISTIC = {
             "message": "budget is around 35k. already spent 8k on the architect plans",
             "expected_tier": "L3",
             "checks": {"creates_budget_table": True},
-            "accept_tiers": ["L2", "L3"],
+            "accept_tiers": ["L3"],
             "notes": "Should create a budget/line_items table with architect plans as the "
                      "first row (cost: 8000, done/committed). Architect plans are an EXPENSE "
                      "line item, not a task. Also set budget total on overview card. "
@@ -363,7 +366,7 @@ RENOVATION_REALISTIC = {
             "message": "got 3 quotes for the cabinets: woodworks unlimited 12k, cabinet depot 9500, custom craft 15k",
             "expected_tier": "L3",
             "checks": {"creates_quote_table": True},
-            "accept_tiers": ["L2", "L3"],
+            "accept_tiers": ["L3"],
             "notes": "Structural: needs a parent table (cabinet_quotes or similar) with 3 row "
                      "children. Three sibling entities of the same type should be grouped under "
                      "a table, not dumped flat under page. L2 acceptable — will escalate for "
@@ -371,7 +374,7 @@ RENOVATION_REALISTIC = {
         },
         {
             "message": "going with cabinet depot",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"uses_rel_for_selection": True},
             "notes": "Should select cabinet depot via rel.set (one_to_one 'selected' from "
                      "the quotes table or page to the quote entity), not a string prop like "
@@ -389,7 +392,7 @@ RENOVATION_REALISTIC = {
             "message": "plumber can start march 10, electrician march 3. need to get countertops measured before either",
             "expected_tier": "L3",
             "checks": {"creates_tasks": True},
-            "accept_tiers": ["L2", "L3"],
+            "accept_tiers": ["L3"],
             "notes": "Creates a TASKS section (checklist or table) with action items: "
                      "measure countertops, plumber, electrician. These are things to DO, "
                      "not expense line items. Tasks have dates and dependencies, "
@@ -397,7 +400,7 @@ RENOVATION_REALISTIC = {
         },
         {
             "message": "cabinet depot called, price is actually 11k not 9500",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"updates_existing": True,
                        "expect_in_output": ["11000|11k"]},
             "notes": "Price correction on existing quote. Must entity.update the cabinet depot "
@@ -406,7 +409,7 @@ RENOVATION_REALISTIC = {
         },
         {
             "message": "screw it, switching to woodworks. they'll honor the 9500 price",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"uses_rel_for_selection": True,
                        "expect_in_output": ["woodworks", "9500"]},
             "notes": "Vendor switch via rel.set (one_to_one — auto-drops cabinet depot). "
@@ -415,9 +418,9 @@ RENOVATION_REALISTIC = {
         },
         {
             "message": "also need new flooring, probably 4 to 6k. and appliances around 8k",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"adds_budget_items": True, "budget_ceiling_intact": True},
-            "accept_tiers": ["L2", "L3"],
+            "accept_tiers": ["L3"],
             "notes": "Scope creep — adds 2 new BUDGET LINE ITEMS (not tasks). Flooring and "
                      "appliances are expenses with cost estimates. They belong in the budget "
                      "table alongside architect plans, not in the tasks section. "
@@ -425,7 +428,7 @@ RENOVATION_REALISTIC = {
         },
         {
             "message": "electrician pushed to march 17. plumber has to move too since they need electrical done first",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"updates_dates": True,
                        "expect_in_output": ["17"]},
             "notes": "Timeline cascade. Electrician date changes from march 3 to march 17. "
@@ -443,11 +446,11 @@ RENOVATION_REALISTIC = {
         },
         {
             "message": "countertops are done, ended up costing 3200",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"creates_budget_item": True,
                        "marks_prereq_done": True,
                        "expect_in_output": ["3200"]},
-            "accept_tiers": ["L2", "L3"],
+            "accept_tiers": ["L3"],
             "notes": "Creates a new countertops LINE ITEM in the budget table (cost: 3200, "
                      "done/paid). Also should mark task_measure_countertops as done — if "
                      "countertops are installed and paid for, the measurement prerequisite "
@@ -468,7 +471,7 @@ CHORES_CLARIFY = {
     "turns": [
         {
             "message": "roommate chore tracker for me, alex, and jamie",
-            "expected_tier": "L3",
+            "expected_tier": "L4",
             "checks": {"creates_page": True, "creates_roster": True},
             "notes": "Straightforward setup. Should create page + 3 roommates.",
         },
@@ -476,44 +479,44 @@ CHORES_CLARIFY = {
             "message": "weekly chores: dishes, vacuuming, bathroom cleaning, trash, mopping",
             "expected_tier": "L3",
             "checks": {"creates_5_chores": True},
-            "accept_tiers": ["L2", "L3"],
+            "accept_tiers": ["L3"],
             "notes": "Creates 5 chore entities. May need L3 for new section.",
         },
         {
             "message": "I'll do dishes and mopping. alex has vacuuming and trash. jamie does bathroom",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"assigns_all": True},
             "notes": "Clear 1:1 assignments. No ambiguity. Should NOT clarify.",
         },
         {
             "message": "alex finished the vacuuming",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"marks_done": True},
             "notes": "Single match — one vacuuming entity. Should NOT clarify. Just mark done.",
         },
         {
             "message": "swap mine and jamie's",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"should_clarify": True},
             "notes": "SHOULD CLARIFY. 'Mine' = dishes + mopping (two chores). Jamie's = bathroom (one). "
                      "Swap which of my two? Both? Model can't know — must ask.",
         },
         {
             "message": "add a new chore - wipe down kitchen counters. jamie can do it",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"creates_chore": True, "assigns_jamie": True},
             "notes": "Clear intent, clear assignment. Should NOT clarify.",
         },
         {
             "message": "mark jamie's as done",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"should_clarify": True},
             "notes": "SHOULD CLARIFY. Jamie now has bathroom + kitchen counters (maybe dishes/mopping "
                      "too if swap happened). Which one is done? Model must ask.",
         },
         {
             "message": "kitchen counters",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"resolves_clarify": True, "marks_done": True},
             "notes": "Answers the clarify from turn 7. Should mark chore_kitchen_counters done=true. "
                      "Short answer — model must understand this resolves the previous question, "
@@ -521,14 +524,14 @@ CHORES_CLARIFY = {
         },
         {
             "message": "actually remove one of alex's chores",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"should_clarify": True},
             "notes": "SHOULD CLARIFY. Alex has vacuuming (done) + trash. Remove which? "
                      "Probably the done one, but model shouldn't assume.",
         },
         {
             "message": "the vacuuming since it's already done",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"resolves_clarify": True, "unassigns_chore": True},
             "notes": "Answers the clarify from turn 9. Should rel.remove the assigned_to "
                      "relationship between chore_vacuuming and member_alex — NOT entity.remove "
@@ -553,7 +556,7 @@ FLU_TRACKER = {
         # ── Setup ──
         {
             "message": "kids are sick, need to track fevers for ringo and george",
-            "expected_tier": "L3",
+            "expected_tier": "L4",
             "checks": {"creates_page": True},
             "notes": "Setup. Should create page with per-person sections or a readings "
                      "table. Structure must support MANY readings per person per day. "
@@ -562,10 +565,10 @@ FLU_TRACKER = {
         # ── Sunday Dec 29: Ringo's first day ──
         {
             "message": "ringo sunday dec 29: 1030am 103.7 tylenol, 135pm 101.5 motrin, 520pm 101 tylenol, 820pm 102 motrin",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"batch_creates": True, "min_entities": 4,
                        "expect_in_output": ["103.7", "101.5", "101", "102"]},
-            "accept_tiers": ["L2", "L3"],
+            "accept_tiers": ["L3"],
             "notes": "Batch entry — 4 readings in one message. Each reading must be a "
                      "SEPARATE entity. '1030am' = 10:30 AM, '135pm' = 1:35 PM, etc. "
                      "Each has a med (alternating tylenol/motrin). Tests terse batch parsing.",
@@ -589,11 +592,11 @@ FLU_TRACKER = {
                      "1030am 100.3 no meds. "
                      "115pm 101.1 motrin. "
                      "2pm 101.4 no meds",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"batch_creates": True, "min_entities": 7,
                        "captures_note": True,
                        "expect_in_output": ["103.5", "98.6", "101.1"]},
-            "accept_tiers": ["L2", "L3"],
+            "accept_tiers": ["L3"],
             "notes": "7 readings in one message. Massive batch. Inline notes on two readings "
                      "('woke him back to sleep', 'down to 101 by 245'). Each MUST be a "
                      "separate entity. Tests high-volume append pattern. The 98.6 is notable — "
@@ -609,11 +612,11 @@ FLU_TRACKER = {
                      "2pm 101.3 tylenol - threw up. "
                      "3pm 101.9 no meds. "
                      "4pm 103 motrin",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"batch_creates": True, "min_entities": 8,
                        "captures_note": True,
                        "expect_in_output": ["102.7", "102.9", "103"]},
-            "accept_tiers": ["L2", "L3"],
+            "accept_tiers": ["L3"],
             "notes": "8 readings for george. Critical notes: 'eye lids swelling' (symptom "
                      "escalation at 11:30, separate from 10:30 reading time), 'threw up' "
                      "(on 2pm reading). Tests that notes attach to correct readings. "
@@ -633,7 +636,7 @@ FLU_TRACKER = {
         # ── Tuesday Dec 31: New day entries ──
         {
             "message": "ringo tues 5pm 101 tylenol, 830pm 99.7 motrin",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"appends_not_updates": True,
                        "expect_in_output": ["101", "99.7"]},
             "notes": "New day, 2 more ringo readings. Must be NEW entities (not updates "
@@ -642,7 +645,7 @@ FLU_TRACKER = {
         },
         {
             "message": "george tues 740pm 100.5 tylenol",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"appends_not_updates": True,
                        "expect_in_output": ["100.5"]},
             "notes": "Single george reading, new day. Must be NEW entity. George now has "
@@ -661,7 +664,7 @@ FLU_TRACKER = {
         # ── Retroactive correction ──
         {
             "message": "wait the 925am one for george on monday was actually 101.5 not 101",
-            "expected_tier": "L2",
+            "expected_tier": "L3",
             "checks": {"updates_existing": True,
                        "expect_in_output": ["101.5"]},
             "notes": "Correction to existing reading. This IS an entity.update (not a new "

@@ -1,0 +1,143 @@
+{
+  "meta": {
+    "title": "Sophie's Graduation",
+    "identity": "Graduation planning for Sophie in May."
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Sophie's Graduation"
+      }
+    },
+    "event_details": {
+      "id": "event_details",
+      "parent": "page",
+      "display": "card",
+      "props": {
+        "date": "May 22, 2025",
+        "honoree": "Sophie",
+        "event_type": "Graduation celebration",
+        "location": "UC Davis",
+        "time": "10:00 AM"
+      }
+    },
+    "todo": {
+      "id": "todo",
+      "parent": "page",
+      "display": "checklist",
+      "props": {
+        "title": "Planning Tasks"
+      }
+    },
+    "task_venue": {
+      "id": "task_venue",
+      "parent": "todo",
+      "display": "row",
+      "props": {
+        "task": "Book venue",
+        "done": false
+      }
+    },
+    "task_invites": {
+      "id": "task_invites",
+      "parent": "todo",
+      "display": "row",
+      "props": {
+        "task": "Send invitations",
+        "done": false
+      }
+    },
+    "task_catering": {
+      "id": "task_catering",
+      "parent": "todo",
+      "display": "row",
+      "props": {
+        "task": "Arrange catering",
+        "done": false
+      }
+    },
+    "task_decorations": {
+      "id": "task_decorations",
+      "parent": "todo",
+      "display": "row",
+      "props": {
+        "task": "Get decorations",
+        "done": false
+      }
+    },
+    "task_photographer": {
+      "id": "task_photographer",
+      "parent": "todo",
+      "display": "row",
+      "props": {
+        "task": "Book photographer",
+        "done": false
+      }
+    },
+    "guests": {
+      "id": "guests",
+      "parent": "page",
+      "display": "section",
+      "props": {
+        "title": "Guests"
+      }
+    },
+    "guest_linda": {
+      "id": "guest_linda",
+      "parent": "guests",
+      "display": "row",
+      "props": {
+        "name": "Aunt Linda",
+        "status": "confirmed"
+      }
+    },
+    "guest_bob": {
+      "id": "guest_bob",
+      "parent": "guests",
+      "display": "row",
+      "props": {
+        "name": "Uncle Bob",
+        "status": "confirmed"
+      }
+    },
+    "guest_james": {
+      "id": "guest_james",
+      "parent": "guests",
+      "display": "row",
+      "props": {
+        "name": "Cousin James",
+        "status": "maybe"
+      }
+    },
+    "guest_maria": {
+      "id": "guest_maria",
+      "parent": "guests",
+      "display": "row",
+      "props": {
+        "name": "Maria Garcia",
+        "status": "likely"
+      }
+    },
+    "guest_carlos": {
+      "id": "guest_carlos",
+      "parent": "guests",
+      "display": "row",
+      "props": {
+        "name": "Carlos Garcia",
+        "status": "likely"
+      }
+    },
+    "guest_dave": {
+      "id": "guest_dave",
+      "parent": "guests",
+      "display": "row",
+      "props": {
+        "name": "Dave",
+        "status": "likely"
+      }
+    }
+  }
+}

@@ -1,0 +1,4 @@
+{"t":"entity.create","id":"game_mar05","parent":"page","display":"card","p":{"date":"2026-03-05","location":"Dave's","pot":null}}
+{"t":"entity.create","id":"player_lisa","parent":"players","display":"row","p":{"name":"Lisa","wins":0,"losses":0}}
+{"t":"entity.update","ref":"player_jake","p":{"status":"out"}}
+{"t":"voice","text":"Next game Mar 05 at Dave's. Jake out, Lisa in."}

@@ -1,0 +1,9 @@
+BUDGET: $35,000
+
+Committed                     Cost
+Architect plans ............. $8,000
+Cabinets (Depot) ............ $9,500
+                             -------
+Subtotal ................... $17,500
+
+Remaining .................. $17,500

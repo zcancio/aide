@@ -1,0 +1,6 @@
+```json
+{"t":"entity.create","id":"budget","parent":"page","display":"table","p":{"title":"Budget"}}
+{"t":"entity.create","id":"expense_architect","parent":"budget","display":"row","p":{"item":"Architect plans","cost":8000,"status":"paid"}}
+{"t":"entity.update","ref":"project_overview","p":{"budget":35000,"spent":8000,"remaining":27000}}
+{"t":"voice","text":"Budget set at $35k. $8k spent on architect plans, $27k remaining."}
+```

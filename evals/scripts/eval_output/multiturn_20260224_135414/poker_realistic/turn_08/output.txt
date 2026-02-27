@@ -1,0 +1,3 @@
+{"t":"entity.update","ref":"player_jake","p":{"status":"out"}}
+{"t":"entity.create","id":"player_lisa","parent":"players","display":"row","p":{"name":"Lisa","wins":0}}
+{"t":"entity.create","id":"game_mar05","parent":"games","display":"row","p":{"date":"2026-03-05","location":"Dave's"}}

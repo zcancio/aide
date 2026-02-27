@@ -1,0 +1,8 @@
+```jsonl
+{"t":"meta.set","p":{"title":"Poker Night","identity":"Poker night with friends."}}
+{"t":"entity.create","id":"page","parent":"root","display":"page","p":{"title":"Poker Night"}}
+{"t":"entity.create","id":"details","parent":"page","display":"card","p":{"title":"Details"}}
+{"t":"voice","text":"Poker night created. Add date, location, and player info."}
+{"t":"entity.create","id":"players","parent":"page","display":"table","p":{"title":"Players"}}
+{"t":"voice","text":"Page ready. Build your game details as you go."}
+```

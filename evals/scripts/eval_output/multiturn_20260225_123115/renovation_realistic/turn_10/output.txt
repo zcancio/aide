@@ -1,0 +1,3 @@
+{"t":"entity.update","ref":"task_electrician","p":{"date":"2026-03-17"}}
+{"t":"entity.update","ref":"task_plumber","p":{"date":"2026-03-24"}}
+{"t":"voice","text":"Electrician moved to Mar 17. Plumber now Mar 24."}

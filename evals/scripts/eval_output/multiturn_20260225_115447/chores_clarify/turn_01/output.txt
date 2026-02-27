@@ -1,0 +1,11 @@
+```jsonl
+{"t":"meta.set","p":{"title":"Roommate Chores","identity":"Chore tracker for three roommates."}}
+{"t":"entity.create","id":"page","parent":"root","display":"page","p":{"title":"Roommate Chores"}}
+{"t":"entity.create","id":"roommates","parent":"page","display":"table","p":{"title":"Roommates"}}
+{"t":"entity.create","id":"member_me","parent":"roommates","display":"row","p":{"name":"Me"}}
+{"t":"entity.create","id":"member_alex","parent":"roommates","display":"row","p":{"name":"Alex"}}
+{"t":"entity.create","id":"member_jamie","parent":"roommates","display":"row","p":{"name":"Jamie"}}
+{"t":"voice","text":"Roommates set up. Ready for chores."}
+{"t":"entity.create","id":"chores","parent":"page","display":"checklist","p":{"title":"Chores"}}
+{"t":"voice","text":"Chore tracker ready. Add tasks to get started."}
+```

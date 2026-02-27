@@ -1,0 +1,14 @@
+GEORGE TYLENOL EFFECTIVENESS
+
+Readings after Tylenol doses:
+
+2am: 102.7°F → dose Tylenol → 6:30am: 102.7°F (no change, 4.5 hours)
+6:30am: 102.7°F → dose Tylenol → 9:25am: 101°F (dropped 1.7°F, 3 hours)
+2pm: 101.3°F → dose Tylenol → 3pm: 101.9°F (rose 0.6°F, 1 hour)
+7:40pm Tuesday: 100.5°F → too soon to measure
+
+Tylenol reduced fever once (6:30am dose). Failed to reduce fever twice (2am dose held steady through morning, 2pm dose followed by rise). 
+
+Motrin appears more effective: 10:30am dose (102.9°F → 100.3°F by 1:15pm, dropped 2.6°F) and 4pm dose helped sustain through evening.
+
+Pattern suggests Tylenol isn't reliably controlling George's fever. Motrin shows better response.
