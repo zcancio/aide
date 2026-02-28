@@ -1,0 +1,17 @@
+{
+  "run_dir": "eval_output/multiturn_20260227_134954",
+  "timestamp": "2026-02-27T13:51:29.247790",
+  "scenarios_run": 1,
+  "results": [
+    {
+      "scenario_id": "flu_tracker",
+      "name": "Flu Tracker",
+      "turns": 11,
+      "total_tool_calls": 58,
+      "total_text_blocks": 11,
+      "total_issues": 0,
+      "all_passed": true,
+      "entity_count": 29
+    }
+  ]
+}

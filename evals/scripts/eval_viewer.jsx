@@ -6,16 +6,18 @@ const MODELS = {
   L4: "claude-opus-4-5-20251101",
   L3: "claude-sonnet-4-5-20250929",
 };
-const TEMPS = { L4: 0.2, L3: 0 };
+const TEMPS = { L4: 0, L3: 0 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 const hum = (s) => (s ? s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : "");
 const esc = (s) => String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 const tbText = (tb) => typeof tb === "string" ? tb : (tb?.text || "");
+const tierBase = (t) => (t || "").split("->").pop();
 
 function tierStyle(t) {
-  return t === "L4" ? { bg: "#312e81", color: "#c4b5fd" } : { bg: "#0c3547", color: "#7dd3fc" };
+  const b = tierBase(t);
+  return b === "L4" ? { bg: "#312e81", color: "#c4b5fd" } : { bg: "#0c3547", color: "#7dd3fc" };
 }
 function actionCls(a) {
   return ["create","update","remove","move","set"].includes(a) ? a : "unknown";
@@ -193,8 +195,8 @@ function MetricsPanel({ golden, turnIdx }) {
     totalOut += golden.turns[i].usage?.output_tokens || 0;
   }
 
-  const costIn = t.tier === "L4" ? (t.usage?.input_tokens || 0) * 15 / 1e6 : (t.usage?.input_tokens || 0) * 3 / 1e6;
-  const costOut = t.tier === "L4" ? (t.usage?.output_tokens || 0) * 75 / 1e6 : (t.usage?.output_tokens || 0) * 15 / 1e6;
+  const costIn = tierBase(t.tier) === "L4" ? (t.usage?.input_tokens || 0) * 15 / 1e6 : (t.usage?.input_tokens || 0) * 3 / 1e6;
+  const costOut = tierBase(t.tier) === "L4" ? (t.usage?.output_tokens || 0) * 75 / 1e6 : (t.usage?.output_tokens || 0) * 15 / 1e6;
 
   const ts = tierStyle(t.tier);
 
@@ -203,8 +205,8 @@ function MetricsPanel({ golden, turnIdx }) {
       <div style={msec}>
         <div style={mhdr}>Routing</div>
         <div style={mrow}><span style={{ color: "#4e5468" }}>Tier</span><span style={{ padding: "1px 8px", borderRadius: 3, fontWeight: 600, fontSize: 10, background: ts.bg, color: ts.color }}>{t.tier}</span></div>
-        <div style={mrow}><span style={{ color: "#4e5468" }}>Model</span><span style={{ ...monoSm, color: "#4e5468", wordBreak: "break-all" }}>{MODELS[t.tier]}</span></div>
-        <div style={mrow}><span style={{ color: "#4e5468" }}>Temperature</span><span style={{ ...monoSm, color: "#94a3b8" }}>{TEMPS[t.tier]}</span></div>
+        <div style={mrow}><span style={{ color: "#4e5468" }}>Model</span><span style={{ ...monoSm, color: "#4e5468", wordBreak: "break-all" }}>{MODELS[tierBase(t.tier)]}</span></div>
+        <div style={mrow}><span style={{ color: "#4e5468" }}>Temperature</span><span style={{ ...monoSm, color: "#94a3b8" }}>{TEMPS[tierBase(t.tier)]}</span></div>
       </div>
       <div style={msec}>
         <div style={mhdr}>Latency</div>
@@ -289,6 +291,7 @@ export default function EvalViewer() {
       else if (e.key === "2") setView("raw");
       else if (e.key === "3") setView("diff");
       else if (e.key === "4") setView("tree");
+      else if (e.key === "5") setView("prompt");
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
@@ -307,8 +310,40 @@ export default function EvalViewer() {
   const entCount = snapshot ? Object.values(snapshot.entities).filter((e) => !e._removed).length : 0;
   const progress = total > 1 ? (cur / (total - 1)) * 100 : 0;
 
-  const VIEWS = ["rendered", "raw", "diff", "tree"];
-  const VIEW_LABELS = { rendered: "Rendered", raw: "Raw Output", diff: "Before / After", tree: "Entity Tree" };
+  // Resizable panels
+  const [leftW, setLeftW] = useState(320);
+  const [rightW, setRightW] = useState(260);
+  const dragRef = useRef(null);
+
+  const startResize = useCallback((which, e) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = which === "left" ? leftW : rightW;
+    dragRef.current = { which, startX, startW };
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }, [leftW, rightW]);
+
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!dragRef.current) return;
+      const { which, startX, startW } = dragRef.current;
+      const dx = e.clientX - startX;
+      if (which === "left") setLeftW(Math.max(200, Math.min(600, startW + dx)));
+      else setRightW(Math.max(180, Math.min(500, startW - dx)));
+    };
+    const onUp = () => {
+      dragRef.current = null;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => { window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
+  }, []);
+
+  const VIEWS = ["rendered", "raw", "diff", "tree", "prompt"];
+  const VIEW_LABELS = { rendered: "Rendered", raw: "Raw Output", diff: "Before / After", tree: "Entity Tree", prompt: "Prompt" };
 
   return (
     <div style={S.root}>
@@ -330,7 +365,7 @@ export default function EvalViewer() {
       {/* Main 3 panels */}
       <div style={S.main}>
         {/* LEFT: Chat */}
-        <div style={S.panelLeft}>
+        <div style={{ ...S.panelLeft, width: leftW, minWidth: leftW }}>
           <div style={S.panelHeader}>Conversation</div>
           <div style={S.chatScroll}>
             {!golden && <p style={{ color: "#4e5468", padding: 16, fontSize: 12 }}>Load a golden file to begin.</p>}
@@ -353,7 +388,10 @@ export default function EvalViewer() {
           </div>
         </div>
 
-        {/* CENTER: 4 views */}
+        {/* Left resize handle */}
+        <div onMouseDown={(e) => startResize("left", e)} style={{ width: 4, cursor: "col-resize", background: "transparent", flexShrink: 0, zIndex: 5 }} onMouseEnter={(e) => e.target.style.background = "#60a5fa"} onMouseLeave={(e) => { if (!dragRef.current) e.target.style.background = "transparent"; }} />
+
+        {/* CENTER: 5 views */}
         <div style={S.panelCenter}>
           <div style={S.viewTabs}>
             {VIEWS.map((v) => (
@@ -497,10 +535,22 @@ export default function EvalViewer() {
               );
             })()}
           </div>
+            {view === "prompt" && (
+              <div style={{ padding: 16, overflow: "auto", height: "100%", fontFamily: "'JetBrains Mono',monospace", fontSize: 11, lineHeight: 1.65, color: "#94a3b8", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                {turn?.system_prompt ? turn.system_prompt.split("\n").map((line, i) => {
+                  if (line.startsWith("# ") || line.startsWith("## ") || line.startsWith("### ")) return <div key={i} style={{ color: "#60a5fa", fontWeight: 600, marginTop: 16 }}>{line}</div>;
+                  if (line.includes("Current Snapshot") || line.startsWith("```")) return <div key={i} style={{ color: "#fbbf24", opacity: 0.7, fontSize: 10 }}>{line}</div>;
+                  return <div key={i}>{line}</div>;
+                }) : <div style={{ color: "#4e5468", fontStyle: "italic" }}>No prompt data. Re-run eval to capture prompts.</div>}
+              </div>
+            )}
         </div>
 
+        {/* Right resize handle */}
+        <div onMouseDown={(e) => startResize("right", e)} style={{ width: 4, cursor: "col-resize", background: "transparent", flexShrink: 0, zIndex: 5 }} onMouseEnter={(e) => e.target.style.background = "#60a5fa"} onMouseLeave={(e) => { if (!dragRef.current) e.target.style.background = "transparent"; }} />
+
         {/* RIGHT: Metrics */}
-        <div style={S.panelRight}>
+        <div style={{ ...S.panelRight, width: rightW, minWidth: rightW }}>
           <div style={S.panelHeader}>Turn Metrics</div>
           {golden && turn ? <MetricsPanel golden={golden} turnIdx={cur} /> : <div style={{ padding: 16, color: "#4e5468", fontSize: 12 }}>No data loaded.</div>}
         </div>

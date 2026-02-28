@@ -266,6 +266,8 @@ const esc = s => { const d = document.createElement("div"); d.textContent = s; r
 const hum = s => s ? s.replace(/_/g," ").replace(/\b\w/g,c=>c.toUpperCase()) : "";
 // Normalize text_block entry: can be string or {text, timestamp_ms}
 const tbText = tb => typeof tb === "string" ? tb : (tb?.text || "");
+// Normalize tier for CSS class (L3->L4->L3 → L3)
+const tierBase = t => (t || "").split("->").pop();
 
 // Model name lookup
 const MODELS = { L4: "claude-opus-4-5-20251101", L3: "claude-sonnet-4-5-20250929" };
@@ -601,9 +603,9 @@ function renderMetrics(g, ti) {
   // Tier & Model
   h += `<div class="metrics-section">`;
   h += `<div class="mheader">Routing</div>`;
-  h += `<div class="mrow"><span class="mk">Tier</span><span class="tier-badge ${t.tier}">${t.tier}</span></div>`;
-  h += `<div class="mrow"><span class="mk">Model</span><span class="mv">${MODELS[t.tier] || "unknown"}</span></div>`;
-  h += `<div class="mrow"><span class="mk">Temperature</span><span class="mv">${t.tier === "L4" ? "0.2" : "0"}</span></div>`;
+  h += `<div class="mrow"><span class="mk">Tier</span><span class="tier-badge ${tierBase(t.tier)}">${esc(t.tier)}</span></div>`;
+  h += `<div class="mrow"><span class="mk">Model</span><span class="mv">${MODELS[tierBase(t.tier)] || "unknown"}</span></div>`;
+  h += `<div class="mrow"><span class="mk">Temperature</span><span class="mv">${tierBase(t.tier) === "L4" ? "0" : "0"}</span></div>`;
   h += `</div>`;
 
   // Latency
@@ -627,8 +629,8 @@ function renderMetrics(g, ti) {
     h += `<div class="mrow"><span class="mk">Cache hit</span><span class="mv good">${t.usage.cache_read.toLocaleString()} (${pct}%)</span></div>`;
   }
   // Cost estimate
-  const costIn = t.tier === "L4" ? (t.usage?.input_tokens||0)*15/1e6 : (t.usage?.input_tokens||0)*3/1e6;
-  const costOut = t.tier === "L4" ? (t.usage?.output_tokens||0)*75/1e6 : (t.usage?.output_tokens||0)*15/1e6;
+  const costIn = tierBase(t.tier) === "L4" ? (t.usage?.input_tokens||0)*15/1e6 : (t.usage?.input_tokens||0)*3/1e6;
+  const costOut = tierBase(t.tier) === "L4" ? (t.usage?.output_tokens||0)*75/1e6 : (t.usage?.output_tokens||0)*15/1e6;
   const costCls = (costIn+costOut) < 0.01 ? "good" : (costIn+costOut) < 0.05 ? "" : "warn";
   h += `<div class="mrow"><span class="mk">Est. cost</span><span class="mv ${costCls}">$${(costIn+costOut).toFixed(4)}</span></div>`;
   h += `</div>`;
@@ -659,6 +661,11 @@ function renderMetrics(g, ti) {
     } else {
       t.validation.issues.forEach(issue => {
         h += `<div class="mrow"><span class="vfail">⚠ ${esc(issue)}</span></div>`;
+      });
+    }
+    if (t.validation.warnings?.length) {
+      t.validation.warnings.forEach(w => {
+        h += `<div class="mrow"><span class="mv warn">⚡ ${esc(w)}</span></div>`;
       });
     }
     h += `</div>`;
@@ -770,7 +777,7 @@ function loadFile(file) {
       G.turns.forEach((t,i)=>{
         const pct = G.turns.length>1?(i/(G.turns.length-1))*100:0;
         const m = document.createElement("div");
-        m.className = `tmark ${t.tier} ${i===0?"on":"off"}`;
+        m.className = `tmark ${tierBase(t.tier)} ${i===0?"on":"off"}`;
         m.style.left = pct+"%";
         m.title = `Turn ${i+1} (${t.tier})`;
         m.addEventListener("click", e=>{e.stopPropagation();go(i);});

@@ -34,7 +34,9 @@ Escalate when you encounter:
 - Ambiguous scope changes that require pattern decisions
 - Destructive pattern transitions
 
-To escalate, call `voice(text: "This needs a new section structure.")` — the system will re-route to L4. Do not emit mutations when escalating.
+**Hard rule: L3 never creates entities with `display` set to `page`, `section`, `table`, or `grid`.** These are structural containers that define the page skeleton — only L4 creates them. If you need a new container to hold data (e.g. readings arrive but there's no section for them), escalate.
+
+To escalate, call `voice(text: "Needs a new section for [X].")` — the system will re-route to L4. Do not emit mutations when escalating. Only call `voice`.
 
 ### Multi-Intent Messages:
 

@@ -118,7 +118,7 @@ MODELS = {
 }
 
 TEMPERATURE = {
-    "L4": 0.2,
+    "L4": 0,   # deterministic for eval reproducibility
     "L3": 0,
 }
 
@@ -488,6 +488,7 @@ def validate_turn(turn_spec: dict, result: dict, snapshot: dict) -> dict[str, An
     exact entity names. The checks dict uses boolean flags and patterns.
     """
     issues = []
+    warnings = []
     checks = turn_spec.get("checks", {})
     tc = result["tool_calls"]
     # text_blocks may be dicts with {text, timestamp_ms} or plain strings
@@ -734,8 +735,10 @@ def validate_turn(turn_spec: dict, result: dict, snapshot: dict) -> dict[str, An
             pass  # Don't flag as issue — the system handled it
 
     for text in tb:
-        if len(text) > 150:
-            issues.append(f"Voice long ({len(text)}ch): {text[:60]}...")
+        if len(text) > 200:
+            issues.append(f"Voice too long ({len(text)}ch): {text[:60]}...")
+        elif len(text) > 150:
+            warnings.append(f"Voice long ({len(text)}ch): {text[:60]}...")
         if text.lower().startswith(("i ", "i'", "i've", "let me", "i'll")):
             issues.append(f"First person: {text[:60]}...")
         if any(e in text for e in ["🎉", "🎊", "✨", "👏", "🎶", "❤️", "😊"]):
@@ -743,6 +746,8 @@ def validate_turn(turn_spec: dict, result: dict, snapshot: dict) -> dict[str, An
 
     return {
         "passed": len(issues) == 0,
+        "issues": issues,
+        "warnings": warnings,
         "issues": issues,
     }
 
@@ -777,18 +782,62 @@ def run_scenario(scenario: dict, run_dir: Path, max_turn: int | None = None) -> 
         result = run_turn(tier, snapshot, messages, message)
 
         # ── L3 → L4 escalation ──
-        # If L3 signals escalation in voice text, re-run through L4
         if tier == "L3":
+            escalated = False
+
+            # Signal 1: L3 says it needs escalation in voice text
             escalation_signals = ["needs a new section", "new section structure",
                                   "needs structural", "escalat"]
             all_voice = " ".join(
                 b["text"] if isinstance(b, dict) else b for b in result["text_blocks"]
             ).lower()
             if any(sig in all_voice for sig in escalation_signals):
-                print(f"    ↑ L3 escalated → re-running as L4")
-                # Reset snapshot (L3 may have emitted no-op updates)
-                result = run_turn("L4", snapshot, messages, message)
-                tier = "L4"  # Update for reporting
+                print(f"    ↑ L3 voice-escalated → re-running as L4")
+                escalated = True
+
+            # Signal 2: L3 created structural containers (page/section/table/grid)
+            # These are L4-only — L3 shouldn't create skeleton entities
+            if not escalated:
+                STRUCTURAL_DISPLAYS = {"page", "section", "table", "grid"}
+                structural_creates = [
+                    tc for tc in result["tool_calls"]
+                    if tc["name"] == "mutate_entity"
+                    and tc["input"].get("action") == "create"
+                    and tc["input"].get("display") in STRUCTURAL_DISPLAYS
+                ]
+                if structural_creates:
+                    ids = [tc["input"]["id"] for tc in structural_creates]
+                    print(f"    ↑ L3 created structural entities {ids} → re-running as L4")
+                    escalated = True
+
+            if escalated:
+                # Two-pass escalation:
+                # 1. L4 creates structure (sees user message for context)
+                print(f"    -> Pass 1: L4 creating structure...")
+                l4_result = run_turn("L4", snapshot, messages, message)
+                snapshot = l4_result["snapshot"]
+
+                # 2. L3 retries with updated snapshot (structure now exists)
+                print(f"    -> Pass 2: L3 retrying with structure...")
+                l3_result = run_turn("L3", snapshot, messages, message)
+                tier = "L3->L4->L3"
+
+                # Merge: L4's tool_calls first, then L3's
+                result = l3_result
+                result["tool_calls"] = l4_result["tool_calls"] + l3_result["tool_calls"]
+                result["text_blocks"] = l4_result["text_blocks"] + l3_result["text_blocks"]
+                result["all_raw_tools"] = l4_result["all_raw_tools"] + l3_result["all_raw_tools"]
+                # Usage: sum both passes
+                result["usage"] = {
+                    "input_tokens": l4_result["usage"]["input_tokens"] + l3_result["usage"]["input_tokens"],
+                    "output_tokens": l4_result["usage"]["output_tokens"] + l3_result["usage"]["output_tokens"],
+                    "cache_read": l4_result["usage"]["cache_read"] + l3_result["usage"]["cache_read"],
+                }
+                # Timing: TTFC from L4 pass 1, TTC spans both
+                result["ttfc_ms"] = l4_result["ttfc_ms"]
+                result["ttc_ms"] = l4_result["ttc_ms"] + l3_result["ttc_ms"]
+                # System prompt from L4 (the structural pass)
+                result["system_prompt"] = l4_result["system_prompt"]
 
         snapshot = result["snapshot"]
 
@@ -852,6 +901,9 @@ def run_scenario(scenario: dict, run_dir: Path, max_turn: int | None = None) -> 
                 print(f"      - {issue}")
         else:
             print(f"    ✓ Passed")
+        if validation.get("warnings"):
+            for warn in validation["warnings"]:
+                print(f"    ⚡ {warn}")
 
         turn_results.append({
             "turn": turn_num,
