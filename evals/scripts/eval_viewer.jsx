@@ -188,15 +188,46 @@ function MetricsPanel({ golden, turnIdx }) {
   const tcSum = {};
   t.tool_calls.forEach((tc) => { const a = tc.input?.action || "?"; tcSum[a] = (tcSum[a] || 0) + 1; });
 
-  let totalTools = 0, totalIn = 0, totalOut = 0;
+  let totalTools = 0, totalIn = 0, totalOut = 0, totalCacheRead = 0;
   for (let i = 0; i <= turnIdx; i++) {
     totalTools += golden.turns[i].tool_calls.length;
     totalIn += golden.turns[i].usage?.input_tokens || 0;
     totalOut += golden.turns[i].usage?.output_tokens || 0;
+    totalCacheRead += golden.turns[i].usage?.cache_read || 0;
   }
 
-  const costIn = tierBase(t.tier) === "L4" ? (t.usage?.input_tokens || 0) * 15 / 1e6 : (t.usage?.input_tokens || 0) * 3 / 1e6;
-  const costOut = tierBase(t.tier) === "L4" ? (t.usage?.output_tokens || 0) * 75 / 1e6 : (t.usage?.output_tokens || 0) * 15 / 1e6;
+  // Per-million-token prices (Opus 4.5 = $5/$25, Sonnet 4.5 = $3/$15)
+  const isL4 = tierBase(t.tier) === "L4";
+  const priceIn = isL4 ? 5 : 3;
+  const priceOut = isL4 ? 25 : 15;
+  const priceCacheRead = isL4 ? 0.50 : 0.30;   // 0.1x base input
+  const priceCacheWrite = isL4 ? 6.25 : 3.75;   // 1.25x base input
+
+  const inputTokens = t.usage?.input_tokens || 0;
+  const outputTokens = t.usage?.output_tokens || 0;
+  const cacheRead = t.usage?.cache_read || 0;
+  const cacheCreation = t.usage?.cache_creation || 0;
+
+  const costIn = inputTokens * priceIn / 1e6;
+  const costOut = outputTokens * priceOut / 1e6;
+  const costCacheRead = cacheRead * priceCacheRead / 1e6;
+  const costCacheWrite = cacheCreation * priceCacheWrite / 1e6;
+  const costTotal = costIn + costOut + costCacheRead + costCacheWrite;
+
+  // Cumulative cost across all turns
+  let cumCost = 0;
+  for (let i = 0; i <= turnIdx; i++) {
+    const ti = golden.turns[i];
+    const l4 = tierBase(ti.tier) === "L4";
+    cumCost += (ti.usage?.input_tokens || 0) * (l4 ? 5 : 3) / 1e6;
+    cumCost += (ti.usage?.output_tokens || 0) * (l4 ? 25 : 15) / 1e6;
+    cumCost += (ti.usage?.cache_read || 0) * (l4 ? 0.50 : 0.30) / 1e6;
+    cumCost += (ti.usage?.cache_creation || 0) * (l4 ? 6.25 : 3.75) / 1e6;
+  }
+
+  // Cache efficiency: what % of total input is served from cache
+  const totalInputTokens = inputTokens + cacheRead + cacheCreation;
+  const cachePct = totalInputTokens > 0 ? Math.round(cacheRead / totalInputTokens * 100) : 0;
 
   const ts = tierStyle(t.tier);
 
@@ -216,10 +247,17 @@ function MetricsPanel({ golden, turnIdx }) {
       </div>
       <div style={msec}>
         <div style={mhdr}>Tokens</div>
-        <div style={mrow}><span style={{ color: "#4e5468" }}>Input</span><span style={monoSm}>{(t.usage?.input_tokens || 0).toLocaleString()}</span></div>
-        <div style={mrow}><span style={{ color: "#4e5468" }}>Output</span><span style={monoSm}>{(t.usage?.output_tokens || 0).toLocaleString()}</span></div>
-        {t.usage?.cache_read > 0 && <div style={mrow}><span style={{ color: "#4e5468" }}>Cache</span><span style={{ ...monoSm, color: "#4ade80" }}>{t.usage.cache_read.toLocaleString()} ({Math.round(t.usage.cache_read / t.usage.input_tokens * 100)}%)</span></div>}
-        <div style={mrow}><span style={{ color: "#4e5468" }}>Est. cost</span><span style={{ ...monoSm, color: (costIn + costOut) < 0.01 ? "#4ade80" : "#94a3b8" }}>${(costIn + costOut).toFixed(4)}</span></div>
+        <div style={mrow}><span style={{ color: "#4e5468" }}>Fresh input</span><span style={monoSm}>{inputTokens.toLocaleString()}</span></div>
+        <div style={mrow}><span style={{ color: "#4e5468" }}>Output</span><span style={monoSm}>{outputTokens.toLocaleString()}</span></div>
+        {cacheRead > 0 && <div style={mrow}><span style={{ color: "#4e5468" }}>Cache read</span><span style={{ ...monoSm, color: "#4ade80" }}>{cacheRead.toLocaleString()} ({cachePct}%)</span></div>}
+        {cacheCreation > 0 && <div style={mrow}><span style={{ color: "#4e5468" }}>Cache write</span><span style={{ ...monoSm, color: "#fbbf24" }}>{cacheCreation.toLocaleString()}</span></div>}
+        <div style={mrow}><span style={{ color: "#4e5468" }}>Total input</span><span style={{ ...monoSm, color: "#64748b" }}>{totalInputTokens.toLocaleString()}</span></div>
+      </div>
+      <div style={msec}>
+        <div style={mhdr}>Cost</div>
+        <div style={mrow}><span style={{ color: "#4e5468" }}>This turn</span><span style={{ ...monoSm, color: costTotal < 0.01 ? "#4ade80" : costTotal < 0.05 ? "#94a3b8" : "#fbbf24" }}>${costTotal.toFixed(4)}</span></div>
+        <div style={mrow}><span style={{ color: "#4e5468" }}>Cumulative</span><span style={{ ...monoSm, color: "#94a3b8" }}>${cumCost.toFixed(4)}</span></div>
+        <div style={mrow}><span style={{ color: "#4e5468" }}>Model</span><span style={{ ...monoSm, color: "#4e5468" }}>{isL4 ? "$5/$25" : "$3/$15"}/MTok</span></div>
       </div>
       <div style={msec}>
         <div style={mhdr}>Tool Calls</div>
@@ -241,8 +279,10 @@ function MetricsPanel({ golden, turnIdx }) {
       <div style={msec}>
         <div style={mhdr}>Cumulative (1–{turnIdx + 1})</div>
         <div style={mrow}><span style={{ color: "#4e5468" }}>Tools</span><span style={monoSm}>{totalTools}</span></div>
-        <div style={mrow}><span style={{ color: "#4e5468" }}>Tokens in</span><span style={monoSm}>{totalIn.toLocaleString()}</span></div>
-        <div style={mrow}><span style={{ color: "#4e5468" }}>Tokens out</span><span style={monoSm}>{totalOut.toLocaleString()}</span></div>
+        <div style={mrow}><span style={{ color: "#4e5468" }}>Fresh input</span><span style={monoSm}>{totalIn.toLocaleString()}</span></div>
+        <div style={mrow}><span style={{ color: "#4e5468" }}>Cache reads</span><span style={{ ...monoSm, color: "#4ade80" }}>{totalCacheRead.toLocaleString()}</span></div>
+        <div style={mrow}><span style={{ color: "#4e5468" }}>Output</span><span style={monoSm}>{totalOut.toLocaleString()}</span></div>
+        <div style={mrow}><span style={{ color: "#4e5468" }}>Total cost</span><span style={{ ...monoSm, color: "#94a3b8" }}>${cumCost.toFixed(4)}</span></div>
       </div>
     </>
   );

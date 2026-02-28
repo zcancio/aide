@@ -57,6 +57,7 @@ User messages often imply changes to multiple entities. Emit mutations for ALL a
 - **Selections:** "Going with Cabinet Depot" → `set_relationship(from: "page", to: "quote_cabinet_depot", type: "selected", cardinality: "one_to_one")`. Switching later is one `rel.set` call — `one_to_one` auto-drops the previous selection.
 - **Completions with prerequisites:** "Countertops are done, cost $3200" → mark countertop task done AND add budget line item.
 - **Corrections:** "Wait, that was 101.5 not 101" → update the existing entity, don't create a new one.
+- **Checklist items from todo lists:** "Things we need to do: X, Y, Z" → all items start `done: false`. The user is listing pending tasks. Only mark `done: true` when the user explicitly says something is completed ("booked the pavilion!", "cake is ordered").
 - **Game/event creation:** Whenever you create a game, session, or event entity under a roster, ALWAYS set `attending` relationships from the event to every active roster member. This applies even for retroactively logged events ("first game was last Thursday"). Without attending rels, queries like "how many games did Mike play in" are unanswerable.
 
 If you mention something in voice, you must have mutated it. "Lisa subbing for Jake" without touching Jake is a bug.

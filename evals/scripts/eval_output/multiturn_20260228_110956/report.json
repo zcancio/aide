@@ -1,0 +1,12 @@
+{
+  "run_dir": "eval_output/multiturn_20260228_110956",
+  "timestamp": "2026-02-28T11:10:05.008318",
+  "scenarios_run": 1,
+  "results": [
+    {
+      "scenario_id": "graduation_realistic",
+      "name": "graduation_realistic",
+      "error": "name 'system' is not defined"
+    }
+  ]
+}

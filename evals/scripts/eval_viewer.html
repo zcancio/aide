@@ -57,6 +57,18 @@ body{font-family:var(--font-sans);background:var(--bg-deep);color:var(--text-pri
 .prompt-content .prompt-section{color:var(--accent-blue);font-weight:600;margin-top:16px}
 .prompt-content .prompt-snapshot{color:var(--accent-amber);opacity:.7;font-size:10px}
 
+/* ── Cost Table ────────────────────────────── */
+.cost-wrap{padding:20px}
+.cost-table{width:100%;border-collapse:collapse;font-size:11px;font-family:var(--font-mono)}
+.cost-table th{text-align:left;padding:6px 10px;font-size:9px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted);border-bottom:2px solid var(--border);position:sticky;top:0;background:var(--bg-panel)}
+.cost-table th.r,.cost-table td.r{text-align:right}
+.cost-table td{padding:5px 10px;border-bottom:1px solid var(--border);color:var(--text-secondary)}
+.cost-table tr.current td{background:rgba(96,165,250,.08)}
+.cost-table tr.total td{border-top:2px solid var(--border);font-weight:600;color:var(--text-primary)}
+.cost-table .tier-pip{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+.cost-table .tier-pip.L4{background:#312e81}
+.cost-table .tier-pip.L3{background:#0c3547}
+
 /* Right: Metrics */
 .panel-right{width:260;min-width:220px;border-left:1px solid var(--border);display:flex;flex-direction:column;background:var(--bg-panel);overflow-y:auto}
 .panel-right::-webkit-scrollbar{width:3px}
@@ -219,6 +231,7 @@ body{font-family:var(--font-sans);background:var(--bg-deep);color:var(--text-pri
       <div class="vtab" data-view="diff">Before / After</div>
       <div class="vtab" data-view="tree">Entity Tree</div>
       <div class="vtab" data-view="prompt">Prompt</div>
+      <div class="vtab" data-view="cost">Cost</div>
     </div>
     <div class="view-content">
       <div class="view-pane active" id="v-rendered">
@@ -232,6 +245,7 @@ body{font-family:var(--font-sans);background:var(--bg-deep);color:var(--text-pri
       <div class="view-pane" id="v-diff"></div>
       <div class="view-pane" id="v-tree"></div>
       <div class="view-pane" id="v-prompt"></div>
+      <div class="view-pane" id="v-cost"></div>
     </div>
   </div>
 
@@ -252,7 +266,7 @@ body{font-family:var(--font-sans);background:var(--bg-deep);color:var(--text-pri
     <button class="cbtn pp off" id="cPlay">▶</button>
     <button class="cbtn" id="cNext">▸</button>
     <button class="cbtn" id="cEnd">⏭</button>
-    <span class="hint">←→ step · Space play · 1-5 views</span>
+    <span class="hint">←→ step · Space play · 1-6 views</span>
   </div>
   <div class="ptrack" id="ptrack"><div class="pfill" id="pfill"></div></div>
 </div>
@@ -578,6 +592,111 @@ function renderPrompt(t) {
   return html;
 }
 
+// ── View: Cost Summary ─────────────────────
+function renderCost(golden, currentTurn) {
+  if (!golden) return "";
+
+  const RATES = {
+    L4: { in: 5, out: 25, cache_read: 0.5, cache_write: 6.25 },
+    L3: { in: 3, out: 15, cache_read: 0.3, cache_write: 3.75 },
+  };
+
+  let totalIn = 0, totalOut = 0, totalCache = 0, totalCost = 0;
+  let l4Turns = 0, l3Turns = 0, l4Cost = 0, l3Cost = 0;
+
+  let rows = "";
+  golden.turns.forEach((t, i) => {
+    const base = tierBase(t.tier);
+    const r = RATES[base] || RATES.L3;
+    const tokIn = t.usage?.input_tokens || 0;
+    const tokOut = t.usage?.output_tokens || 0;
+    const tokCacheRead = t.usage?.cache_read || 0;
+    const tokCacheWrite = t.usage?.cache_creation || 0;
+    // input_tokens = fresh tokens AFTER cache breakpoint (already excludes cached)
+    // cache_read = tokens served from cache (charged at 0.1x)
+    // cache_creation = tokens written to cache (charged at 1.25x)
+    const costIn = tokIn * r.in / 1e6;
+    const costCacheRead = tokCacheRead * r.cache_read / 1e6;
+    const costCacheWrite = tokCacheWrite * r.cache_write / 1e6;
+    const costOut = tokOut * r.out / 1e6;
+    const cost = costIn + costCacheRead + costCacheWrite + costOut;
+    const tokTotal = tokIn + tokCacheRead + tokCacheWrite;
+    const cachePct = tokTotal > 0 ? Math.round(tokCacheRead / tokTotal * 100) : 0;
+
+    totalIn += tokIn; totalOut += tokOut; totalCache += tokCacheRead; totalCost += cost;
+    if (base === "L4") { l4Turns++; l4Cost += cost; } else { l3Turns++; l3Cost += cost; }
+
+    const cls = i === currentTurn ? " current" : "";
+    rows += `<tr class="${cls}" style="cursor:pointer" onclick="go(${i})">
+      <td>${i + 1}</td>
+      <td><span class="tier-pip ${base}"></span>${t.tier}</td>
+      <td>${MODELS[base]?.split("-").slice(1, 3).join("-") || "?"}</td>
+      <td class="r">${tokIn.toLocaleString()}</td>
+      <td class="r">${tokOut.toLocaleString()}</td>
+      <td class="r">${tokCacheRead > 0 ? `${tokCacheRead.toLocaleString()} (${cachePct}%)` : "—"}</td>
+      <td class="r">${t.ttfc_ms || "—"}</td>
+      <td class="r">${t.ttc_ms || "—"}</td>
+      <td class="r" style="color:${cost < 0.01 ? "var(--accent-green)" : cost < 0.05 ? "var(--text-secondary)" : "var(--accent-amber)"}">$${cost.toFixed(4)}</td>
+    </tr>`;
+  });
+
+  // Total row
+  rows += `<tr class="total">
+    <td colspan="3">${golden.turns.length} turns (${l4Turns} L4, ${l3Turns} L3)</td>
+    <td class="r">${totalIn.toLocaleString()}</td>
+    <td class="r">${totalOut.toLocaleString()}</td>
+    <td class="r">${totalCache > 0 ? totalCache.toLocaleString() : "—"}</td>
+    <td class="r" colspan="2"></td>
+    <td class="r">$${totalCost.toFixed(4)}</td>
+  </tr>`;
+
+  let h = `<div class="cost-wrap">`;
+  h += `<table class="cost-table">
+    <thead><tr>
+      <th>#</th><th>Tier</th><th>Model</th>
+      <th class="r">Fresh In</th><th class="r">Out</th><th class="r">Cache Read</th>
+      <th class="r">TTFC</th><th class="r">TTC</th><th class="r">Cost</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+
+  // Breakdown cards
+  h += `<div style="display:flex;gap:16px;margin-top:20px">`;
+  h += `<div style="flex:1;padding:12px;border-radius:6px;background:var(--bg-surface);border:1px solid var(--border)">
+    <div style="font-size:9px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px">L4 (Opus)</div>
+    <div style="font-size:20px;font-weight:600;color:#c4b5fd">$${l4Cost.toFixed(4)}</div>
+    <div style="font-size:10px;color:var(--text-muted);margin-top:2px">${l4Turns} turns · ${Math.round(l4Cost/totalCost*100)||0}% of total</div>
+  </div>`;
+  h += `<div style="flex:1;padding:12px;border-radius:6px;background:var(--bg-surface);border:1px solid var(--border)">
+    <div style="font-size:9px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px">L3 (Sonnet)</div>
+    <div style="font-size:20px;font-weight:600;color:#7dd3fc">$${l3Cost.toFixed(4)}</div>
+    <div style="font-size:10px;color:var(--text-muted);margin-top:2px">${l3Turns} turns · ${Math.round(l3Cost/totalCost*100)||0}% of total</div>
+  </div>`;
+  h += `<div style="flex:1;padding:12px;border-radius:6px;background:var(--bg-surface);border:1px solid var(--border)">
+    <div style="font-size:9px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px">Total</div>
+    <div style="font-size:20px;font-weight:600;color:var(--text-primary)">$${totalCost.toFixed(4)}</div>
+    <div style="font-size:10px;color:var(--text-muted);margin-top:2px">${totalIn.toLocaleString()} fresh + ${totalCache.toLocaleString()} cached · ${totalOut.toLocaleString()} out</div>
+  </div>`;
+  // Cache savings: what would it cost if all cache_read tokens were charged at full input price?
+  const noCacheCost = golden.turns.reduce((sum, t) => {
+    const base = tierBase(t.tier);
+    const r = RATES[base] || RATES.L3;
+    const allIn = (t.usage?.input_tokens||0) + (t.usage?.cache_read||0) + (t.usage?.cache_creation||0);
+    return sum + allIn * r.in / 1e6 + (t.usage?.output_tokens||0) * r.out / 1e6;
+  }, 0);
+  const saved = noCacheCost - totalCost;
+  const savedPct = noCacheCost > 0 ? Math.round(saved / noCacheCost * 100) : 0;
+  h += `<div style="flex:1;padding:12px;border-radius:6px;background:var(--bg-surface);border:1px solid var(--border)">
+    <div style="font-size:9px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px">Cache Savings</div>
+    <div style="font-size:20px;font-weight:600;color:var(--accent-green)">-$${saved.toFixed(4)}</div>
+    <div style="font-size:10px;color:var(--text-muted);margin-top:2px">${savedPct}% saved vs no cache ($${noCacheCost.toFixed(4)})</div>
+  </div>`;
+  h += `</div>`;
+
+  h += `</div>`;
+  return h;
+}
+
 // ── Right Panel: Metrics ───────────────────
 function renderMetrics(g, ti) {
   const t = g.turns[ti];
@@ -620,19 +739,34 @@ function renderMetrics(g, ti) {
   h += `</div>`;
 
   // Tokens
+  const tokIn = t.usage?.input_tokens || 0;
+  const tokOut = t.usage?.output_tokens || 0;
+  const tokCR = t.usage?.cache_read || 0;
+  const tokCW = t.usage?.cache_creation || 0;
+  const tokTotalIn = tokIn + tokCR + tokCW;
+  const cPct = tokTotalIn > 0 ? Math.round(tokCR / tokTotalIn * 100) : 0;
+
   h += `<div class="metrics-section">`;
   h += `<div class="mheader">Tokens (this turn)</div>`;
-  h += `<div class="mrow"><span class="mk">Input</span><span class="mv">${t.usage?.input_tokens?.toLocaleString() || "—"}</span></div>`;
-  h += `<div class="mrow"><span class="mk">Output</span><span class="mv">${t.usage?.output_tokens?.toLocaleString() || "—"}</span></div>`;
-  if (t.usage?.cache_read > 0) {
-    const pct = Math.round((t.usage.cache_read / t.usage.input_tokens) * 100);
-    h += `<div class="mrow"><span class="mk">Cache hit</span><span class="mv good">${t.usage.cache_read.toLocaleString()} (${pct}%)</span></div>`;
+  h += `<div class="mrow"><span class="mk">Fresh input</span><span class="mv">${tokIn.toLocaleString()}</span></div>`;
+  h += `<div class="mrow"><span class="mk">Output</span><span class="mv">${tokOut.toLocaleString()}</span></div>`;
+  if (tokCR > 0) {
+    h += `<div class="mrow"><span class="mk">Cache read</span><span class="mv good">${tokCR.toLocaleString()} (${cPct}%)</span></div>`;
   }
-  // Cost estimate
-  const costIn = tierBase(t.tier) === "L4" ? (t.usage?.input_tokens||0)*15/1e6 : (t.usage?.input_tokens||0)*3/1e6;
-  const costOut = tierBase(t.tier) === "L4" ? (t.usage?.output_tokens||0)*75/1e6 : (t.usage?.output_tokens||0)*15/1e6;
-  const costCls = (costIn+costOut) < 0.01 ? "good" : (costIn+costOut) < 0.05 ? "" : "warn";
-  h += `<div class="mrow"><span class="mk">Est. cost</span><span class="mv ${costCls}">$${(costIn+costOut).toFixed(4)}</span></div>`;
+  if (tokCW > 0) {
+    h += `<div class="mrow"><span class="mk">Cache write</span><span class="mv warn">${tokCW.toLocaleString()}</span></div>`;
+  }
+  h += `<div class="mrow"><span class="mk">Total input</span><span class="mv">${tokTotalIn.toLocaleString()}</span></div>`;
+
+  // Cost (Opus 4.5: $5/$25, Sonnet 4.5: $3/$15, cache read 0.1x, cache write 1.25x)
+  const isL4 = tierBase(t.tier) === "L4";
+  const turnCostIn = tokIn * (isL4 ? 5 : 3) / 1e6;
+  const turnCostCR = tokCR * (isL4 ? 0.5 : 0.3) / 1e6;
+  const turnCostCW = tokCW * (isL4 ? 6.25 : 3.75) / 1e6;
+  const turnCostOut = tokOut * (isL4 ? 25 : 15) / 1e6;
+  const turnCost = turnCostIn + turnCostCR + turnCostCW + turnCostOut;
+  const costCls = turnCost < 0.01 ? "good" : turnCost < 0.05 ? "" : "warn";
+  h += `<div class="mrow"><span class="mk">Est. cost</span><span class="mv ${costCls}">$${turnCost.toFixed(4)}</span></div>`;
   h += `</div>`;
 
   // Tool Calls
@@ -728,6 +862,9 @@ function update() {
   // Prompt
   $("v-prompt").innerHTML = renderPrompt(t);
 
+  // Cost
+  $("v-cost").innerHTML = renderCost(G, cur);
+
   // Metrics
   $("metrics").innerHTML = renderMetrics(G, cur);
 
@@ -815,6 +952,7 @@ document.addEventListener("keydown",e=>{
   else if(e.key==="3")switchView("diff");
   else if(e.key==="4")switchView("tree");
   else if(e.key==="5")switchView("prompt");
+  else if(e.key==="6")switchView("cost");
 });
 
 document.addEventListener("dragenter",e=>{e.preventDefault();$("drop").classList.add("show");});

@@ -1,0 +1,17 @@
+{
+  "run_dir": "eval_output/multiturn_20260228_095946",
+  "timestamp": "2026-02-28T10:00:52.428985",
+  "scenarios_run": 1,
+  "results": [
+    {
+      "scenario_id": "graduation_realistic",
+      "name": "Graduation Realistic",
+      "turns": 12,
+      "total_tool_calls": 35,
+      "total_text_blocks": 13,
+      "total_issues": 0,
+      "all_passed": true,
+      "entity_count": 21
+    }
+  ]
+}

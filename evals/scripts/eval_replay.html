@@ -113,7 +113,7 @@ body { background:var(--bg); color:var(--text); font-family:'DM Sans',system-ui,
     <div class="chat-scroll" id="chatScroll"></div>
     <div class="timer-bar">
       <span id="timerLabel">—</span>
-      <span>TTFC: <span class="timer-val" id="ttfcVal">—</span> · TTC: <span class="timer-val" id="ttcVal">—</span></span>
+      <span>TTFC: <span class="timer-val" id="ttfcVal">—</span> · TTC: <span class="timer-val" id="ttcVal">—</span> · <span class="timer-val" id="costVal">—</span></span>
     </div>
   </div>
   <div class="preview-panel">
@@ -345,6 +345,7 @@ async function playTurn(idx) {
   $("timerLabel").textContent = `Turn ${idx+1} · ${turn.tier}`;
   $("ttfcVal").textContent = "…";
   $("ttcVal").textContent = "…";
+  $("costVal").textContent = "…";
 
   // 1. User message appears
   addUserMsg(turn.message);
@@ -465,6 +466,7 @@ async function playTurn(idx) {
   previewInitialized = false; // reset for next turn
   $("statusDot").style.background = "var(--accent-green)";
   $("ttcVal").textContent = `${ttc}ms`;
+  $("costVal").textContent = costLabel(idx);
 
   await delay(500);
 }
@@ -500,6 +502,33 @@ function togglePlay() {
   }
 }
 
+function calcTurnCost(turn) {
+  const u = turn.usage || {};
+  const tier = (turn.tier || "").split("->")[0];
+  const isL4 = tier === "L4";
+  const pIn = isL4 ? 5 : 3;
+  const pOut = isL4 ? 25 : 15;
+  const pCR = isL4 ? 0.50 : 0.30;
+  const pCW = isL4 ? 6.25 : 3.75;
+  return (u.input_tokens||0)*pIn/1e6 + (u.output_tokens||0)*pOut/1e6
+       + (u.cache_read||0)*pCR/1e6 + (u.cache_creation||0)*pCW/1e6;
+}
+
+function costLabel(idx) {
+  const t = golden.turns[idx];
+  const u = t.usage || {};
+  const turnCost = calcTurnCost(t);
+  let cumCost = 0;
+  for (let i = 0; i <= idx; i++) cumCost += calcTurnCost(golden.turns[i]);
+  const cr = u.cache_read || 0;
+  const totalIn = (u.input_tokens||0) + cr + (u.cache_creation||0);
+  const cachePct = totalIn > 0 ? Math.round(cr / totalIn * 100) : 0;
+  let s = `$${turnCost.toFixed(4)}`;
+  if (cr > 0) s += ` (${cachePct}% cached)`;
+  s += ` · Σ$${cumCost.toFixed(4)}`;
+  return s;
+}
+
 function jumpToTurn(idx) {
   stopPlay();
   // Rebuild up to this turn
@@ -516,6 +545,7 @@ function jumpToTurn(idx) {
   $("timerLabel").textContent = `Turn ${idx+1} · ${golden.turns[idx].tier}`;
   $("ttfcVal").textContent = `${golden.turns[idx].ttfc_ms}ms`;
   $("ttcVal").textContent = `${golden.turns[idx].ttc_ms}ms`;
+  $("costVal").textContent = costLabel(idx);
 }
 
 // ── Progress ──

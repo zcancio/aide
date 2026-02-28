@@ -1,0 +1,12 @@
+{
+  "run_dir": "eval_output/multiturn_20260228_095226",
+  "timestamp": "2026-02-28T09:52:26.831550",
+  "scenarios_run": 1,
+  "results": [
+    {
+      "scenario_id": "graduation_realistic",
+      "name": "graduation_realistic",
+      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CYatkXuhiShW3xtEeCcK2'}"
+    }
+  ]
+}

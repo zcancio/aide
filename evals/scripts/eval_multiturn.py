@@ -107,6 +107,7 @@ TOOLS = [
             },
             "required": ["text"],
         },
+        "cache_control": {"type": "ephemeral"},
     },
 ]
 
@@ -155,8 +156,10 @@ def load_prompt(tier: str) -> str:
 
 
 def build_system_prompt(tier: str, snapshot: dict[str, Any]) -> str:
-    """Build system prompt with snapshot context."""
+    """Build system prompt with snapshot context (single string, for warming)."""
     base = load_prompt(tier)
+    today = datetime.now().strftime("%Y-%m-%d")
+    base = base.replace("{{current_date}}", today)
     snapshot_json = json.dumps(snapshot, indent=2, sort_keys=True)
     return f"""{base}
 
@@ -165,6 +168,35 @@ def build_system_prompt(tier: str, snapshot: dict[str, Any]) -> str:
 {snapshot_json}
 ```
 """
+
+
+def build_system_blocks(tier: str, snapshot: dict[str, Any]) -> list[dict]:
+    """Build system prompt as separate blocks for caching.
+    
+    Returns list of content blocks:
+    - Block 1: Static tier instructions (cached, survives across turns)
+    - Block 2: Dynamic snapshot (not cached, changes every turn)
+    
+    Cache minimum thresholds:
+    - Opus 4.5 (L4): 4096 tokens — L4 prompt v3.1 clears this (~4400 tokens)
+    - Sonnet 4.5 (L3): 1024 tokens — easily cleared (~3400 tokens)
+    """
+    base = load_prompt(tier)
+    today = datetime.now().strftime("%Y-%m-%d")
+    base = base.replace("{{current_date}}", today)
+    snapshot_json = json.dumps(snapshot, indent=2, sort_keys=True)
+
+    return [
+        {
+            "type": "text",
+            "text": base,
+            "cache_control": {"type": "ephemeral"},
+        },
+        {
+            "type": "text",
+            "text": f"\n## Current Snapshot\n```json\n{snapshot_json}\n```\n",
+        },
+    ]
 
 
 # ── Reducer (minimal, for eval snapshot tracking) ────────────────────────────
@@ -264,12 +296,26 @@ def run_turn(
         ttfc_ms: time to first content
         ttc_ms: total time
     """
-    system = build_system_prompt(tier, snapshot)
+    system_blocks = build_system_blocks(tier, snapshot)
     model = MODELS[tier]
     temperature = TEMPERATURE[tier]
 
-    # Build messages
-    msgs = list(messages)
+    # Build messages — window conversation to last N exchanges.
+    # The entity graph IS the memory. Conversation tail is just for
+    # context continuity. Full history grows linearly at full input
+    # price (not cached). Architecture spec: "3-5 recent messages max."
+    #
+    # Message structure per turn: user → assistant (tool_use) → user (tool_results)
+    # Window must start on a "user" role to maintain valid alternation.
+    MAX_HISTORY_MESSAGES = 9  # ~3 full exchanges (user + assistant + tool_result each)
+    if len(messages) > MAX_HISTORY_MESSAGES:
+        windowed = messages[-MAX_HISTORY_MESSAGES:]
+        # Ensure we start on a user message
+        while windowed and windowed[0]["role"] != "user":
+            windowed = windowed[1:]
+        msgs = list(windowed)
+    else:
+        msgs = list(messages)
     msgs.append({"role": "user", "content": user_message})
 
     start = time.time()
@@ -282,7 +328,7 @@ def run_turn(
         model=model,
         max_tokens=8192,
         temperature=temperature,
-        system=system,
+        system=system_blocks,
         messages=msgs,
         tools=TOOLS,
     ) as stream:
@@ -395,7 +441,7 @@ def run_turn(
             model=model,
             max_tokens=256,
             temperature=temperature,
-            system=system,
+            system=system_blocks,
             messages=cont_msgs,
             tools=TOOLS,
             tool_choice={"type": "tool", "name": "voice"},
@@ -467,11 +513,12 @@ def run_turn(
         "text_blocks": text_blocks,
         "all_raw_tools": all_raw_tools,
         "snapshot": snapshot,
-        "system_prompt": system,
+        "system_prompt": "".join(b["text"] for b in system_blocks),
         "usage": {
             "input_tokens": msg.usage.input_tokens,
             "output_tokens": msg.usage.output_tokens,
             "cache_read": getattr(msg.usage, "cache_read_input_tokens", 0),
+            "cache_creation": getattr(msg.usage, "cache_creation_input_tokens", 0),
         },
         "ttfc_ms": ttfc_ms,
         "ttc_ms": ttc_ms,
@@ -715,10 +762,19 @@ def validate_turn(turn_spec: dict, result: dict, snapshot: dict) -> dict[str, An
 
     for key in ["has_date", "has_venue", "has_store_note", "compact",
                 "assigns_all", "assigns_jamie", "unassigns_chore",
-                "tasks_unchecked", "unassigned_items", "marks_prereq_done",
+                "unassigned_items", "marks_prereq_done",
                 "budget_ceiling_intact", "captures_note"]:
         if checks.get(key):
             pass  # These are intent checks — hard to validate automatically
+
+    # ── tasks_unchecked: all created checklist items should have done=false ──
+    if checks.get("tasks_unchecked"):
+        creates = [t for t in tc if t["name"] == "mutate_entity"
+                   and t["input"].get("action") == "create"]
+        bad = [t["input"].get("id", "?") for t in creates
+               if t["input"].get("props", {}).get("done") is True]
+        if bad:
+            issues.append(f"Tasks created as done=true (should be false): {bad}")
 
     # ── Voice quality (always checked) ──
 
@@ -767,6 +823,32 @@ def run_scenario(scenario: dict, run_dir: Path, max_turn: int | None = None) -> 
     snapshot = empty_snapshot()
     messages: list[dict] = []
     turn_results = []
+    turns = scenario["turns"]
+
+    # ── Cache warming ──
+    # Fire minimal requests to warm Anthropic's prompt cache for each tier.
+    # The system prompt + tools are marked ephemeral (cache_control).
+    # Without this, turn 1 always pays the full cache-creation cost.
+    warmed_tiers = set()
+    for turn_spec in turns:
+        warmed_tiers.add(turn_spec["expected_tier"])
+    if warmed_tiers:
+        print(f"  🔥 Warming cache for: {', '.join(sorted(warmed_tiers))}")
+        for tier in sorted(warmed_tiers):
+            try:
+                warm_start = time.time()
+                warm_system = build_system_blocks(tier, snapshot)
+                client.messages.create(
+                    model=MODELS[tier],
+                    max_tokens=1,
+                    system=warm_system,
+                    messages=[{"role": "user", "content": "ping"}],
+                    tools=TOOLS,
+                )
+                warm_ms = int((time.time() - warm_start) * 1000)
+                print(f"    {tier} warmed in {warm_ms}ms")
+            except Exception as e:
+                print(f"    {tier} warm failed: {e}")
 
     for turn_index, turn_spec in enumerate(scenario["turns"]):
         turn_num = turn_index + 1
@@ -832,6 +914,7 @@ def run_scenario(scenario: dict, run_dir: Path, max_turn: int | None = None) -> 
                     "input_tokens": l4_result["usage"]["input_tokens"] + l3_result["usage"]["input_tokens"],
                     "output_tokens": l4_result["usage"]["output_tokens"] + l3_result["usage"]["output_tokens"],
                     "cache_read": l4_result["usage"]["cache_read"] + l3_result["usage"]["cache_read"],
+                    "cache_creation": l4_result["usage"].get("cache_creation", 0) + l3_result["usage"].get("cache_creation", 0),
                 }
                 # Timing: TTFC from L4 pass 1, TTC spans both
                 result["ttfc_ms"] = l4_result["ttfc_ms"]
@@ -886,9 +969,16 @@ def run_scenario(scenario: dict, run_dir: Path, max_turn: int | None = None) -> 
         print(f"    Text: {len(result['text_blocks'])} blocks")
         print(f"    TTFC: {result['ttfc_ms']}ms  TTC: {result['ttc_ms']}ms")
         print(f"    Tokens: {result['usage']['input_tokens']:,} in / {result['usage']['output_tokens']:,} out", end="")
-        if result["usage"]["cache_read"]:
-            pct = round(result["usage"]["cache_read"] / result["usage"]["input_tokens"] * 100)
-            print(f"  (cache: {pct}%)")
+        cache_read = result["usage"].get("cache_read", 0)
+        cache_create = result["usage"].get("cache_creation", 0)
+        if cache_read or cache_create:
+            parts = []
+            if cache_read:
+                pct = round(cache_read / result["usage"]["input_tokens"] * 100)
+                parts.append(f"read {cache_read:,} ({pct}%)")
+            if cache_create:
+                parts.append(f"created {cache_create:,}")
+            print(f"  cache: {', '.join(parts)}")
         else:
             print()
         if result["text_blocks"]:
