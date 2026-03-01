@@ -1,0 +1,67 @@
+<nav class="aide-nav">
+    <button class="aide-nav__back" onclick="history.replaceState({}, '', '/'); location.reload();">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/>
+      </svg>
+      Back
+    </button>
+    <div class="aide-nav__title">Poker League</div>
+    <button class="aide-nav__share" onclick="navigator.clipboard.writeText(window.location.href).then(() => alert('Link copied'))">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+        <polyline points="16 6 12 2 8 6"/>
+        <line x1="12" y1="2" x2="12" y2="15"/>
+      </svg>
+      Share
+    </button>
+  </nav><div class="aide-pill-container" id="sticky-pill" style="display:none;"><div class="aide-pill"></div></div><div class="aide-page aide-page-with-nav">
+    <h1 class="aide-heading aide-heading--1 editable-field" data-entity-id="page-1" data-field="title">Poker League</h1>
+    <div class="aide-section">
+    <div class="aide-section__title editable-field" data-entity-id="section-1" data-field="title">Players</div>
+    <div class="aide-section__content"><div class="aide-card">
+    <div class="aide-card__title editable-field" data-entity-id="player-1" data-field="name">Alice</div>
+    
+    <div class="aide-card__field">
+      <span class="aide-card__label">Chips</span>
+      <span class="editable-field" data-entity-id="player-1" data-field="chips">1500</span>
+    </div>
+  
+    <div class="aide-card__field">
+      <span class="aide-card__label">Wins</span>
+      <span class="editable-field" data-entity-id="player-1" data-field="wins">3</span>
+    </div>
+  
+    
+  </div><div class="aide-card">
+    <div class="aide-card__title editable-field" data-entity-id="player-2" data-field="name">Bob</div>
+    
+    <div class="aide-card__field">
+      <span class="aide-card__label">Chips</span>
+      <span class="editable-field" data-entity-id="player-2" data-field="chips">1200</span>
+    </div>
+  
+    <div class="aide-card__field">
+      <span class="aide-card__label">Wins</span>
+      <span class="editable-field" data-entity-id="player-2" data-field="wins">2</span>
+    </div>
+  
+    
+  </div></div>
+  </div><div class="aide-section">
+    <div class="aide-section__title editable-field" data-entity-id="metrics-section" data-field="title">Stats</div>
+    <div class="aide-section__content"><div class="aide-metric">
+    <span class="aide-metric__label">Total Pot</span>
+    <span class="aide-metric__value editable-field" data-entity-id="metric-1" data-field="value">2700</span>
+  </div></div>
+  </div><div class="aide-checklist-container">
+    <h3 class="aide-heading aide-heading--3 editable-field" data-entity-id="checklist-1" data-field="title">Tasks</h3>
+    <ul class="aide-checklist"><li class="aide-checklist__item">
+      <input type="checkbox" class="aide-checklist__checkbox" checked data-entity-id="task-1" data-field="done" data-type="boolean">
+      <span class="aide-checklist__label aide-checklist__label--done editable-field" data-entity-id="task-1" data-field="task">Setup table</span>
+    </li><li class="aide-checklist__item">
+      <input type="checkbox" class="aide-checklist__checkbox"  data-entity-id="task-2" data-field="done" data-type="boolean">
+      <span class="aide-checklist__label  editable-field" data-entity-id="task-2" data-field="task">Deal cards</span>
+    </li></ul>
+    <div class="aide-checklist__summary">1 of 2 complete</div>
+  </div>
+  </div>

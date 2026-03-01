@@ -1,0 +1,20 @@
+Poker League
+════════════
+
+Players
+───────
+  Alice
+	Chips: 1500
+	Wins: 3
+  Bob
+	Chips: 1200
+	Wins: 2
+
+Stats
+─────
+  Total Pot: 2700
+
+Tasks
+─────
+✓ Setup table
+○ Deal cards

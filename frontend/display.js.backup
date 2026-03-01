@@ -1,21 +1,9 @@
 /**
- * display.js — Universal Renderer for AIde (Browser-compatible standalone bundle)
- *
- * This is a standalone UMD file for browser usage. For Node development,
- * see display/ directory which contains the modular structure:
- * - display/tokens.css + tokens.js — CSS design tokens
- * - display/helpers.js — Utility functions
- * - display/render-html.js — HTML rendering
- * - display/render-text.js — CLI text rendering
- * - display/render-document.js — Document publishing
- * - display/index.js — Node re-export
- *
- * Both produce byte-identical output (verified via tests in display/__tests__/).
- *
- * Usage:
- * - Browser: <script src="/static/display.js"> → window.display.renderHtml(store)
- * - Node: require('./display.js') → module.exports.renderHtml(store)
- * - Node (modular): require('./display/index.js') → same API, modular imports
+ * display.js — Universal Renderer for AIde
+ * One source of truth for "entity state → output" across three runtimes:
+ * - Browser: <script src="/static/display.js"> → display.renderHtml(entityStore)
+ * - Node CLI: require('./display.js') → display.renderText(store)
+ * - Node Publish: require('./display.js') → display.renderDocument(store, options)
  */
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -83,6 +71,7 @@ const RENDERER_CSS = `/* Import fonts for shadow DOM */
   --space-16: 160px;
 }
 
+/* Dark mode design tokens - disabled for now, always use light mode
 @media (prefers-color-scheme: dark) {
   :host {
     --text-primary: #E6E3DF;
@@ -100,6 +89,7 @@ const RENDERER_CSS = `/* Import fonts for shadow DOM */
     --accent-hover: #8FA07E;
   }
 }
+*/
 
 /* ── Base ── */
 :host *, :host *::before, :host *::after { box-sizing: border-box; }
