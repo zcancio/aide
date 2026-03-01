@@ -36,8 +36,16 @@ TOOLS = [
                 "display": {
                     "type": "string",
                     "enum": [
-                        "page", "section", "card", "list", "table",
-                        "checklist", "grid", "metric", "text", "image",
+                        "page",
+                        "section",
+                        "card",
+                        "list",
+                        "table",
+                        "checklist",
+                        "grid",
+                        "metric",
+                        "text",
+                        "image",
                     ],
                 },
                 "props": {"type": "object"},

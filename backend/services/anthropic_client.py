@@ -112,7 +112,7 @@ class AnthropicClient:
                 print(f"[CLIENT] final_message content blocks: {len(final_message.content)}", flush=True)
                 for i, block in enumerate(final_message.content):
                     print(f"[CLIENT] block[{i}] type={getattr(block, 'type', 'unknown')}", flush=True)
-                    if hasattr(block, 'type') and block.type == "tool_use":
+                    if hasattr(block, "type") and block.type == "tool_use":
                         print(f"[CLIENT] block[{i}] name={block.name}", flush=True)
             if final_message and hasattr(final_message, "usage"):
                 self._last_usage = {

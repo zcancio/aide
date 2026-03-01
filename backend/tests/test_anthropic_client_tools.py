@@ -145,9 +145,7 @@ async def test_stream_with_tools_yields_tool_use_events(
 
 
 @pytest.mark.asyncio
-async def test_stream_with_tools_yields_text_events(
-    client: AnthropicClient, mock_tools: list[dict[str, Any]]
-) -> None:
+async def test_stream_with_tools_yields_text_events(client: AnthropicClient, mock_tools: list[dict[str, Any]]) -> None:
     """When tools are passed, text content should yield text events."""
     text_block = MockContentBlock("text", text="Hello world")
 
@@ -203,9 +201,7 @@ async def test_stream_with_tools_interleaved_text_and_tool_use(
     ]
 
     mock_stream = AsyncIteratorMock(events)
-    mock_stream.get_final_message = AsyncMock(
-        return_value=MockMessage([text_block, tool_block])
-    )
+    mock_stream.get_final_message = AsyncMock(return_value=MockMessage([text_block, tool_block]))
 
     with patch.object(client.client.messages, "stream") as mock_stream_method:
         mock_context = MagicMock()
@@ -239,9 +235,7 @@ async def test_stream_without_tools_yields_strings(client: AnthropicClient) -> N
 
     mock_stream = AsyncMock()
     mock_stream.text_stream = mock_text_stream()
-    mock_stream.get_final_message = AsyncMock(
-        return_value=MockMessage([MockContentBlock("text", text="Hello world")])
-    )
+    mock_stream.get_final_message = AsyncMock(return_value=MockMessage([MockContentBlock("text", text="Hello world")]))
 
     with patch.object(client.client.messages, "stream") as mock_stream_method:
         mock_context = MagicMock()
