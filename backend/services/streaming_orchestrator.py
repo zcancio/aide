@@ -7,6 +7,7 @@ for WebSocket-based interactions.
 
 from __future__ import annotations
 
+import copy
 import json
 import logging
 import time
@@ -15,6 +16,7 @@ from typing import Any
 
 from backend.services.anthropic_client import AnthropicClient
 from backend.services.classifier import TIER_MODELS, classify
+from backend.services.escalation import needs_escalation
 from backend.services.prompt_builder import build_messages, build_system_blocks
 from backend.services.tool_defs import TOOLS
 from engine.kernel.reducer_v2 import reduce
@@ -128,68 +130,70 @@ class StreamingOrchestrator:
         self.tier: str | None = None
         self.model: str | None = None
 
-    async def process_message(
+    async def _run_tier(
         self,
-        content: str,
-    ) -> AsyncIterator[dict[str, Any]]:
+        tier: str,
+        snapshot: dict[str, Any],
+        messages: list[dict[str, Any]],
+        user_message: str,
+        temperature: float | None = None,
+    ) -> dict[str, Any]:
         """
-        Process user message and yield streaming results.
+        Run a single LLM call for a tier and collect results.
+
+        Both L3 and L4 receive the full TOOLS set.
 
         Args:
-            content: User message text
+            tier: Tier to run (L3 or L4)
+            snapshot: Current snapshot state
+            messages: Conversation messages
+            user_message: Current user message
+            temperature: Optional temperature override (default 0 for both tiers)
 
-        Yields:
-            Dictionaries containing events, deltas, or metadata
+        Returns:
+            {
+                "text_blocks": [{"text": "..."}],
+                "tool_calls": [{"name": "mutate_entity", "input": {...}}],
+                "all_raw_tools": [...],  # includes voice for conversation history
+                "usage": {"input_tokens": ..., "output_tokens": ..., "cache_read": ..., "cache_creation": ...},
+                "ttfc_ms": ...,
+                "ttc_ms": ...,
+                "snapshot": {...},  # snapshot after applying this tier's mutations
+            }
         """
-        # Classify message to determine tier
-        has_schema = bool(self.snapshot.get("entities"))
-        classification = classify(content, self.snapshot, has_schema)
-
-        self.tier = classification.tier
-        self.model = TIER_MODELS[self.tier]
-
-        logger.info(
-            "streaming_orchestrator: classified message aide_id=%s tier=%s reason=%s",
-            self.aide_id,
-            self.tier,
-            classification.reason,
-        )
+        # Get model for tier
+        model = TIER_MODELS[tier]
 
         # Build system prompt blocks
-        system_blocks = build_system_blocks(self.tier, self.snapshot)
-
-        # Build messages array
-        messages = build_messages(self.conversation, content)
+        system_blocks = build_system_blocks(tier, snapshot)
 
         # Both tiers get full tool set (query-only enforced by prompt)
         tools = TOOLS
 
-        # Yield classification metadata
-        yield {
-            "type": "meta.classification",
-            "tier": self.tier,
-            "model": self.model,
-            "reason": classification.reason,
-        }
+        # Use temperature 0 by default for deterministic responses
+        if temperature is None:
+            temperature = 0
 
         # Timing trackers
         t_start = time.time()
         t_first_content: float | None = None
 
-        # Track if voice was sent and mutation count for fallback
-        voice_sent = False
-        mutation_count = 0
+        # Result accumulators
+        text_blocks: list[dict[str, Any] | str] = []
+        tool_calls: list[dict[str, Any]] = []
+        all_raw_tools: list[dict[str, Any]] = []
 
-        print(f"[ORCH] starting stream tier={self.tier} model={self.model}", flush=True)
+        # Working snapshot for this tier
+        working_snapshot = copy.deepcopy(snapshot)
 
-        # Stream from LLM with tool support
+        # Stream from LLM
         async for stream_event in self.client.stream(
             messages=messages,
             system=system_blocks,
-            model=self.model,
+            model=model,
             tools=tools,
+            temperature=temperature,
         ):
-            print(f"[ORCH] got event: {type(stream_event)} = {stream_event}", flush=True)
             # Record time to first content
             if t_first_content is None:
                 t_first_content = time.time()
@@ -198,60 +202,40 @@ class StreamingOrchestrator:
             if isinstance(stream_event, dict) and stream_event.get("type") == "tool_use":
                 tool_name = stream_event.get("name", "")
                 tool_input = stream_event.get("input", {})
-                print(f"[ORCH] processing tool_use: {tool_name}", flush=True)
+
+                # Store raw tool call
+                all_raw_tools.append(
+                    {
+                        "id": stream_event.get("id", ""),
+                        "name": tool_name,
+                        "input": tool_input,
+                    }
+                )
 
                 # Convert tool call to reducer event
                 event = tool_use_to_reducer_event(tool_name, tool_input)
                 if event is None:
-                    print("[ORCH] tool_use_to_reducer_event returned None", flush=True)
                     continue
 
                 event_type = event.get("t", "")
-                print(f"[ORCH] converted to reducer event: {event_type}", flush=True)
 
-                # Pass through voice events
+                # Handle voice events (don't reduce, just collect)
                 if event_type == "voice":
-                    print(f"[ORCH] yielding voice: {event.get('text', '')[:50]}", flush=True)
-                    voice_sent = True
-                    yield {"type": "voice", "text": event.get("text", "")}
+                    text_blocks.append({"text": event.get("text", "")})
                     continue
 
-                # Apply event to snapshot through reducer
-                result = reduce(self.snapshot, event)
-                print(f"[ORCH] reducer result: accepted={result.accepted} reason={result.reason}", flush=True)
+                # Apply event to working snapshot through reducer
+                result = reduce(working_snapshot, event)
 
                 if result.accepted:
-                    self.snapshot = result.snapshot
-                    mutation_count += 1
-                    yield {"type": "event", "event": event, "snapshot": self.snapshot}
-                else:
-                    logger.debug(
-                        "streaming_orchestrator: reducer rejected event type=%s reason=%s",
-                        event_type,
-                        result.reason,
-                    )
-                    yield {
-                        "type": "rejection",
-                        "event": event,
-                        "reason": result.reason,
-                    }
+                    working_snapshot = result.snapshot
+                    tool_calls.append({"name": tool_name, "input": tool_input})
 
             # Handle text events - text between tool calls is voice output
             elif isinstance(stream_event, dict) and stream_event.get("type") == "text":
                 text = stream_event.get("text", "")
-                print(f"[ORCH] got text event: {text[:50] if text else '(empty)'}", flush=True)
                 if text.strip():
-                    # Text output is the voice response shown in chat
-                    voice_sent = True
-                    yield {"type": "voice", "text": text}
-
-        print("[ORCH] stream finished", flush=True)
-
-        # Fallback: if no voice was sent, generate a default message
-        if not voice_sent and mutation_count > 0:
-            fallback_text = f"{mutation_count} update{'s' if mutation_count != 1 else ''} applied."
-            print(f"[ORCH] no voice sent, using fallback: {fallback_text}", flush=True)
-            yield {"type": "voice", "text": fallback_text}
+                    text_blocks.append({"text": text})
 
         # Stream complete — gather metrics
         t_complete = time.time()
@@ -268,19 +252,155 @@ class StreamingOrchestrator:
                 "cache_read_input_tokens": 0,
             }
 
-        # Compute cost
-        cost_usd = calculate_cost(self.tier, usage)
-
-        # Yield stream.end with metrics
-        yield {
-            "type": "stream.end",
+        return {
+            "text_blocks": text_blocks,
+            "tool_calls": tool_calls,
+            "all_raw_tools": all_raw_tools,
             "usage": {
                 "input_tokens": usage.get("input_tokens", 0),
                 "output_tokens": usage.get("output_tokens", 0),
                 "cache_read": usage.get("cache_read_input_tokens", 0),
-                "cache_write": usage.get("cache_creation_input_tokens", 0),
+                "cache_creation": usage.get("cache_creation_input_tokens", 0),
             },
             "ttfc_ms": ttfc_ms,
             "ttc_ms": ttc_ms,
+            "snapshot": working_snapshot,
+        }
+
+    async def process_message(
+        self,
+        content: str,
+    ) -> AsyncIterator[dict[str, Any]]:
+        """
+        Process user message and yield streaming results.
+
+        Implements L3 → L4 → L3 two-pass escalation when L3 signals it needs help.
+
+        Args:
+            content: User message text
+
+        Yields:
+            Dictionaries containing events, deltas, or metadata
+        """
+        # Classify message to determine tier
+        has_schema = bool(self.snapshot.get("entities"))
+        classification = classify(content, self.snapshot, has_schema)
+
+        tier = classification.tier
+        self.tier = tier
+        self.model = TIER_MODELS[tier]
+
+        logger.info(
+            "streaming_orchestrator: classified message aide_id=%s tier=%s reason=%s",
+            self.aide_id,
+            tier,
+            classification.reason,
+        )
+
+        # Build messages array
+        messages = build_messages(self.conversation, content)
+
+        # Yield classification metadata
+        yield {
+            "type": "meta.classification",
+            "tier": tier,
+            "model": self.model,
+            "reason": classification.reason,
+        }
+
+        # Save original snapshot for potential escalation
+        original_snapshot = copy.deepcopy(self.snapshot)
+
+        # Run initial tier
+        result = await self._run_tier(tier, self.snapshot, messages, content)
+
+        # Check for escalation (only for L3)
+        if tier == "L3" and needs_escalation(result):
+            # Yield escalation metadata
+            yield {
+                "type": "meta.escalation",
+                "from_tier": "L3",
+                "to_tier": "L4",
+                "reason": "L3 signaled structural work or complex query",
+            }
+
+            # Pass 1: L4 creates structure with original snapshot, temperature 0
+            l4_result = await self._run_tier("L4", original_snapshot, messages, content, temperature=0)
+            l4_snapshot = l4_result["snapshot"]
+
+            # Pass 2: L3 retries with L4's snapshot
+            l3_result = await self._run_tier("L3", l4_snapshot, messages, content, temperature=0)
+
+            # Merge results: L4 tool_calls first, then L3
+            result = {
+                "text_blocks": l4_result["text_blocks"] + l3_result["text_blocks"],
+                "tool_calls": l4_result["tool_calls"] + l3_result["tool_calls"],
+                "all_raw_tools": l4_result["all_raw_tools"] + l3_result["all_raw_tools"],
+                "usage": {
+                    "input_tokens": (
+                        result["usage"]["input_tokens"]
+                        + l4_result["usage"]["input_tokens"]
+                        + l3_result["usage"]["input_tokens"]
+                    ),
+                    "output_tokens": (
+                        result["usage"]["output_tokens"]
+                        + l4_result["usage"]["output_tokens"]
+                        + l3_result["usage"]["output_tokens"]
+                    ),
+                    "cache_read": (
+                        result["usage"]["cache_read"]
+                        + l4_result["usage"]["cache_read"]
+                        + l3_result["usage"]["cache_read"]
+                    ),
+                    "cache_creation": (
+                        result["usage"]["cache_creation"]
+                        + l4_result["usage"]["cache_creation"]
+                        + l3_result["usage"]["cache_creation"]
+                    ),
+                },
+                "ttfc_ms": l4_result["ttfc_ms"],  # TTFC from first visible pass (L4)
+                "ttc_ms": result["ttc_ms"] + l4_result["ttc_ms"] + l3_result["ttc_ms"],  # Sum all passes
+                "snapshot": l3_result["snapshot"],  # Final snapshot from L3 pass 2
+            }
+
+            # Update tier label for stream.end
+            tier = "L3->L4->L3"
+
+            # Update instance snapshot
+            self.snapshot = result["snapshot"]
+        else:
+            # No escalation - update snapshot from result
+            self.snapshot = result["snapshot"]
+
+        # Yield tool_calls as events
+        for tc in result["tool_calls"]:
+            # Convert tool call to reducer event for yielding
+            event = tool_use_to_reducer_event(tc["name"], tc["input"])
+            if event and event.get("t") != "voice":
+                yield {"type": "event", "event": event, "snapshot": self.snapshot}
+
+        # Yield text_blocks as voice
+        for tb in result["text_blocks"]:
+            text = tb["text"] if isinstance(tb, dict) else tb
+            if text.strip():
+                yield {"type": "voice", "text": text}
+
+        # Fallback: if no voice was sent, generate a default message
+        mutation_count = len(result["tool_calls"])
+        has_voice = any((tb["text"] if isinstance(tb, dict) else tb).strip() for tb in result["text_blocks"])
+        if not has_voice and mutation_count > 0:
+            fallback_text = f"{mutation_count} update{'s' if mutation_count != 1 else ''} applied."
+            yield {"type": "voice", "text": fallback_text}
+
+        # Compute cost
+        cost_usd = calculate_cost("L3" if tier == "L3->L4->L3" else tier, result["usage"])
+
+        # Yield stream.end with metrics
+        yield {
+            "type": "stream.end",
+            "tier": tier,
+            "usage": result["usage"],
+            "ttfc_ms": result["ttfc_ms"],
+            "ttc_ms": result["ttc_ms"],
             "cost_usd": cost_usd,
         }
