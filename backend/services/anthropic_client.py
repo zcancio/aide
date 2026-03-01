@@ -34,6 +34,7 @@ class AnthropicClient:
         max_tokens: int = 4096,
         cache_ttl: int | None = None,
         tools: list[dict[str, Any]] | None = None,
+        temperature: float | None = None,
     ) -> AsyncIterator[str | dict[str, Any]]:
         """
         Stream response from Anthropic API.
@@ -81,6 +82,10 @@ class AnthropicClient:
         # Add tools if provided
         if tools is not None:
             kwargs["tools"] = tools
+
+        # Add temperature if provided
+        if temperature is not None:
+            kwargs["temperature"] = temperature
 
         async with self.client.messages.stream(**kwargs) as stream:
             if tools is not None:
