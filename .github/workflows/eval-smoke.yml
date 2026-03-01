@@ -1,0 +1,61 @@
+name: Eval Smoke
+
+on:
+  # Run after successful deploy to main
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  eval-smoke:
+    # Only run if CI passed (or manual trigger)
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Run eval smoke test
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PYTHONPATH: ${{ github.workspace }}
+        run: make eval-smoke
+
+      - name: Upload eval artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-output
+          path: eval_output/
+          retention-days: 30
+
+      - name: Post cost to summary
+        if: always()
+        run: |
+          REPORT=$(find eval_output -name "report.json" -type f | sort | tail -1)
+          if [ -f "$REPORT" ]; then
+            echo "## Eval Smoke Results" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            python -c "
+          import json
+          r = json.load(open('$REPORT'))
+          for s in r['results']:
+              status = '✅' if s.get('all_passed') else '❌'
+              print(f'| {s[\"name\"]} | {s[\"turns\"]} turns | {s.get(\"entity_count\", \"?\")} entities | {s.get(\"total_issues\", 0)} issues | {status} |')
+          " >> $GITHUB_STEP_SUMMARY
+          fi
