@@ -12,10 +12,10 @@ from backend.services.prompt_builder import build_l2_prompt, build_l3_prompt, bu
 
 
 def test_classification_logic_no_schema():
-    """Test that empty snapshots route to L3."""
+    """Test that empty snapshots route to L4 (Architect)."""
     snapshot = {"entities": {}}
     result = classify("plan a party", snapshot, has_schema=False)
-    assert result.tier == "L3"
+    assert result.tier == "L4"
     assert result.reason == "no_schema"
 
 
@@ -28,10 +28,10 @@ def test_classification_logic_question():
 
 
 def test_classification_logic_simple_update():
-    """Test that simple updates route to L2."""
+    """Test that simple updates route to L3."""
     snapshot = {"entities": {"item_1": {"name": "Milk"}}}
     result = classify("mark it done", snapshot, has_schema=True)
-    assert result.tier == "L2"
+    assert result.tier == "L3"
     assert result.reason == "simple_update"
 
 

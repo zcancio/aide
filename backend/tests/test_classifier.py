@@ -1,7 +1,7 @@
 """
 Tests for tier classifier.
 
-Validates routing logic for L2/L3/L4 tiers.
+Validates routing logic for L3/L4 tiers (L2 removed).
 """
 
 from __future__ import annotations
@@ -9,27 +9,27 @@ from __future__ import annotations
 from backend.services.classifier import classify
 
 
-def test_simple_update_routes_to_l2():
-    """Simple updates route to L2 (Haiku)."""
+def test_simple_update_routes_to_l3():
+    """Simple updates route to L3 (Sonnet)."""
     snapshot = {"entities": {"item_1": {"name": "Milk"}}}
     result = classify("Mark Sarah as attending", snapshot, has_schema=True)
-    assert result.tier == "L2"
+    assert result.tier == "L3"
     assert result.reason == "simple_update"
 
 
 def test_question_routes_to_l4():
-    """Pure questions route to L4 (Opus)."""
+    """Pure questions route to L4."""
     snapshot = {"entities": {"guest_1": {"name": "Sarah", "status": "attending"}}}
     result = classify("How many guests are attending?", snapshot, has_schema=True)
     assert result.tier == "L4"
     assert result.reason == "pure_query"
 
 
-def test_no_schema_routes_to_l3():
-    """First message (no schema) routes to L3 (Sonnet)."""
+def test_no_schema_routes_to_l4():
+    """First message (no schema) routes to L4 (Architect)."""
     snapshot = {"entities": {}}
     result = classify("Plan a graduation party", snapshot, has_schema=False)
-    assert result.tier == "L3"
+    assert result.tier == "L4"
     assert result.reason == "no_schema"
 
 
@@ -65,11 +65,11 @@ def test_track_keyword_routes_to_l3():
     assert result.reason == "structural_change"
 
 
-def test_empty_snapshot_routes_to_l3():
-    """Empty snapshot routes to L3."""
+def test_empty_snapshot_routes_to_l4():
+    """Empty snapshot routes to L4 (Architect)."""
     snapshot = {}
     result = classify("we need milk and eggs", snapshot, has_schema=False)
-    assert result.tier == "L3"
+    assert result.tier == "L4"
     assert result.reason == "no_schema"
 
 
@@ -86,16 +86,18 @@ def test_classifier_accuracy_benchmark():
     Benchmark classifier accuracy on a diverse set of examples.
 
     Target: >90% accuracy matching expected tier routing.
+    L2 removed - simple updates now go to L3.
+    First messages (no_schema) now go to L4.
     """
     test_cases = [
         # (message, has_schema, expected_tier, description)
-        ("Mark item as done", True, "L2", "simple update"),
-        ("Add olive oil", True, "L2", "simple addition"),
-        ("Mike's out", True, "L2", "simple status change"),
+        ("Mark item as done", True, "L3", "simple update"),
+        ("Add olive oil", True, "L3", "simple addition"),
+        ("Mike's out", True, "L3", "simple status change"),
         ("How many items?", True, "L4", "pure query"),
         ("What's the total?", True, "L4", "pure query"),
         ("Who's coming?", True, "L4", "pure query"),
-        ("Plan a party", False, "L3", "first message"),
+        ("Plan a party", False, "L4", "first message"),
         ("Add a category for drinks", True, "L3", "structural"),
         ("Track prices", True, "L3", "new field"),
         ("Add milk, eggs, bread, and cheese", True, "L3", "complex"),
