@@ -203,7 +203,7 @@ class StreamingOrchestrator:
                 # Convert tool call to reducer event
                 event = tool_use_to_reducer_event(tool_name, tool_input)
                 if event is None:
-                    print(f"[ORCH] tool_use_to_reducer_event returned None", flush=True)
+                    print("[ORCH] tool_use_to_reducer_event returned None", flush=True)
                     continue
 
                 event_type = event.get("t", "")
@@ -245,7 +245,7 @@ class StreamingOrchestrator:
                     voice_sent = True
                     yield {"type": "voice", "text": text}
 
-        print(f"[ORCH] stream finished", flush=True)
+        print("[ORCH] stream finished", flush=True)
 
         # Fallback: if no voice was sent, generate a default message
         if not voice_sent and mutation_count > 0:

@@ -68,13 +68,20 @@ TOOLS = [
     },
     {
         "name": "voice",
-        "description": "Send a chat message to the user. You MUST call this tool in EVERY response — it is the ONLY way the user sees your reply. Without it, they see nothing. Call it after mutations to summarize, or alone for queries.",
+        "description": (
+            "Send a chat message to the user. You MUST call this tool in EVERY response — "
+            "it is the ONLY way the user sees your reply. Without it, they see nothing. "
+            "Call it after mutations to summarize, or alone for queries."
+        ),
         "input_schema": {
             "type": "object",
             "properties": {
                 "text": {
                     "type": "string",
-                    "description": "Short state reflection shown in chat. Max ~100 chars. No first person, no encouragement, no emojis.",
+                    "description": (
+                        "Short state reflection shown in chat. Max ~100 chars. "
+                        "No first person, no encouragement, no emojis."
+                    ),
                 },
             },
             "required": ["text"],
