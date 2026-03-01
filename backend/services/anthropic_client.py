@@ -2,6 +2,7 @@
 Anthropic streaming client.
 
 Connects to Anthropic Messages API, streams response chunks.
+Supports both text-only streaming and tool_use streaming.
 """
 
 from __future__ import annotations
@@ -33,7 +34,7 @@ class AnthropicClient:
         max_tokens: int = 4096,
         cache_ttl: int | None = None,
         tools: list[dict[str, Any]] | None = None,
-    ) -> AsyncIterator[str]:
+    ) -> AsyncIterator[str | dict[str, Any]]:
         """
         Stream response from Anthropic API.
 
@@ -46,7 +47,10 @@ class AnthropicClient:
             tools: Optional tool definitions to pass to the API
 
         Yields:
-            Text chunks as they arrive from the API
+            Without tools: Text chunks (str) as they arrive
+            With tools: Event dicts with structure:
+                - {"type": "text", "text": "..."} for text content
+                - {"type": "tool_use", "id": "...", "name": "...", "input": {...}}
         """
         # Handle system prompt format
         system_content: str | list[dict[str, Any]]
@@ -79,11 +83,37 @@ class AnthropicClient:
             kwargs["tools"] = tools
 
         async with self.client.messages.stream(**kwargs) as stream:
-            async for text in stream.text_stream:
-                yield text
+            if tools is not None:
+                # With tools: iterate over events to capture both text and tool_use
+                async for event in stream:
+                    print(f"[CLIENT] event.type={event.type}", flush=True)
+                    if event.type == "text":
+                        # Text delta event
+                        yield {"type": "text", "text": event.text}
+                    elif event.type == "content_block_stop":
+                        # Content block finished - check if it's a tool_use
+                        block = event.content_block
+                        print(f"[CLIENT] content_block_stop block.type={getattr(block, 'type', 'unknown')}", flush=True)
+                        if hasattr(block, "type") and block.type == "tool_use":
+                            yield {
+                                "type": "tool_use",
+                                "id": block.id,
+                                "name": block.name,
+                                "input": block.input,
+                            }
+            else:
+                # Without tools: use text_stream for backward compatibility
+                async for text in stream.text_stream:
+                    yield text
 
             # After stream completes, extract usage stats
             final_message = await stream.get_final_message()
+            if final_message:
+                print(f"[CLIENT] final_message content blocks: {len(final_message.content)}", flush=True)
+                for i, block in enumerate(final_message.content):
+                    print(f"[CLIENT] block[{i}] type={getattr(block, 'type', 'unknown')}", flush=True)
+                    if hasattr(block, 'type') and block.type == "tool_use":
+                        print(f"[CLIENT] block[{i}] name={block.name}", flush=True)
             if final_message and hasattr(final_message, "usage"):
                 self._last_usage = {
                     "input_tokens": final_message.usage.input_tokens,

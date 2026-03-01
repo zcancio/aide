@@ -16,16 +16,15 @@ from typing import Any
 from backend.services.anthropic_client import AnthropicClient
 from backend.services.classifier import TIER_MODELS, classify
 from backend.services.prompt_builder import build_messages, build_system_blocks
-from backend.services.tool_defs import L4_TOOLS, TOOLS
+from backend.services.tool_defs import TOOLS
 from engine.kernel.reducer_v2 import reduce
 
 logger = logging.getLogger(__name__)
 
 # Pricing per million tokens (MTok) — input/output/cache_read/cache_write
 PRICING = {
-    "L2": (0.25, 1.25, 0.025, 0.3125),  # Haiku
     "L3": (3.0, 15.0, 0.30, 3.75),  # Sonnet
-    "L4": (15.0, 75.0, 1.50, 18.75),  # Opus
+    "L4": (3.0, 15.0, 0.30, 3.75),  # Sonnet (same model as L3)
 }
 
 
@@ -44,6 +43,63 @@ def calculate_cost(tier: str, usage: dict[str, int]) -> float:
         + (cache_write * price_cw / 1e6)
     )
     return cost
+
+
+def tool_use_to_reducer_event(tool_name: str, tool_input: dict[str, Any]) -> dict[str, Any] | None:
+    """
+    Convert a tool_use call to a reducer event.
+
+    Maps:
+      mutate_entity(action="create", ...) → {"t": "entity.create", ...}
+      mutate_entity(action="update", ...) → {"t": "entity.update", ...}
+      set_relationship(action="set", ...) → {"t": "rel.set", ...}
+      voice(text="...") → {"t": "voice", "text": "..."}
+    """
+    if tool_name == "mutate_entity":
+        action = tool_input.get("action", "")
+        event: dict[str, Any] = {"t": f"entity.{action}"}
+
+        # Map tool fields to reducer event fields
+        if "id" in tool_input:
+            event["id"] = tool_input["id"]
+        if "ref" in tool_input:
+            event["ref"] = tool_input["ref"]
+        if "parent" in tool_input:
+            event["parent"] = tool_input["parent"]
+        if "display" in tool_input:
+            event["display"] = tool_input["display"]
+
+        # Handle props - also handle title directly for prompt compatibility
+        props = tool_input.get("props", {})
+        # Parse props if it's a JSON string
+        if isinstance(props, str):
+            try:
+                props = json.loads(props)
+            except json.JSONDecodeError:
+                props = {}
+        if "title" in tool_input:
+            props["title"] = tool_input["title"]
+        if props:
+            event["p"] = props
+
+        return event
+
+    elif tool_name == "set_relationship":
+        action = tool_input.get("action", "set")
+        event = {"t": f"rel.{action}"}
+
+        for key in ("from", "to", "type", "cardinality"):
+            if key in tool_input:
+                event[key] = tool_input[key]
+
+        return event
+
+    elif tool_name == "voice":
+        return {"t": "voice", "text": tool_input.get("text", "")}
+
+    else:
+        logger.warning("streaming_orchestrator: unknown tool %s", tool_name)
+        return None
 
 
 class StreamingOrchestrator:
@@ -105,8 +161,8 @@ class StreamingOrchestrator:
         # Build messages array
         messages = build_messages(self.conversation, content)
 
-        # Select tools based on tier
-        tools = L4_TOOLS if self.tier == "L4" else TOOLS
+        # Both tiers get full tool set (query-only enforced by prompt)
+        tools = TOOLS
 
         # Yield classification metadata
         yield {
@@ -120,78 +176,82 @@ class StreamingOrchestrator:
         t_start = time.time()
         t_first_content: float | None = None
 
-        # Stream from LLM and parse JSONL
-        line_buffer = ""
-        async for chunk in self.client.stream(
+        # Track if voice was sent and mutation count for fallback
+        voice_sent = False
+        mutation_count = 0
+
+        print(f"[ORCH] starting stream tier={self.tier} model={self.model}", flush=True)
+
+        # Stream from LLM with tool support
+        async for stream_event in self.client.stream(
             messages=messages,
             system=system_blocks,
             model=self.model,
             tools=tools,
         ):
+            print(f"[ORCH] got event: {type(stream_event)} = {stream_event}", flush=True)
             # Record time to first content
             if t_first_content is None:
                 t_first_content = time.time()
 
-            line_buffer += chunk
+            # Handle tool_use events
+            if isinstance(stream_event, dict) and stream_event.get("type") == "tool_use":
+                tool_name = stream_event.get("name", "")
+                tool_input = stream_event.get("input", {})
+                print(f"[ORCH] processing tool_use: {tool_name}", flush=True)
 
-            # Process complete lines
-            while "\n" in line_buffer:
-                line, line_buffer = line_buffer.split("\n", 1)
-                line = line.strip()
-                if not line:
+                # Convert tool call to reducer event
+                event = tool_use_to_reducer_event(tool_name, tool_input)
+                if event is None:
+                    print(f"[ORCH] tool_use_to_reducer_event returned None", flush=True)
                     continue
 
-                # Try to parse as JSON event
-                try:
-                    event = json.loads(line)
-                    event_type = event.get("t", "")
+                event_type = event.get("t", "")
+                print(f"[ORCH] converted to reducer event: {event_type}", flush=True)
 
-                    # Pass through voice events
-                    if event_type == "voice":
-                        yield {"type": "voice", "text": event.get("text", "")}
-                        continue
-
-                    # Pass through batch signals
-                    if event_type in ("batch.start", "batch.end"):
-                        yield {"type": event_type}
-                        continue
-
-                    # Apply event to snapshot through reducer
-                    result = reduce(self.snapshot, event)
-
-                    if result.accepted:
-                        self.snapshot = result.snapshot
-
-                        # Yield the event for downstream processing
-                        yield {"type": "event", "event": event, "snapshot": self.snapshot}
-                    else:
-                        logger.debug(
-                            "streaming_orchestrator: reducer rejected event type=%s reason=%s",
-                            event_type,
-                            result.reason,
-                        )
-                        # Yield rejection for telemetry
-                        yield {
-                            "type": "rejection",
-                            "event": event,
-                            "reason": result.reason,
-                        }
-
-                except json.JSONDecodeError:
-                    # Not a valid JSON line - could be part of response text
-                    logger.debug("streaming_orchestrator: skipping non-JSON line: %r", line[:100])
+                # Pass through voice events
+                if event_type == "voice":
+                    print(f"[ORCH] yielding voice: {event.get('text', '')[:50]}", flush=True)
+                    voice_sent = True
+                    yield {"type": "voice", "text": event.get("text", "")}
                     continue
 
-        # Process any remaining buffer content
-        if line_buffer.strip():
-            try:
-                event = json.loads(line_buffer)
+                # Apply event to snapshot through reducer
                 result = reduce(self.snapshot, event)
+                print(f"[ORCH] reducer result: accepted={result.accepted} reason={result.reason}", flush=True)
+
                 if result.accepted:
                     self.snapshot = result.snapshot
+                    mutation_count += 1
                     yield {"type": "event", "event": event, "snapshot": self.snapshot}
-            except json.JSONDecodeError:
-                logger.debug("streaming_orchestrator: skipping incomplete line in buffer")
+                else:
+                    logger.debug(
+                        "streaming_orchestrator: reducer rejected event type=%s reason=%s",
+                        event_type,
+                        result.reason,
+                    )
+                    yield {
+                        "type": "rejection",
+                        "event": event,
+                        "reason": result.reason,
+                    }
+
+            # Handle text events - text between tool calls is voice output
+            elif isinstance(stream_event, dict) and stream_event.get("type") == "text":
+                text = stream_event.get("text", "")
+                print(f"[ORCH] got text event: {text[:50] if text else '(empty)'}", flush=True)
+                if text.strip():
+                    # Text output is the voice response shown in chat
+                    voice_sent = True
+                    yield {"type": "voice", "text": text}
+
+        print(f"[ORCH] stream finished", flush=True)
+
+        # Fallback: if no voice was sent, generate a default message
+        if not voice_sent and mutation_count > 0:
+            fallback_text = f"{mutation_count} update{'s' if mutation_count != 1 else ''} applied."
+            print(f"[ORCH] no voice sent, using fallback: {fallback_text}", flush=True)
+            yield {"type": "voice", "text": fallback_text}
 
         # Stream complete — gather metrics
         t_complete = time.time()

@@ -4,6 +4,10 @@ Tool definitions for AIde LLM calls.
 Shared between eval and production. cache_control goes on the LAST tool
 because Anthropic's prompt caching is prefix-based — the breakpoint must
 come after all tools for them to be included in the cached prefix.
+
+Both L3 and L4 receive the full tool set. L4 handles first-message schema
+synthesis (needs mutate_entity, set_relationship) AND queries. The query-only
+behavior is enforced by the L4 system prompt, not by withholding tools.
 """
 
 TOOLS = [
@@ -32,16 +36,8 @@ TOOLS = [
                 "display": {
                     "type": "string",
                     "enum": [
-                        "page",
-                        "section",
-                        "card",
-                        "list",
-                        "table",
-                        "checklist",
-                        "grid",
-                        "metric",
-                        "text",
-                        "image",
+                        "page", "section", "card", "list", "table",
+                        "checklist", "grid", "metric", "text", "image",
                     ],
                 },
                 "props": {"type": "object"},
@@ -72,20 +68,13 @@ TOOLS = [
     },
     {
         "name": "voice",
-        "description": (
-            "Send a chat message to the user. You MUST call this tool in EVERY "
-            "response — it is the ONLY way the user sees your reply. Without it, "
-            "they see nothing. Call it after mutations to summarize, or alone for queries."
-        ),
+        "description": "Send a chat message to the user. You MUST call this tool in EVERY response — it is the ONLY way the user sees your reply. Without it, they see nothing. Call it after mutations to summarize, or alone for queries.",
         "input_schema": {
             "type": "object",
             "properties": {
                 "text": {
                     "type": "string",
-                    "description": (
-                        "Short state reflection shown in chat. Max ~100 chars. "
-                        "No first person, no encouragement, no emojis."
-                    ),
+                    "description": "Short state reflection shown in chat. Max ~100 chars. No first person, no encouragement, no emojis.",
                 },
             },
             "required": ["text"],
@@ -93,6 +82,3 @@ TOOLS = [
         "cache_control": {"type": "ephemeral"},
     },
 ]
-
-# L4 is query-only — no mutation tools
-L4_TOOLS = [t for t in TOOLS if t["name"] == "voice"]

@@ -361,7 +361,7 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
                                     ttfc = (time.monotonic() - start_time) * 1000
 
                                 if event_type in _ENTITY_TYPES:
-                                    entity_id = event.get("id")
+                                    entity_id = event.get("id") or event.get("ref")
                                     delta = _make_delta(event_type, entity_id, snapshot)
                                     await websocket.send_text(json.dumps(delta))
                                 elif event_type in _META_TYPES:
@@ -460,7 +460,7 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
                                     ttfc = (time.monotonic() - start_time) * 1000
 
                                 if event_type in _ENTITY_TYPES:
-                                    entity_id = event.get("id")
+                                    entity_id = event.get("id") or event.get("ref")
                                     delta = _make_delta(event_type, entity_id, snapshot)
                                     await websocket.send_text(json.dumps(delta))
                                 elif event_type in _META_TYPES:

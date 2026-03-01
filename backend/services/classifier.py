@@ -2,9 +2,8 @@
 Tier classifier for LLM routing.
 
 Routes user messages to appropriate tier:
-- L2 (Haiku): Simple updates, known patterns
-- L3 (Sonnet): New schemas, complex mutations
-- L4 (Opus): Queries requiring reasoning
+- L3 (Sonnet): Compiler - handles updates after schema exists
+- L4 (Sonnet): Architect - handles first messages (schema synthesis) and queries
 """
 
 from __future__ import annotations
@@ -14,7 +13,7 @@ from typing import Any, Literal
 
 from backend.config import settings
 
-Tier = Literal["L2", "L3", "L4"]
+Tier = Literal["L3", "L4"]
 
 
 @dataclass
@@ -27,14 +26,12 @@ class ClassificationResult:
 
 # Model mapping - uses settings for configurable models
 TIER_MODELS = {
-    "L2": settings.L2_MODEL,
     "L3": settings.L3_MODEL,
     "L4": settings.L3_MODEL,  # L4 uses same as L3 for now
 }
 
 # Cache TTLs (seconds)
 TIER_CACHE_TTL = {
-    "L2": 300,  # 5 minutes
     "L3": 3600,  # 1 hour
     "L4": 3600,  # 1 hour
 }
@@ -58,6 +55,10 @@ def classify(
     """
     message_lower = message.lower()
 
+    # L4: No schema exists yet (first message) - Architect builds initial structure
+    if not has_schema or not snapshot.get("entities"):
+        return ClassificationResult(tier="L4", reason="no_schema")
+
     # L4: Questions and queries
     # Check for question indicators
     question_keywords = ["?", "how many", "do we have", "is there", "what is", "who", "when", "where"]
@@ -71,11 +72,7 @@ def classify(
         if not has_mutation:
             return ClassificationResult(tier="L4", reason="pure_query")
 
-    # L3: No schema exists yet (first message)
-    if not has_schema or not snapshot.get("entities"):
-        return ClassificationResult(tier="L3", reason="no_schema")
-
-    # L3: Structural changes
+    # L3: Structural changes (escalation candidates)
     structural_keywords = [
         "add a section",
         "new section",
@@ -92,10 +89,7 @@ def classify(
         return ClassificationResult(tier="L3", reason="structural_change")
 
     # L3: Complex multi-part messages (questions with mutations)
-    # If message has a question AND mutation keywords, it's complex
     if has_question:
-        # We already checked has_mutation above - if we got here, it means
-        # the message has both question AND mutation, which is complex
         return ClassificationResult(tier="L3", reason="complex_message")
 
     # L3: Multiple "and" conjunctions suggest multiple intents
@@ -106,5 +100,5 @@ def classify(
     if message.count(",") >= 3:
         return ClassificationResult(tier="L3", reason="complex_message")
 
-    # L2: Simple updates (default)
-    return ClassificationResult(tier="L2", reason="simple_update")
+    # L3: Default for all updates when schema exists
+    return ClassificationResult(tier="L3", reason="simple_update")
