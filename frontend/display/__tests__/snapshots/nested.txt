@@ -1,0 +1,8 @@
+Dashboard
+═════════
+
+Overview
+────────
+  Status
+	Value: Active
+  [Image: Monthly trends]
