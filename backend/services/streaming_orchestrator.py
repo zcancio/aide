@@ -23,9 +23,9 @@ logger = logging.getLogger(__name__)
 
 # Pricing per million tokens (MTok) — input/output/cache_read/cache_write
 PRICING = {
-    "L2": (3.0, 15.0, 0.30, 3.75),  # Haiku
+    "L2": (0.25, 1.25, 0.025, 0.3125),  # Haiku
     "L3": (3.0, 15.0, 0.30, 3.75),  # Sonnet
-    "L4": (5.0, 25.0, 0.50, 6.25),  # Opus
+    "L4": (15.0, 75.0, 1.50, 18.75),  # Opus
 }
 
 
