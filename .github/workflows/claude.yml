@@ -207,14 +207,18 @@ jobs:
             gh pr comment "$EXISTING_PR" --body "Updated with additional changes from @claude request in #$ISSUE_NUM"
           else
             echo "Creating new PR"
+            PR_BODY=$(cat <<PRBODY
+          Automated implementation from #$ISSUE_NUM
+
+          ## Changes
+          See build log in .claude/build_logs/issue_${ISSUE_NUM}_progress.md for details.
+
+          Closes #$ISSUE_NUM
+          PRBODY
+            )
             gh pr create \
               --title "Claude: $(echo '${{ github.event.comment.body }}' | head -c 60)" \
-              --body "Automated implementation from #$ISSUE_NUM
-
-## Changes
-See build log in \`.claude/build_logs/issue_${ISSUE_NUM}_progress.md\` for details.
-
-Closes #$ISSUE_NUM" \
+              --body "$PR_BODY" \
               --head "$BRANCH" \
               --base main
           fi
