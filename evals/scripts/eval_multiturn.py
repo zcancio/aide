@@ -411,10 +411,13 @@ def run_multiturn_scenario(
     scenario: dict,
     verbose: bool = False,
     save_dir: Path | None = None,
+    max_turns: int | None = None,
 ) -> dict:
     """Run a complete multi-turn scenario, building state across turns."""
     name = scenario["name"]
     turns = scenario["turns"]
+    if max_turns is not None:
+        turns = turns[:max_turns]
 
     print(f"\n{'='*70}")
     print(f"📖 {name}: {scenario['description']}")
@@ -721,6 +724,7 @@ def run_multiturn_scenario(
 def main():
     p = argparse.ArgumentParser(description="Multi-turn prompt eval")
     p.add_argument("--scenario", type=str, help="Run specific scenario")
+    p.add_argument("--turns", type=int, help="Limit number of turns (for smoke tests)")
     p.add_argument("-v", "--verbose", action="store_true")
     p.add_argument("--save", action="store_true", help="Save run artifacts")
     p.add_argument("--output-dir", default=os.environ.get("AIDE_EVAL_DIR", "./eval_output"))
@@ -755,7 +759,7 @@ def main():
     results = []
     for scenario in to_run:
         try:
-            result = run_multiturn_scenario(client, scenario, verbose=args.verbose, save_dir=save_dir)
+            result = run_multiturn_scenario(client, scenario, verbose=args.verbose, save_dir=save_dir, max_turns=args.turns)
             results.append(result)
         except Exception as e:
             print(f"\n  FATAL ERROR in {scenario['name']}: {e}")

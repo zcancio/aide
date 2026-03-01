@@ -14,7 +14,7 @@ test:
 # Quick smoke test: 3 turns of graduation scenario (~$0.03, ~60s)
 eval-smoke:
 	@echo "Running eval smoke test (3 turns, graduation_realistic)..."
-	python evals/scripts/eval_multiturn.py --scenario graduation_realistic --turn 3
+	python evals/scripts/eval_multiturn.py --scenario graduation_realistic --turns 3 --save
 	@echo "Running smoke assertions..."
 	pytest evals/tests/test_eval_smoke.py -v --tb=short
 
