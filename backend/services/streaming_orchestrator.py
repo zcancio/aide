@@ -9,15 +9,41 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from collections.abc import AsyncIterator
 from typing import Any
 
 from backend.services.anthropic_client import AnthropicClient
-from backend.services.classifier import TIER_CACHE_TTL, TIER_MODELS, classify
-from backend.services.prompt_builder import build_l2_prompt, build_l3_prompt, build_l4_prompt, build_messages
+from backend.services.classifier import TIER_MODELS, classify
+from backend.services.prompt_builder import build_messages, build_system_blocks
+from backend.services.tool_defs import L4_TOOLS, TOOLS
 from engine.kernel.reducer_v2 import reduce
 
 logger = logging.getLogger(__name__)
+
+# Pricing per million tokens (MTok) — input/output/cache_read/cache_write
+PRICING = {
+    "L2": (3.0, 15.0, 0.30, 3.75),  # Haiku
+    "L3": (3.0, 15.0, 0.30, 3.75),  # Sonnet
+    "L4": (5.0, 25.0, 0.50, 6.25),  # Opus
+}
+
+
+def calculate_cost(tier: str, usage: dict[str, int]) -> float:
+    """Calculate cost in USD for an LLM call."""
+    price_in, price_out, price_cr, price_cw = PRICING[tier]
+    input_tokens = usage.get("input_tokens", 0)
+    output_tokens = usage.get("output_tokens", 0)
+    cache_read = usage.get("cache_read_input_tokens", 0)
+    cache_write = usage.get("cache_creation_input_tokens", 0)
+
+    cost = (
+        (input_tokens * price_in / 1e6)
+        + (output_tokens * price_out / 1e6)
+        + (cache_read * price_cr / 1e6)
+        + (cache_write * price_cw / 1e6)
+    )
+    return cost
 
 
 class StreamingOrchestrator:
@@ -65,7 +91,6 @@ class StreamingOrchestrator:
 
         self.tier = classification.tier
         self.model = TIER_MODELS[self.tier]
-        cache_ttl = TIER_CACHE_TTL[self.tier]
 
         logger.info(
             "streaming_orchestrator: classified message aide_id=%s tier=%s reason=%s",
@@ -74,16 +99,14 @@ class StreamingOrchestrator:
             classification.reason,
         )
 
-        # Build prompt based on tier
-        if self.tier == "L2":
-            system = build_l2_prompt(self.snapshot)
-        elif self.tier == "L3":
-            system = build_l3_prompt(self.snapshot)
-        else:  # L4
-            system = build_l4_prompt(self.snapshot)
+        # Build system prompt blocks
+        system_blocks = build_system_blocks(self.tier, self.snapshot)
 
         # Build messages array
         messages = build_messages(self.conversation, content)
+
+        # Select tools based on tier
+        tools = L4_TOOLS if self.tier == "L4" else TOOLS
 
         # Yield classification metadata
         yield {
@@ -93,14 +116,22 @@ class StreamingOrchestrator:
             "reason": classification.reason,
         }
 
+        # Timing trackers
+        t_start = time.time()
+        t_first_content: float | None = None
+
         # Stream from LLM and parse JSONL
         line_buffer = ""
         async for chunk in self.client.stream(
             messages=messages,
-            system=system,
+            system=system_blocks,
             model=self.model,
-            cache_ttl=cache_ttl,
+            tools=tools,
         ):
+            # Record time to first content
+            if t_first_content is None:
+                t_first_content = time.time()
+
             line_buffer += chunk
 
             # Process complete lines
@@ -161,3 +192,35 @@ class StreamingOrchestrator:
                     yield {"type": "event", "event": event, "snapshot": self.snapshot}
             except json.JSONDecodeError:
                 logger.debug("streaming_orchestrator: skipping incomplete line in buffer")
+
+        # Stream complete — gather metrics
+        t_complete = time.time()
+        ttfc_ms = int((t_first_content - t_start) * 1000) if t_first_content else 0
+        ttc_ms = int((t_complete - t_start) * 1000)
+
+        # Get usage stats from client
+        usage = await self.client.get_usage_stats()
+        if usage is None:
+            usage = {
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 0,
+            }
+
+        # Compute cost
+        cost_usd = calculate_cost(self.tier, usage)
+
+        # Yield stream.end with metrics
+        yield {
+            "type": "stream.end",
+            "usage": {
+                "input_tokens": usage.get("input_tokens", 0),
+                "output_tokens": usage.get("output_tokens", 0),
+                "cache_read": usage.get("cache_read_input_tokens", 0),
+                "cache_write": usage.get("cache_creation_input_tokens", 0),
+            },
+            "ttfc_ms": ttfc_ms,
+            "ttc_ms": ttc_ms,
+            "cost_usd": cost_usd,
+        }
