@@ -74,31 +74,102 @@ jobs:
           git config user.name "claude-code[bot]"
           git config user.email "claude-code[bot]@users.noreply.github.com"
 
-      - name: Create working branch
-        run: |
-          BRANCH="claude/issue-${{ github.event.issue.number || github.event.pull_request.number }}"
-          git checkout -b "$BRANCH" 2>/dev/null || git checkout "$BRANCH"
-          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
-
-      - name: Fetch issue body
+      - name: Fetch issue body and detect branch
         if: github.event.issue
         run: |
-          gh issue view ${{ github.event.issue.number }} --json title,body --jq '"# " + .title + "\n\n" + .body' > /tmp/issue_body.txt
+          ISSUE_NUM="${{ github.event.issue.number }}"
+
+          # Fetch issue details
+          gh issue view "$ISSUE_NUM" --json title,body --jq '"# " + .title + "\n\n" + .body' > /tmp/issue_body.txt
+          ISSUE_BODY=$(cat /tmp/issue_body.txt)
+
+          # Check for branch specification in issue body (e.g., "branch: feature/foo" or "base: develop")
+          SPECIFIED_BRANCH=$(echo "$ISSUE_BODY" | grep -iE "^(branch|base):\s*" | head -1 | sed 's/^[^:]*:\s*//' | tr -d '\r\n ')
+
+          # Check for existing PR for this issue
+          EXISTING_PR=$(gh pr list --search "head:claude/issue-$ISSUE_NUM" --json number,headRefName --jq '.[0].headRefName // empty')
+
+          if [ -n "$SPECIFIED_BRANCH" ]; then
+            echo "Using branch specified in issue: $SPECIFIED_BRANCH"
+            BRANCH="$SPECIFIED_BRANCH"
+            IS_CONTINUATION="false"
+          elif [ -n "$EXISTING_PR" ]; then
+            echo "Found existing PR branch: $EXISTING_PR"
+            BRANCH="$EXISTING_PR"
+            IS_CONTINUATION="true"
+          else
+            echo "Creating new branch for issue"
+            BRANCH="claude/issue-$ISSUE_NUM"
+            IS_CONTINUATION="false"
+          fi
+
+          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+          echo "IS_CONTINUATION=$IS_CONTINUATION" >> $GITHUB_ENV
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout or create branch
+        run: |
+          # Fetch all remote branches
+          git fetch origin
+
+          if git show-ref --verify --quiet "refs/remotes/origin/$BRANCH"; then
+            echo "Branch exists on remote, checking out"
+            git checkout -B "$BRANCH" "origin/$BRANCH"
+          elif git show-ref --verify --quiet "refs/heads/$BRANCH"; then
+            echo "Branch exists locally, checking out"
+            git checkout "$BRANCH"
+          else
+            echo "Creating new branch from main"
+            git checkout -b "$BRANCH"
+          fi
+
+      - name: Read previous progress
+        if: env.IS_CONTINUATION == 'true'
+        run: |
+          ISSUE_NUM="${{ github.event.issue.number }}"
+          PROGRESS_FILE=".claude/build_logs/issue_${ISSUE_NUM}_progress.md"
+
+          if [ -f "$PROGRESS_FILE" ]; then
+            echo "Found previous progress log"
+            cat "$PROGRESS_FILE" > /tmp/previous_progress.txt
+            echo "PREVIOUS_PROGRESS_FILE=$PROGRESS_FILE" >> $GITHUB_ENV
+          else
+            echo "No previous progress file found"
+            echo "" > /tmp/previous_progress.txt
+          fi
 
       - name: Run Claude Code
         run: |
           TASK=$(echo "$RAW_TASK" | sed 's/^@claude\s*//')
           ISSUE_BODY=""
+          PREVIOUS_PROGRESS=""
+
           if [ -f /tmp/issue_body.txt ]; then
             ISSUE_BODY=$(cat /tmp/issue_body.txt)
           fi
+
+          if [ -f /tmp/previous_progress.txt ] && [ -s /tmp/previous_progress.txt ]; then
+            PREVIOUS_PROGRESS=$(cat /tmp/previous_progress.txt)
+          fi
+
+          CONTINUATION_CONTEXT=""
+          if [ "$IS_CONTINUATION" = "true" ]; then
+            CONTINUATION_CONTEXT="
+          ## Previous Progress
+          This is a continuation of previous work on this issue. Review what was done:
+          ${PREVIOUS_PROGRESS}
+
+          Continue from where the previous run left off. Do not redo completed work.
+          "
+          fi
+
           cat <<EOF | claude --print --model claude-sonnet-4-5-20250929 --allowedTools "Bash,Read,Write,Edit"
           ${TASK}
 
           ## Issue Details
           ${ISSUE_BODY}
+          ${CONTINUATION_CONTEXT}
 
           ## Instructions
           1. Complete all tasks in the issue checklist
@@ -106,11 +177,12 @@ jobs:
           3. If you created new migrations, run them: DATABASE_URL=postgres://aide:test@localhost:5432/aide_test alembic upgrade head
           4. Run tests with non-superuser to verify RLS: DATABASE_URL=postgres://aide_app:test@localhost:5432/aide_test pytest backend/tests/ -v
           5. Fix any failures before finishing
-          6. Write a build log per /implement-phase command in .claude/commands/
+          6. Write a build log to .claude/build_logs/issue_${{ github.event.issue.number }}_progress.md documenting what was done
           EOF
         env:
           RAW_TASK: ${{ github.event.comment.body }}
           DATABASE_URL: postgres://aide_app:test@localhost:5432/aide_test
+          IS_CONTINUATION: ${{ env.IS_CONTINUATION }}
 
       - name: Commit and push
         run: |
@@ -122,14 +194,29 @@ jobs:
             git push origin "$BRANCH"
           fi
 
-      - name: Create PR
+      - name: Create or update PR
         if: github.event_name == 'issue_comment' && !github.event.issue.pull_request
         run: |
-          gh pr create \
-            --title "Claude: $(echo '${{ github.event.comment.body }}' | head -c 60)" \
-            --body "Automated implementation from #${{ github.event.issue.number }}" \
-            --head "$BRANCH" \
-            --base main \
-            || echo "PR already exists"
+          ISSUE_NUM="${{ github.event.issue.number }}"
+
+          # Check if PR already exists for this branch
+          EXISTING_PR=$(gh pr list --head "$BRANCH" --json number --jq '.[0].number // empty')
+
+          if [ -n "$EXISTING_PR" ]; then
+            echo "PR #$EXISTING_PR already exists, adding comment with update"
+            gh pr comment "$EXISTING_PR" --body "Updated with additional changes from @claude request in #$ISSUE_NUM"
+          else
+            echo "Creating new PR"
+            gh pr create \
+              --title "Claude: $(echo '${{ github.event.comment.body }}' | head -c 60)" \
+              --body "Automated implementation from #$ISSUE_NUM
+
+## Changes
+See build log in \`.claude/build_logs/issue_${ISSUE_NUM}_progress.md\` for details.
+
+Closes #$ISSUE_NUM" \
+              --head "$BRANCH" \
+              --base main
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
