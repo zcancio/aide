@@ -1,17 +1,17 @@
-# AIde — A Living Object System
+# aide — A Living Object System
 
 *2026-03-02T21:45:00Z by Showboat 0.6.1*
 <!-- showboat-id: 7793b8ab-1139-4019-b4d4-dcefe43afcdc -->
 
-AIde is a living system that keeps what you're running coherent over time. You describe what you're coordinating — a graduation party, a poker league, a group trip — and AIde brings it to life as a shareable page that stays current through natural language conversation.
+aide is a living system that keeps what you're running coherent over time. You describe what you're coordinating — a graduation party, a poker league, a group trip — and aide brings it to life as a shareable page that stays current through natural language conversation.
 
 **Tagline:** "For what you're living."
 
-This demo explores AIde's core architecture and capabilities.
+This demo explores aide's core architecture and capabilities.
 
 ## Architecture Overview
 
-AIde is a full-stack application with a Python backend (FastAPI), a JSONL-based event sourcing system, and a deterministic kernel that processes state mutations.
+aide is a full-stack application with a Python backend (FastAPI), a JSONL-based event sourcing system, and a deterministic kernel that processes state mutations.
 
 ```bash
 echo '=== Codebase Structure ===' && find . -maxdepth 2 -type d \( -name '.git' -o -name '.venv' -o -name '__pycache__' -o -name 'node_modules' -o -name '.ruff_cache' -o -name '.pytest_cache' -o -name '.obsidian' -o -name '.claude' -o -name '.github' \) -prune -o -type d -print | head -30
@@ -51,7 +51,7 @@ echo '=== Codebase Structure ===' && find . -maxdepth 2 -type d \( -name '.git' 
 ./cli
 ```
 
-## The Kernel — Heart of AIde
+## The Kernel — Heart of aide
 
 The kernel is a pure, deterministic state machine. It validates primitives and applies them to produce new state. The kernel never does I/O — it's a pure function.
 
@@ -235,7 +235,7 @@ Sequence: 11
 
 ## Intelligence Tiers — L3, L4
 
-AIde routes user messages to the right model tier for efficiency:
+aide routes user messages to the right model tier for efficiency:
 
 - **L3 (Sonnet)**: Mutations and schema synthesis like "add Aunt Linda" or "plan my graduation party" — under 4s
 - **L4 (Opus)**: Complex queries requiring reasoning like "who hasnt RSVPed?" — under 5s
@@ -390,7 +390,7 @@ backend/routes/pages.py
 
 ## Data Access — PostgreSQL with Row-Level Security
 
-AIde uses Neon Postgres with RLS for multi-tenant isolation:
+aide uses Neon Postgres with RLS for multi-tenant isolation:
 
 - **user_conn(user_id)**: Sets app.current_user_id for RLS filtering
 - **system_conn()**: Background tasks only, bypasses RLS
@@ -441,7 +441,7 @@ class AideRepo:
 
 ## Test Suite
 
-AIde maintains comprehensive tests for the kernel and backend:
+aide maintains comprehensive tests for the kernel and backend:
 
 ```bash
 source .venv/bin/activate && python -m pytest engine/kernel/tests/ -v --tb=no -q 2>&1 | head -30
@@ -502,7 +502,7 @@ frontend/src/styles/theme.css
 
 ## AI Voice — Infrastructure, Not Personality
 
-AIde maintains a distinctive non-conversational voice:
+aide maintains a distinctive non-conversational voice:
 
 - No first person ("I updated...")
 - No encouragement ("Great!", "Nice!")  
@@ -512,7 +512,7 @@ AIde maintains a distinctive non-conversational voice:
 
 ## Summary
 
-AIde is a living object system with:
+aide is a living object system with:
 
 - **10 server-side primitive types** for structured mutations
 - **Pure reducer** for deterministic state transitions
