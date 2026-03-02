@@ -164,7 +164,7 @@ jobs:
           "
           fi
 
-          cat <<EOF | claude --print --model claude-sonnet-4-5-20250929 --allowedTools "Bash,Read,Write,Edit"
+          cat <<EOF | claude --print --dangerously-skip-permissions --model claude-sonnet-4-5-20250929
           ${TASK}
 
           ## Issue Details
@@ -184,18 +184,27 @@ jobs:
           DATABASE_URL: postgres://aide_app:test@localhost:5432/aide_test
           IS_CONTINUATION: ${{ env.IS_CONTINUATION }}
 
-      - name: Commit and push
+      - name: Verify changes were made
+        id: verify
         run: |
           git add -A
           if git diff --cached --quiet; then
-            echo "No changes to commit"
+            echo "::warning::Claude made no file changes"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
           else
-            git commit -m "feat: implement from issue #${{ github.event.issue.number || github.event.pull_request.number }}"
-            git push origin "$BRANCH"
+            echo "Changes detected:"
+            git diff --cached --stat
+            echo "has_changes=true" >> $GITHUB_OUTPUT
           fi
 
+      - name: Commit and push
+        if: steps.verify.outputs.has_changes == 'true'
+        run: |
+          git commit -m "feat: implement from issue #${{ github.event.issue.number || github.event.pull_request.number }}"
+          git push origin "$BRANCH"
+
       - name: Create or update PR
-        if: github.event_name == 'issue_comment' && !github.event.issue.pull_request
+        if: steps.verify.outputs.has_changes == 'true' && github.event_name == 'issue_comment' && !github.event.issue.pull_request
         run: |
           ISSUE_NUM="${{ github.event.issue.number }}"
 
@@ -222,5 +231,13 @@ jobs:
               --head "$BRANCH" \
               --base main
           fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Comment if no changes
+        if: steps.verify.outputs.has_changes == 'false' && github.event.issue
+        run: |
+          gh issue comment "${{ github.event.issue.number }}" \
+            --body "Claude completed but made no file changes. Check the [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details."
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
