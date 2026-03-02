@@ -5,7 +5,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
-import { AuthProvider, useAuth } from '../useAuth.js';
+import { AuthProvider, useAuth } from '../useAuth.jsx';
 import * as api from '../../lib/api.js';
 
 vi.mock('../../lib/api.js');
