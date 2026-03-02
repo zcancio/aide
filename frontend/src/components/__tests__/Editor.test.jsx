@@ -18,6 +18,11 @@ vi.mock('../../hooks/useWebSocket.js', () => ({
   useWebSocket: vi.fn(),
 }));
 
+// Mock API
+vi.mock('../../lib/api.js', () => ({
+  fetchAide: vi.fn().mockResolvedValue({ data: { id: 'test-aide-id', title: 'Test Aide' } }),
+}));
+
 // Mock child components
 vi.mock('../EditorHeader.jsx', () => ({
   default: () => <div data-testid="editor-header">Header</div>,

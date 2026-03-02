@@ -8,20 +8,6 @@ import AuthScreen from './AuthScreen.jsx';
 import Dashboard from './Dashboard.jsx';
 import Editor from './Editor.jsx';
 
-function ProtectedRoute({ children }) {
-  const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) {
-    return null; // Or a loading spinner
-  }
-
-  if (!isAuthenticated) {
-    return <AuthScreen />;
-  }
-
-  return children;
-}
-
 function AppRoutes() {
   const { isAuthenticated, isLoading } = useAuth();
 

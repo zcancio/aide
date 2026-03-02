@@ -9,6 +9,7 @@ import { useAuth } from '../hooks/useAuth.jsx';
 export default function AuthScreen() {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState(null);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { sendMagicLink, verifyToken, isAuthenticated } = useAuth();
@@ -20,6 +21,8 @@ export default function AuthScreen() {
       verifyToken(token).then((result) => {
         if (result.data) {
           navigate('/');
+        } else if (result.error) {
+          setError('Invalid or expired link. Please request a new one.');
         }
       });
     }
@@ -45,6 +48,12 @@ export default function AuthScreen() {
       <div className="auth-card">
         <h1>aide</h1>
         <p>For what you're living.</p>
+
+        {error && (
+          <div className="auth-error">
+            {error}
+          </div>
+        )}
 
         {!sent ? (
           <form className="auth-form" onSubmit={handleSubmit}>

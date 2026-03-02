@@ -215,3 +215,13 @@ html, body {
   color: var(--text-secondary);
   font-size: 13px;
 }
+
+.auth-error {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: rgba(238, 85, 85, 0.1);
+  border: 1px solid rgba(238, 85, 85, 0.3);
+  border-radius: 8px;
+  color: #e55;
+  font-size: 13px;
+}

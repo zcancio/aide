@@ -19,15 +19,15 @@ export default function ChatOverlay({ messages = [], onSend, initialState = 'inp
     }
 
     if (state === 'expanded') {
-      // Expanded → input after 3s
+      // Expanded → input after 5s
       collapseTimerRef.current = setTimeout(() => {
         setState('input');
-      }, 3000);
+      }, 5000);
     } else if (state === 'input') {
-      // Input → hidden after 10s
+      // Input → hidden after 30s
       collapseTimerRef.current = setTimeout(() => {
         setState('hidden');
-      }, 10000);
+      }, 30000);
     }
 
     return () => {

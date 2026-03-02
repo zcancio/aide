@@ -6,9 +6,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as api from '../lib/api.js';
 
-export default function EditorHeader({ aideId }) {
+export default function EditorHeader({ aideId, title = 'Untitled', onTitleChange }) {
   const navigate = useNavigate();
-  const [title, setTitle] = useState('Untitled');
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(title);
 
@@ -20,8 +19,10 @@ export default function EditorHeader({ aideId }) {
   const handleTitleBlur = async () => {
     setIsEditing(false);
     if (editValue.trim() && editValue !== title) {
-      setTitle(editValue);
       await api.updateAide(aideId, { title: editValue });
+      if (onTitleChange) {
+        onTitleChange(editValue);
+      }
     }
   };
 
