@@ -34,3 +34,7 @@ htmlcov/
 # Skills eval workspaces (throwaway)
 skills/*-workspace/
 .obsidian/
+
+# Frontend
+node_modules/
+frontend/dist/
