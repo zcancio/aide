@@ -229,6 +229,33 @@ describe('ws', () => {
     expect(mockWebSocket.close).toHaveBeenCalled();
   });
 
+  it('disconnect() prevents reconnect after onclose', async () => {
+    vi.useFakeTimers();
+    global.location = { protocol: 'http:', host: 'localhost:3000' };
+
+    wsInstance = new AideWS();
+    const connectPromise = wsInstance.connect('aide-123');
+    mockWebSocket.onopen();
+    await connectPromise;
+
+    // Clear the initial WebSocket call
+    global.WebSocket.mockClear();
+
+    // Disconnect explicitly
+    wsInstance.disconnect();
+
+    // Trigger onclose (would normally trigger reconnect)
+    mockWebSocket.onclose();
+
+    // Advance timers past reconnect delay
+    await vi.advanceTimersByTimeAsync(2000);
+
+    // Should NOT attempt reconnect after explicit disconnect
+    expect(global.WebSocket).not.toHaveBeenCalled();
+
+    vi.useRealTimers();
+  });
+
   it('after onclose, attempts reconnect after 1s delay', async () => {
     vi.useFakeTimers();
     global.location = { protocol: 'http:', host: 'localhost:3000' };

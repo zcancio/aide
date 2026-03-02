@@ -132,6 +132,7 @@ export class AideWS {
   }
 
   disconnect() {
+    this.aideId = null; // Prevent reconnect after explicit disconnect
     if (this.ws) {
       this.ws.close();
       this.ws = null;
