@@ -81,15 +81,14 @@ def build_l2_prompt(snapshot: dict[str, Any]) -> str:
     Build L2 (Haiku) system prompt with snapshot context.
 
     L2 handles routine updates using existing schema.
+
+    DEPRECATED: Use build_system_blocks("l3", snapshot) instead.
+    L2 tier was consolidated into L3.
     """
-    base = _load_prompt_old("l2_system")
-    primitives = _load_prompt_old("primitive_schemas")
+    base = load_prompt("l3")
     snapshot_json = json.dumps(snapshot, indent=2)
 
     return f"""{base}
-
-## Primitive Schemas
-{primitives}
 
 ## Current Snapshot
 ```json
@@ -103,15 +102,14 @@ def build_l3_prompt(snapshot: dict[str, Any]) -> str:
     Build L3 (Sonnet) system prompt with snapshot context.
 
     L3 handles schema synthesis and complex mutations.
+
+    DEPRECATED: Use build_system_blocks("l3", snapshot) instead.
+    Primitives are now inline in shared prefix.
     """
-    base = _load_prompt_old("l3_system")
-    primitives = _load_prompt_old("primitive_schemas")
+    base = load_prompt("l3")
     snapshot_json = json.dumps(snapshot, indent=2)
 
     return f"""{base}
-
-## Primitive Schemas
-{primitives}
 
 ## Current Snapshot
 ```json
