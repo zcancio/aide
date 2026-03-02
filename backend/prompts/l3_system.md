@@ -1,4 +1,4 @@
-# aide-prompt-l3-v3.0
+# aide-prompt-l3-v1.0
 
 {{shared_prefix}}
 
