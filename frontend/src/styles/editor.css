@@ -94,3 +94,9 @@
   min-height: 100%;
   background: #F7F5F2; /* Light bg for preview content */
 }
+
+@media (prefers-color-scheme: dark) {
+  .aide-preview {
+    background: #1A1A18; /* Dark bg - matches Shadow DOM --bg-primary */
+  }
+}

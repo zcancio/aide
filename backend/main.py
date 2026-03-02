@@ -126,14 +126,15 @@ async def health():
 
 # Serve frontend — must be after all API routes
 _FRONTEND = Path(__file__).parent.parent / "frontend"
+_FRONTEND_DIST = _FRONTEND / "dist"
 
 if _FRONTEND.is_dir():
+    # Serve legacy static files (display.js, etc.) for published pages
     app.mount("/static", StaticFiles(directory=str(_FRONTEND)), name="static")
 
-    @app.get("/")
-    async def serve_index():
-        """Serve the editor SPA."""
-        return FileResponse(str(_FRONTEND / "index.html"))
+    # Serve Vite build assets if dist exists
+    if _FRONTEND_DIST.is_dir():
+        app.mount("/assets", StaticFiles(directory=str(_FRONTEND_DIST / "assets")), name="assets")
 
     @app.get("/flight-recorder")
     async def serve_flight_recorder():
@@ -144,3 +145,28 @@ if _FRONTEND.is_dir():
     async def serve_cli_auth():
         """Serve the CLI authorization page."""
         return FileResponse(str(_FRONTEND / "cli-auth.html"))
+
+    @app.get("/")
+    async def serve_index():
+        """Serve the editor SPA."""
+        # Serve Vite-built SPA if available, otherwise fall back to legacy index.html
+        spa_html = _FRONTEND_DIST / "spa.html"
+        if spa_html.is_file():
+            return FileResponse(str(spa_html))
+        return FileResponse(str(_FRONTEND / "index.html"))
+
+    @app.get("/{path:path}")
+    async def serve_spa_catchall(path: str):
+        """
+        Catch-all route for client-side routing.
+
+        Serves the SPA for any path not matched by API/auth/ws/health routes.
+        This enables React Router to handle routing on the client side.
+        """
+        # Don't catch API, auth, ws, or health routes (they're already handled above)
+        # This only catches frontend routes like /a/:aideId
+        spa_html = _FRONTEND_DIST / "spa.html"
+        if spa_html.is_file():
+            return FileResponse(str(spa_html))
+        # Fall back to legacy index.html if SPA not built
+        return FileResponse(str(_FRONTEND / "index.html"))

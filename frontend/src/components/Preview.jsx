@@ -3,7 +3,7 @@
  */
 
 import { useEffect, useRef, useLayoutEffect } from 'react';
-import * as display from '../../display.js';
+import { RENDERER_CSS, renderHtml } from '../lib/display';
 
 export default function Preview({ entityStore, onDirectEdit }) {
   const containerRef = useRef(null);
@@ -19,7 +19,7 @@ export default function Preview({ entityStore, onDirectEdit }) {
 
     // Add stylesheet to shadow DOM
     const style = document.createElement('style');
-    style.textContent = display.RENDERER_CSS;
+    style.textContent = RENDERER_CSS;
     shadow.appendChild(style);
 
     // Create content container
@@ -42,7 +42,7 @@ export default function Preview({ entityStore, onDirectEdit }) {
     }
 
     // Render HTML
-    const html = display.renderHtml(entityStore);
+    const html = renderHtml(entityStore);
     content.innerHTML = html;
 
     // Restore scroll position

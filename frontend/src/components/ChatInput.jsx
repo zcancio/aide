@@ -10,10 +10,14 @@ export default function ChatInput({ onSend }) {
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      if (value.trim()) {
-        onSend(value);
-        setValue('');
-      }
+      handleSend();
+    }
+  };
+
+  const handleSend = () => {
+    if (value.trim()) {
+      onSend(value);
+      setValue('');
     }
   };
 
@@ -27,6 +31,13 @@ export default function ChatInput({ onSend }) {
         onKeyDown={handleKeyDown}
         rows={1}
       />
+      <button
+        className="chat-send-btn"
+        onClick={handleSend}
+        disabled={!value.trim()}
+      >
+        Send
+      </button>
     </div>
   );
 }
