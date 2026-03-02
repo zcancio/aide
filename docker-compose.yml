@@ -50,5 +50,21 @@ services:
       sh -c "DATABASE_URL=$$DATABASE_URL_OWNER python -m alembic upgrade head &&
              python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload"
 
+  frontend:
+    image: node:20-slim
+    container_name: aide-frontend
+    working_dir: /app
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://backend:8000
+    volumes:
+      - ./frontend:/app
+      - frontend-node-modules:/app/node_modules
+    depends_on:
+      - backend
+    command: sh -c "npm install && npm run dev -- --host"
+
 volumes:
+  frontend-node-modules:
   aide-pgdata:
