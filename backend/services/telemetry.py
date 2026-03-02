@@ -17,7 +17,7 @@ import time
 from decimal import Decimal
 from uuid import UUID
 
-from backend.models.telemetry import TelemetryEvent
+from backend.models.telemetry import TelemetryEvent, TokenUsage, TurnTelemetry
 from backend.repos import telemetry_repo
 
 # ---------------------------------------------------------------------------
@@ -130,3 +130,120 @@ class LLMCallTracker:
         if self._start_time is not None:
             self.event.ttc_ms = int((time.perf_counter() - self._start_time) * 1000)
         return await telemetry_repo.record_event(self.event)
+
+
+# ---------------------------------------------------------------------------
+# TurnRecorder
+# ---------------------------------------------------------------------------
+
+
+class TurnRecorder:
+    """
+    Records telemetry for a single turn in eval-compatible format.
+
+    Usage:
+        recorder = TurnRecorder(aide_id, user_id)
+        recorder.start_turn(turn_num=1, tier="L3", model="sonnet", message="hello")
+
+        # During streaming...
+        recorder.record_tool_call("mutate_entity", {"action": "create", "id": "x"})
+        recorder.record_text_block("Here's what I did")
+        recorder.mark_first_content()
+
+        # After streaming...
+        recorder.set_usage(input_tokens=1000, output_tokens=500, cache_read=200)
+        await recorder.finish()
+    """
+
+    def __init__(self, aide_id: UUID, user_id: UUID) -> None:
+        self._aide_id = aide_id
+        self._user_id = user_id
+        self._turn_num: int = 0
+        self._tier: str = ""
+        self._model: str = ""
+        self._message: str = ""
+        self._tool_calls: list[dict] = []
+        self._text_blocks: list[dict | str] = []
+        self._system_prompt: str | None = None
+        self._usage: TokenUsage | None = None
+        self._start_time: float = 0.0
+        self._ttfc_ms: int | None = None
+        self._ttc_ms: int | None = None
+        self._validation: dict | None = None
+
+    def start_turn(self, turn_num: int, tier: str, model: str, message: str) -> None:
+        """Initialize turn recording."""
+        self._turn_num = turn_num
+        self._tier = tier
+        self._model = model
+        self._message = message
+        self._tool_calls = []
+        self._text_blocks = []
+        self._start_time = time.perf_counter()
+
+    def record_tool_call(self, name: str, tool_input: dict, timestamp_ms: int | None = None) -> None:
+        """Record a tool call (mutate_entity, set_relationship, etc)."""
+        tc = {"name": name, "input": tool_input}
+        if timestamp_ms is not None:
+            tc["timestamp_ms"] = timestamp_ms
+        self._tool_calls.append(tc)
+
+    def record_text_block(self, text: str, timestamp_ms: int | None = None) -> None:
+        """Record a text block from the response."""
+        if timestamp_ms is not None:
+            self._text_blocks.append({"text": text, "timestamp_ms": timestamp_ms})
+        else:
+            self._text_blocks.append(text)
+
+    def set_system_prompt(self, prompt: str) -> None:
+        """Set the system prompt used for this turn."""
+        self._system_prompt = prompt
+
+    def mark_first_content(self) -> None:
+        """Mark time-to-first-content."""
+        if self._ttfc_ms is None and self._start_time:
+            self._ttfc_ms = int((time.perf_counter() - self._start_time) * 1000)
+
+    def set_usage(
+        self,
+        input_tokens: int,
+        output_tokens: int,
+        cache_read: int = 0,
+        cache_creation: int = 0,
+    ) -> None:
+        """Set token usage from API response."""
+        self._usage = TokenUsage(
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            cache_read=cache_read,
+            cache_creation=cache_creation,
+        )
+
+    def set_validation(self, passed: bool, issues: list[str] = None) -> None:
+        """Set validation result."""
+        self._validation = {"passed": passed, "issues": issues or []}
+
+    async def finish(self) -> UUID | None:
+        """Finalize and persist the turn. Returns row ID or None if missing data."""
+        if not self._usage:
+            return None
+
+        self._ttc_ms = int((time.perf_counter() - self._start_time) * 1000)
+        if self._ttfc_ms is None:
+            self._ttfc_ms = self._ttc_ms
+
+        turn = TurnTelemetry(
+            turn=self._turn_num,
+            tier=self._tier,
+            model=self._model,
+            message=self._message,
+            tool_calls=self._tool_calls,
+            text_blocks=self._text_blocks,
+            system_prompt=self._system_prompt,
+            usage=self._usage,
+            ttfc_ms=self._ttfc_ms,
+            ttc_ms=self._ttc_ms,
+            validation=self._validation,
+        )
+
+        return await telemetry_repo.insert_turn(self._user_id, self._aide_id, turn)
