@@ -149,11 +149,7 @@ if _FRONTEND.is_dir():
     @app.get("/")
     async def serve_index():
         """Serve the editor SPA."""
-        # Serve Vite-built SPA if available, otherwise fall back to legacy index.html
-        spa_html = _FRONTEND_DIST / "spa.html"
-        if spa_html.is_file():
-            return FileResponse(str(spa_html))
-        return FileResponse(str(_FRONTEND / "index.html"))
+        return FileResponse(str(_FRONTEND_DIST / "spa.html"))
 
     @app.get("/{path:path}")
     async def serve_spa_catchall(path: str):
@@ -163,10 +159,4 @@ if _FRONTEND.is_dir():
         Serves the SPA for any path not matched by API/auth/ws/health routes.
         This enables React Router to handle routing on the client side.
         """
-        # Don't catch API, auth, ws, or health routes (they're already handled above)
-        # This only catches frontend routes like /a/:aideId
-        spa_html = _FRONTEND_DIST / "spa.html"
-        if spa_html.is_file():
-            return FileResponse(str(spa_html))
-        # Fall back to legacy index.html if SPA not built
-        return FileResponse(str(_FRONTEND / "index.html"))
+        return FileResponse(str(_FRONTEND_DIST / "spa.html"))
