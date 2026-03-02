@@ -184,24 +184,41 @@ jobs:
           DATABASE_URL: postgres://aide_app:test@localhost:5432/aide_test
           IS_CONTINUATION: ${{ env.IS_CONTINUATION }}
 
-      - name: Verify changes were made
-        id: verify
+      - name: Commit any uncommitted changes
         run: |
           git add -A
           if git diff --cached --quiet; then
-            echo "::warning::Claude made no file changes"
-            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "No uncommitted changes"
           else
-            echo "Changes detected:"
+            echo "Committing uncommitted changes:"
             git diff --cached --stat
-            echo "has_changes=true" >> $GITHUB_OUTPUT
+            git commit -m "feat: implement from issue #${{ github.event.issue.number || github.event.pull_request.number }}"
           fi
 
-      - name: Commit and push
-        if: steps.verify.outputs.has_changes == 'true'
+      - name: Check for commits to push
+        id: verify
         run: |
-          git commit -m "feat: implement from issue #${{ github.event.issue.number || github.event.pull_request.number }}"
-          git push origin "$BRANCH"
+          # Check if branch exists on remote
+          if git ls-remote --heads origin "$BRANCH" | grep -q "$BRANCH"; then
+            COMMITS_AHEAD=$(git rev-list --count "origin/$BRANCH..HEAD")
+          else
+            # New branch - count commits ahead of main
+            COMMITS_AHEAD=$(git rev-list --count "origin/main..HEAD")
+          fi
+
+          echo "Commits ahead: $COMMITS_AHEAD"
+
+          if [ "$COMMITS_AHEAD" -gt 0 ]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            git log --oneline "origin/main..HEAD"
+          else
+            echo "::warning::No new commits to push"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Push changes
+        if: steps.verify.outputs.has_changes == 'true'
+        run: git push -u origin "$BRANCH"
 
       - name: Create or update PR
         if: steps.verify.outputs.has_changes == 'true' && github.event_name == 'issue_comment' && !github.event.issue.pull_request
