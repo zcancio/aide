@@ -5,7 +5,6 @@ from __future__ import annotations
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import HTMLResponse
 
 from backend.auth import get_current_user
 from backend.models.aide import (
@@ -21,7 +20,6 @@ from backend.models.conversation import ConversationHistoryResponse, MessageResp
 from backend.models.user import User
 from backend.repos.aide_repo import AideRepo
 from backend.repos.conversation_repo import ConversationRepo
-from backend.services.r2 import r2_service
 from backend.utils.snapshot_hash import hash_snapshot
 
 router = APIRouter(prefix="/api/aides", tags=["aides"])
@@ -166,35 +164,6 @@ async def delete_aide(
     return {"message": "Aide deleted."}
 
 
-@router.get("/{aide_id}/preview", status_code=200)
-async def get_aide_preview(
-    aide_id: UUID,
-    user: User = Depends(get_current_user),
-) -> HTMLResponse:
-    """Get rendered HTML preview for an aide (proxied from R2)."""
-    # Verify user owns this aide
-    aide = await aide_repo.get(user.id, aide_id)
-    if not aide:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aide not found.")
-
-    # Fetch HTML from R2
-    # TODO: Race condition - if user refreshes before R2 upload completes,
-    # R2 returns nothing but aide.state has content. Should fall back to
-    # rendering from aide.state using render_react_preview() instead of
-    # showing "Send a message" placeholder.
-    html_content = await r2_service.get_html(str(aide_id))
-    if not html_content:
-        # Return placeholder if no HTML yet
-        html_content = (
-            '<!DOCTYPE html><html><body style="background:#f9f9f9;'
-            "display:flex;align-items:center;justify-content:center;"
-            'height:100vh;font-family:sans-serif;color:#aaa;font-size:14px;">'
-            "Send a message to get started.</body></html>"
-        )
-
-    return HTMLResponse(content=html_content)
-
-
 @router.get("/{aide_id}/state", status_code=200)
 async def get_aide_state(
     aide_id: UUID,
@@ -245,13 +214,11 @@ async def save_aide_state(
     user: User = Depends(get_current_user),
 ) -> SaveStateResponse:
     """
-    Save streamed state to database and R2.
+    Save streamed state to database.
 
     This endpoint persists the state that was streamed via WebSocket.
     No LLM call - just saves what the frontend already has.
     """
-    from backend.services.renderer import render_html
-
     # Verify user owns this aide
     aide = await aide_repo.get(user.id, aide_id)
     if not aide:
@@ -269,10 +236,6 @@ async def save_aide_state(
     # Update aide state in database
     title = req.meta.get("title") or aide.title
     await aide_repo.update_state(user.id, aide_id, snapshot, event_log=[], title=title)
-
-    # Render HTML and upload to R2
-    html_content = render_html(snapshot, title=title)
-    await r2_service.upload_html(str(aide_id), html_content)
 
     # Save conversation history if provided
     if req.message or req.response:
