@@ -389,7 +389,6 @@ class TestOrchestratorFlightRecorderIntegration:
 
         with (
             patch("backend.services.orchestrator.l3_synthesizer") as mock_l3,
-            patch("backend.services.orchestrator.r2_service") as mock_r2,
             patch("backend.services.orchestrator.flight_recorder_uploader") as mock_uploader,
         ):
             orch = Orchestrator()
@@ -410,8 +409,6 @@ class TestOrchestratorFlightRecorderIntegration:
 
             orch.conv_repo.get_for_aide = AsyncMock(return_value=mock_conv_obj)
             orch.conv_repo.append_message = AsyncMock()
-
-            mock_r2.upload_html = AsyncMock()
 
             mock_l3.synthesize = AsyncMock(return_value={"primitives": [], "response": "Noted."})
 
@@ -447,7 +444,6 @@ class TestOrchestratorFlightRecorderIntegration:
 
         with (
             patch("backend.services.orchestrator.l3_synthesizer") as mock_l3,
-            patch("backend.services.orchestrator.r2_service") as mock_r2,
             patch("backend.services.orchestrator.flight_recorder_uploader"),
         ):
             orch = Orchestrator()
@@ -468,8 +464,6 @@ class TestOrchestratorFlightRecorderIntegration:
 
             orch.conv_repo.get_for_aide = AsyncMock(return_value=mock_conv_obj)
             orch.conv_repo.append_message = AsyncMock()
-
-            mock_r2.upload_html = AsyncMock()
 
             mock_l3.synthesize = AsyncMock(return_value={"primitives": [], "response": "Done."})
             mock_l3.system_prompt = "system"

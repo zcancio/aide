@@ -17,8 +17,6 @@ from backend.services.flight_recorder_uploader import flight_recorder_uploader
 from backend.services.grid_resolver import resolve_primitives
 from backend.services.l2_compiler import l2_compiler
 from backend.services.l3_synthesizer import l3_synthesizer
-from backend.services.r2 import r2_service
-from backend.services.renderer import render_html
 from engine.kernel.reducer_v2 import empty_snapshot as empty_v2_snapshot
 from engine.kernel.reducer_v2 import reduce
 from engine.kernel.types import Event, ReduceResult
@@ -259,11 +257,7 @@ class Orchestrator:
 
         print(f"Orchestrator: {applied_count}/{len(v2_events)} events applied successfully")
 
-        # 5. Render HTML
-        title = new_snapshot.get("meta", {}).get("title") or (aide.title if hasattr(aide, "title") else "AIde")
-        html_content = render_html(new_snapshot, title=title)
-
-        # 6. Save state to DB
+        # 5. Save state to DB
         serialized_events = [
             {
                 "id": e.id,
@@ -282,14 +276,7 @@ class Orchestrator:
         new_title = new_snapshot.get("meta", {}).get("title")
         await self.aide_repo.update_state(user_id, aide_id, new_snapshot, updated_event_log, title=new_title)
 
-        # 7. Upload HTML to R2 (non-blocking — DB is source of truth)
-        try:
-            await r2_service.upload_html(str(aide_id), html_content)
-        except Exception as e:
-            # Log but don't fail — state is saved in DB, R2 is just a cache
-            print(f"R2 upload failed (will retry on next message): {e}")
-
-        # 8. Save messages to conversation
+        # 6. Save messages to conversation
         user_message = Message(
             role="user",
             content=message,

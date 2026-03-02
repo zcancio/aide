@@ -22,7 +22,6 @@ from backend.config import settings
 from backend.models.telemetry import TelemetryEvent
 from backend.repos import telemetry_repo
 from backend.repos.aide_repo import AideRepo
-from backend.services.renderer import render_html
 from backend.services.streaming_orchestrator import StreamingOrchestrator
 from engine.kernel.mock_llm import MockLLM
 from engine.kernel.reducer_v2 import empty_snapshot, reduce
@@ -81,7 +80,7 @@ async def _load_snapshot(user_id: UUID | None, aide_id: str) -> dict[str, Any]:
 
 async def _save_snapshot(user_id: UUID | None, aide_id: str, snapshot: dict[str, Any]) -> None:
     """
-    Save snapshot to database and R2 for the given aide.
+    Save snapshot to database for the given aide.
     """
     if not user_id or not _UUID_RE.match(aide_id):
         return
@@ -90,13 +89,6 @@ async def _save_snapshot(user_id: UUID | None, aide_id: str, snapshot: dict[str,
         aide_uuid = UUID(aide_id)
         title = snapshot.get("meta", {}).get("title")
         await aide_repo.update_state(user_id, aide_uuid, snapshot, event_log=[], title=title)
-
-        # Also render and upload to R2
-        from backend.services.r2 import r2_service
-
-        html_content = render_html(snapshot, title=title)
-        await r2_service.upload_html(aide_id, html_content)
-
         logger.info("ws: saved %d entities for aide_id=%s", len(snapshot.get("entities", {})), aide_id)
     except Exception as e:
         logger.warning("ws: failed to save snapshot for aide_id=%s: %s", aide_id, e)
