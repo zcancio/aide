@@ -70,6 +70,8 @@ class TokenUsage(BaseModel):
             + self.cache_creation * r["cache_write"] / 1e6
         )
 
+    model_config = {"extra": "forbid"}
+
 
 class TurnTelemetry(BaseModel):
     """Single turn - matches eval golden format."""
@@ -86,6 +88,8 @@ class TurnTelemetry(BaseModel):
     ttc_ms: int
     validation: dict | None = None
 
+    model_config = {"extra": "forbid"}
+
 
 class AideTelemetry(BaseModel):
     """Full telemetry for an aide - matches eval golden files."""
@@ -97,3 +101,5 @@ class AideTelemetry(BaseModel):
     timestamp: str
     turns: list[TurnTelemetry]
     final_snapshot: dict | None = None
+
+    model_config = {"extra": "forbid"}
