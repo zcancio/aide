@@ -31,9 +31,7 @@ export function AuthProvider({ children }) {
     checkAuth();
   }, []);
 
-  const sendMagicLink = async (email) => {
-    return await api.sendMagicLink(email);
-  };
+  const sendMagicLink = (email) => api.sendMagicLink(email);
 
   const verifyToken = async (token) => {
     const result = await api.verifyToken(token);

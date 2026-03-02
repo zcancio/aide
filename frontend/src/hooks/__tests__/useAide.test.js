@@ -40,7 +40,7 @@ describe('useAide', () => {
     });
   });
 
-  it('returns initial state with empty entityStore and messages', () => {
+  it('returns initial state with empty entityStore', () => {
     const { result } = renderHook(() => useAide());
 
     expect(result.current.entityStore).toEqual({
@@ -48,8 +48,6 @@ describe('useAide', () => {
       rootIds: [],
       meta: {},
     });
-    expect(result.current.messages).toEqual([]);
-    expect(result.current.isLoading).toBe(false);
   });
 
   it('handleDelta calls applyDelta and updates entityStore state', () => {
@@ -77,37 +75,48 @@ describe('useAide', () => {
     expect(result.current.entityStore.entities).toHaveProperty('e1');
   });
 
-  it('handleSnapshot sets store directly with new entities, rootIds, and meta', () => {
+  it('handleSnapshot applies array of deltas to build store', () => {
     const { result } = renderHook(() => useAide());
 
-    const newEntities = {
-      e1: { title: 'Entity 1' },
-      e2: { title: 'Entity 2' },
-    };
-    const newRootIds = ['e1'];
-    const newMeta = { title: 'My Aide' };
+    const deltas = [
+      { type: 'entity.create', id: 'e1', data: { title: 'Entity 1' } },
+      { type: 'entity.create', id: 'e2', data: { title: 'Entity 2' } },
+    ];
 
     act(() => {
-      result.current.handleSnapshot(newEntities, newRootIds, newMeta);
+      result.current.handleSnapshot(deltas);
     });
 
-    expect(result.current.entityStore).toEqual({
-      entities: newEntities,
-      rootIds: newRootIds,
-      meta: newMeta,
-    });
+    // Should call createStore once for the fresh store
+    expect(entityStore.createStore).toHaveBeenCalled();
+    // Should call applyDelta for each delta
+    expect(entityStore.applyDelta).toHaveBeenCalledTimes(2);
+    expect(entityStore.applyDelta).toHaveBeenCalledWith(
+      expect.any(Object),
+      deltas[0]
+    );
+    expect(entityStore.applyDelta).toHaveBeenCalledWith(
+      expect.any(Object),
+      deltas[1]
+    );
+
+    // Final store should have both entities
+    expect(result.current.entityStore.entities).toHaveProperty('e1');
+    expect(result.current.entityStore.entities).toHaveProperty('e2');
   });
 
   it('resetState returns store to empty using resetStore', () => {
     const { result } = renderHook(() => useAide());
 
-    // First add some data
+    // First add some data via delta
+    const delta = {
+      type: 'entity.create',
+      id: 'e1',
+      data: { title: 'Entity 1' },
+    };
+
     act(() => {
-      result.current.handleSnapshot(
-        { e1: { title: 'Entity 1' } },
-        ['e1'],
-        { title: 'Aide' }
-      );
+      result.current.handleDelta(delta);
     });
 
     expect(result.current.entityStore.entities).toHaveProperty('e1');

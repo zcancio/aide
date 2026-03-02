@@ -8,16 +8,11 @@ import { AideWS } from '../lib/ws.js';
 
 export function useWebSocket(aideId, callbacks = {}) {
   const wsRef = useRef(null);
+  const callbacksRef = useRef(callbacks);
   const [isConnected, setIsConnected] = useState(false);
 
-  const {
-    onDelta,
-    onMeta,
-    onVoice,
-    onStatus,
-    onSnapshot,
-    onDirectEditError,
-  } = callbacks;
+  // Keep callbacks ref updated without triggering reconnect
+  callbacksRef.current = callbacks;
 
   useEffect(() => {
     if (!aideId) return;
@@ -26,13 +21,14 @@ export function useWebSocket(aideId, callbacks = {}) {
     const ws = new AideWS();
     wsRef.current = ws;
 
-    // Register callbacks
-    if (onDelta) ws.onDelta(onDelta);
-    if (onMeta) ws.onMeta(onMeta);
-    if (onVoice) ws.onVoice(onVoice);
-    if (onStatus) ws.onStatus(onStatus);
-    if (onSnapshot) ws.onSnapshot(onSnapshot);
-    if (onDirectEditError) ws.onDirectEditError(onDirectEditError);
+    // Register callbacks via ref to avoid stale closures
+    const cb = callbacksRef.current;
+    if (cb.onDelta) ws.onDelta(cb.onDelta);
+    if (cb.onMeta) ws.onMeta(cb.onMeta);
+    if (cb.onVoice) ws.onVoice(cb.onVoice);
+    if (cb.onStatus) ws.onStatus(cb.onStatus);
+    if (cb.onSnapshot) ws.onSnapshot(cb.onSnapshot);
+    if (cb.onDirectEditError) ws.onDirectEditError(cb.onDirectEditError);
 
     // Connect
     ws.connect(aideId)
@@ -49,7 +45,7 @@ export function useWebSocket(aideId, callbacks = {}) {
       setIsConnected(false);
       ws.disconnect();
     };
-  }, [aideId, onDelta, onMeta, onVoice, onStatus, onSnapshot, onDirectEditError]);
+  }, [aideId]);
 
   const send = (msg) => {
     if (wsRef.current) {
