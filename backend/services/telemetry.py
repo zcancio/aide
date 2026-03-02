@@ -70,7 +70,7 @@ class LLMCallTracker:
         user_id: UUID | None,
         tier: str,
         model: str,
-        prompt_ver: str = "v2.1",
+        prompt_ver: str = "v1.0",
         message_id: UUID | None = None,
     ) -> None:
         self.event = TelemetryEvent(

@@ -2,7 +2,7 @@
 WebSocket endpoint for real-time aide interaction.
 
 Accepts connections at /ws/aide/{aide_id}, streams deltas back to the client
-as the MockLLM processes each JSONL line through the v2 reducer.
+as the MockLLM processes each JSONL line through the reducer.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ from backend.repos import telemetry_repo
 from backend.repos.aide_repo import AideRepo
 from backend.services.streaming_orchestrator import StreamingOrchestrator
 from engine.kernel.mock_llm import MockLLM
-from engine.kernel.reducer_v2 import empty_snapshot, reduce
+from engine.kernel.reducer import empty_snapshot, reduce
 
 logger = logging.getLogger(__name__)
 

@@ -74,7 +74,7 @@ async def test_record_event_with_all_fields(initialize_pool) -> None:
         event_type="llm_call",
         tier="L3",
         model="sonnet",
-        prompt_ver="v2.1",
+        prompt_ver="v1.0",
         ttfc_ms=250,
         ttc_ms=1800,
         input_tokens=500,

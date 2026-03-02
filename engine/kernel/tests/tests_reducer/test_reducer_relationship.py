@@ -1,12 +1,12 @@
 """
-AIde v2 Reducer — Relationship Primitive Tests
+AIde Reducer — Relationship Primitive Tests
 
 Tests for rel.set, rel.remove, rel.constrain.
 """
 
 import pytest
 
-from engine.kernel.reducer_v2 import empty_snapshot, reduce
+from engine.kernel.reducer import empty_snapshot, reduce
 
 # ============================================================================
 # Fixtures

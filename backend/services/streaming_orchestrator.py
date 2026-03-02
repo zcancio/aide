@@ -19,7 +19,7 @@ from backend.services.classifier import TIER_MODELS, classify
 from backend.services.escalation import needs_escalation
 from backend.services.prompt_builder import build_messages, build_system_blocks
 from backend.services.tool_defs import TOOLS
-from engine.kernel.reducer_v2 import reduce
+from engine.kernel.reducer import reduce
 
 logger = logging.getLogger(__name__)
 

@@ -57,8 +57,8 @@ def test_l3_and_l4_share_prefix():
     l3 = build_system_blocks("L3", {"entities": {}})
     l4 = build_system_blocks("L4", {"entities": {}})
     # Both should contain the shared prefix marker
-    assert "# aide-prompt-v3.0 — Shared Prefix" in l3[0]["text"]
-    assert "# aide-prompt-v3.0 — Shared Prefix" in l4[0]["text"]
+    assert "# aide-prompt-v1.0 — Shared Prefix" in l3[0]["text"]
+    assert "# aide-prompt-v1.0 — Shared Prefix" in l4[0]["text"]
     # Extract shared prefix section (everything after the tier header until "## Your Tier")
     l3_shared = l3[0]["text"].split("## Your Tier")[0]
     l4_shared = l4[0]["text"].split("## Your Tier")[0]
