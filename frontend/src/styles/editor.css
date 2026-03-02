@@ -1,0 +1,96 @@
+/**
+ * editor.css - Editor chrome (header, preview area)
+ */
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  min-height: 56px;
+}
+
+.editor-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.editor-back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.editor-back:hover {
+  background: var(--elevated);
+  color: var(--text);
+}
+
+.editor-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text);
+  max-width: 400px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: text;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.editor-title:hover {
+  background: var(--elevated);
+}
+
+.editor-title-input {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text);
+  background: var(--elevated);
+  border: 1px solid var(--sage-500);
+  border-radius: 4px;
+  padding: 4px 8px;
+  outline: none;
+  max-width: 400px;
+}
+
+.editor-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.editor-preview {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg);
+  position: relative;
+}
+
+/* Preview area wraps Shadow DOM */
+.aide-preview {
+  min-height: 100%;
+  background: #F7F5F2; /* Light bg for preview content */
+}

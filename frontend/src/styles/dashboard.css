@@ -1,0 +1,115 @@
+/**
+ * dashboard.css - Dashboard grid, cards, empty state
+ */
+
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 40px 24px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32px;
+}
+
+.dashboard-header h1 {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+}
+
+.aide-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.aide-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  position: relative;
+}
+
+.aide-card:hover {
+  border-color: #444;
+  background: #202020;
+}
+
+.aide-card-title {
+  font-size: 15px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 60px;
+}
+
+.aide-card-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.status-draft {
+  background: #2a2a2a;
+  color: #888;
+}
+
+.status-published {
+  background: rgba(80, 200, 120, 0.15);
+  color: #5c8;
+}
+
+.status-archived {
+  background: rgba(255, 100, 100, 0.1);
+  color: #e66;
+}
+
+.aide-card-actions {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.aide-card:hover .aide-card-actions {
+  opacity: 1;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 80px 0;
+  color: var(--text-muted);
+}
+
+.empty-state p {
+  margin-bottom: 20px;
+  font-size: 15px;
+}
