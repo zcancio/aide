@@ -17,7 +17,6 @@ from backend.models.user import User
 from backend.repos.aide_repo import AideRepo
 from backend.services.flight_recorder_reader import flight_recorder_reader
 from backend.services.flight_recorder_uploader import flight_recorder_uploader
-from backend.services.orchestrator import orchestrator
 from backend.services.renderer import render_html
 
 router = APIRouter(prefix="/api/flight-recorder", tags=["flight-recorder"])
@@ -132,35 +131,6 @@ async def export_turn(
 
     # Return full turn data
     return turn
-
-
-@router.post("/{aide_id}/replay", status_code=200)
-async def replay_turn(
-    aide_id: UUID,
-    turn_index: int = Query(..., ge=0),
-    user: User = Depends(get_current_user),
-) -> dict:
-    """
-    Replay a turn with current models/prompts (dry run - no persistence).
-
-    Re-runs the AI calls using the original snapshot_before and user_message,
-    returning what the current models would produce without saving anything.
-    Useful for debugging model behavior and comparing with original results.
-    """
-    # Verify user owns this aide
-    aide = await aide_repo.get(user.id, aide_id)
-    if not aide:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aide not found.")
-
-    # Fetch the specific turn
-    turn = await flight_recorder_reader.get_turn_by_index(str(aide_id), turn_index)
-    if not turn:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Turn not found.")
-
-    # Replay the turn (dry run)
-    result = await orchestrator.replay_turn(turn)
-
-    return result
 
 
 @router.post("/flush", status_code=200)
