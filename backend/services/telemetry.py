@@ -181,9 +181,9 @@ class TurnRecorder:
         self._text_blocks = []
         self._start_time = time.perf_counter()
 
-    def record_tool_call(self, name: str, input: dict, timestamp_ms: int | None = None) -> None:
+    def record_tool_call(self, name: str, tool_input: dict, timestamp_ms: int | None = None) -> None:
         """Record a tool call (mutate_entity, set_relationship, etc)."""
-        tc = {"name": name, "input": input}
+        tc = {"name": name, "input": tool_input}
         if timestamp_ms is not None:
             tc["timestamp_ms"] = timestamp_ms
         self._tool_calls.append(tc)
