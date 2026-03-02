@@ -40,7 +40,8 @@ def test_prompt_building_l2():
     snapshot = {"entities": {"item_1": {"name": "Test"}}}
     prompt = build_l2_prompt(snapshot)
     assert "Test" in prompt
-    assert "L2 System Prompt" in prompt
+    # L2 was consolidated into L3, so prompt uses L3 format
+    assert "aide-prompt-l3" in prompt
 
 
 def test_prompt_building_l3():
