@@ -18,7 +18,7 @@ class TelemetryEvent(BaseModel):
     # LLM call fields
     tier: str | None = None  # 'L2', 'L3', 'L4'
     model: str | None = None  # 'haiku', 'sonnet', 'opus'
-    prompt_ver: str | None = None  # 'v2.1'
+    prompt_ver: str | None = None  # 'v1.0'
     ttfc_ms: int | None = None  # time to first content (ms)
     ttc_ms: int | None = None  # time to complete (ms)
     input_tokens: int | None = None

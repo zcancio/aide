@@ -1,5 +1,5 @@
 """
-AIde v2 Reducer — Style, Meta, and Signal Tests
+AIde Reducer — Style, Meta, and Signal Tests
 
 Tests for style.set, style.entity, meta.set, meta.annotate, meta.constrain,
 voice, escalate, and batch signals.
@@ -7,7 +7,7 @@ voice, escalate, and batch signals.
 
 import pytest
 
-from engine.kernel.reducer_v2 import empty_snapshot, reduce
+from engine.kernel.reducer import empty_snapshot, reduce
 
 # ============================================================================
 # Fixtures

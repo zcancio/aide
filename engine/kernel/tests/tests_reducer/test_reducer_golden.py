@@ -1,7 +1,7 @@
 """
-AIde v2 Reducer — Golden File Integration Tests
+AIde Reducer — Golden File Integration Tests
 
-Every event in every golden file must be accepted by the v2 reducer.
+Every event in every golden file must be accepted by the reducer.
 Golden files are in engine/kernel/tests/fixtures/golden/*.jsonl.
 
 Reference: docs/program_management/PHASE_0B_REDUCER.md
@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from engine.kernel.reducer_v2 import empty_snapshot, reduce, reduce_all, replay
+from engine.kernel.reducer import empty_snapshot, reduce, reduce_all, replay
 
 GOLDEN_DIR = Path(__file__).parent.parent / "fixtures" / "golden"
 

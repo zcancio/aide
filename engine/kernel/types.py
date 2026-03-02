@@ -1,7 +1,7 @@
 """
 AIde Kernel — Shared Types
 
-Data classes and constants used across primitives and reducer_v2.
+Data classes and constants used across primitives and reducer.
 """
 
 from __future__ import annotations
@@ -201,9 +201,8 @@ class Warning:
 @dataclass
 class ReduceResult:
     """
-    Result of applying one event to a snapshot (v1 reducer format).
+    Result of applying one event to a snapshot.
     The reducer never throws — it always returns one of these.
-    Note: reducer_v2 has its own ReduceResult class.
     """
 
     snapshot: dict[str, Any]  # AideState

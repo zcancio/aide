@@ -1,12 +1,12 @@
 """
-AIde v2 Reducer — Entity Primitive Tests
+AIde Reducer — Entity Primitive Tests
 
 Tests for entity.create, entity.update, entity.remove, entity.move, entity.reorder.
 """
 
 import pytest
 
-from engine.kernel.reducer_v2 import empty_snapshot, reduce
+from engine.kernel.reducer import empty_snapshot, reduce
 
 # ============================================================================
 # Fixtures
