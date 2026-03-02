@@ -91,7 +91,6 @@ class TestL3Synthesis:
         """L3 creates schema from first message."""
         with (
             patch("backend.services.orchestrator.l3_synthesizer") as mock_l3,
-            patch("backend.services.orchestrator.r2_service") as mock_r2,
         ):
             # Create orchestrator with mocked repos
             orchestrator = Orchestrator()
@@ -116,7 +115,6 @@ class TestL3Synthesis:
             orchestrator.conv_repo.create = AsyncMock(return_value=mock_conv_obj)
             orchestrator.conv_repo.append_message = AsyncMock()
 
-            mock_r2.upload_html = AsyncMock(return_value="aide_123/index.html")
 
             # L3 returns primitives to create grocery list
             mock_l3.synthesize = AsyncMock(
@@ -172,7 +170,6 @@ class TestL3Synthesis:
         """Image input routes to L3 (vision-capable model)."""
         with (
             patch("backend.services.orchestrator.l3_synthesizer") as mock_l3,
-            patch("backend.services.orchestrator.r2_service") as mock_r2,
         ):
             orchestrator = Orchestrator()
             orchestrator.aide_repo = MagicMock()
@@ -193,7 +190,6 @@ class TestL3Synthesis:
             orchestrator.conv_repo.get_for_aide = AsyncMock(return_value=mock_conv_obj)
             orchestrator.conv_repo.append_message = AsyncMock()
 
-            mock_r2.upload_html = AsyncMock(return_value="aide_123/index.html")
 
             mock_l3.synthesize = AsyncMock(return_value={"primitives": [], "response": "Receipt processed."})
 
@@ -221,7 +217,6 @@ class TestL2Compilation:
         """Routine update uses L2 (Haiku)."""
         with (
             patch("backend.services.orchestrator.l2_compiler") as mock_l2,
-            patch("backend.services.orchestrator.r2_service") as mock_r2,
         ):
             orchestrator = Orchestrator()
             orchestrator.aide_repo = MagicMock()
@@ -242,7 +237,6 @@ class TestL2Compilation:
             orchestrator.conv_repo.get_for_aide = AsyncMock(return_value=mock_conv_obj)
             orchestrator.conv_repo.append_message = AsyncMock()
 
-            mock_r2.upload_html = AsyncMock(return_value="aide_456/index.html")
 
             # L2 returns primitive to check off milk
             mock_l2.compile = AsyncMock(
@@ -284,7 +278,6 @@ class TestL2Compilation:
         with (
             patch("backend.services.orchestrator.l2_compiler") as mock_l2,
             patch("backend.services.orchestrator.l3_synthesizer") as mock_l3,
-            patch("backend.services.orchestrator.r2_service") as mock_r2,
         ):
             orchestrator = Orchestrator()
             orchestrator.aide_repo = MagicMock()
@@ -305,7 +298,6 @@ class TestL2Compilation:
             orchestrator.conv_repo.get_for_aide = AsyncMock(return_value=mock_conv_obj)
             orchestrator.conv_repo.append_message = AsyncMock()
 
-            mock_r2.upload_html = AsyncMock(return_value="aide_456/index.html")
 
             # L2 signals escalation
             mock_l2.compile = AsyncMock(
@@ -354,7 +346,6 @@ class TestL2Compilation:
         """L2 handles multi-entity updates."""
         with (
             patch("backend.services.orchestrator.l2_compiler") as mock_l2,
-            patch("backend.services.orchestrator.r2_service") as mock_r2,
         ):
             orchestrator = Orchestrator()
             orchestrator.aide_repo = MagicMock()
@@ -375,7 +366,6 @@ class TestL2Compilation:
             orchestrator.conv_repo.get_for_aide = AsyncMock(return_value=mock_conv_obj)
             orchestrator.conv_repo.append_message = AsyncMock()
 
-            mock_r2.upload_html = AsyncMock(return_value="aide_456/index.html")
 
             # L2 returns multiple primitives
             mock_l2.compile = AsyncMock(
@@ -421,7 +411,6 @@ class TestOrchestrationFlow:
         """Full flow: message → primitives → state → render → R2."""
         with (
             patch("backend.services.orchestrator.l2_compiler") as mock_l2,
-            patch("backend.services.orchestrator.r2_service") as mock_r2,
         ):
             orchestrator = Orchestrator()
             orchestrator.aide_repo = MagicMock()
@@ -442,7 +431,6 @@ class TestOrchestrationFlow:
             orchestrator.conv_repo.get_for_aide = AsyncMock(return_value=mock_conv_obj)
             orchestrator.conv_repo.append_message = AsyncMock()
 
-            mock_r2.upload_html = AsyncMock(return_value="aide_456/index.html")
 
             mock_l2.compile = AsyncMock(
                 return_value={
@@ -471,11 +459,6 @@ class TestOrchestrationFlow:
             # Verify state was saved
             orchestrator.aide_repo.update_state.assert_called_once()
 
-            # Verify HTML was uploaded to R2
-            mock_r2.upload_html.assert_called_once()
-            uploaded_html = mock_r2.upload_html.call_args[0][1]
-            assert "<!DOCTYPE html>" in uploaded_html
-
             # Verify conversation messages were saved
             assert orchestrator.conv_repo.append_message.call_count == 2  # user + assistant
 
@@ -489,7 +472,6 @@ class TestOrchestrationFlow:
         """Questions don't mutate state."""
         with (
             patch("backend.services.orchestrator.l2_compiler") as mock_l2,
-            patch("backend.services.orchestrator.r2_service") as mock_r2,
         ):
             orchestrator = Orchestrator()
             orchestrator.aide_repo = MagicMock()
@@ -510,7 +492,6 @@ class TestOrchestrationFlow:
             orchestrator.conv_repo.get_for_aide = AsyncMock(return_value=mock_conv_obj)
             orchestrator.conv_repo.append_message = AsyncMock()
 
-            mock_r2.upload_html = AsyncMock(return_value="aide_456/index.html")
 
             # L2 returns no primitives for question
             mock_l2.compile = AsyncMock(
