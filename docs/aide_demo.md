@@ -296,9 +296,9 @@ L3 | simple_update   | Jake is bringing the drinks
 L4 | pure_query      | When is the party?
 ```
 
-## Streaming Pipeline — Real-Time Updates
+## Streaming Pipeline — Tool Calls
 
-The LLM emits JSONL (one JSON line per operation). The server parses each line as it arrives, validates it, applies it to the reducer, and pushes deltas to the client via WebSocket.
+The LLM uses structured tool calls to mutate state. The server streams tool_use blocks as they arrive, validates each call, applies it to the reducer, and pushes deltas to the client via WebSocket.
 
 The page builds itself in real-time — title first, sections next, items last.
 
@@ -306,36 +306,35 @@ The page builds itself in real-time — title first, sections next, items last.
 source .venv/bin/activate && python3 << 'ENDSCRIPT'
 import json
 
-print("=== JSONL Event Stream Example ===\n")
+print("=== Tool Call Stream Example ===\n")
 print("When you say: \"Plan a graduation party for Emma\"")
-print("The LLM emits events like:\n")
+print("The LLM emits tool calls like:\n")
 
-events = [
-    {"t": "meta.update", "p": {"title": "Emmas Graduation Party"}},
-    {"t": "entity.create", "id": "header", "display": "heading", "p": {"text": "June 15th, 2024"}},
-    {"t": "entity.create", "id": "guests", "display": "table", "p": {"label": "Guest List"}},
-    {"t": "entity.create", "id": "g1", "parent": "guests", "p": {"name": "Family", "count": 0}},
-    {"t": "entity.create", "id": "food", "display": "checklist", "p": {"label": "Food"}},
-    {"t": "voice", "p": {"text": "Party page created."}},
+# These map to Anthropic tool_use blocks
+tool_calls = [
+    {"tool": "mutate_entity", "input": {"action": "create", "id": "header", "parent": "root", "display": "text", "props": {"label": "Emmas Graduation Party"}}},
+    {"tool": "mutate_entity", "input": {"action": "create", "id": "guests", "parent": "root", "display": "table", "props": {"label": "Guest List"}}},
+    {"tool": "mutate_entity", "input": {"action": "create", "id": "g1", "parent": "guests", "props": {"name": "Family", "count": 0}}},
+    {"tool": "mutate_entity", "input": {"action": "create", "id": "food", "parent": "root", "display": "checklist", "props": {"label": "Food"}}},
+    {"tool": "voice", "input": {"text": "Party page created."}},
 ]
 
-for event in events:
-    print(json.dumps(event))
+for call in tool_calls:
+    print(json.dumps(call))
 ENDSCRIPT
 ```
 
 ```output
-=== JSONL Event Stream Example ===
+=== Tool Call Stream Example ===
 
 When you say: "Plan a graduation party for Emma"
-The LLM emits events like:
+The LLM emits tool calls like:
 
-{"t": "meta.update", "p": {"title": "Emmas Graduation Party"}}
-{"t": "entity.create", "id": "header", "display": "heading", "p": {"text": "June 15th, 2024"}}
-{"t": "entity.create", "id": "guests", "display": "table", "p": {"label": "Guest List"}}
-{"t": "entity.create", "id": "g1", "parent": "guests", "p": {"name": "Family", "count": 0}}
-{"t": "entity.create", "id": "food", "display": "checklist", "p": {"label": "Food"}}
-{"t": "voice", "p": {"text": "Party page created."}}
+{"tool": "mutate_entity", "input": {"action": "create", "id": "header", "parent": "root", "display": "text", "props": {"label": "Emmas Graduation Party"}}}
+{"tool": "mutate_entity", "input": {"action": "create", "id": "guests", "parent": "root", "display": "table", "props": {"label": "Guest List"}}}
+{"tool": "mutate_entity", "input": {"action": "create", "id": "g1", "parent": "guests", "props": {"name": "Family", "count": 0}}}
+{"tool": "mutate_entity", "input": {"action": "create", "id": "food", "parent": "root", "display": "checklist", "props": {"label": "Food"}}}
+{"tool": "voice", "input": {"text": "Party page created."}}
 ```
 
 ## Backend Architecture — Layered Separation
@@ -516,8 +515,8 @@ AIde maintains a distinctive non-conversational voice:
 AIde is a living object system with:
 
 - **10 server-side primitive types** for structured mutations
-- **Pure reducer** for deterministic state transitions  
-- **JSONL streaming** for real-time page building
+- **Pure reducer** for deterministic state transitions
+- **Tool call streaming** for real-time page building
 - **Two speeds**: AI (1-5s) and spreadsheet (<200ms direct edits)
 - **L3/L4 routing** for efficient model selection
 - **RLS-backed multi-tenancy** for secure isolation
