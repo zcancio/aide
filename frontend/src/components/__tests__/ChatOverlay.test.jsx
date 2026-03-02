@@ -14,25 +14,25 @@ describe('ChatOverlay', () => {
   it('starts in input state by default', () => {
     render(<ChatOverlay messages={[]} onSend={vi.fn()} />);
 
-    // Input bar should be visible
-    expect(screen.getByPlaceholderText(/message/i) || screen.getByRole('textbox')).toBeInTheDocument();
+    // Should be in input state
+    const overlay = screen.getByTestId('chat-overlay');
+    expect(overlay).toHaveAttribute('data-state', 'input');
 
-    // Message history should NOT be visible initially
-    const messages = screen.queryByTestId('message-history');
-    if (messages) {
-      expect(messages).not.toBeVisible();
-    }
+    // Input bar should be rendered (even if CSS hides it in hidden state)
+    expect(screen.getByPlaceholderText(/message/i)).toBeInTheDocument();
   });
 
   it('expands to show history when handle is clicked', async () => {
     render(<ChatOverlay messages={[{ role: 'user', content: 'Test' }]} onSend={vi.fn()} />);
 
-    const handle = screen.getByTestId('chat-handle') || screen.getByText(/pull up/i) || screen.getByRole('button');
+    const overlay = screen.getByTestId('chat-overlay');
+    expect(overlay).toHaveAttribute('data-state', 'input');
+
+    const handle = screen.getByTestId('chat-handle');
     fireEvent.click(handle);
 
     await waitFor(() => {
-      const history = screen.getByTestId('message-history') || screen.getByText('Test');
-      expect(history).toBeVisible();
+      expect(overlay).toHaveAttribute('data-state', 'expanded');
     });
   });
 
@@ -44,11 +44,14 @@ describe('ChatOverlay', () => {
 
     render(<ChatOverlay messages={messages} onSend={vi.fn()} />);
 
-    // Expand
-    const handle = screen.getByTestId('chat-handle') || screen.getByRole('button');
+    const overlay = screen.getByTestId('chat-overlay');
+
+    // Expand by clicking handle
+    const handle = screen.getByTestId('chat-handle');
     fireEvent.click(handle);
 
     await waitFor(() => {
+      expect(overlay).toHaveAttribute('data-state', 'expanded');
       expect(screen.getByText('Hello')).toBeInTheDocument();
       expect(screen.getByText('Hi there')).toBeInTheDocument();
     });
@@ -57,32 +60,31 @@ describe('ChatOverlay', () => {
   it('collapses from expanded to input on swipe down', async () => {
     render(<ChatOverlay messages={[{ role: 'user', content: 'Test' }]} onSend={vi.fn()} />);
 
-    // Expand first
-    const handle = screen.getByTestId('chat-handle') || screen.getByRole('button');
+    const overlay = screen.getByTestId('chat-overlay');
+
+    // Expand first by clicking handle
+    const handle = screen.getByTestId('chat-handle');
     fireEvent.click(handle);
 
     await waitFor(() => {
-      expect(screen.getByText('Test')).toBeVisible();
+      expect(overlay).toHaveAttribute('data-state', 'expanded');
     });
 
     // Simulate swipe down
-    const overlay = screen.getByTestId('chat-overlay') || screen.getByText('Test').closest('[data-state]');
     fireEvent.touchStart(overlay, { touches: [{ clientY: 100 }] });
-    fireEvent.touchMove(overlay, { touches: [{ clientY: 200 }] });
+    fireEvent.touchMove(overlay, { touches: [{ clientY: 200 }] }); // +100px = swipe down
     fireEvent.touchEnd(overlay);
 
     await waitFor(() => {
-      const history = screen.queryByTestId('message-history');
-      if (history) {
-        expect(history).not.toBeVisible();
-      }
+      expect(overlay).toHaveAttribute('data-state', 'input');
     });
   });
 
   it('hides from input to hidden on swipe down', async () => {
     render(<ChatOverlay messages={[]} onSend={vi.fn()} />);
 
-    const overlay = screen.getByTestId('chat-overlay') || screen.getByRole('textbox').closest('[data-state]');
+    const overlay = screen.getByTestId('chat-overlay');
+    expect(overlay).toHaveAttribute('data-state', 'input');
 
     // Swipe down from input state
     fireEvent.touchStart(overlay, { touches: [{ clientY: 100 }] });
@@ -90,23 +92,23 @@ describe('ChatOverlay', () => {
     fireEvent.touchEnd(overlay);
 
     await waitFor(() => {
-      // Input should be hidden, only handle visible
-      expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+      expect(overlay).toHaveAttribute('data-state', 'hidden');
     });
   });
 
   it('opens from hidden to input on swipe up', async () => {
     render(<ChatOverlay messages={[]} onSend={vi.fn()} initialState="hidden" />);
 
-    const handle = screen.getByTestId('chat-handle') || screen.getByRole('button');
+    const overlay = screen.getByTestId('chat-overlay');
+    expect(overlay).toHaveAttribute('data-state', 'hidden');
 
     // Swipe up
-    fireEvent.touchStart(handle, { touches: [{ clientY: 200 }] });
-    fireEvent.touchMove(handle, { touches: [{ clientY: 100 }] });
-    fireEvent.touchEnd(handle);
+    fireEvent.touchStart(overlay, { touches: [{ clientY: 200 }] });
+    fireEvent.touchMove(overlay, { touches: [{ clientY: 100 }] }); // -100px = swipe up
+    fireEvent.touchEnd(overlay);
 
     await waitFor(() => {
-      expect(screen.getByRole('textbox')).toBeInTheDocument();
+      expect(overlay).toHaveAttribute('data-state', 'input');
     });
   });
 
@@ -114,7 +116,7 @@ describe('ChatOverlay', () => {
     const mockOnSend = vi.fn();
     render(<ChatOverlay messages={[]} onSend={mockOnSend} />);
 
-    const input = screen.getByPlaceholderText(/message/i) || screen.getByRole('textbox');
+    const input = screen.getByPlaceholderText(/message/i);
     fireEvent.change(input, { target: { value: 'Test message' } });
     fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
 
@@ -127,7 +129,7 @@ describe('ChatOverlay', () => {
     const mockOnSend = vi.fn();
     render(<ChatOverlay messages={[]} onSend={mockOnSend} />);
 
-    const input = screen.getByPlaceholderText(/message/i) || screen.getByRole('textbox');
+    const input = screen.getByPlaceholderText(/message/i);
     fireEvent.change(input, { target: { value: 'Line 1' } });
     fireEvent.keyDown(input, { key: 'Enter', code: 'Enter', shiftKey: true });
 

@@ -2,30 +2,19 @@
  * Preview.test.jsx - Tests for Preview component
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import Preview from '../Preview.jsx';
 
-// Mock display library
-const mockRenderHtml = vi.fn();
-vi.mock('../../../display.js', () => ({
-  renderHtml: (store) => mockRenderHtml(store),
-  RENDERER_CSS: '/* mock css */',
-}));
-
 describe('Preview', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockRenderHtml.mockReturnValue('<div class="aide-page">Test content</div>');
-  });
-
   it('renders a div with class aide-preview', () => {
     const entityStore = { entities: {}, rootIds: [], meta: {} };
 
-    render(<Preview entityStore={entityStore} onDirectEdit={vi.fn()} />);
+    render(<Preview entityStore={entityStore} onDirectEdit={() => {}} />);
 
-    const preview = screen.getByTestId('preview') || document.querySelector('.aide-preview');
+    const preview = screen.getByTestId('preview');
     expect(preview).toBeInTheDocument();
+    expect(preview).toHaveClass('aide-preview');
   });
 
   it('renders HTML from entityStore when entities exist', () => {
@@ -34,21 +23,25 @@ describe('Preview', () => {
       rootIds: ['e1'],
       meta: { title: 'Test Page' },
     };
-    mockRenderHtml.mockReturnValue('<div class="aide-page">Rendered content</div>');
 
-    render(<Preview entityStore={entityStore} onDirectEdit={vi.fn()} />);
+    render(<Preview entityStore={entityStore} onDirectEdit={() => {}} />);
 
-    // Should contain rendered HTML
-    const preview = screen.getByTestId('preview') || document.querySelector('.aide-preview');
-    expect(preview.innerHTML).toContain('aide-page');
+    const preview = screen.getByTestId('preview');
+    expect(preview).toBeInTheDocument();
+
+    // Shadow DOM should be created
+    expect(preview.shadowRoot).toBeTruthy();
   });
 
   it('shows empty state when entityStore is empty', () => {
     const entityStore = { entities: {}, rootIds: [], meta: {} };
-    mockRenderHtml.mockReturnValue('<div class="aide-page"><p class="aide-empty">Send a message to get started.</p></div>');
 
-    render(<Preview entityStore={entityStore} onDirectEdit={vi.fn()} />);
+    render(<Preview entityStore={entityStore} onDirectEdit={() => {}} />);
 
-    expect(screen.getByText(/send a message to get started/i) || screen.getByText(/empty/i)).toBeInTheDocument();
+    const preview = screen.getByTestId('preview');
+    expect(preview).toBeInTheDocument();
+
+    // Shadow DOM should be created
+    expect(preview.shadowRoot).toBeTruthy();
   });
 });

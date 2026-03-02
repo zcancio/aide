@@ -4,14 +4,26 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
 import App from '../App.jsx';
 import * as useAuthModule from '../../hooks/useAuth.jsx';
 
-// Mock the useAuth hook
+// Mock the entire useAuth hook
 vi.mock('../../hooks/useAuth.jsx', () => ({
   useAuth: vi.fn(),
-  AuthProvider: ({ children }) => children,
+  AuthProvider: ({ children }) => children, // Pass through
+}));
+
+// Mock child components to simplify tests
+vi.mock('../AuthScreen.jsx', () => ({
+  default: () => <div><input placeholder="Your email" /></div>,
+}));
+
+vi.mock('../Dashboard.jsx', () => ({
+  default: () => <div data-testid="dashboard">Dashboard<button>New</button></div>,
+}));
+
+vi.mock('../Editor.jsx', () => ({
+  default: () => <div data-testid="editor"><div data-testid="preview">Preview</div></div>,
 }));
 
 describe('App', () => {
@@ -29,11 +41,7 @@ describe('App', () => {
       logout: vi.fn(),
     });
 
-    render(
-      <MemoryRouter initialEntries={['/']}>
-        <App />
-      </MemoryRouter>
-    );
+    render(<App />);
 
     // Should show email input
     expect(screen.getByPlaceholderText(/email/i)).toBeInTheDocument();
@@ -49,11 +57,7 @@ describe('App', () => {
       logout: vi.fn(),
     });
 
-    render(
-      <MemoryRouter initialEntries={['/']}>
-        <App />
-      </MemoryRouter>
-    );
+    render(<App />);
 
     // Should NOT show email input while loading
     expect(screen.queryByPlaceholderText(/email/i)).not.toBeInTheDocument();
@@ -69,15 +73,13 @@ describe('App', () => {
       logout: vi.fn(),
     });
 
-    render(
-      <MemoryRouter initialEntries={['/']}>
-        <App />
-      </MemoryRouter>
-    );
+    // Set initial location to /
+    window.history.pushState({}, 'Test', '/');
 
-    // Should show dashboard (presence of "New" button or aide grid)
-    // Using a more flexible matcher since we don't know exact text
-    expect(screen.getByText(/new/i) || screen.getByTestId('dashboard')).toBeTruthy();
+    render(<App />);
+
+    // Should show dashboard
+    expect(screen.getByTestId('dashboard')).toBeInTheDocument();
   });
 
   it('renders editor at /a/:aideId when authenticated', () => {
@@ -90,17 +92,16 @@ describe('App', () => {
       logout: vi.fn(),
     });
 
-    render(
-      <MemoryRouter initialEntries={['/a/test-id']}>
-        <App />
-      </MemoryRouter>
-    );
+    // Set initial location to /a/test-id
+    window.history.pushState({}, 'Test', '/a/test-id');
+
+    render(<App />);
 
     // Should show editor
-    expect(screen.getByTestId('editor') || screen.getByTestId('preview')).toBeTruthy();
+    expect(screen.getByTestId('editor')).toBeInTheDocument();
   });
 
-  it('redirects unknown routes to /', () => {
+  it('redirects unknown routes to /', async () => {
     vi.spyOn(useAuthModule, 'useAuth').mockReturnValue({
       isAuthenticated: true,
       isLoading: false,
@@ -110,13 +111,12 @@ describe('App', () => {
       logout: vi.fn(),
     });
 
-    render(
-      <MemoryRouter initialEntries={['/xyz']}>
-        <App />
-      </MemoryRouter>
-    );
+    // Set initial location to unknown route
+    window.history.pushState({}, 'Test', '/xyz');
 
-    // Should redirect to dashboard (check for dashboard elements)
-    expect(screen.getByText(/new/i) || screen.getByTestId('dashboard')).toBeTruthy();
+    render(<App />);
+
+    // Should redirect to dashboard
+    expect(screen.getByTestId('dashboard')).toBeInTheDocument();
   });
 });
