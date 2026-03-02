@@ -30,17 +30,17 @@ export default function Editor() {
     }
   }, [aideId]);
 
-  const handleMeta = useCallback((meta) => {
-    // Handle assistant messages from backend
-    if (meta.role === 'assistant' && meta.content) {
-      setMessages((prev) => [...prev, { role: 'assistant', content: meta.content }]);
+  const handleVoice = useCallback(({ text }) => {
+    // Handle assistant voice messages from backend
+    if (text) {
+      setMessages((prev) => [...prev, { role: 'assistant', content: text }]);
     }
   }, []);
 
   const { send, sendDirectEdit } = useWebSocket(aideId, {
     onDelta: handleDelta,
     onSnapshot: handleSnapshot,
-    onMeta: handleMeta,
+    onVoice: handleVoice,
   });
 
   const handleTitleChange = async (newTitle) => {

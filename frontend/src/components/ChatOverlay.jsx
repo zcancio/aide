@@ -11,6 +11,15 @@ export default function ChatOverlay({ messages = [], onSend, initialState = 'inp
   const [touchStart, setTouchStart] = useState(null);
   const overlayRef = useRef(null);
   const collapseTimerRef = useRef(null);
+  const prevMessageCountRef = useRef(messages.length);
+
+  // Auto-expand when new messages arrive
+  useEffect(() => {
+    if (messages.length > prevMessageCountRef.current) {
+      setState('expanded');
+    }
+    prevMessageCountRef.current = messages.length;
+  }, [messages.length]);
 
   // Auto-collapse timers
   useEffect(() => {
