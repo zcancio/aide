@@ -1,6 +1,6 @@
 # AIde — A Living Object System
 
-*2026-03-02T18:31:46Z by Showboat 0.6.1*
+*2026-03-02T21:45:00Z by Showboat 0.6.1*
 <!-- showboat-id: 7793b8ab-1139-4019-b4d4-dcefe43afcdc -->
 
 AIde is a living system that keeps what you're running coherent over time. You describe what you're coordinating — a graduation party, a poker league, a group trip — and AIde brings it to life as a shareable page that stays current through natural language conversation.
@@ -233,15 +233,14 @@ Total entities: 10
 Sequence: 11
 ```
 
-## Intelligence Tiers — L2, L3, L4
+## Intelligence Tiers — L3, L4
 
 AIde routes user messages to the right model tier for efficiency:
 
-- **L2 (Haiku)**: Routine mutations like "add Aunt Linda" — under 1.5s
-- **L3 (Sonnet)**: Schema synthesis like "plan my graduation party" — under 4s  
-- **L4 (Opus)**: Complex queries like "who hasnt RSVPed?" — under 5s
+- **L3 (Sonnet)**: Mutations and schema synthesis like "add Aunt Linda" or "plan my graduation party" — under 4s
+- **L4 (Opus)**: Complex queries requiring reasoning like "who hasnt RSVPed?" — under 5s
 
-85% of interactions hit the fast L2 tier.
+Most interactions hit L3 for fast, capable responses.
 
 ```bash
 source .venv/bin/activate && python3 << 'ENDSCRIPT'
