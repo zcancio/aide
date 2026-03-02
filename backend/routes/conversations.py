@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-import base64
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from backend.auth import get_current_user
+from backend.config import settings
 from backend.models.aide import CreateAideRequest, SendMessageRequest, SendMessageResponse
 from backend.models.user import User
 from backend.repos.aide_repo import AideRepo
-from backend.services.orchestrator import orchestrator
+from backend.services.streaming_orchestrator import StreamingOrchestrator
+from engine.kernel.reducer_v2 import empty_snapshot
 
 router = APIRouter(prefix="/api", tags=["conversations"])
 aide_repo = AideRepo()
@@ -35,37 +37,58 @@ async def send_message(
         aide = await aide_repo.create(user.id, create_req)
         aide_id = aide.id
 
-    # Decode image if provided
-    image_data: bytes | None = None
-    if req.image:
-        try:
-            # Strip data URI prefix if present (e.g. "data:image/png;base64,...")
-            raw = req.image
-            if "," in raw:
-                raw = raw.split(",", 1)[1]
-            image_data = base64.b64decode(raw)
-        except Exception as exc:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Invalid image data. Must be base64-encoded.",
-            ) from exc
-
-    result = await orchestrator.process_message(
-        user_id=user.id,
-        aide_id=aide_id,
-        message=req.message,
-        source="web",
-        image_data=image_data,
-    )
-
-    # Fetch updated aide to get current state
-    aide = await aide_repo.get(user.id, aide_id)
+    # Load existing aide
+    aide = await aide_repo.get(user.id, UUID(aide_id) if isinstance(aide_id, str) else aide_id)
     if not aide:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aide not found.")
 
+    # Get snapshot (or empty if none)
+    snapshot = aide.state if aide.state and isinstance(aide.state, dict) else empty_snapshot()
+
+    # Check for API key
+    if not settings.ANTHROPIC_API_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Anthropic API key not configured.",
+        )
+
+    # Create streaming orchestrator
+    orchestrator = StreamingOrchestrator(
+        aide_id=str(aide_id),
+        snapshot=snapshot,
+        conversation=[],  # TODO: Load conversation history if needed
+        api_key=settings.ANTHROPIC_API_KEY,
+    )
+
+    # Process message and collect results
+    voice_texts: list[str] = []
+    final_snapshot = snapshot
+
+    async for result in orchestrator.process_message(req.message):
+        result_type = result.get("type")
+
+        if result_type == "voice":
+            text = result.get("text", "")
+            if text.strip():
+                voice_texts.append(text)
+
+        elif result_type == "event":
+            final_snapshot = result.get("snapshot", final_snapshot)
+
+        elif result_type == "stream.end":
+            # Stream complete
+            pass
+
+    # Combine voice texts into response
+    response_text = " ".join(voice_texts) if voice_texts else "Done."
+
+    # Save updated state
+    title = final_snapshot.get("meta", {}).get("title")
+    await aide_repo.update_state(user.id, aide.id, final_snapshot, event_log=[], title=title)
+
     return SendMessageResponse(
-        response_text=result["response"],
-        page_url=result["html_url"],
-        state=aide.state,
-        aide_id=aide_id,
+        response_text=response_text,
+        page_url=f"/api/aides/{aide_id}/preview",
+        state=final_snapshot,
+        aide_id=str(aide_id),
     )

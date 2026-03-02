@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import httpx
@@ -119,16 +119,22 @@ class TestMessageRoute:
     async def test_message_creates_aide_if_no_aide_id(self, async_client, test_user_id):
         """POST /api/message with no aide_id → creates new aide."""
         token = create_jwt(test_user_id)
-        mock_result = {
-            "response": "Tasks: none yet.",
-            "html_url": "/api/aides/abc/preview",
-            "primitives_count": 2,
-        }
-        with patch(
-            "backend.routes.conversations.orchestrator.process_message",
-            new_callable=AsyncMock,
-        ) as mock_orch:
-            mock_orch.return_value = mock_result
+
+        # Mock StreamingOrchestrator to yield voice and stream.end events
+        async def mock_process_message(content):
+            yield {"type": "voice", "text": "Tasks: none yet."}
+            yield {"type": "stream.end"}
+
+        mock_orch_instance = MagicMock()
+        mock_orch_instance.process_message = mock_process_message
+
+        with (
+            patch("backend.routes.conversations.settings.ANTHROPIC_API_KEY", "test-key"),
+            patch(
+                "backend.routes.conversations.StreamingOrchestrator",
+                return_value=mock_orch_instance,
+            ),
+        ):
             res = await async_client.post(
                 "/api/message",
                 json={"message": "I'm running a grocery list"},
@@ -140,32 +146,27 @@ class TestMessageRoute:
         assert data["response_text"] == "Tasks: none yet."
         assert data["aide_id"] is not None
 
-    async def test_message_invalid_image_data(self, async_client, test_user_id):
-        """POST /api/message with bad image → 422."""
-        token = create_jwt(test_user_id)
-        res = await async_client.post(
-            "/api/message",
-            json={"message": "describe this", "image": "not-valid-base64!!!"},
-            cookies={"session": token},
-        )
-        assert res.status_code == 422
-
     async def test_message_with_existing_aide(self, async_client, test_user_id):
         """POST /api/message with aide_id → calls orchestrator with that aide."""
         repo = AideRepo()
         aide = await repo.create(test_user_id, CreateAideRequest(title="Existing"))
         token = create_jwt(test_user_id)
 
-        mock_result = {
-            "response": "State updated.",
-            "html_url": "/api/aides/abc/preview",
-            "primitives_count": 1,
-        }
-        with patch(
-            "backend.routes.conversations.orchestrator.process_message",
-            new_callable=AsyncMock,
-        ) as mock_orch:
-            mock_orch.return_value = mock_result
+        # Mock StreamingOrchestrator to yield voice and stream.end events
+        async def mock_process_message(content):
+            yield {"type": "voice", "text": "State updated."}
+            yield {"type": "stream.end"}
+
+        mock_orch_instance = MagicMock()
+        mock_orch_instance.process_message = mock_process_message
+
+        with (
+            patch("backend.routes.conversations.settings.ANTHROPIC_API_KEY", "test-key"),
+            patch(
+                "backend.routes.conversations.StreamingOrchestrator",
+                return_value=mock_orch_instance,
+            ),
+        ):
             res = await async_client.post(
                 "/api/message",
                 json={"message": "add milk", "aide_id": str(aide.id)},
@@ -175,7 +176,6 @@ class TestMessageRoute:
         assert res.status_code == 200
         data = res.json()
         assert data["aide_id"] == str(aide.id)
-        mock_orch.assert_called_once()
 
 
 # ── publish route ───────────────────────────────────────────────────────────
