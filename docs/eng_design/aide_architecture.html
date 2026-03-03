@@ -66,11 +66,12 @@ graph TD
         SONNET -.->|"escalate to L4"| OPUS
 
         REDUCER -->|"save snapshot"| DB
+        REDUCER -->|"events"| WS
     end
 
-    INPUT -->|"WebSocket message"| WS
-    REDUCER -->|"entity deltas&lt;br/&gt;(WebSocket)"| GRAPH
-    REDUCER -->|"voice events"| CHAT
+    INPUT -->|"user message"| WS
+    WS -->|"entity deltas"| GRAPH
+    WS -->|"voice events"| CHAT
   </div>
   <p class="instructions">Right-click the diagram and select "Save image as..." to export as PNG</p>
   <script>

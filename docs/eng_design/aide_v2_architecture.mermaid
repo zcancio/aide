@@ -31,11 +31,12 @@ graph TD
         SONNET -.->|"escalate to L4"| OPUS
 
         REDUCER -->|"save snapshot"| DB
+        REDUCER -->|"events"| WS
     end
 
-    INPUT -->|"WebSocket message"| WS
-    REDUCER -->|"entity deltas<br/>(WebSocket)"| GRAPH
-    REDUCER -->|"voice events"| CHAT
+    INPUT -->|"user message"| WS
+    WS -->|"entity deltas"| GRAPH
+    WS -->|"voice events"| CHAT
 
     classDef client fill:#f0f4ff,stroke:#4a6fa5,color:#1a1a2e
     classDef server fill:#f5f0ff,stroke:#6b5b95,color:#1a1a2e

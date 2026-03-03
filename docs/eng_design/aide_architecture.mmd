@@ -31,8 +31,9 @@ graph TD
         SONNET -.->|"escalate to L4"| OPUS
 
         REDUCER -->|"save snapshot"| DB
+        REDUCER -->|"events"| WS
     end
 
-    INPUT -->|"WebSocket message"| WS
-    REDUCER -->|"entity deltas<br/>(WebSocket)"| GRAPH
-    REDUCER -->|"voice events"| CHAT
+    INPUT -->|"user message"| WS
+    WS -->|"entity deltas"| GRAPH
+    WS -->|"voice events"| CHAT

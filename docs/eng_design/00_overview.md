@@ -160,20 +160,22 @@ graph TD
         SONNET -.->|"escalate to L4"| OPUS
 
         REDUCER -->|"save snapshot"| DB
+        REDUCER -->|"events"| WS
     end
 
-    INPUT -->|"WebSocket message"| WS
-    REDUCER -->|"entity deltas<br/>(WebSocket)"| GRAPH
-    REDUCER -->|"voice events"| CHAT
+    INPUT -->|"user message"| WS
+    WS -->|"entity deltas"| GRAPH
+    WS -->|"voice events"| CHAT
 ```
 
 </details>
 
 **The data flow:**
-1. User message → WebSocket `/ws/aide/{aide_id}` → Orchestrator picks tier (L4 for first turn/queries, L3 for updates)
-2. L4/L3 → LLM streams tool calls → Reducer applies to snapshot → entity deltas + voice events → client via WebSocket
-3. Everything flows through the reducer (mutations via `mutate_entity`, responses via `voice` tool call)
-4. L3 can escalate to L4 for queries or complex reasoning
+1. User message → WebSocket → Orchestrator picks tier (L4 for first turn/queries, L3 for updates)
+2. L4/L3 → LLM streams tool calls → Reducer applies to snapshot
+3. Reducer sends events back to WebSocket handler
+4. WebSocket sends entity deltas → Entity Graph, voice events → Chat Panel
+5. L3 can escalate to L4 for queries or complex reasoning
 
 **What's in PostgreSQL:**
 - `aides.state` — current entity snapshot (JSONB, source of truth)
