@@ -9,29 +9,14 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: system-ui, -apple-system, sans-serif;
-      background: #0f0f17;
-      color: #E0DDD8;
-      overflow: hidden;
-    }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #0f0f17; color: #E0DDD8; overflow: hidden; }
     #root { height: 100vh; width: 100vw; }
-    .loading {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      font-size: 16px;
-      color: #64748b;
-    }
-    .error {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      gap: 16px;
-    }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+    button:focus { outline: none; }
+    .loading { display: flex; align-items: center; justify-content: center; height: 100vh; font-size: 16px; color: #64748b; }
+    .error { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; gap: 16px; }
     .error h2 { color: #ef4444; }
     .error a { color: #3b82f6; text-decoration: none; }
     .error a:hover { text-decoration: underline; }
@@ -41,1268 +26,905 @@
   <div id="root"><div class="loading">Loading flight recorder...</div></div>
 
   <script type="text/babel">
-    const { useState, useRef, useEffect, useCallback } = React;
+    const { useState, useRef, useEffect, useCallback, useMemo } = React;
 
-    // Event type colors
-    const EVENT_COLORS = {
-      "meta.update": { bg: "#f0f4ff", border: "#6b7bf7", text: "#4050c0" },
-      "collection.create": { bg: "#ecfdf5", border: "#34d399", text: "#065f46" },
-      "entity.create": { bg: "#f0fdf4", border: "#86efac", text: "#166534" },
-      "entity.update": { bg: "#fffbeb", border: "#fbbf24", text: "#92400e" },
-      "entity.remove": { bg: "#fef2f2", border: "#f87171", text: "#991b1b" },
-      "view.create": { bg: "#faf5ff", border: "#c084fc", text: "#6b21a8" },
-      "block.set": { bg: "#f8fafc", border: "#94a3b8", text: "#475569" },
-      "field.add": { bg: "#fff7ed", border: "#fb923c", text: "#9a3412" },
-      "style.set": { bg: "#fdf2f8", border: "#f472b6", text: "#9d174d" },
+    // Tier colors
+    const TC = {
+      L2: { bg: "#0c4a6e", tx: "#7dd3fc", bd: "#0369a1", lb: "L2 Haiku" },
+      L3: { bg: "#4c1d95", tx: "#c4b5fd", bd: "#6d28d9", lb: "L3 Sonnet" },
+      L4: { bg: "#713f12", tx: "#fde68a", bd: "#a16207", lb: "L4 Opus" }
     };
 
-    const getEventColor = (type) =>
-      EVENT_COLORS[type] || { bg: "#f9fafb", border: "#d1d5db", text: "#374151" };
+    // Event colors
+    const EC = {
+      "entity.create": { bg: "#064e3b", tx: "#6ee7b7", bd: "#047857" },
+      "entity.update": { bg: "#1e3a5f", tx: "#93c5fd", bd: "#2563eb" },
+      "entity.remove": { bg: "#4c0519", tx: "#fda4af", bd: "#be123c" },
+      "meta.set": { bg: "#422006", tx: "#fdba74", bd: "#c2410c" },
+      "meta.update": { bg: "#422006", tx: "#fdba74", bd: "#c2410c" },
+      "voice": { bg: "#1a2e05", tx: "#bef264", bd: "#4d7c0f" },
+      "collection.create": { bg: "#064e3b", tx: "#6ee7b7", bd: "#047857" },
+      "view.create": { bg: "#3b0764", tx: "#c4b5fd", bd: "#6d28d9" },
+      "block.set": { bg: "#1e293b", tx: "#94a3b8", bd: "#334155" },
+      "field.add": { bg: "#7c2d12", tx: "#fb923c", bd: "#9a3412" },
+      "style.set": { bg: "#831843", tx: "#f472b6", bd: "#9d174d" },
+    };
 
-    function EventPill({ event }) {
-      const c = getEventColor(event.type);
-      return (
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "4px 10px",
-            borderRadius: 4,
-            background: c.bg,
-            border: `1px solid ${c.border}`,
-            fontSize: 12,
-            fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
-            color: c.text,
-            whiteSpace: "nowrap",
-          }}
-        >
-          <span style={{ fontWeight: 600 }}>{event.type}</span>
-          {event.payload?.id && (
-            <span style={{ opacity: 0.7 }}>{event.payload.id}</span>
-          )}
-          {event.payload?.ref && (
-            <span style={{ opacity: 0.7 }}>{event.payload.ref}</span>
-          )}
-        </div>
-      );
+    const mono = "ui-monospace, 'SF Mono', Monaco, Consolas, monospace";
+
+    // Parse JSONL events from output string
+    function parseEvents(output) {
+      if (!output) return [];
+      const events = [];
+      for (const line of output.split("\n")) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('`')) continue;
+        try { events.push(JSON.parse(trimmed)); } catch {}
+      }
+      return events;
     }
 
-    function ChatBubble({ text, isUser, isActive }) {
-      return (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: isUser ? "flex-end" : "flex-start",
-            marginBottom: 8,
-            opacity: isActive ? 1 : 0.35,
-            transition: "opacity 0.3s ease",
-          }}
-        >
-          <div
-            style={{
-              maxWidth: "85%",
-              padding: "10px 14px",
-              borderRadius: isUser ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
-              background: isUser ? "#1a1a2e" : "#ffffff",
-              color: isUser ? "#E0DDD8" : "#2D2D2A",
-              fontSize: 14,
-              lineHeight: 1.5,
-              fontFamily: "system-ui, -apple-system, sans-serif",
-              border: isUser ? "none" : "1px solid #E0DDD8",
-              whiteSpace: "pre-wrap",
-            }}
-          >
-            {text}
-          </div>
-        </div>
-      );
+    // Build entity tree from snapshot
+    function buildTree(entities, removedEntities) {
+      if (!entities) return [];
+      const merged = { ...entities };
+      if (removedEntities) {
+        for (const [id, e] of Object.entries(removedEntities)) {
+          if (!merged[id]) merged[id] = { ...e, _removed: true };
+        }
+      }
+      const all = Object.values(merged).filter(e => e && e.id);
+      const allIds = new Set(all.map(e => e.id));
+      allIds.add("root");
+      const children = {};
+      all.forEach(e => {
+        const p = e.parent || "root";
+        (children[p] = children[p] || []).push(e);
+      });
+      for (const p of Object.keys(children)) {
+        children[p].sort((a, b) => (a._removed ? 1 : 0) - (b._removed ? 1 : 0));
+      }
+      const out = [];
+      const visited = new Set();
+      const walk = (pid, depth) => {
+        (children[pid] || []).forEach(c => {
+          visited.add(c.id);
+          out.push({ ...c, depth });
+          walk(c.id, depth + 1);
+        });
+      };
+      walk("root", 0);
+      const orphans = all.filter(e => !visited.has(e.id) && !allIds.has(e.parent || "root"));
+      orphans.forEach(o => out.push({ ...o, depth: 0, _orphan: true }));
+      return out;
     }
+
+    // Compute entity diff between snapshots
+    function computeDiff(before, after) {
+      const bk = new Set(Object.keys(before || {}));
+      const ak = new Set(Object.keys(after || {}));
+      const add = [...ak].filter(k => !bk.has(k));
+      const rem = [...bk].filter(k => !ak.has(k));
+      const mod = [];
+      const modDetails = {};
+      const moved = {};
+
+      for (const k of ak) {
+        if (!bk.has(k)) continue;
+        const bp = JSON.stringify((before[k]?.props || before[k]?.p || {}));
+        const ap = JSON.stringify((after[k]?.props || after[k]?.p || {}));
+        const bParent = before[k]?.parent;
+        const aParent = after[k]?.parent;
+        const parentChanged = bParent !== aParent;
+        if (bp !== ap || parentChanged) {
+          mod.push(k);
+          const bObj = before[k]?.props || before[k]?.p || {};
+          const aObj = after[k]?.props || after[k]?.p || {};
+          const changed = [];
+          const allKeys = new Set([...Object.keys(bObj), ...Object.keys(aObj)]);
+          for (const pk of allKeys) {
+            if (JSON.stringify(bObj[pk]) !== JSON.stringify(aObj[pk])) {
+              changed.push(bObj[pk] === undefined ? `+${pk}` : aObj[pk] === undefined ? `-${pk}` : `${pk}`);
+            }
+          }
+          if (parentChanged) {
+            changed.push(`parent: ${bParent}→${aParent}`);
+            moved[k] = { from: bParent, to: aParent };
+          }
+          modDetails[k] = changed;
+        }
+      }
+      return { add, rem, mod, modDetails, moved };
+    }
+
+    // Calculate cost from token usage
+    function calculateCost(usage, tier) {
+      if (!usage) return 0;
+      const rates = {
+        L4: { in: 15, out: 75, cache_read: 1.5, cache_write: 18.75 },
+        L3: { in: 3, out: 15, cache_read: 0.3, cache_write: 3.75 },
+        L2: { in: 0.25, out: 1.25, cache_read: 0.025, cache_write: 0.3125 },
+      };
+      const r = rates[tier?.split("->")[0]] || rates.L3;
+      const input = usage.input_tokens || 0;
+      const output = usage.output_tokens || 0;
+      const cacheRead = usage.cache_read || usage.cache_read_tokens || 0;
+      const cacheWrite = usage.cache_creation || usage.cache_write_tokens || 0;
+      return (input * r.in + output * r.out + cacheRead * r.cache_read + cacheWrite * r.cache_write) / 1e6;
+    }
+
+    // Shared components
+    const Tier = ({ tier, small }) => {
+      const c = TC[tier] || TC.L3;
+      return (
+        <span style={{ padding: small ? "1px 5px" : "2px 7px", borderRadius: 3, background: c.bg, border: `1px solid ${c.bd}`, color: c.tx, fontWeight: 600, fontSize: small ? 9 : 11, fontFamily: mono, display: "inline-block" }}>
+          {c.lb}
+        </span>
+      );
+    };
+
+    const Lbl = ({ children }) => (
+      <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: "#64748b", marginBottom: 8, fontWeight: 700, fontFamily: mono }}>
+        {children}
+      </div>
+    );
+
+    const Pre = ({ text, mh }) => (
+      <pre style={{ background: "#08080f", border: "1px solid #1e1e2e", borderRadius: 6, padding: 12, fontSize: 12, lineHeight: 1.6, fontFamily: mono, color: "#c9d1d9", overflow: "auto", maxHeight: mh || 9999, whiteSpace: "pre-wrap", wordBreak: "break-word", margin: 0 }}>
+        {text || "(empty)"}
+      </pre>
+    );
+
+    const EventPill = ({ event }) => {
+      const type = event.t || event.type;
+      const c = EC[type] || { bg: "#1e293b", tx: "#94a3b8", bd: "#334155" };
+      const id = event.id || event.ref || event.payload?.id || event.payload?.ref;
+      return (
+        <span style={{ display: "inline-block", padding: "2px 7px", borderRadius: 4, background: c.bg, border: `1px solid ${c.bd}`, color: c.tx, fontSize: 11, fontFamily: mono, marginRight: 5, marginBottom: 4 }}>
+          <b>{type}</b>{id ? " " + id : ""}
+        </span>
+      );
+    };
 
     function FlightRecorderApp() {
-      // Get aide_id from URL and initial turn from hash (must be before state declarations)
       const params = new URLSearchParams(window.location.search);
       const aideId = params.get('aide_id');
-      const getInitialTurn = () => {
-        const hash = window.location.hash;
-        if (hash && hash.startsWith('#turn=')) {
-          const turnNum = parseInt(hash.slice(6), 10);
-          return isNaN(turnNum) ? 0 : Math.max(0, turnNum - 1); // Convert 1-based to 0-based
-        }
-        return 0;
-      };
 
-      const [loading, setLoading] = useState(true);
+      const [loading, setLoading] = useState(!!aideId);
       const [error, setError] = useState(null);
       const [recording, setRecording] = useState(null);
-      const [currentTurn, setCurrentTurn] = useState(getInitialTurn);
+      const [dataSource, setDataSource] = useState(null); // 'api' or 'file'
+      const [currentTurn, setCurrentTurn] = useState(0);
       const [isPlaying, setIsPlaying] = useState(false);
       const [playSpeed, setPlaySpeed] = useState(2000);
+      const [tab, setTab] = useState("preview");
       const [expandedCall, setExpandedCall] = useState(null);
       const [copyStatus, setCopyStatus] = useState(null);
-      const [isReplaying, setIsReplaying] = useState(false);
-      const [replayResult, setReplayResult] = useState(null);
       const iframeRef = useRef(null);
       const chatEndRef = useRef(null);
-      const intervalRef = useRef(null);
+      const fileRef = useRef(null);
 
-      // Fetch data on mount
+      // Load from API
       useEffect(() => {
-        async function fetchData() {
-          if (!aideId) {
-            setError('No aide_id provided');
-            setLoading(false);
-            return;
-          }
+        if (!aideId) {
+          setLoading(false);
+          return;
+        }
 
+        async function fetchData() {
           try {
-            // Check auth
             const authRes = await fetch('/auth/me', { credentials: 'include' });
             if (!authRes.ok) {
               window.location.href = '/';
               return;
             }
 
-            // Fetch flight recorder data
             const res = await fetch(`/api/flight-recorder/${aideId}`, { credentials: 'include' });
             if (!res.ok) {
-              if (res.status === 404) {
-                setError('Aide not found or no flight recorder data');
-              } else {
-                setError('Failed to load flight recorder data');
-              }
+              setError(res.status === 404 ? 'Aide not found or no flight recorder data' : 'Failed to load flight recorder data');
               setLoading(false);
               return;
             }
 
             const data = await res.json();
             setRecording(data);
+            setDataSource('api');
             setLoading(false);
-          } catch (err) {
+          } catch {
             setError('Failed to load flight recorder data');
             setLoading(false);
           }
         }
-
         fetchData();
       }, [aideId]);
 
-      // Update iframe when turn changes
+      // Load from file
+      const loadFromFile = useCallback((file) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const data = JSON.parse(e.target.result);
+            // Handle different formats: eval golden vs flight recorder
+            let normalized;
+            if (data.turns) {
+              // Direct format
+              normalized = data;
+            } else if (data.results?.length) {
+              // Eval results format
+              const pick = data.results[0];
+              normalized = {
+                aide_id: pick.aide_id || 'file',
+                aide_title: pick.name || pick.scenario || file.name,
+                turns: pick.turns || []
+              };
+            }
+
+            if (normalized?.turns?.length) {
+              // Normalize turn format for compatibility
+              normalized.turns = normalized.turns.map((t, i) => ({
+                turn_id: t.turn_id || `turn_${i}`,
+                turn_index: t.turn_index ?? i,
+                timestamp: t.timestamp || new Date().toISOString(),
+                source: t.source || 'file',
+                user_message: t.user_message || t.message || '',
+                response_text: t.response_text || t.output || '',
+                llm_calls: t.llm_calls || [{
+                  call_id: `call_${i}`,
+                  shadow: false,
+                  model: t.model || 'unknown',
+                  tier: t.tier || 'L3',
+                  latency_ms: t.ttc_ms || 0,
+                  prompt: t.system_prompt || '',
+                  response: t.output || '',
+                  usage: {
+                    input_tokens: t.input_tokens || 0,
+                    output_tokens: t.output_tokens || 0,
+                    cache_read: t.cache_read || 0,
+                    cache_creation: t.cache_creation || 0,
+                  }
+                }],
+                primitives_emitted: t.primitives_emitted || parseEvents(t.output).map(e => ({ type: e.t, payload: e })),
+                primitives_applied: t.primitives_applied || 0,
+                total_latency_ms: t.total_latency_ms || t.ttc_ms || 0,
+                snapshot_before: t.snapshot_before || null,
+                snapshot_after: t.snapshot_after || null,
+                // Eval-specific fields
+                score: t.score,
+                expected_tier: t.expected_tier,
+                classified_tier: t.classified_tier,
+                notes: t.notes,
+              }));
+              setRecording(normalized);
+              setDataSource('file');
+              setCurrentTurn(0);
+              setError(null);
+            } else {
+              setError('Invalid JSON format');
+            }
+          } catch (err) {
+            setError('Failed to parse JSON file');
+          }
+        };
+        reader.readAsText(file);
+      }, []);
+
+      // Update iframe for preview (API mode only)
       useEffect(() => {
-        if (iframeRef.current && recording && recording.turns.length > 0) {
+        if (iframeRef.current && recording && dataSource === 'api' && tab === 'preview') {
           const safeIndex = Math.min(currentTurn, recording.turns.length - 1);
           iframeRef.current.src = `/api/flight-recorder/${aideId}/render?turn_index=${safeIndex}`;
         }
-      }, [currentTurn, recording, aideId]);
+      }, [currentTurn, recording, aideId, dataSource, tab]);
 
-      // Scroll chat, reset expanded call, and update URL hash
+      // Scroll chat on turn change
       useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
         setExpandedCall(null);
-        // Update hash with 1-based turn number
-        window.history.replaceState(null, '', `#turn=${currentTurn + 1}`);
-      }, [currentTurn]);
-
-      // Cap turn to valid range once data loads
-      useEffect(() => {
-        if (recording && recording.turns.length > 0) {
-          const maxTurn = recording.turns.length - 1;
-          if (currentTurn > maxTurn) {
-            setCurrentTurn(maxTurn);
-          }
+        if (aideId) {
+          window.history.replaceState(null, '', `?aide_id=${aideId}#turn=${currentTurn + 1}`);
         }
-      }, [recording, currentTurn]);
+      }, [currentTurn, aideId]);
 
       // Playback
       useEffect(() => {
-        if (isPlaying && recording) {
-          intervalRef.current = setInterval(() => {
-            setCurrentTurn((prev) => {
-              if (prev >= recording.turns.length - 1) {
-                setIsPlaying(false);
-                return prev;
-              }
-              return prev + 1;
-            });
-          }, playSpeed);
-        }
-        return () => clearInterval(intervalRef.current);
+        if (!isPlaying || !recording) return;
+        const id = setInterval(() => {
+          setCurrentTurn(p => {
+            if (p >= recording.turns.length - 1) {
+              setIsPlaying(false);
+              return p;
+            }
+            return p + 1;
+          });
+        }, playSpeed);
+        return () => clearInterval(id);
       }, [isPlaying, playSpeed, recording]);
-
-      const handleScrub = useCallback((e) => {
-        if (!recording) return;
-        const totalTurns = recording.turns.length;
-        const rect = e.currentTarget.getBoundingClientRect();
-        const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
-        const pct = x / rect.width;
-        const idx = Math.min(Math.round(pct * (totalTurns - 1)), totalTurns - 1);
-        setCurrentTurn(idx);
-        setIsPlaying(false);
-      }, [recording]);
 
       // Keyboard controls
       useEffect(() => {
         if (!recording) return;
-        const totalTurns = recording.turns.length;
-
+        const N = recording.turns.length;
         const handler = (e) => {
+          if (e.target.tagName === "INPUT") return;
           if (e.key === "ArrowRight" || e.key === "l") {
-            setCurrentTurn((p) => Math.min(p + 1, totalTurns - 1));
+            setCurrentTurn(p => Math.min(p + 1, N - 1));
             setIsPlaying(false);
           } else if (e.key === "ArrowLeft" || e.key === "h") {
-            setCurrentTurn((p) => Math.max(p - 1, 0));
+            setCurrentTurn(p => Math.max(p - 1, 0));
             setIsPlaying(false);
           } else if (e.key === " ") {
             e.preventDefault();
-            setIsPlaying((p) => !p);
+            setIsPlaying(p => !p);
           } else if (e.key === "Home") {
             setCurrentTurn(0);
             setIsPlaying(false);
           } else if (e.key === "End") {
-            setCurrentTurn(totalTurns - 1);
+            setCurrentTurn(N - 1);
             setIsPlaying(false);
+          } else if (e.key >= "1" && e.key <= "6") {
+            const tabs = ["preview", "raw", "diff", "tree", "prompt", "cost"];
+            setTab(tabs[+e.key - 1]);
           }
         };
         window.addEventListener("keydown", handler);
         return () => window.removeEventListener("keydown", handler);
       }, [recording]);
 
+      const handleScrub = useCallback((e) => {
+        if (!recording) return;
+        const N = recording.turns.length;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+        const pct = x / rect.width;
+        setCurrentTurn(Math.min(Math.round(pct * (N - 1)), N - 1));
+        setIsPlaying(false);
+      }, [recording]);
+
+      // Loading state
       if (loading) {
         return <div className="loading">Loading flight recorder...</div>;
       }
 
-      if (error) {
+      // Landing page (no aide_id and no file loaded)
+      if (!recording) {
         return (
-          <div className="error">
-            <h2>Error</h2>
-            <p>{error}</p>
-            <a href="/">Back to dashboard</a>
+          <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#0b0b13", color: "#e2e8f0", gap: 24 }}>
+            <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "#94a3b8", fontFamily: mono }}>
+              Flight Recorder
+            </div>
+
+            {error && (
+              <div style={{ padding: "12px 20px", background: "#4c0519", border: "1px solid #be123c", borderRadius: 6, color: "#fda4af", fontSize: 14 }}>
+                {error}
+              </div>
+            )}
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, width: 400 }}>
+              <Lbl>Load Eval Golden / Recording</Lbl>
+              <button
+                onClick={() => fileRef.current?.click()}
+                style={{ padding: "12px 20px", fontSize: 14, background: "#1e293b", border: "1px solid #334155", borderRadius: 6, color: "#94a3b8", cursor: "pointer", fontWeight: 600 }}
+              >
+                Choose JSON File
+              </button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".json"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) loadFromFile(f);
+                }}
+                style={{ display: "none" }}
+              />
+              <div style={{ fontSize: 12, color: "#475569", textAlign: "center" }}>
+                Supports eval golden files and flight recorder exports
+              </div>
+            </div>
+
+            <div style={{ fontSize: 12, color: "#334155", marginTop: 20 }}>
+              Or navigate with ?aide_id=UUID to load from API
+            </div>
           </div>
         );
       }
 
-      if (!recording || recording.turns.length === 0) {
-        return (
-          <div className="error">
-            <h2>No Data</h2>
-            <p>No flight recorder data found for this aide.</p>
-            <a href="/">Back to dashboard</a>
-          </div>
-        );
-      }
+      // Main viewer
+      const N = recording.turns.length;
+      const safeIdx = Math.min(currentTurn, N - 1);
+      const turn = recording.turns[safeIdx];
+      const prevTurn = safeIdx > 0 ? recording.turns[safeIdx - 1] : null;
 
-      const totalTurns = recording.turns.length;
-      const safeTurnIndex = Math.min(currentTurn, totalTurns - 1);
-      const turn = recording.turns[safeTurnIndex];
-      const progress = ((safeTurnIndex) / (totalTurns - 1)) * 100;
-
-      const formatTime = (ts) => {
-        const d = new Date(ts);
-        return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit" });
+      // Get tier from turn data
+      const getTier = (t) => {
+        if (t.tier) return t.tier;
+        const prodCall = t.llm_calls?.find(c => !c.shadow);
+        return prodCall?.tier || 'L3';
       };
 
-      const getTier = (turn) => {
-        const prodCall = turn.llm_calls.find(c => !c.shadow);
-        return prodCall ? prodCall.tier : 'Unknown';
-      };
+      // Compute snapshots and diffs
+      const beforeSnap = turn.snapshot_before?.entities || prevTurn?.snapshot_after?.entities || {};
+      const afterSnap = turn.snapshot_after?.entities || {};
+      const diff = useMemo(() => computeDiff(beforeSnap, afterSnap), [beforeSnap, afterSnap]);
+      const removedEnts = useMemo(() => {
+        if (!diff.rem.length) return null;
+        const out = {};
+        for (const id of diff.rem) { if (beforeSnap[id]) out[id] = beforeSnap[id]; }
+        return out;
+      }, [diff.rem, beforeSnap]);
+      const tree = useMemo(() => buildTree(afterSnap, removedEnts), [afterSnap, removedEnts]);
+
+      // Parse events for raw view
+      const events = useMemo(() => {
+        if (turn.primitives_emitted?.length) {
+          return turn.primitives_emitted;
+        }
+        // Try parsing from response
+        const prodCall = turn.llm_calls?.find(c => !c.shadow);
+        if (prodCall?.response) {
+          return parseEvents(prodCall.response);
+        }
+        return [];
+      }, [turn]);
+
+      // Calculate total usage
+      const totalUsage = useMemo(() => {
+        const u = { input_tokens: 0, output_tokens: 0, cache_read: 0, cache_creation: 0 };
+        turn.llm_calls?.forEach(c => {
+          if (c.usage) {
+            u.input_tokens += c.usage.input_tokens || 0;
+            u.output_tokens += c.usage.output_tokens || 0;
+            u.cache_read += c.usage.cache_read || c.usage.cache_read_tokens || 0;
+            u.cache_creation += c.usage.cache_creation || c.usage.cache_write_tokens || 0;
+          }
+        });
+        return u;
+      }, [turn]);
+
+      const tierStr = getTier(turn);
+      const totalCost = calculateCost(totalUsage, tierStr);
 
       return (
-        <div
-          style={{
-            height: "100vh",
-            width: "100vw",
-            display: "flex",
-            flexDirection: "column",
-            background: "#0f0f17",
-            color: "#E0DDD8",
-            fontFamily: "system-ui, -apple-system, sans-serif",
-            overflow: "hidden",
-          }}
-        >
-          {/* Top bar */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "12px 20px",
-              borderBottom: "1px solid #1e1e2e",
-              flexShrink: 0,
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <a href="/" style={{ color: "#64748b", textDecoration: "none", fontSize: 14 }}>
-                &larr; Back
-              </a>
-              <div
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
-                  background: isPlaying ? "#ef4444" : "#4ade80",
-                  boxShadow: isPlaying ? "0 0 8px #ef4444" : "0 0 8px #4ade8040",
-                }}
-              />
-              <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", color: "#94a3b8" }}>
-                Flight Recorder
-              </span>
-              <span style={{ fontSize: 13, color: "#64748b" }}>|</span>
-              <span style={{ fontSize: 13, color: "#cbd5e1" }}>
-                {recording.aide_title}
-              </span>
+        <div style={{ width: "100%", height: "100vh", display: "grid", gridTemplateRows: "44px 1fr 56px", gridTemplateColumns: "280px 1fr 220px", background: "#0b0b13", color: "#e2e8f0", fontFamily: "system-ui, sans-serif", overflow: "hidden" }}>
+
+          {/* TOP BAR */}
+          <div style={{ gridColumn: "1/-1", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 16px", borderBottom: "1px solid #1a1a2a", background: "#0e0e18" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: isPlaying ? "#ef4444" : "#4ade80" }} />
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "#64748b", fontFamily: mono }}>Flight Recorder</span>
+              <span style={{ fontSize: 13, color: "#94a3b8" }}>{recording.aide_title || recording.aide_id}</span>
+              {dataSource === 'file' && (
+                <span style={{ fontSize: 10, padding: "2px 6px", background: "#1e293b", border: "1px solid #334155", borderRadius: 3, color: "#64748b" }}>FILE</span>
+              )}
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 16, fontSize: 12, color: "#64748b" }}>
-              <span>
-                Turn {safeTurnIndex + 1} / {totalTurns}
-              </span>
-              <span>{formatTime(turn.timestamp)}</span>
-              <span
-                style={{
-                  padding: "2px 8px",
-                  borderRadius: 3,
-                  background: getTier(turn) === "L3" ? "#4c1d95" : "#1e293b",
-                  color: getTier(turn) === "L3" ? "#c4b5fd" : "#94a3b8",
-                  fontWeight: 600,
-                  fontSize: 11,
-                }}
-              >
-                {getTier(turn)}
-              </span>
-              <span style={{ color: "#64748b", fontFamily: "monospace" }}>
-                {turn.total_latency_ms}ms
-              </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 12, color: "#64748b", fontFamily: mono }}>Turn {safeIdx + 1}/{N}</span>
+              <Tier tier={tierStr} />
+              <span style={{ fontSize: 11, color: "#475569", fontFamily: mono }}>{turn.total_latency_ms || turn.ttc_ms || 0}ms</span>
               <button
-                onClick={async () => {
-                  setCopyStatus('copying');
-                  try {
-                    const res = await fetch(`/api/flight-recorder/${aideId}/export?turn_index=${safeTurnIndex}`, { credentials: 'include' });
-                    const data = await res.json();
-                    await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-                    setCopyStatus('copied');
-                    setTimeout(() => setCopyStatus(null), 2000);
-                  } catch (e) {
-                    setCopyStatus('error');
-                    setTimeout(() => setCopyStatus(null), 2000);
-                  }
-                }}
-                style={{
-                  background: copyStatus === 'copied' ? "#166534" : copyStatus === 'error' ? "#991b1b" : "#1e293b",
-                  border: copyStatus === 'copied' ? "1px solid #22c55e" : copyStatus === 'error' ? "1px solid #ef4444" : "1px solid #334155",
-                  color: copyStatus === 'copied' ? "#86efac" : copyStatus === 'error' ? "#fca5a5" : "#94a3b8",
-                  cursor: "pointer",
-                  fontSize: 11,
-                  padding: "4px 10px",
-                  borderRadius: 4,
-                  transition: "all 0.15s ease",
-                  minWidth: 60,
-                }}
-                title="Copy turn JSON to clipboard"
+                onClick={() => fileRef.current?.click()}
+                style={{ padding: "3px 8px", fontSize: 10, background: "#1e293b", border: "1px solid #334155", borderRadius: 4, color: "#94a3b8", cursor: "pointer", fontFamily: mono }}
               >
-                {copyStatus === 'copying' ? '...' : copyStatus === 'copied' ? 'Copied!' : copyStatus === 'error' ? 'Error' : 'Copy'}
+                Load File
               </button>
-              <button
-                onClick={async () => {
-                  const res = await fetch(`/api/flight-recorder/${aideId}/export?turn_index=${safeTurnIndex}`, { credentials: 'include' });
-                  const data = await res.json();
-                  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `turn_${safeTurnIndex + 1}.json`;
-                  a.click();
-                  URL.revokeObjectURL(url);
-                }}
-                style={{
-                  background: "#1e293b",
-                  border: "1px solid #334155",
-                  color: "#94a3b8",
-                  cursor: "pointer",
-                  fontSize: 11,
-                  padding: "4px 10px",
-                  borderRadius: 4,
-                }}
-                title="Download turn as JSON file"
-              >
-                Export
-              </button>
-              <button
-                onClick={async () => {
-                  setIsReplaying(true);
-                  setReplayResult(null);
-                  try {
-                    const res = await fetch(`/api/flight-recorder/${aideId}/replay?turn_index=${safeTurnIndex}`, {
-                      method: 'POST',
-                      credentials: 'include'
-                    });
-                    const data = await res.json();
-                    setReplayResult(data);
-                  } catch (e) {
-                    setReplayResult({ error: e.message });
-                  }
-                  setIsReplaying(false);
-                }}
-                disabled={isReplaying}
-                style={{
-                  background: isReplaying ? "#0f172a" : "#1e40af",
-                  border: "1px solid #3b82f6",
-                  color: isReplaying ? "#64748b" : "#93c5fd",
-                  cursor: isReplaying ? "wait" : "pointer",
-                  fontSize: 11,
-                  padding: "4px 10px",
-                  borderRadius: 4,
-                  fontWeight: 600,
-                }}
-                title="Replay turn with current models (dry run)"
-              >
-                {isReplaying ? 'Replaying...' : 'Replay'}
-              </button>
+              {dataSource === 'api' && (
+                <button
+                  onClick={async () => {
+                    setCopyStatus('copying');
+                    try {
+                      const res = await fetch(`/api/flight-recorder/${aideId}/export?turn_index=${safeIdx}`, { credentials: 'include' });
+                      const data = await res.json();
+                      await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+                      setCopyStatus('copied');
+                      setTimeout(() => setCopyStatus(null), 2000);
+                    } catch {
+                      setCopyStatus('error');
+                      setTimeout(() => setCopyStatus(null), 2000);
+                    }
+                  }}
+                  style={{ padding: "3px 8px", fontSize: 10, background: copyStatus === 'copied' ? "#166534" : "#1e293b", border: `1px solid ${copyStatus === 'copied' ? "#22c55e" : "#334155"}`, borderRadius: 4, color: copyStatus === 'copied' ? "#86efac" : "#94a3b8", cursor: "pointer", fontFamily: mono }}
+                >
+                  {copyStatus === 'copying' ? '...' : copyStatus === 'copied' ? 'Copied!' : 'Copy'}
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Main content */}
-          <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-            {/* Left: Chat + Events */}
-            <div
-              style={{
-                width: 380,
-                flexShrink: 0,
-                display: "flex",
-                flexDirection: "column",
-                borderRight: "1px solid #1e1e2e",
-              }}
-            >
-              {/* Chat history */}
-              <div
-                style={{
-                  flex: 1,
-                  overflowY: "auto",
-                  padding: "16px 14px",
-                }}
-              >
-                <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "1.5px", color: "#475569", marginBottom: 16, fontWeight: 600 }}>
-                  Conversation
-                </div>
-                {recording.turns.slice(0, safeTurnIndex + 1).map((t, i) => (
-                  <div key={i} style={{ marginBottom: 12 }}>
-                    <ChatBubble
-                      text={t.user_message}
-                      isUser={true}
-                      isActive={i === safeTurnIndex}
-                    />
-                    <ChatBubble
-                      text={t.response_text}
-                      isUser={false}
-                      isActive={i === safeTurnIndex}
-                    />
+          {/* LEFT: CHAT */}
+          <div style={{ borderRight: "1px solid #1a1a2a", overflowY: "auto", padding: 12 }}>
+            <Lbl>Conversation</Lbl>
+            {recording.turns.slice(0, safeIdx + 1).map((t, i) => (
+              <div key={i} onClick={() => { setCurrentTurn(i); setIsPlaying(false); }} style={{ cursor: "pointer", marginBottom: 12, opacity: i === safeIdx ? 1 : 0.3 }}>
+                <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 3 }}>
+                  <div style={{ maxWidth: "92%", padding: "6px 10px", borderRadius: "10px 10px 3px 10px", background: "#1a1a2e", color: "#cbd5e1", fontSize: 12.5, lineHeight: 1.4 }}>
+                    {t.user_message || t.message}
                   </div>
-                ))}
-                <div ref={chatEndRef} />
-              </div>
-
-              {/* Events for current turn */}
-              <div
-                style={{
-                  borderTop: "1px solid #1e1e2e",
-                  padding: "12px 14px",
-                  maxHeight: 140,
-                  overflowY: "auto",
-                  background: "#0a0a12",
-                }}
-              >
-                <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "1.5px", color: "#475569", marginBottom: 10, fontWeight: 600 }}>
-                  Events emitted
                 </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                  {turn.primitives_emitted.map((evt, i) => (
-                    <EventPill key={i} event={evt} />
-                  ))}
+                <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
+                  <Tier tier={getTier(t)} small />
+                  <span style={{ fontSize: 9, color: "#64748b", fontFamily: mono }}>{t.total_latency_ms || t.ttc_ms || 0}ms</span>
+                  {t.score?.composite != null && (
+                    <span style={{ fontSize: 9, color: t.score.composite >= 0.9 ? "#4ade80" : t.score.composite >= 0.75 ? "#facc15" : "#f87171", fontFamily: mono }}>
+                      {Math.round(t.score.composite * 100)}%
+                    </span>
+                  )}
                 </div>
               </div>
+            ))}
+            <div ref={chatEndRef} />
+          </div>
 
-              {/* LLM Calls for current turn */}
-              <div
-                style={{
-                  borderTop: "1px solid #1e1e2e",
-                  padding: "12px 14px",
-                  flex: expandedCall !== null ? 1 : "none",
-                  maxHeight: expandedCall !== null ? "none" : 180,
-                  overflowY: "auto",
-                  background: "#080810",
-                }}
-              >
-                <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "1.5px", color: "#475569", marginBottom: 10, fontWeight: 600 }}>
-                  LLM Calls
-                </div>
-                {turn.llm_calls.length === 0 ? (
-                  <div style={{ fontSize: 12, color: "#64748b", fontStyle: "italic" }}>No LLM calls recorded</div>
+          {/* CENTER: TABS + CONTENT */}
+          <div style={{ display: "grid", gridTemplateRows: "36px 1fr", overflow: "hidden" }}>
+            {/* Tab bar */}
+            <div style={{ display: "flex", gap: 3, padding: "4px 12px", borderBottom: "1px solid #1a1a2a", background: "#0e0e18", alignItems: "center" }}>
+              {["preview", "raw", "diff", "tree", "prompt", "cost"].map((k, i) => (
+                <button
+                  key={k}
+                  onClick={() => setTab(k)}
+                  style={{ padding: "4px 10px", fontSize: 11, fontWeight: tab === k ? 600 : 400, fontFamily: mono, color: tab === k ? "#e2e8f0" : "#64748b", background: tab === k ? "#1e293b" : "transparent", border: tab === k ? "1px solid #334155" : "1px solid transparent", borderRadius: 4, cursor: "pointer" }}
+                >
+                  {i + 1}. {k[0].toUpperCase() + k.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            {/* Content */}
+            <div style={{ overflowY: "auto", padding: 14 }}>
+
+              {/* PREVIEW TAB */}
+              {tab === "preview" && (
+                dataSource === 'api' ? (
+                  <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+                    <div style={{ padding: "8px 12px", background: "#f8fafc", borderBottom: "1px solid #E0DDD8", display: "flex", alignItems: "center", justifyContent: "space-between", borderRadius: "6px 6px 0 0" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ display: "flex", gap: 4 }}>
+                          <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#fee2e2" }} />
+                          <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#fef3c7" }} />
+                          <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#dcfce7" }} />
+                        </div>
+                        <span style={{ fontSize: 11, color: "#94a3b8", fontFamily: mono }}>Preview</span>
+                      </div>
+                      <span style={{ fontSize: 10, color: "#94a3b8" }}>{turn.primitives_applied || events.length} primitives</span>
+                    </div>
+                    <iframe ref={iframeRef} title="Preview" style={{ flex: 1, border: "none", background: "#fff", borderRadius: "0 0 6px 6px" }} sandbox="allow-same-origin" />
+                  </div>
                 ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {turn.llm_calls.map((call, i) => {
-                      const isExpanded = expandedCall === call.call_id;
-                      return (
-                        <div
-                          key={i}
-                          style={{
-                            padding: "8px 10px",
-                            borderRadius: 4,
-                            background: call.shadow ? "#1a1a2e" : "#0f2a1f",
-                            border: call.shadow ? "1px solid #334155" : "1px solid #22543d",
-                            fontSize: 11,
-                            cursor: "pointer",
-                          }}
-                          onClick={() => setExpandedCall(isExpanded ? null : call.call_id)}
-                        >
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                            <span style={{ color: "#64748b", fontSize: 10 }}>
-                              {isExpanded ? "▼" : "▶"}
-                            </span>
-                            <span
-                              style={{
-                                padding: "2px 6px",
-                                borderRadius: 3,
-                                background: call.shadow ? "#475569" : "#22543d",
-                                color: call.shadow ? "#94a3b8" : "#86efac",
-                                fontWeight: 600,
-                                fontSize: 9,
-                                textTransform: "uppercase",
-                              }}
-                            >
-                              {call.shadow ? "Shadow" : "Production"}
-                            </span>
-                            <span
-                              style={{
-                                padding: "2px 6px",
-                                borderRadius: 3,
-                                background: call.tier === "L3" ? "#4c1d95" : "#1e293b",
-                                color: call.tier === "L3" ? "#c4b5fd" : "#94a3b8",
-                                fontWeight: 600,
-                                fontSize: 9,
-                              }}
-                            >
-                              {call.tier}
-                            </span>
-                            <span style={{ color: "#64748b", fontFamily: "monospace" }}>
-                              {call.latency_ms}ms
-                            </span>
-                            {call.usage && call.usage.input_tokens && (
-                              <span style={{ color: "#64748b", fontFamily: "monospace", fontSize: 9 }}>
-                                {call.usage.input_tokens}→{call.usage.output_tokens} tok
-                              </span>
-                            )}
-                            {call.error && (
-                              <span style={{ color: "#f87171", fontSize: 10 }}>
-                                Error
-                              </span>
-                            )}
-                          </div>
-                          <div style={{ color: "#cbd5e1", fontFamily: "monospace", fontSize: 10 }}>
-                            {call.model}
-                          </div>
-                          {isExpanded && (
-                            <div style={{ marginTop: 12 }}>
-                              {/* Prompt */}
-                              <div style={{ marginBottom: 12 }}>
-                                <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "1px", color: "#64748b", marginBottom: 6, fontWeight: 600 }}>
-                                  Prompt
-                                </div>
-                                <pre
-                                  style={{
-                                    background: "#0a0a12",
-                                    border: "1px solid #1e1e2e",
-                                    borderRadius: 4,
-                                    padding: 10,
-                                    fontSize: 10,
-                                    color: "#94a3b8",
-                                    whiteSpace: "pre-wrap",
-                                    wordBreak: "break-word",
-                                    maxHeight: 200,
-                                    overflowY: "auto",
-                                    margin: 0,
-                                    fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
-                                  }}
-                                >
-                                  {call.prompt || "(no prompt recorded)"}
-                                </pre>
-                              </div>
-                              {/* Response */}
-                              <div>
-                                <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "1px", color: "#64748b", marginBottom: 6, fontWeight: 600 }}>
-                                  Response
-                                </div>
-                                <pre
-                                  style={{
-                                    background: "#0a0a12",
-                                    border: "1px solid #1e1e2e",
-                                    borderRadius: 4,
-                                    padding: 10,
-                                    fontSize: 10,
-                                    color: call.error ? "#f87171" : "#86efac",
-                                    whiteSpace: "pre-wrap",
-                                    wordBreak: "break-word",
-                                    maxHeight: 200,
-                                    overflowY: "auto",
-                                    margin: 0,
-                                    fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
-                                  }}
-                                >
-                                  {call.error || call.response || "(no response recorded)"}
-                                </pre>
-                              </div>
-                            </div>
-                          )}
+                  // File mode: show snapshot entities
+                  <>
+                    <Lbl>Rendered Snapshot</Lbl>
+                    {Object.keys(afterSnap).length > 0 ? (
+                      <div style={{ background: "#ffffff", border: "1px solid #1e1e2e", borderRadius: 6, padding: 16, color: "#2D2D2A", minHeight: 200 }}>
+                        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>
+                          {turn.snapshot_after?.meta?.title || recording.aide_title || "Untitled"}
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Right: Page preview */}
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", background: "#ffffff" }}>
-              <div
-                style={{
-                  padding: "8px 16px",
-                  background: "#f8fafc",
-                  borderBottom: "1px solid #E0DDD8",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ display: "flex", gap: 5 }}>
-                    <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#fee2e2" }} />
-                    <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#fef3c7" }} />
-                    <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#dcfce7" }} />
-                  </div>
-                  <span style={{ fontSize: 12, color: "#94a3b8", fontFamily: "monospace", marginLeft: 8 }}>
-                    Preview
-                  </span>
-                </div>
-                <span style={{ fontSize: 11, color: "#94a3b8" }}>
-                  {turn.primitives_applied} primitives applied
-                </span>
-              </div>
-              <iframe
-                ref={iframeRef}
-                title="aide Preview"
-                style={{
-                  flex: 1,
-                  border: "none",
-                  width: "100%",
-                }}
-                sandbox="allow-same-origin"
-              />
-            </div>
-          </div>
-
-          {/* Replay comparison modal */}
-          {replayResult && (
-            <div
-              style={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                background: "rgba(0,0,0,0.85)",
-                zIndex: 1000,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: 20,
-              }}
-              onClick={() => setReplayResult(null)}
-            >
-              <div
-                style={{
-                  background: "#0f0f17",
-                  border: "1px solid #1e1e2e",
-                  borderRadius: 8,
-                  width: "95%",
-                  maxWidth: 1400,
-                  maxHeight: "90vh",
-                  overflow: "hidden",
-                  display: "flex",
-                  flexDirection: "column",
-                }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {/* Modal header */}
-                <div
-                  style={{
-                    padding: "12px 20px",
-                    borderBottom: "1px solid #1e1e2e",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    flexShrink: 0,
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: "#E0DDD8" }}>
-                      Replay Comparison
-                    </span>
-                    <span style={{ fontSize: 12, color: "#64748b" }}>
-                      Turn {safeTurnIndex + 1}: "{turn.user_message.slice(0, 50)}{turn.user_message.length > 50 ? '...' : ''}"
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => setReplayResult(null)}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: "#64748b",
-                      fontSize: 20,
-                      cursor: "pointer",
-                      padding: "4px 8px",
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
-
-                {/* Modal content */}
-                <div
-                  style={{
-                    flex: 1,
-                    display: "flex",
-                    overflow: "hidden",
-                  }}
-                >
-                  {/* Original column */}
-                  <div
-                    style={{
-                      flex: 1,
-                      borderRight: "1px solid #1e1e2e",
-                      display: "flex",
-                      flexDirection: "column",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <div
-                      style={{
-                        padding: "10px 16px",
-                        borderBottom: "1px solid #1e1e2e",
-                        background: "#0a0a12",
-                        fontSize: 11,
-                        fontWeight: 600,
-                        textTransform: "uppercase",
-                        letterSpacing: "1px",
-                        color: "#64748b",
-                        flexShrink: 0,
-                      }}
-                    >
-                      Original (recorded)
-                    </div>
-                    <div style={{ flex: 1, padding: 16, overflowY: "auto" }}>
-                      {/* Response */}
-                      <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", color: "#64748b", marginBottom: 6, fontWeight: 600 }}>
-                          Response
-                        </div>
-                        <div
-                          style={{
-                            background: "#1e1e2e",
-                            borderRadius: 4,
-                            padding: 12,
-                            fontSize: 13,
-                            color: "#E0DDD8",
-                            lineHeight: 1.5,
-                          }}
-                        >
-                          {turn.response_text || "(empty response)"}
-                        </div>
-                      </div>
-
-                      {/* Primitives */}
-                      <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", color: "#64748b", marginBottom: 6, fontWeight: 600 }}>
-                          Primitives ({turn.primitives_emitted.length})
-                        </div>
-                        <pre
-                          style={{
-                            background: "#1e1e2e",
-                            borderRadius: 4,
-                            padding: 12,
-                            fontSize: 10,
-                            color: "#94a3b8",
-                            whiteSpace: "pre-wrap",
-                            wordBreak: "break-word",
-                            maxHeight: 200,
-                            overflowY: "auto",
-                            margin: 0,
-                            fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
-                          }}
-                        >
-                          {JSON.stringify(turn.primitives_emitted, null, 2)}
-                        </pre>
-                      </div>
-
-                      {/* LLM Calls */}
-                      <div>
-                        <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", color: "#64748b", marginBottom: 6, fontWeight: 600 }}>
-                          LLM Calls
-                        </div>
-                        {turn.llm_calls.map((call, i) => (
-                          <div
-                            key={i}
-                            style={{
-                              background: call.shadow ? "#1a1a2e" : "#0f2a1f",
-                              border: call.shadow ? "1px solid #334155" : "1px solid #22543d",
-                              borderRadius: 4,
-                              padding: 10,
-                              marginBottom: 8,
-                              fontSize: 11,
-                            }}
-                          >
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                              <span
-                                style={{
-                                  padding: "2px 6px",
-                                  borderRadius: 3,
-                                  background: call.shadow ? "#475569" : "#22543d",
-                                  color: call.shadow ? "#94a3b8" : "#86efac",
-                                  fontWeight: 600,
-                                  fontSize: 9,
-                                  textTransform: "uppercase",
-                                }}
-                              >
-                                {call.shadow ? "Shadow" : "Production"}
-                              </span>
-                              <span style={{ color: "#94a3b8", fontFamily: "monospace", fontSize: 10 }}>
-                                {call.model}
-                              </span>
+                        {Object.values(afterSnap).filter(e => e.parent === "root" || e.parent === "page").slice(0, 10).map((e, i) => (
+                          <div key={i} style={{ marginBottom: 12, padding: 10, background: "#f8fafc", borderRadius: 4, border: "1px solid #e2e8f0" }}>
+                            <div style={{ fontSize: 11, fontFamily: mono, color: "#64748b", marginBottom: 4 }}>
+                              {e.id} ({e.display || e._schema || "entity"})
                             </div>
-                            <pre
-                              style={{
-                                background: "#0a0a12",
-                                borderRadius: 4,
-                                padding: 8,
-                                fontSize: 9,
-                                color: "#86efac",
-                                whiteSpace: "pre-wrap",
-                                wordBreak: "break-word",
-                                maxHeight: 150,
-                                overflowY: "auto",
-                                margin: 0,
-                                fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
-                              }}
-                            >
-                              {call.response || "(no response)"}
-                            </pre>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Replay column */}
-                  <div
-                    style={{
-                      flex: 1,
-                      display: "flex",
-                      flexDirection: "column",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <div
-                      style={{
-                        padding: "10px 16px",
-                        borderBottom: "1px solid #1e1e2e",
-                        background: "#0f1a0f",
-                        fontSize: 11,
-                        fontWeight: 600,
-                        textTransform: "uppercase",
-                        letterSpacing: "1px",
-                        color: "#4ade80",
-                        flexShrink: 0,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                      }}
-                    >
-                      Replay (current models)
-                      {replayResult.error && (
-                        <span style={{ color: "#f87171", fontWeight: 400 }}>
-                          - Error: {replayResult.error}
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ flex: 1, padding: 16, overflowY: "auto" }}>
-                      {replayResult.error ? (
-                        <div style={{ color: "#f87171" }}>{replayResult.error}</div>
-                      ) : (
-                        <>
-                          {/* Response */}
-                          <div style={{ marginBottom: 16 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                              <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", color: "#64748b", fontWeight: 600 }}>
-                                Response
-                              </span>
-                              {replayResult.response !== turn.response_text && (
-                                <span style={{ fontSize: 9, padding: "2px 6px", background: "#7c2d12", color: "#fdba74", borderRadius: 3 }}>
-                                  DIFFERENT
-                                </span>
-                              )}
-                            </div>
-                            <div
-                              style={{
-                                background: replayResult.response !== turn.response_text ? "#1a1a1a" : "#1e1e2e",
-                                border: replayResult.response !== turn.response_text ? "1px solid #f59e0b" : "none",
-                                borderRadius: 4,
-                                padding: 12,
-                                fontSize: 13,
-                                color: "#E0DDD8",
-                                lineHeight: 1.5,
-                              }}
-                            >
-                              {replayResult.response || "(empty response)"}
-                            </div>
-                          </div>
-
-                          {/* Primitives (raw from LLM) */}
-                          <div style={{ marginBottom: 16 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                              <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", color: "#64748b", fontWeight: 600 }}>
-                                Primitives (raw) ({replayResult.primitives_raw?.length || 0})
-                              </span>
-                            </div>
-                            <pre
-                              style={{
-                                background: "#1e1e2e",
-                                borderRadius: 4,
-                                padding: 12,
-                                fontSize: 10,
-                                color: "#94a3b8",
-                                whiteSpace: "pre-wrap",
-                                wordBreak: "break-word",
-                                maxHeight: 150,
-                                overflowY: "auto",
-                                margin: 0,
-                                fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
-                              }}
-                            >
-                              {JSON.stringify(replayResult.primitives_raw || [], null, 2)}
-                            </pre>
-                          </div>
-
-                          {/* Grid Resolution */}
-                          {replayResult.grid_resolution_error ? (
-                            <div style={{ marginBottom: 16 }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                                <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", color: "#f87171", fontWeight: 600 }}>
-                                  Grid Resolution Error
-                                </span>
-                              </div>
-                              <div
-                                style={{
-                                  background: "#1a0a0a",
-                                  border: "1px solid #991b1b",
-                                  borderRadius: 4,
-                                  padding: 12,
-                                  fontSize: 12,
-                                  color: "#fca5a5",
-                                }}
-                              >
-                                {replayResult.grid_resolution_error}
-                              </div>
-                            </div>
-                          ) : (
-                            <div style={{ marginBottom: 16 }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                                <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", color: "#64748b", fontWeight: 600 }}>
-                                  Resolved Primitives ({replayResult.primitives?.length || 0})
-                                </span>
-                                {JSON.stringify(replayResult.primitives) !== JSON.stringify(turn.primitives_emitted) && (
-                                  <span style={{ fontSize: 9, padding: "2px 6px", background: "#7c2d12", color: "#fdba74", borderRadius: 3 }}>
-                                    DIFFERENT
-                                  </span>
-                                )}
-                              </div>
-                              <pre
-                                style={{
-                                  background: JSON.stringify(replayResult.primitives) !== JSON.stringify(turn.primitives_emitted) ? "#1a1a1a" : "#1e1e2e",
-                                  border: JSON.stringify(replayResult.primitives) !== JSON.stringify(turn.primitives_emitted) ? "1px solid #f59e0b" : "none",
-                                  borderRadius: 4,
-                                  padding: 12,
-                                  fontSize: 10,
-                                  color: "#94a3b8",
-                                  whiteSpace: "pre-wrap",
-                                  wordBreak: "break-word",
-                                  maxHeight: 150,
-                                  overflowY: "auto",
-                                  margin: 0,
-                                  fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
-                                }}
-                              >
-                                {JSON.stringify(replayResult.primitives || [], null, 2)}
-                              </pre>
-                            </div>
-                          )}
-
-                          {/* LLM Calls */}
-                          <div>
-                            <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", color: "#64748b", marginBottom: 6, fontWeight: 600 }}>
-                              LLM Calls ({replayResult.route}{replayResult.escalated ? ' → L3 escalated' : ''})
-                            </div>
-                            {(replayResult.llm_calls || []).map((call, i) => (
-                              <div
-                                key={i}
-                                style={{
-                                  background: call.shadow ? "#1a1a2e" : "#0f2a1f",
-                                  border: call.shadow ? "1px solid #334155" : "1px solid #22543d",
-                                  borderRadius: 4,
-                                  padding: 10,
-                                  marginBottom: 8,
-                                  fontSize: 11,
-                                }}
-                              >
-                                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                                  <span
-                                    style={{
-                                      padding: "2px 6px",
-                                      borderRadius: 3,
-                                      background: call.shadow ? "#475569" : "#22543d",
-                                      color: call.shadow ? "#94a3b8" : "#86efac",
-                                      fontWeight: 600,
-                                      fontSize: 9,
-                                      textTransform: "uppercase",
-                                    }}
-                                  >
-                                    {call.shadow ? "Shadow" : "Production"}
-                                  </span>
-                                  <span style={{ color: "#94a3b8", fontFamily: "monospace", fontSize: 10 }}>
-                                    {call.model}
-                                  </span>
-                                  <span style={{ color: "#64748b", fontFamily: "monospace", fontSize: 9 }}>
-                                    {call.latency_ms}ms
-                                  </span>
-                                </div>
-                                <pre
-                                  style={{
-                                    background: "#0a0a12",
-                                    borderRadius: 4,
-                                    padding: 8,
-                                    fontSize: 9,
-                                    color: call.error ? "#f87171" : "#86efac",
-                                    whiteSpace: "pre-wrap",
-                                    wordBreak: "break-word",
-                                    maxHeight: 150,
-                                    overflowY: "auto",
-                                    margin: 0,
-                                    fontFamily: "'JetBrains Mono', 'SF Mono', monospace",
-                                  }}
-                                >
-                                  {call.error || call.response || "(no response)"}
-                                </pre>
+                            {(e.props || e.p) && Object.entries(e.props || e.p).slice(0, 5).map(([k, v]) => (
+                              <div key={k} style={{ fontSize: 13, marginBottom: 2 }}>
+                                <strong>{k}:</strong> {JSON.stringify(v).slice(0, 50)}
                               </div>
                             ))}
                           </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Timeline / scrub bar */}
-          <div
-            style={{
-              flexShrink: 0,
-              background: "#0a0a12",
-              borderTop: "1px solid #1e1e2e",
-              padding: "12px 20px 16px",
-            }}
-          >
-            {/* Controls */}
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-              {/* Rewind */}
-              <button
-                onClick={() => { setCurrentTurn(0); setIsPlaying(false); }}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "#64748b",
-                  cursor: "pointer",
-                  fontSize: 16,
-                  padding: "4px 6px",
-                  borderRadius: 4,
-                  display: "flex",
-                  alignItems: "center",
-                }}
-                title="Rewind (Home)"
-              >
-                ⏮
-              </button>
-
-              {/* Prev */}
-              <button
-                onClick={() => { setCurrentTurn((p) => Math.max(0, p - 1)); setIsPlaying(false); }}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "#94a3b8",
-                  cursor: "pointer",
-                  fontSize: 18,
-                  padding: "4px 6px",
-                  borderRadius: 4,
-                }}
-                title="Previous (Left Arrow)"
-              >
-                ◂
-              </button>
-
-              {/* Play/Pause */}
-              <button
-                onClick={() => setIsPlaying((p) => !p)}
-                style={{
-                  background: isPlaying ? "#ef4444" : "#3b82f6",
-                  border: "none",
-                  color: "#fff",
-                  cursor: "pointer",
-                  fontSize: 14,
-                  width: 36,
-                  height: 36,
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: isPlaying ? "0 0 16px #ef444440" : "0 0 16px #3b82f640",
-                  transition: "all 0.2s ease",
-                }}
-                title="Play/Pause (Space)"
-              >
-                {isPlaying ? "⏸" : "▶"}
-              </button>
-
-              {/* Next */}
-              <button
-                onClick={() => { setCurrentTurn((p) => Math.min(totalTurns - 1, p + 1)); setIsPlaying(false); }}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "#94a3b8",
-                  cursor: "pointer",
-                  fontSize: 18,
-                  padding: "4px 6px",
-                  borderRadius: 4,
-                }}
-                title="Next (Right Arrow)"
-              >
-                ▸
-              </button>
-
-              {/* Speed */}
-              <div style={{ marginLeft: 16, display: "flex", alignItems: "center", gap: 6 }}>
-                {[3000, 2000, 1000, 500].map((sp) => (
-                  <button
-                    key={sp}
-                    onClick={() => setPlaySpeed(sp)}
-                    style={{
-                      background: playSpeed === sp ? "#1e293b" : "transparent",
-                      border: playSpeed === sp ? "1px solid #334155" : "1px solid transparent",
-                      color: playSpeed === sp ? "#E0DDD8" : "#64748b",
-                      cursor: "pointer",
-                      fontSize: 11,
-                      padding: "3px 8px",
-                      borderRadius: 4,
-                      fontFamily: "monospace",
-                    }}
-                  >
-                    {sp >= 1000 ? `${sp / 1000}s` : `${sp}ms`}
-                  </button>
-                ))}
-              </div>
-
-              {/* Keyboard hints */}
-              <div style={{ marginLeft: "auto", fontSize: 11, color: "#334155" }}>
-                <span style={{ padding: "2px 6px", background: "#1e1e2e", borderRadius: 3, marginRight: 4, fontFamily: "monospace" }}>&larr;&rarr;</span>
-                step
-                <span style={{ padding: "2px 6px", background: "#1e1e2e", borderRadius: 3, margin: "0 4px 0 12px", fontFamily: "monospace" }}>Space</span>
-                play
-              </div>
-            </div>
-
-            {/* Scrub track */}
-            <div
-              onClick={handleScrub}
-              style={{
-                position: "relative",
-                height: 40,
-                marginTop: 24,
-                cursor: "pointer",
-                borderRadius: 6,
-                background: "#1e1e2e",
-              }}
-            >
-              {/* Progress fill */}
-              <div
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  height: "100%",
-                  width: `${progress}%`,
-                  background: "linear-gradient(90deg, #1e3a5f 0%, #2563eb 100%)",
-                  transition: isPlaying ? `width ${playSpeed}ms linear` : "width 0.15s ease",
-                  borderRadius: 6,
-                }}
-              />
-
-              {/* Turn markers */}
-              {recording.turns.map((t, i) => {
-                const x = (i / (totalTurns - 1)) * 100;
-                const isActive = i === safeTurnIndex;
-                const isL3 = getTier(t) === "L3";
-                return (
-                  <div
-                    key={i}
-                    style={{
-                      position: "absolute",
-                      left: `${x}%`,
-                      top: "50%",
-                      transform: "translate(-50%, -50%)",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      gap: 2,
-                      zIndex: isActive ? 10 : 1,
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: isActive ? 14 : 10,
-                        height: isActive ? 14 : 10,
-                        borderRadius: "50%",
-                        background: isActive ? "#ffffff" : isL3 ? "#7c3aed" : "#475569",
-                        border: isActive ? "2px solid #3b82f6" : "2px solid transparent",
-                        boxShadow: isActive ? "0 0 12px #3b82f680" : "none",
-                        transition: "all 0.15s ease",
-                      }}
-                    />
-                    {isActive && (
-                      <div
-                        style={{
-                          position: "absolute",
-                          top: -22,
-                          fontSize: 10,
-                          color: "#94a3b8",
-                          whiteSpace: "nowrap",
-                          fontWeight: 600,
-                        }}
-                      >
-                        Turn {i + 1}
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ color: "#64748b", fontSize: 13, padding: 12, background: "#08080f", border: "1px solid #1e1e2e", borderRadius: 6 }}>
+                        No snapshot data available
                       </div>
                     )}
+                  </>
+                )
+              )}
+
+              {/* RAW TAB */}
+              {tab === "raw" && (
+                <>
+                  <Lbl>Events Emitted</Lbl>
+                  {events.length > 0 ? (
+                    <div style={{ marginBottom: 14, lineHeight: 2.2 }}>
+                      {events.map((e, i) => <EventPill key={i} event={e} />)}
+                    </div>
+                  ) : (
+                    <div style={{ color: "#64748b", fontSize: 12, marginBottom: 14 }}>No events</div>
+                  )}
+
+                  <Lbl>Response Text</Lbl>
+                  <Pre text={turn.response_text || turn.output || "(empty)"} mh={300} />
+
+                  {turn.notes && (
+                    <div style={{ marginTop: 12, padding: "8px 12px", background: "#1a1a0e", border: "1px solid #333318", borderRadius: 6, fontSize: 12, color: "#d4d484" }}>
+                      Note: {turn.notes}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* DIFF TAB */}
+              {tab === "diff" && (
+                <>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div>
+                      <Lbl>Before</Lbl>
+                      <Pre text={JSON.stringify(turn.snapshot_before || {}, null, 2)} mh={300} />
+                    </div>
+                    <div>
+                      <Lbl>After</Lbl>
+                      <Pre text={JSON.stringify(turn.snapshot_after || {}, null, 2)} mh={300} />
+                    </div>
+                  </div>
+                  <div style={{ marginTop: 14 }}>
+                    <Lbl>Entity Diff</Lbl>
+                    <div>
+                      {diff.add.map(k => (
+                        <span key={k} style={{ display: "inline-block", padding: "2px 7px", borderRadius: 4, background: "#064e3b", border: "1px solid #047857", color: "#6ee7b7", fontSize: 11, fontFamily: mono, marginRight: 5, marginBottom: 4 }}>
+                          + {k}
+                        </span>
+                      ))}
+                      {diff.mod.filter(k => !diff.moved[k]).map(k => (
+                        <span key={k} style={{ display: "inline-block", padding: "2px 7px", borderRadius: 4, background: "#1e3a5f", border: "1px solid #2563eb", color: "#93c5fd", fontSize: 11, fontFamily: mono, marginRight: 5, marginBottom: 4 }} title={(diff.modDetails[k] || []).join(", ")}>
+                          ~ {k}
+                        </span>
+                      ))}
+                      {Object.keys(diff.moved).map(k => (
+                        <span key={k} style={{ display: "inline-block", padding: "2px 7px", borderRadius: 4, background: "#3b1f63", border: "1px solid #7c3aed", color: "#c4b5fd", fontSize: 11, fontFamily: mono, marginRight: 5, marginBottom: 4 }} title={`${diff.moved[k].from} → ${diff.moved[k].to}`}>
+                          ↗ {k}
+                        </span>
+                      ))}
+                      {diff.rem.map(k => (
+                        <span key={k} style={{ display: "inline-block", padding: "2px 7px", borderRadius: 4, background: "#4c0519", border: "1px solid #be123c", color: "#fda4af", fontSize: 11, fontFamily: mono, marginRight: 5, marginBottom: 4 }}>
+                          - {k}
+                        </span>
+                      ))}
+                      {diff.add.length === 0 && diff.rem.length === 0 && diff.mod.length === 0 && (
+                        <span style={{ fontSize: 12, color: "#64748b" }}>No entity changes</span>
+                      )}
+                    </div>
+                    {diff.mod.length > 0 && (
+                      <div style={{ marginTop: 8 }}>
+                        {diff.mod.map(k => (
+                          <div key={k} style={{ fontSize: 11, fontFamily: mono, color: "#93c5fd", marginBottom: 2 }}>
+                            {k}: {(diff.modDetails[k] || []).join(", ")}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* TREE TAB */}
+              {tab === "tree" && (
+                <>
+                  <Lbl>Entity Tree</Lbl>
+                  {tree.length > 0 ? (
+                    <div style={{ background: "#08080f", border: "1px solid #1e1e2e", borderRadius: 6, padding: 12 }}>
+                      {tree.map((e, i) => {
+                        const isNew = diff.add.includes(e.id);
+                        const isMod = diff.mod.includes(e.id);
+                        const isRem = !!e._removed;
+                        const isMoved = !!diff.moved[e.id];
+                        const isOrphan = !!e._orphan;
+                        const color = isRem ? "#f87171" : isOrphan ? "#fb923c" : isNew ? "#6ee7b7" : isMod ? "#93c5fd" : "#cbd5e1";
+                        return (
+                          <div key={i} style={{ paddingLeft: e.depth * 20, paddingTop: 3, paddingBottom: 3, fontSize: 12, fontFamily: mono, opacity: isRem ? 0.5 : 1 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                              <span style={{ color: "#475569" }}>{e.depth > 0 ? "├─" : "◆"}</span>
+                              <span style={{ color, fontWeight: isNew || isMod || isRem || isOrphan ? 700 : 400, textDecoration: isRem ? "line-through" : "none" }}>
+                                {e.id}
+                              </span>
+                              {isRem && <span style={{ fontSize: 9, padding: "0 4px", borderRadius: 3, background: "#4c0519", color: "#fda4af", border: "1px solid #be123c" }}>del</span>}
+                              {isOrphan && <span style={{ fontSize: 9, padding: "0 4px", borderRadius: 3, background: "#431407", color: "#fb923c", border: "1px solid #c2410c" }}>orphan</span>}
+                              {isNew && <span style={{ fontSize: 9, padding: "0 4px", borderRadius: 3, background: "#064e3b", color: "#6ee7b7", border: "1px solid #047857" }}>new</span>}
+                              {isMoved && <span style={{ fontSize: 9, padding: "0 4px", borderRadius: 3, background: "#3b1f63", color: "#c4b5fd", border: "1px solid #7c3aed" }}>moved</span>}
+                              {isMod && !isMoved && !isOrphan && <span style={{ fontSize: 9, padding: "0 4px", borderRadius: 3, background: "#1e3a5f", color: "#93c5fd", border: "1px solid #2563eb" }}>mod</span>}
+                              {e.display && <span style={{ fontSize: 10, padding: "0 4px", marginLeft: 2, borderRadius: 3, background: "#1e293b", color: "#94a3b8" }}>{e.display}</span>}
+                            </div>
+                            {(e.props || e.p) && Object.keys(e.props || e.p).length > 0 && (
+                              <div style={{ paddingLeft: 20, fontSize: 11, color: "#475569", fontFamily: mono }}>
+                                {Object.entries(e.props || e.p).slice(0, 5).map(([k, v]) => (
+                                  <span key={k} style={{ marginRight: 8 }}>{k}={JSON.stringify(v).slice(0, 24)}</span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{ color: "#64748b", fontSize: 13, padding: 12, background: "#08080f", border: "1px solid #1e1e2e", borderRadius: 6 }}>
+                      No entities in snapshot
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* PROMPT TAB */}
+              {tab === "prompt" && (
+                <>
+                  <Lbl>System Prompt</Lbl>
+                  {turn.llm_calls?.length > 0 ? (
+                    turn.llm_calls.map((call, i) => (
+                      <div key={i} style={{ marginBottom: 16 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                          <span style={{ padding: "2px 6px", borderRadius: 3, background: call.shadow ? "#475569" : "#22543d", color: call.shadow ? "#94a3b8" : "#86efac", fontWeight: 600, fontSize: 9, textTransform: "uppercase" }}>
+                            {call.shadow ? "Shadow" : "Production"}
+                          </span>
+                          <Tier tier={call.tier} small />
+                          <span style={{ fontSize: 10, color: "#64748b", fontFamily: mono }}>{call.model}</span>
+                        </div>
+                        <Pre text={call.prompt || turn.system_prompt || "(no prompt recorded)"} mh={400} />
+                      </div>
+                    ))
+                  ) : (
+                    <Pre text={turn.system_prompt || "(no prompt recorded)"} mh={500} />
+                  )}
+                </>
+              )}
+
+              {/* COST TAB */}
+              {tab === "cost" && (
+                <>
+                  <Lbl>Token Usage</Lbl>
+                  <div style={{ background: "#08080f", border: "1px solid #1e1e2e", borderRadius: 6, padding: 12, marginBottom: 16 }}>
+                    {[["Input", totalUsage.input_tokens], ["Output", totalUsage.output_tokens], ["Cache Read", totalUsage.cache_read], ["Cache Write", totalUsage.cache_creation]].map(([k, v]) => (
+                      <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
+                        <span style={{ color: "#64748b" }}>{k}</span>
+                        <span style={{ fontFamily: mono, color: k === "Cache Read" && v > 0 ? "#4ade80" : "#94a3b8" }}>
+                          {v?.toLocaleString() || "—"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <Lbl>Cost Estimate</Lbl>
+                  <div style={{ background: "#08080f", border: "1px solid #1e1e2e", borderRadius: 6, padding: 12 }}>
+                    <div style={{ fontSize: 24, fontWeight: 700, color: "#4ade80", fontFamily: mono, marginBottom: 8 }}>
+                      ${totalCost.toFixed(6)}
+                    </div>
+                    <div style={{ fontSize: 11, color: "#64748b" }}>
+                      Tier: {tierStr} · {turn.llm_calls?.length || 1} LLM call(s)
+                    </div>
+                  </div>
+
+                  {turn.llm_calls?.length > 1 && (
+                    <>
+                      <div style={{ marginTop: 16 }}>
+                        <Lbl>Per-Call Breakdown</Lbl>
+                      </div>
+                      {turn.llm_calls.map((call, i) => (
+                        <div key={i} style={{ background: "#08080f", border: "1px solid #1e1e2e", borderRadius: 6, padding: 10, marginBottom: 8, fontSize: 11 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                            <span style={{ padding: "2px 6px", borderRadius: 3, background: call.shadow ? "#475569" : "#22543d", color: call.shadow ? "#94a3b8" : "#86efac", fontWeight: 600, fontSize: 9 }}>
+                              {call.shadow ? "Shadow" : "Prod"}
+                            </span>
+                            <span style={{ color: "#94a3b8", fontFamily: mono }}>{call.model}</span>
+                            <span style={{ color: "#64748b", marginLeft: "auto" }}>${calculateCost(call.usage, call.tier).toFixed(6)}</span>
+                          </div>
+                          <div style={{ display: "flex", gap: 12, color: "#64748b", fontFamily: mono, fontSize: 10 }}>
+                            <span>In: {call.usage?.input_tokens || 0}</span>
+                            <span>Out: {call.usage?.output_tokens || 0}</span>
+                            <span>CR: {call.usage?.cache_read || 0}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </>
+              )}
+
+            </div>
+          </div>
+
+          {/* RIGHT: METRICS */}
+          <div style={{ borderLeft: "1px solid #1a1a2a", overflowY: "auto", padding: 12 }}>
+            <Lbl>Latency</Lbl>
+            {[["TTFT", turn.llm_calls?.[0]?.ttfc_ms || turn.ttfc_ms], ["TTC", turn.total_latency_ms || turn.ttc_ms]].map(([k, v]) => (
+              <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 3 }}>
+                <span style={{ color: "#64748b" }}>{k}</span>
+                <span style={{ fontFamily: mono, color: k === "TTFT" ? "#c4b5fd" : "#94a3b8" }}>{v != null ? v + "ms" : "—"}</span>
+              </div>
+            ))}
+
+            <div style={{ marginTop: 14 }}>
+              <Lbl>Tokens</Lbl>
+              {[["In", totalUsage.input_tokens], ["Out", totalUsage.output_tokens], ["Cache R", totalUsage.cache_read], ["Cache W", totalUsage.cache_creation]].map(([k, v]) => (
+                <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 3 }}>
+                  <span style={{ color: "#64748b" }}>{k}</span>
+                  <span style={{ fontFamily: mono, color: k === "Cache R" && v > 0 ? "#4ade80" : "#94a3b8" }}>{v || "—"}</span>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ marginTop: 14 }}>
+              <Lbl>Routing</Lbl>
+              {turn.expected_tier && (
+                <div style={{ fontSize: 11, marginBottom: 3 }}>Expect <Tier tier={turn.expected_tier} small /></div>
+              )}
+              {turn.classified_tier && (
+                <div style={{ fontSize: 11, marginBottom: 3 }}>Class <Tier tier={turn.classified_tier} small /></div>
+              )}
+              <div style={{ fontSize: 11 }}>Actual <Tier tier={tierStr} small /></div>
+              {turn.classified_tier && turn.expected_tier && turn.classified_tier !== turn.expected_tier && (
+                <div style={{ marginTop: 4, fontSize: 10, color: "#fb923c" }}>Tier mismatch</div>
+              )}
+            </div>
+
+            {turn.score && (
+              <div style={{ marginTop: 14 }}>
+                <Lbl>Score</Lbl>
+                <div style={{ fontSize: 20, fontWeight: 700, color: turn.score.composite >= 0.9 ? "#4ade80" : turn.score.composite >= 0.75 ? "#facc15" : "#f87171", fontFamily: mono }}>
+                  {Math.round((turn.score.composite || 0) * 100)}%
+                </div>
+                {["validity", "voice", "structure", "efficiency", "fidelity"].map(d => (
+                  turn.score[d] != null && (
+                    <div key={d} style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4 }}>
+                      <span style={{ fontSize: 9, color: "#94a3b8", width: 40, fontFamily: mono }}>{d.slice(0, 5)}</span>
+                      <div style={{ flex: 1, height: 4, background: "#1e293b", borderRadius: 2, overflow: "hidden" }}>
+                        <div style={{ width: `${(turn.score[d] || 0) * 100}%`, height: "100%", background: turn.score[d] >= 0.9 ? "#4ade80" : turn.score[d] >= 0.75 ? "#facc15" : "#f87171", borderRadius: 2 }} />
+                      </div>
+                      <span style={{ fontSize: 9, fontFamily: mono, color: "#64748b", width: 24 }}>{Math.round((turn.score[d] || 0) * 100)}</span>
+                    </div>
+                  )
+                ))}
+              </div>
+            )}
+
+            <div style={{ marginTop: 14 }}>
+              <Lbl>Cost</Lbl>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#4ade80", fontFamily: mono }}>
+                ${totalCost.toFixed(4)}
+              </div>
+            </div>
+          </div>
+
+          {/* BOTTOM: TIMELINE */}
+          <div style={{ gridColumn: "1/-1", display: "flex", alignItems: "center", gap: 8, padding: "0 16px", borderTop: "1px solid #1a1a2a", background: "#0e0e18" }}>
+            <button onClick={() => { setCurrentTurn(0); setIsPlaying(false); }} style={{ background: "none", border: "none", color: "#64748b", fontSize: 14, cursor: "pointer" }} title="Rewind (Home)">⏮</button>
+            <button onClick={() => { setCurrentTurn(p => Math.max(p - 1, 0)); setIsPlaying(false); }} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 16, cursor: "pointer" }}>◀</button>
+            <button onClick={() => setIsPlaying(p => !p)} style={{ background: isPlaying ? "#ef4444" : "#3b82f6", border: "none", color: "#fff", fontSize: 12, width: 32, height: 32, borderRadius: "50%", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {isPlaying ? "⏸" : "▶"}
+            </button>
+            <button onClick={() => { setCurrentTurn(p => Math.min(p + 1, N - 1)); setIsPlaying(false); }} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 16, cursor: "pointer" }}>▶</button>
+
+            {/* Speed controls */}
+            <div style={{ display: "flex", gap: 4, marginLeft: 8 }}>
+              {[3000, 2000, 1000, 500].map(sp => (
+                <button key={sp} onClick={() => setPlaySpeed(sp)} style={{ padding: "2px 6px", fontSize: 10, background: playSpeed === sp ? "#1e293b" : "transparent", border: playSpeed === sp ? "1px solid #334155" : "1px solid transparent", borderRadius: 3, color: playSpeed === sp ? "#e2e8f0" : "#64748b", cursor: "pointer", fontFamily: mono }}>
+                  {sp >= 1000 ? `${sp / 1000}s` : `${sp}ms`}
+                </button>
+              ))}
+            </div>
+
+            {/* Scrub bar */}
+            <div onClick={handleScrub} style={{ flex: 1, height: 28, cursor: "pointer", position: "relative", display: "flex", alignItems: "center", marginLeft: 12 }}>
+              <div style={{ position: "absolute", left: 0, right: 0, height: 3, background: "#1e293b", borderRadius: 2 }} />
+              <div style={{ position: "absolute", left: 0, width: `${(safeIdx / Math.max(N - 1, 1)) * 100}%`, height: 3, background: "#3b82f6", borderRadius: 2 }} />
+              {recording.turns.map((t, i) => {
+                const c = TC[getTier(t)] || TC.L3;
+                const isActive = i === safeIdx;
+                return (
+                  <div key={i} style={{ position: "absolute", left: `${(i / Math.max(N - 1, 1)) * 100}%`, transform: "translateX(-50%)" }}>
+                    <div style={{ width: isActive ? 12 : 8, height: isActive ? 12 : 8, borderRadius: "50%", background: isActive ? c.tx : c.bg, border: `2px solid ${c.bd}` }} />
                   </div>
                 );
               })}
             </div>
+
+            <span style={{ fontSize: 9, color: "#334155", fontFamily: mono, marginLeft: 8 }}>←→ spc 1-6</span>
           </div>
+
+          {/* Hidden file input */}
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".json"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) loadFromFile(f); }}
+            style={{ display: "none" }}
+          />
         </div>
       );
     }
