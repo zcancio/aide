@@ -87,7 +87,7 @@ Use when the AI fundamentally misunderstood intent.
 
 ### Path 3: Follow-Up Correction (natural language)
 
-Type "that date should be May 22" in chat. L2 compiles to `entity.update`. Slower than direct edit (~1-2s) but natural for chat-oriented users.
+Type "that date should be May 22" in chat. L3 compiles to `entity.update`. Slower than direct edit (~1-2s) but natural for chat-oriented users.
 
 ---
 
@@ -116,8 +116,8 @@ Retry 3x with exponential backoff. If all fail → hold snapshot in memory, show
 | Undo / Redo | <300ms | No |
 | Reorder (drag) | <200ms | No |
 | Delete entity | <200ms | No |
-| L2 update | <1.5s | Yes (Haiku) |
-| L2 correction | <1.5s | Yes (Haiku) |
+| L3 update | <2s | Yes (Sonnet) |
+| L3 correction | <2s | Yes (Sonnet) |
 | L3 new section | <3s first content | Yes (Sonnet) |
 | L3 first creation | <1s first content, <4s complete | Yes (Sonnet) |
 | L4 query | <5s | Yes (Opus) |
@@ -129,7 +129,7 @@ Retry 3x with exponential backoff. If all fail → hold snapshot in memory, show
 **Trust = speed of recovery × reliability of AI × visibility of what happened**
 
 - **Speed of recovery:** Direct edit for details, undo for mistakes, retry for misunderstandings.
-- **Reliability:** Three-tier routing, eval suites, reducer validation.
+- **Reliability:** Two-tier routing, eval suites, reducer validation.
 - **Visibility:** The page IS the feedback. No hidden state. Entities appear as created. Changes visible instantly.
 
 The user needs to know: I say something, the page changes, and if it's wrong I can fix it immediately.

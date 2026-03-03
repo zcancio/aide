@@ -9,12 +9,12 @@
 
 Every user request falls into one of three categories.
 
-### Native — What AIde Does Itself
+### Native — What aide Does Itself
 
-Entity graph mutations, short text (one paragraph max, ~100 words), and queries over state. This is the JSONL pipeline.
+Entity graph mutations, short text (one paragraph max, ~100 words), and queries over state. This is the tool call pipeline.
 
 Examples:
-- "Add Aunt Linda, she RSVPed yes" → entity mutation (L2)
+- "Add Aunt Linda, she RSVPed yes" → entity mutation (L3)
 - "Plan my graduation party" → schema synthesis (L3)
 - "Write a short welcome message" → text entity, max ~100 words (L3)
 - "Who hasn't RSVPed?" → query (L4)
@@ -84,4 +84,4 @@ Grid data (chess boards, Super Bowl squares) modeled as flat entities with coord
 
 ### Voice Reflections Decoupled
 
-The JSONL stream is purely structural. Voice is a separate `voice` signal line, optional. Most L2 updates don't need one — the page change IS the response. For L3 creation, voice narrates progress every ~8-10 lines.
+The tool call stream is purely structural. Voice is a separate `voice` tool call, optional. Simple updates often don't need one — the page change IS the response. For first creation, voice narrates progress every ~8-10 entity lines.
