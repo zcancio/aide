@@ -2,13 +2,14 @@
  * Preview.jsx - Preview component with Shadow DOM rendering
  */
 
-import { useEffect, useRef, useLayoutEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { RENDERER_CSS, renderHtml } from '../lib/display';
 
 export default function Preview({ entityStore, onDirectEdit }) {
   const containerRef = useRef(null);
   const shadowRef = useRef(null);
   const scrollPosRef = useRef(0);
+  const [shadowReady, setShadowReady] = useState(false);
 
   // Initialize Shadow DOM once
   useEffect(() => {
@@ -26,11 +27,13 @@ export default function Preview({ entityStore, onDirectEdit }) {
     const content = document.createElement('div');
     content.className = 'aide-preview-content';
     shadow.appendChild(content);
+
+    setShadowReady(true);
   }, []);
 
   // Render content
-  useLayoutEffect(() => {
-    if (!shadowRef.current) return;
+  useEffect(() => {
+    if (!shadowReady || !shadowRef.current) return;
 
     const content = shadowRef.current.querySelector('.aide-preview-content');
     if (!content) return;
@@ -86,7 +89,7 @@ export default function Preview({ entityStore, onDirectEdit }) {
     return () => {
       content.removeEventListener('click', handleClick);
     };
-  }, [entityStore, onDirectEdit]);
+  }, [shadowReady, entityStore, onDirectEdit]);
 
   return (
     <div
