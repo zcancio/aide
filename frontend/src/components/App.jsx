@@ -8,6 +8,7 @@ import AuthScreen from './AuthScreen.jsx';
 import Dashboard from './Dashboard.jsx';
 import Editor from './Editor.jsx';
 import FlightRecorder from './FlightRecorder.jsx';
+import DemoPatterns from './DemoPatterns.jsx';
 
 function AppRoutes() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -25,6 +26,7 @@ function AppRoutes() {
       <Route path="/" element={<Dashboard />} />
       <Route path="/a/:aideId" element={<Editor />} />
       <Route path="/flight-recorder" element={<FlightRecorder />} />
+      <Route path="/demo" element={<DemoPatterns />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
