@@ -1006,3 +1006,25 @@
 .fr-mutations {
   padding: 4px 0;
 }
+
+/* Chat response container */
+.fr-chat-response {
+  margin-top: 6px;
+  margin-left: 8px;
+}
+
+/* Voice responses container */
+.fr-voice-responses {
+  margin-bottom: 6px;
+}
+
+/* System bubble for turn 0 */
+.fr-chat-bubble--system {
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 11px;
+  margin-left: 0;
+  margin-right: auto;
+  border-radius: 10px 10px 10px 3px;
+}

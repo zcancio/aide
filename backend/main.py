@@ -21,12 +21,10 @@ from backend.routes import aides as aide_routes
 from backend.routes import api_tokens, auth_routes, cli_auth
 from backend.routes import conversations as conversation_routes
 from backend.routes import engine as engine_routes
-from backend.routes import flight_recorder as flight_recorder_routes
 from backend.routes import pages as pages_routes
 from backend.routes import publish as publish_routes
 from backend.routes import telemetry as telemetry_routes
 from backend.routes import ws as ws_routes
-from backend.services.flight_recorder_uploader import flight_recorder_uploader
 
 
 # Background task for cleanup
@@ -73,10 +71,6 @@ async def lifespan(app: FastAPI):
     cleanup_task_handle = asyncio.create_task(cleanup_task())
     print("Background cleanup task started")
 
-    # Start flight recorder uploader background task
-    flight_uploader_handle = asyncio.create_task(flight_recorder_uploader.run())
-    print("Flight recorder uploader started")
-
     yield
 
     # Shutdown
@@ -85,15 +79,6 @@ async def lifespan(app: FastAPI):
         await cleanup_task_handle
     except asyncio.CancelledError:
         print("Background cleanup task stopped")
-
-    # Flush remaining flight records before shutdown
-    flight_uploader_handle.cancel()
-    try:
-        await flight_uploader_handle
-    except asyncio.CancelledError:
-        pass
-    await flight_recorder_uploader.flush()
-    print("Flight recorder uploader stopped")
 
     await db.close_pool()
     print("Database pool closed")
@@ -114,7 +99,6 @@ app.include_router(aide_routes.router)
 app.include_router(conversation_routes.router)
 app.include_router(publish_routes.router)
 app.include_router(pages_routes.router)
-app.include_router(flight_recorder_routes.router)
 app.include_router(telemetry_routes.router)
 app.include_router(ws_routes.router)
 app.include_router(engine_routes.router)
