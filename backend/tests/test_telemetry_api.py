@@ -4,27 +4,15 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-import httpx
 import pytest
 import pytest_asyncio
 
 from backend import db
 from backend.auth import create_jwt
-from backend.main import app
 from backend.models.telemetry import TokenUsage, TurnTelemetry
 from backend.repos import telemetry_repo
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
-
-
-@pytest_asyncio.fixture(loop_scope="session")
-async def async_client():
-    """Async HTTP client against the ASGI app."""
-    async with httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
-    ) as client:
-        yield client
 
 
 @pytest_asyncio.fixture(loop_scope="session")
