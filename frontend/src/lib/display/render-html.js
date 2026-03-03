@@ -148,11 +148,11 @@ function renderList(entity, childIds, entities) {
     const primaryValue = primaryField ? cp[primaryField] : '';
     const secondaryProps = Object.entries(cp).filter(([k]) => !k.startsWith('_') && k !== 'name' && k !== 'title');
 
-    const rightHtml = primaryValue
-      ? `<span class="aide-list__right editable-field" data-entity-id="${id}" data-field="${primaryField}">${escapeHtml(primaryValue)}</span>`
+    const leftHtml = primaryValue
+      ? `<span class="aide-list__left editable-field" data-entity-id="${id}" data-field="${primaryField}">${escapeHtml(primaryValue)}</span>`
       : '';
-    const leftHtml = secondaryProps.map(([k, v]) =>
-      `<span class="aide-list__left editable-field" data-entity-id="${id}" data-field="${k}">${escapeHtml(v)}</span>`
+    const rightHtml = secondaryProps.map(([k, v]) =>
+      `<span class="aide-list__right editable-field" data-entity-id="${id}" data-field="${k}">${escapeHtml(v)}</span>`
     ).join(' ');
 
     return `<li class="aide-list__item">${leftHtml}${rightHtml}</li>`;
@@ -175,10 +175,14 @@ function renderCard(entity, childIds, entities) {
 
   const children = childIds.map(id => renderEntity(id, entities)).join('');
 
+  // Show placeholder for empty cards (no title, no fields, no children)
+  const isEmpty = !title && displayProps.length === 0 && childIds.length === 0;
+
   return `<div class="aide-card">
     ${title ? `<div class="aide-card__title editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</div>` : ''}
     ${fields}
     ${children}
+    ${isEmpty ? '<p class="aide-card__empty">No properties set</p>' : ''}
   </div>`;
 }
 
