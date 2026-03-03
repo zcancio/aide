@@ -564,65 +564,79 @@ export default function FlightRecorder() {
                 setShowTyping(false);
               }}
             >
+              {/* User message */}
               <div className="fr-chat-bubble">{tr.message}</div>
-              {/* Show streaming mutations for current turn */}
-              {i + 1 === idx && streaming && streamEvents.length > 0 && (
-                <div className="fr-mutations">
-                  {streamEvents.map((evt, j) => {
-                    if (evt.type === 'mutation') {
-                      const tag = getMutationTag(evt.data);
-                      if (!tag) return null;
-                      return (
-                        <div key={j} className="fr-mut-line">
-                          <span className={`fr-mut-tag fr-mut-tag--${tag.type}`}>
-                            {tag.label}
-                          </span>
-                          <span className="fr-mut-id">
-                            {tag.id || ''}
-                            {tag.from && tag.to && (
-                              <>
-                                {tag.from}
-                                <span className="fr-mut-arrow">→</span>
-                                {tag.to}
-                              </>
-                            )}
-                          </span>
-                        </div>
-                      );
-                    }
-                    if (evt.type === 'voice') {
-                      return (
-                        <div key={j} className="fr-voice-bubble">
-                          {evt.text}
-                        </div>
-                      );
-                    }
-                    return null;
-                  })}
-                </div>
-              )}
-              {/* Show completed mutations for past turns */}
-              {i + 1 < idx && parseToolCalls(tr.tool_calls).length > 0 && (
-                <div className="fr-mutations">
-                  {parseToolCalls(tr.tool_calls).slice(0, 3).map((tc, j) => {
-                    const tag = getMutationTag(tc);
-                    if (!tag) return null;
-                    return (
-                      <div key={j} className="fr-mut-line">
-                        <span className={`fr-mut-tag fr-mut-tag--${tag.type}`}>
-                          {tag.label}
-                        </span>
-                        <span className="fr-mut-id">{tag.id || ''}</span>
+              {/* LLM response */}
+              <div className="fr-chat-response">
+                {/* Show streaming events for current turn during playback */}
+                {i + 1 === idx && streaming && streamEvents.length > 0 && (
+                  <div className="fr-mutations">
+                    {streamEvents.map((evt, j) => {
+                      if (evt.type === 'mutation') {
+                        const tag = getMutationTag(evt.data);
+                        if (!tag) return null;
+                        return (
+                          <div key={j} className="fr-mut-line">
+                            <span className={`fr-mut-tag fr-mut-tag--${tag.type}`}>
+                              {tag.label}
+                            </span>
+                            <span className="fr-mut-id">
+                              {tag.id || ''}
+                              {tag.from && tag.to && (
+                                <>
+                                  {tag.from}
+                                  <span className="fr-mut-arrow">→</span>
+                                  {tag.to}
+                                </>
+                              )}
+                            </span>
+                          </div>
+                        );
+                      }
+                      if (evt.type === 'voice') {
+                        return (
+                          <div key={j} className="fr-voice-bubble">
+                            {evt.text}
+                          </div>
+                        );
+                      }
+                      return null;
+                    })}
+                  </div>
+                )}
+                {/* Show completed response for turns up to current (when not streaming current) */}
+                {i + 1 <= idx && !(i + 1 === idx && streaming) && (
+                  <>
+                    {/* Voice/text responses */}
+                    {tr.text_blocks?.length > 0 && (
+                      <div className="fr-voice-responses">
+                        {tr.text_blocks.map((tb, j) => (
+                          <div key={j} className="fr-voice-bubble">
+                            {typeof tb === 'string' ? tb : tb.text}
+                          </div>
+                        ))}
                       </div>
-                    );
-                  })}
-                  {parseToolCalls(tr.tool_calls).length > 3 && (
-                    <div className="fr-mut-line" style={{ color: 'var(--text-muted)' }}>
-                      +{parseToolCalls(tr.tool_calls).length - 3} more
-                    </div>
-                  )}
-                </div>
-              )}
+                    )}
+                    {/* All tool calls */}
+                    {parseToolCalls(tr.tool_calls).length > 0 && (
+                      <div className="fr-mutations">
+                        {parseToolCalls(tr.tool_calls).map((tc, j) => {
+                          const tag = getMutationTag(tc);
+                          if (!tag) return null;
+                          return (
+                            <div key={j} className="fr-mut-line">
+                              <span className={`fr-mut-tag fr-mut-tag--${tag.type}`}>
+                                {tag.label}
+                              </span>
+                              <span className="fr-mut-id">{tag.id || ''}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
               <div className="fr-chat-meta">
                 <TierBadge tier={tr.tier} small />
                 <span className="fr-chat-timing">{tr.ttc_ms}ms</span>
