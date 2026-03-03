@@ -1,4 +1,4 @@
-# AIde v2: Overview
+# aide v2: Overview
 
 > **Read time:** 5 minutes
 > **Audience:** Everyone on the team
@@ -6,9 +6,9 @@
 
 ---
 
-## What Is AIde
+## What Is aide
 
-An aide is a living object. The user describes what they're coordinating — a graduation party, a poker league, a group trip — and AIde brings it to life as a shareable page that stays current through natural language conversation. The page is the object's body. The chat is how you talk to it. No account needed to view.
+An aide is a living object. The user describes what they're coordinating — a graduation party, a poker league, a group trip — and aide brings it to life as a shareable page that stays current through natural language conversation. The page is the object's body. The chat is how you talk to it. No account needed to view.
 
 The tagline: **For what you're living.**
 
@@ -16,9 +16,9 @@ The tagline: **For what you're living.**
 
 General-purpose AI chat (Claude, ChatGPT) drifts. By turn 20, the model has forgotten what you said at turn 3. You repeat yourself. You paste context back in. The conversation becomes the coordination tool — but conversations are terrible at maintaining state.
 
-AIde solves this by scoping the LLM's job. The entity graph is the memory, not the conversation. When the user says "Aunt Linda RSVPed yes," the LLM doesn't need to remember 30 turns of context — it reads the current entity graph, compiles the message into a mutation, and moves on. The conversation tail is 3-5 messages for intent disambiguation, not a growing liability.
+aide solves this by scoping the LLM's job. The entity graph is the memory, not the conversation. When the user says "Aunt Linda RSVPed yes," the LLM doesn't need to remember 30 turns of context — it reads the current entity graph, compiles the message into a mutation, and moves on. The conversation tail is 3-5 messages for intent disambiguation, not a growing liability.
 
-This scoping also makes the LLM more reliable. A general chat model juggling "write me a poem, also what's the weather, also update my guest list" makes mistakes. An AIde LLM has one job: maintain this entity graph. The system prompt is short and specific. The output format is constrained (JSONL). The reducer validates every operation. The attack surface for hallucination is small.
+This scoping also makes the LLM more reliable. A general chat model juggling "write me a poem, also what's the weather, also update my guest list" makes mistakes. An aide LLM has one job: maintain this entity graph. The system prompt is short and specific. The output format is constrained (JSONL). The reducer validates every operation. The attack surface for hallucination is small.
 
 The page is the artifact, not the chat. The chat is the input method.
 
@@ -85,7 +85,7 @@ A recursive React component walks the entity tree. Each entity maps to a display
 
 ## Two Speeds
 
-AIde has two interaction speeds. Both always available.
+aide has two interaction speeds. Both always available.
 
 **AI speed (1-5s):** Talk to the LLM. Create structure, add guests, ask questions.
 
