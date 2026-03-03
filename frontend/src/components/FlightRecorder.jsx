@@ -130,6 +130,72 @@ export default function FlightRecorder() {
   );
   const events = useMemo(() => parseToolCalls(t.tool_calls), [t.tool_calls]);
 
+  // Build streaming snapshot - applies mutations incrementally as they stream in
+  const streamingSnapshot = useMemo(() => {
+    if (!streaming || streamEvents.length === 0) return null;
+
+    // Start from the state before current turn
+    const snapshot = {
+      meta: { ...snapshotBefore.meta },
+      entities: { ...snapshotBefore.entities },
+    };
+
+    // Apply each streamed mutation
+    for (const evt of streamEvents) {
+      if (evt.type !== 'mutation') continue;
+      const tc = evt.data;
+
+      // Normalize the tool call format
+      let eventType, input;
+      if (tc.t) {
+        eventType = tc.t;
+        input = tc;
+      } else if (tc.type && tc.input) {
+        eventType = tc.type;
+        input = tc.input;
+      } else if (tc.name && tc.input) {
+        input = tc.input;
+        if (tc.name === 'mutate_entity') {
+          const action = input.action;
+          if (action === 'create') eventType = 'entity.create';
+          else if (action === 'update') eventType = 'entity.update';
+          else if (action === 'remove') eventType = 'entity.remove';
+        } else {
+          eventType = tc.name;
+        }
+      }
+
+      if (!eventType) continue;
+
+      // Apply the mutation
+      if (eventType === 'entity.create') {
+        snapshot.entities[input.id] = {
+          id: input.id,
+          parent: input.parent || 'root',
+          display: input.display,
+          props: input.props || input.p || {},
+        };
+      } else if (eventType === 'entity.update') {
+        const ref = input.ref;
+        if (snapshot.entities[ref]) {
+          snapshot.entities[ref] = {
+            ...snapshot.entities[ref],
+            props: {
+              ...snapshot.entities[ref].props,
+              ...(input.props || input.p || {}),
+            },
+          };
+        }
+      } else if (eventType === 'entity.remove') {
+        delete snapshot.entities[input.ref];
+      } else if (eventType === 'meta.set' || eventType === 'meta.update') {
+        snapshot.meta = { ...snapshot.meta, ...(input.p || input.props || {}) };
+      }
+    }
+
+    return snapshot;
+  }, [streaming, streamEvents, snapshotBefore]);
+
   // Calculate cumulative cost (turn 0 has no cost)
   const cumulativeCost = useMemo(() => {
     let total = 0;
@@ -253,13 +319,22 @@ export default function FlightRecorder() {
     shadow.appendChild(content);
   }, [data, tab]);
 
-  // Update preview when turn changes
+  // Update preview when turn changes or streaming events update
   useEffect(() => {
     if (!shadowRef.current || !data || N === 0 || tab !== 'rendered') return;
     const content = shadowRef.current.querySelector('.aide-preview-content');
     if (!content) return;
-    const snapshot =
-      idx === N - 1 && data.final_snapshot ? data.final_snapshot : snapshotAfter;
+
+    // Use streaming snapshot during replay, otherwise use completed snapshot
+    let snapshot;
+    if (streaming && streamingSnapshot) {
+      snapshot = streamingSnapshot;
+    } else if (idx === N - 1 && data.final_snapshot) {
+      snapshot = data.final_snapshot;
+    } else {
+      snapshot = snapshotAfter;
+    }
+
     // Convert snapshot to renderHtml format (needs rootIds)
     const entities = snapshot.entities || {};
     const rootIds = Object.keys(entities).filter(
@@ -268,7 +343,7 @@ export default function FlightRecorder() {
     const store = { entities, rootIds, meta: snapshot.meta || {} };
     const html = renderHtml(store);
     content.innerHTML = html;
-  }, [idx, data, N, tab, snapshotAfter]);
+  }, [idx, data, N, tab, snapshotAfter, streaming, streamingSnapshot]);
 
   // Auto-load if aide_id in URL
   useEffect(() => {
