@@ -18,7 +18,7 @@ General-purpose AI chat (Claude, ChatGPT) drifts. By turn 20, the model has forg
 
 aide solves this by scoping the LLM's job. The entity graph is the memory, not the conversation. When the user says "Aunt Linda RSVPed yes," the LLM doesn't need to remember 30 turns of context — it reads the current entity graph, compiles the message into a mutation, and moves on. The conversation tail is 3-5 messages for intent disambiguation, not a growing liability.
 
-This scoping also makes the LLM more reliable. A general chat model juggling "write me a poem, also what's the weather, also update my guest list" makes mistakes. An aide LLM has one job: maintain this entity graph. The system prompt is short and specific. The output format is constrained (JSONL). The reducer validates every operation. The attack surface for hallucination is small.
+This scoping also makes the LLM more reliable. A general chat model juggling "write me a poem, also what's the weather, also update my guest list" makes mistakes. An aide LLM has one job: maintain this entity graph. The system prompt is short and specific. The output format is constrained (tool calls). The reducer validates every operation. The attack surface for hallucination is small.
 
 The page is the artifact, not the chat. The chat is the input method.
 
