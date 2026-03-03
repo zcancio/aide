@@ -111,14 +111,16 @@
 }
 
 /* ── Headings ── */
-:host .aide-heading { margin-bottom: var(--space-4); }
+:host .aide-heading { margin-bottom: var(--space-6); }
 :host .aide-heading--1 {
   font-family: var(--font-serif);
   font-size: clamp(36px, 4.5vw, 42px);
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
   color: var(--text-primary);
 }
+:host .aide-checklist-container > .aide-heading { margin-bottom: 0; }
 :host .aide-heading--2 {
   font-family: var(--font-serif);
   font-size: clamp(28px, 3.5vw, 32px);
@@ -141,7 +143,7 @@
   font-weight: 400;
   line-height: 1.65;
   color: var(--text-secondary);
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-4);
   max-width: 65ch;
 }
 :host .aide-text a {
@@ -159,16 +161,17 @@
   display: inline-flex;
   align-items: baseline;
   gap: var(--space-2);
-  margin-right: var(--space-6);
-  margin-bottom: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  margin-right: var(--space-4);
+  margin-bottom: var(--space-3);
+  padding: var(--space-2) var(--space-4);
   background: var(--bg-secondary);
   border-radius: var(--radius-sm);
 }
 :host .aide-metric__label {
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 400;
+  line-height: 1.4;
   color: var(--text-secondary);
 }
 :host .aide-metric__label::after { content: ':'; }
@@ -176,6 +179,8 @@
   font-family: var(--font-sans);
   font-size: 14px;
   font-weight: 600;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
   color: var(--text-primary);
 }
 
@@ -187,12 +192,12 @@
 }
 
 /* ── Image ── */
-:host .aide-image { margin: var(--space-6) 0; }
-:host .aide-image img { max-width: 100%; height: auto; border-radius: var(--radius-sm); }
-:host .aide-image__caption {
+:host .aide-image { margin: var(--space-5) 0; }
+:host .aide-image img { max-width: 100%; height: auto; border-radius: var(--radius-md); display: block; }
+body .aide-image .aide-image__caption {
   font-size: 13px;
   color: var(--text-tertiary);
-  margin-top: var(--space-2);
+  padding-top: var(--space-2);
 }
 
 /* ── Callout ── */
@@ -200,7 +205,7 @@
   background: var(--bg-secondary);
   border-left: 3px solid var(--border);
   padding: var(--space-4) var(--space-5);
-  margin: var(--space-4) 0;
+  margin: var(--space-5) 0;
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   font-size: 15px;
   line-height: 1.55;
@@ -240,32 +245,35 @@
 :host .aide-list {
   list-style: none;
   padding: 0;
+  margin-top: 0;
+  margin-bottom: var(--space-6);
 }
+:host .aide-list:last-child { margin-bottom: 0; }
 :host .aide-list__item {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
   gap: 12px;
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--border-light);
+  padding: var(--space-1) 0;
   font-size: 15px;
   line-height: 1.5;
 }
-:host .aide-list__item:last-child { border-bottom: none; }
 :host .aide-list__left {
-  font-weight: 500;
-  color: var(--text-primary);
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 :host .aide-list__right {
-  color: var(--text-secondary);
-  font-size: 13px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-primary);
 }
 
 /* ── Table view ── */
 :host .aide-table-wrap {
   overflow-x: auto;
-  margin: var(--space-4) 0;
+  margin: var(--space-3) 0 var(--space-3);
 }
+:host .aide-table-wrap + .aide-table-wrap { margin-top: var(--space-6); }
 :host .aide-table {
   width: 100%;
   border-collapse: collapse;
@@ -279,7 +287,7 @@
   text-transform: uppercase;
   color: var(--text-secondary);
   text-align: left;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-3);
   border-bottom: 2px solid var(--border-strong);
   background: var(--bg-tertiary);
   cursor: pointer;
@@ -300,12 +308,14 @@
   background: var(--bg-secondary);
 }
 :host .aide-table__td {
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-3) var(--space-3);
   border-bottom: 1px solid var(--border-light);
   color: var(--text-secondary);
   vertical-align: top;
   font-size: 14px;
+  line-height: 1.4;
 }
+:host .aide-table tbody tr:last-child .aide-table__td { border-bottom: none; }
 :host .aide-table__td--bool { text-align: center; }
 :host .aide-table__td--int,
 :host .aide-table__td--number,
@@ -346,7 +356,7 @@
   font-family: var(--font-sans);
   font-size: 11px;
   font-weight: 500;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-tertiary);
   margin-bottom: var(--space-3);
@@ -378,8 +388,8 @@
 
 /* ── Footer ── */
 :host .aide-footer {
-  margin-top: 48px;
-  padding-top: 12px;
+  margin-top: var(--space-12);
+  padding-top: var(--space-4);
   border-top: 1px solid var(--border-light);
   font-size: 12px;
   color: var(--text-tertiary);
@@ -398,27 +408,28 @@
   background: var(--bg-elevated);
   border: 1px solid var(--border-light);
   border-radius: 8px;
-  padding: var(--space-3) var(--space-4);
-  margin-bottom: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-4);
 }
 /* Nested cards get indentation and subtle background */
 :host .aide-card .aide-card {
-  margin-top: var(--space-3);
+  margin-top: var(--space-4);
   margin-left: var(--space-3);
   background: var(--bg-secondary);
   border-left: 3px solid var(--border-default);
 }
 :host .aide-card__title {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
+  line-height: 1.4;
   color: var(--text-primary);
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 :host .aide-card__field {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  padding: var(--space-1) 0;
+  padding: var(--space-2) 0;
   border-bottom: 1px solid var(--border-light);
   gap: var(--space-3);
 }
@@ -427,6 +438,7 @@
   color: var(--text-tertiary);
   font-size: 12px;
   text-transform: uppercase;
+  letter-spacing: 0.08em;
   flex-shrink: 0;
 }
 :host .aide-card__empty {
@@ -438,8 +450,9 @@
 
 /* ── Section (React component) ── */
 :host .aide-section {
-  margin-bottom: var(--space-10);
-  padding-top: var(--space-4);
+  margin-bottom: var(--space-4);
+  padding-top: var(--space-7);
+  padding-bottom: 0;
   border-top: 1px solid var(--border-default);
 }
 :host .aide-section:first-child {
@@ -452,16 +465,24 @@
   font-weight: 700;
   line-height: 1.25;
   color: var(--text-primary);
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-5);
 }
 :host .aide-section__content {
-  margin-top: var(--space-3);
+  padding-top: var(--space-2);
 }
+:host .aide-section__content > :first-child { margin-top: 0; }
+/* Optical correction for elements with hard visual edges */
+:host .aide-section__content > .aide-card:first-child,
+:host .aide-section__content > .aide-checklist:first-child,
+:host .aide-section__content > .aide-checklist-container:first-child,
+:host .aide-section__content > .aide-image:first-child,
+:host .aide-section__content > .aide-metric:first-child { margin-top: var(--space-2); }
 
 /* ── Checklist (React component) ── */
 :host .aide-checklist {
   list-style: none;
   padding: 0;
+  margin: 0;
   margin-bottom: var(--space-4);
 }
 :host .aide-checklist__title {
@@ -474,19 +495,17 @@
   display: flex;
   align-items: flex-start;
   gap: var(--space-3);
-  padding: 5px 0;
-  border-bottom: 1px solid var(--border-light);
+  padding: var(--space-1) 0;
   font-size: 14px;
   line-height: 1.5;
 }
-:host .aide-checklist__item:last-child { border-bottom: none; }
 :host .aide-checklist__checkbox {
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
   cursor: pointer;
   accent-color: var(--accent);
   flex-shrink: 0;
-  margin-top: 2px;
+  margin-top: 3px;
 }
 :host .aide-checklist__label {
   font-weight: 500;
@@ -499,12 +518,9 @@
 :host .aide-checklist__summary {
   font-size: 13px;
   font-weight: 500;
-  color: var(--text-secondary);
-  padding: var(--space-2) var(--space-3);
-  margin-top: var(--space-2);
-  background: var(--accent-subtle);
-  border-radius: var(--radius-sm);
-  display: inline-block;
+  color: var(--text-tertiary);
+  margin-top: 0;
+  margin-bottom: var(--space-7);
 }
 
 /* ── Editable field (React component) ── */
@@ -647,8 +663,12 @@
 
 /* ── Content offset for nav bar ── */
 :host .aide-page-with-nav {
-  padding-top: 44px;
+  padding-top: calc(44px + var(--space-7));
 }
+
+/* ── Page-level element spacing ── */
+body .aide-page > .aide-heading--1 { margin-bottom: var(--space-7); }
+body .aide-page > .aide-text { margin-bottom: var(--space-4); }
 
 /* ── Legacy editable support (for vanilla JS fallback) ── */
 :host .editable-value {
