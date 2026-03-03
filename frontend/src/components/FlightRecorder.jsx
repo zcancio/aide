@@ -653,6 +653,12 @@ export default function FlightRecorder() {
             <TierBadge tier={t.tier} />
             <span className="fr-model">{t.model}</span>
           </div>
+          {t.temperature != null && (
+            <div className="fr-metric-row">
+              <span>Temperature</span>
+              <span className="fr-metric-value">{t.temperature}</span>
+            </div>
+          )}
 
           <div className="fr-section-label" style={{ marginTop: 14 }}>
             Latency
