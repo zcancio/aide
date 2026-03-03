@@ -2,7 +2,7 @@ graph TD
     subgraph CLIENT["CLIENT"]
         direction TB
         INPUT["Chat Input"]
-        CHAT["Chat Panel<br/><i>voice events, query responses</i>"]
+        CHAT["Chat Panel<br/><i>voice events</i>"]
         GRAPH["Entity Graph<br/><i>React state store</i>"]
         RENDERER["Display Components<br/><i>renderHtml()</i>"]
         PAGE["Live Page<br/><i>PageDisplay, TableDisplay,<br/>ChecklistDisplay, ...</i>"]
@@ -36,4 +36,3 @@ graph TD
     INPUT -->|"WebSocket message"| WS
     REDUCER -->|"entity deltas<br/>(WebSocket)"| GRAPH
     REDUCER -->|"voice events"| CHAT
-    OPUS -->|"query response"| CHAT

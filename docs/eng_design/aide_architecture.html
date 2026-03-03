@@ -37,7 +37,7 @@ graph TD
     subgraph CLIENT["CLIENT"]
         direction TB
         INPUT["Chat Input"]
-        CHAT["Chat Panel&lt;br/&gt;&lt;i&gt;voice events, query responses&lt;/i&gt;"]
+        CHAT["Chat Panel&lt;br/&gt;&lt;i&gt;voice events&lt;/i&gt;"]
         GRAPH["Entity Graph&lt;br/&gt;&lt;i&gt;React state store&lt;/i&gt;"]
         RENDERER["Display Components&lt;br/&gt;&lt;i&gt;renderHtml()&lt;/i&gt;"]
         PAGE["Live Page&lt;br/&gt;&lt;i&gt;PageDisplay, TableDisplay,&lt;br/&gt;ChecklistDisplay, ...&lt;/i&gt;"]
@@ -71,7 +71,6 @@ graph TD
     INPUT -->|"WebSocket message"| WS
     REDUCER -->|"entity deltas&lt;br/&gt;(WebSocket)"| GRAPH
     REDUCER -->|"voice events"| CHAT
-    OPUS -->|"query response"| CHAT
   </div>
   <p class="instructions">Right-click the diagram and select "Save image as..." to export as PNG</p>
   <script>

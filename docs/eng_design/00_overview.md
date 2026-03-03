@@ -131,7 +131,7 @@ graph TD
     subgraph CLIENT["CLIENT"]
         direction TB
         INPUT["Chat Input"]
-        CHAT["Chat Panel<br/><i>voice events, query responses</i>"]
+        CHAT["Chat Panel<br/><i>voice events</i>"]
         GRAPH["Entity Graph<br/><i>React state store</i>"]
         RENDERER["Display Components<br/><i>renderHtml()</i>"]
         PAGE["Live Page<br/><i>PageDisplay, TableDisplay,<br/>ChecklistDisplay, ...</i>"]
@@ -165,17 +165,15 @@ graph TD
     INPUT -->|"WebSocket message"| WS
     REDUCER -->|"entity deltas<br/>(WebSocket)"| GRAPH
     REDUCER -->|"voice events"| CHAT
-    OPUS -->|"query response"| CHAT
 ```
 
 </details>
 
 **The data flow:**
 1. User message → WebSocket `/ws/aide/{aide_id}` → Orchestrator picks tier (L4 for first turn/queries, L3 for updates)
-2. L4/L3 → LLM streams tool calls → Reducer applies to snapshot → entity deltas → client via WebSocket
-3. For queries, L4 also sends text response → client chat panel
-4. Voice events sent to client chat panel
-5. L3 can escalate to L4 for queries or complex reasoning
+2. L4/L3 → LLM streams tool calls → Reducer applies to snapshot → entity deltas + voice events → client via WebSocket
+3. Everything flows through the reducer (mutations via `mutate_entity`, responses via `voice` tool call)
+4. L3 can escalate to L4 for queries or complex reasoning
 
 **What's in PostgreSQL:**
 - `aides.state` — current entity snapshot (JSONB, source of truth)
