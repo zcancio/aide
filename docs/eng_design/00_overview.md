@@ -71,15 +71,14 @@ A recursive React component walks the entity tree. Each entity maps to a display
 
 ~9 components, ~385 lines total. Every rendered value is **directly editable** — click to change, no LLM round trip. Under 200ms.
 
-### 5. Three-Tier Intelligence → [05_intelligence_tiers.md](05_intelligence_tiers.md)
+### 5. Two-Tier Intelligence → [05_intelligence_tiers.md](05_intelligence_tiers.md)
 
 | Tier | Model | Job | Latency |
 |------|-------|-----|---------|
-| L2 | Haiku | Routine mutations ("add Aunt Linda") | <1.5s |
-| L3 | Sonnet | Schema synthesis ("plan my graduation party") | <4s |
+| L3 | Sonnet | Mutations + creation ("plan my graduation party", "add Aunt Linda") | <4s |
 | L4 | Opus | Queries ("who hasn't RSVPed?") | <5s |
 
-85% of interactions hit Haiku. Queries use Opus because wrong answers erode trust.
+Most interactions hit Sonnet (L3). L3 can escalate to L4 for queries. Queries use Opus because wrong answers erode trust.
 
 ---
 
@@ -132,7 +131,7 @@ graph TD
     subgraph CLIENT["CLIENT"]
         direction TB
         INPUT["Chat Input"]
-        CHAT["Chat Panel<br/><i>voice lines, L4 responses</i>"]
+        CHAT["Chat Panel<br/><i>voice events, L4 responses</i>"]
         GRAPH["Entity Graph<br/><i>React state store</i>"]
         RENDERER["Display Components<br/><i>renderHtml()</i>"]
         PAGE["Live Page<br/><i>PageDisplay, TableDisplay,<br/>ChecklistDisplay, ...</i>"]
@@ -146,21 +145,18 @@ graph TD
         WS["WebSocket Handler<br/><i>/ws/aide/{aide_id}</i>"]
         ORCH["Orchestrator<br/><i>tier selection</i>"]
 
-        HAIKU["Haiku<br/><i>L2 — routine mutations</i>"]
-        SONNET["Sonnet<br/><i>L3 — schema synthesis</i>"]
-        OPUS["Opus<br/><i>L4 — queries only</i>"]
+        SONNET["Sonnet<br/><i>L3 — mutations + creation</i>"]
+        OPUS["Opus<br/><i>L4 — queries</i>"]
 
         REDUCER["Reducer<br/><i>engine/kernel/reducer.py</i>"]
         DB["PostgreSQL<br/><i>aides.state (JSONB)<br/>conversations.messages<br/>aide_files.html</i>"]
 
         WS --> ORCH
-        ORCH -->|"L2"| HAIKU
         ORCH -->|"L3"| SONNET
         ORCH -->|"L4"| OPUS
 
-        HAIKU -->|"tool calls"| REDUCER
-        SONNET -->|"tool calls"| REDUCER
-        HAIKU -.->|"escalate to L3"| SONNET
+        SONNET -->|"tool calls<br/>(mutate_entity, voice)"| REDUCER
+        SONNET -.->|"escalate to L4"| OPUS
 
         REDUCER -->|"save snapshot"| DB
     end
