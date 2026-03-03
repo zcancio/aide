@@ -183,3 +183,160 @@ export function buildSnapshot(turns, upToIndex) {
   }
   return snapshot;
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// REPLAY FEATURES
+// ══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Calculate delay for playback based on speed multiplier.
+ *
+ * @param {number|null} ms - Original delay in milliseconds
+ * @param {number} speed - Speed multiplier (1=realtime, 2=2x, 5=5x, 0=instant)
+ * @returns {number} Adjusted delay in milliseconds
+ */
+export function calculateDelay(ms, speed) {
+  if (ms == null) return 0;
+  if (speed === 0) return 0;
+  return Math.round(ms / speed);
+}
+
+/**
+ * Get mutation tag info for a tool call.
+ *
+ * @param {Object|null} tc - Tool call object
+ * @returns {Object|null} { type, label, id?, from?, to? }
+ */
+export function getMutationTag(tc) {
+  if (!tc) return null;
+
+  // Normalize format
+  let t = tc.t;
+  let data = tc;
+  if (tc.type && tc.input) {
+    t = tc.type;
+    data = tc.input;
+  }
+
+  if (!t) return null;
+
+  // entity.create / entity.update / entity.remove
+  if (t === 'entity.create') {
+    return { type: 'create', label: 'create', id: data.id };
+  }
+  if (t === 'entity.update') {
+    return { type: 'update', label: 'update', id: data.ref };
+  }
+  if (t === 'entity.remove') {
+    return { type: 'remove', label: 'remove', id: data.ref };
+  }
+
+  // relationship events
+  if (t.startsWith('relationship.') || t === 'set_relationship') {
+    return { type: 'rel', label: 'rel', from: data.from, to: data.to };
+  }
+
+  // meta events
+  if (t.startsWith('meta.')) {
+    return { type: 'meta', label: 'meta' };
+  }
+
+  return { type: 'other', label: t.split('.').pop() || 'call' };
+}
+
+/**
+ * Format cost label for display.
+ *
+ * @param {number} turnCost - Cost for this turn
+ * @param {number} cumulativeCost - Total cost up to this turn
+ * @param {number} cachePercent - Cache hit percentage (0-100)
+ * @returns {string} Formatted cost label
+ */
+export function formatCostLabel(turnCost, cumulativeCost, cachePercent) {
+  let label = `$${turnCost.toFixed(4)}`;
+  if (cachePercent > 0) {
+    label += ` (${cachePercent}% cached)`;
+  }
+  label += ` · Σ$${cumulativeCost.toFixed(4)}`;
+  return label;
+}
+
+/**
+ * Build sorted stream events from a turn for replay simulation.
+ *
+ * @param {Object} turn - Turn object with tool_calls, text_blocks, ttfc_ms, ttc_ms
+ * @returns {Array} Sorted events: { type: 'mutation'|'voice', ts, data?, text? }
+ */
+export function buildStreamEvents(turn) {
+  const events = [];
+  const toolCalls = turn.tool_calls || [];
+  const textBlocks = turn.text_blocks || [];
+  const ttfc = turn.ttfc_ms ?? 500;
+  const ttc = turn.ttc_ms ?? 2000;
+
+  // Check if we have real timestamps
+  const hasTimestamps =
+    (toolCalls.length > 0 && toolCalls[0].timestamp_ms !== undefined) ||
+    (textBlocks.length > 0 && typeof textBlocks[0] === 'object' && textBlocks[0].timestamp_ms !== undefined);
+
+  if (hasTimestamps) {
+    // Use real timestamps
+    for (const tc of toolCalls) {
+      events.push({
+        type: 'mutation',
+        ts: tc.timestamp_ms || 0,
+        data: tc,
+      });
+    }
+    for (const tb of textBlocks) {
+      const text = typeof tb === 'string' ? tb : tb.text;
+      const ts = typeof tb === 'object' ? tb.timestamp_ms || 0 : 0;
+      events.push({
+        type: 'voice',
+        ts,
+        text,
+      });
+    }
+  } else {
+    // Assign heuristic timestamps based on ttfc/ttc
+    const streamTime = ttc - ttfc;
+    const totalItems = toolCalls.length + textBlocks.length;
+    const perItem = totalItems > 0 ? streamTime / totalItems : 0;
+
+    let currentTs = ttfc;
+    for (const tc of toolCalls) {
+      events.push({
+        type: 'mutation',
+        ts: currentTs,
+        data: tc,
+      });
+      currentTs += perItem;
+    }
+    for (const tb of textBlocks) {
+      const text = typeof tb === 'string' ? tb : tb.text;
+      events.push({
+        type: 'voice',
+        ts: currentTs,
+        text,
+      });
+      currentTs += perItem;
+    }
+  }
+
+  // Sort by timestamp
+  events.sort((a, b) => a.ts - b.ts);
+  return events;
+}
+
+/**
+ * Calculate progress percentage for the timeline.
+ *
+ * @param {number} currentTurn - Current turn index (0-based, -1 if not started)
+ * @param {number} totalTurns - Total number of turns
+ * @returns {number} Percentage (0-100)
+ */
+export function getProgressPercent(currentTurn, totalTurns) {
+  if (totalTurns === 0) return 0;
+  if (currentTurn < 0) return 0;
+  return Math.round(((currentTurn + 1) / totalTurns) * 100);
+}

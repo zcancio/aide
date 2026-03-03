@@ -17,8 +17,13 @@ import {
   eDiff,
   buildSnapshot,
   COST_RATES,
+  calculateDelay,
+  getMutationTag,
+  formatCostLabel,
+  buildStreamEvents,
+  getProgressPercent,
 } from '../lib/flight-recorder-utils.js';
-import { renderHtml } from '../lib/display/index.js';
+import { renderHtml, RENDERER_CSS } from '../lib/display/index.js';
 import '../styles/flight-recorder.css';
 
 // Tier colors
@@ -68,7 +73,7 @@ function EventPill({ event }) {
 
 export default function FlightRecorder() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const initialAideId = searchParams.get('aide_id') || '';
 
   const [data, setData] = useState(null);
@@ -77,10 +82,16 @@ export default function FlightRecorder() {
   const [idx, setIdx] = useState(0);
   const [tab, setTab] = useState('rendered');
   const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState(2); // 1=realtime, 2=2x, 5=5x, 0=instant
+  const [streaming, setStreaming] = useState(false); // true during turn animation
+  const [streamEvents, setStreamEvents] = useState([]); // events shown so far in current turn
+  const [showTyping, setShowTyping] = useState(false);
   const [aideIdInput, setAideIdInput] = useState(initialAideId);
   const [aides, setAides] = useState([]);
   const fileRef = useRef(null);
   const previewRef = useRef(null);
+  const shadowRef = useRef(null);
+  const playTimerRef = useRef(null);
 
   const turns = useMemo(() => data?.turns || [], [data]);
   const N = turns.length;
@@ -140,11 +151,12 @@ export default function FlightRecorder() {
       setData(telemetry);
       setIdx(0);
       setTab('rendered');
+      setSearchParams({ aide_id: aideId }, { replace: true });
     } else {
       setError('No telemetry data found');
     }
     setLoading(false);
-  }, []);
+  }, [setSearchParams]);
 
   // Load from file
   const loadFromFile = useCallback((file) => {
@@ -180,20 +192,67 @@ export default function FlightRecorder() {
     reader.readAsText(file);
   }, []);
 
+  // Reset shadow ref when data changes (new aide loaded or closed)
+  useEffect(() => {
+    shadowRef.current = null;
+  }, [data]);
+
+  // Initialize Shadow DOM for preview (runs when data loads or tab changes to 'rendered')
+  useEffect(() => {
+    if (!data || tab !== 'rendered' || !previewRef.current || shadowRef.current) return;
+    const shadow = previewRef.current.attachShadow({ mode: 'open' });
+    shadowRef.current = shadow;
+    const style = document.createElement('style');
+    // Add dark theme overrides after the renderer CSS
+    const darkThemeCSS = `
+      .aide-preview-content {
+        background: #1a1f1a;
+        color: #e8e6e3;
+        min-height: 100%;
+        padding: 16px;
+      }
+      .aide-page { background: transparent; }
+      .aide-heading { color: #e8e6e3; }
+      .aide-text { color: #c4c2bf; }
+      .aide-section { background: #252a25; border-color: #3a3f3a; }
+      .aide-section__title { color: #e8e6e3; }
+      .aide-card { background: #252a25; border-color: #3a3f3a; }
+      .aide-card__title { color: #e8e6e3; }
+      .aide-card__label { color: #8a8a8a; }
+      .aide-metric { background: #252a25; border-color: #3a3f3a; }
+      .aide-metric__label { color: #8a8a8a; }
+      .aide-metric__value { color: #e8e6e3; }
+      .aide-table { background: #252a25; }
+      .aide-table__th { background: #1a1f1a; color: #8a8a8a; border-color: #3a3f3a; }
+      .aide-table__td { border-color: #3a3f3a; color: #c4c2bf; }
+      .aide-checklist { background: #252a25; }
+      .aide-checklist__label { color: #c4c2bf; }
+      .aide-checklist__summary { color: #8a8a8a; }
+      .aide-list__item { border-color: #3a3f3a; color: #c4c2bf; }
+      .aide-empty { color: #6a6a6a; }
+    `;
+    style.textContent = RENDERER_CSS + darkThemeCSS;
+    shadow.appendChild(style);
+    const content = document.createElement('div');
+    content.className = 'aide-preview-content';
+    shadow.appendChild(content);
+  }, [data, tab]);
+
   // Update preview when turn changes
   useEffect(() => {
-    if (previewRef.current && data && N > 0 && tab === 'rendered') {
-      const snapshot =
-        idx === N - 1 && data.final_snapshot ? data.final_snapshot : snapshotAfter;
-      // Convert snapshot to renderHtml format (needs rootIds)
-      const entities = snapshot.entities || {};
-      const rootIds = Object.keys(entities).filter(
-        (id) => !entities[id].parent || entities[id].parent === 'root'
-      );
-      const store = { entities, rootIds, meta: snapshot.meta || {} };
-      const html = renderHtml(store);
-      previewRef.current.innerHTML = html;
-    }
+    if (!shadowRef.current || !data || N === 0 || tab !== 'rendered') return;
+    const content = shadowRef.current.querySelector('.aide-preview-content');
+    if (!content) return;
+    const snapshot =
+      idx === N - 1 && data.final_snapshot ? data.final_snapshot : snapshotAfter;
+    // Convert snapshot to renderHtml format (needs rootIds)
+    const entities = snapshot.entities || {};
+    const rootIds = Object.keys(entities).filter(
+      (id) => !entities[id].parent || entities[id].parent === 'root'
+    );
+    const store = { entities, rootIds, meta: snapshot.meta || {} };
+    const html = renderHtml(store);
+    content.innerHTML = html;
   }, [idx, data, N, tab, snapshotAfter]);
 
   // Auto-load if aide_id in URL
@@ -203,20 +262,87 @@ export default function FlightRecorder() {
     }
   }, [initialAideId, data, loadFromAPI]);
 
-  // Playback
+  // Streaming playback - simulates real-time turn execution
   useEffect(() => {
     if (!playing || N === 0) return;
-    const id = setInterval(() => {
-      setIdx((p) => {
-        if (p >= N - 1) {
-          setPlaying(false);
-          return p;
-        }
-        return p + 1;
+
+    let cancelled = false;
+
+    const playTurn = async (turnIdx) => {
+      if (cancelled || turnIdx >= N) {
+        setPlaying(false);
+        return;
+      }
+
+      const turn = turns[turnIdx];
+      setIdx(turnIdx);
+      setStreaming(true);
+      setStreamEvents([]);
+
+      // Show typing indicator during TTFC
+      setShowTyping(true);
+      const ttfc = turn.ttfc_ms || 500;
+      await new Promise((r) => {
+        playTimerRef.current = setTimeout(r, calculateDelay(ttfc, speed));
       });
-    }, 2000);
-    return () => clearInterval(id);
-  }, [playing, N]);
+      if (cancelled) return;
+      setShowTyping(false);
+
+      // Stream events
+      const events = buildStreamEvents(turn);
+      let lastTs = ttfc;
+
+      for (let i = 0; i < events.length; i++) {
+        if (cancelled) return;
+        const evt = events[i];
+        const gap = evt.ts - lastTs;
+        if (gap > 0) {
+          await new Promise((r) => {
+            playTimerRef.current = setTimeout(r, calculateDelay(gap, speed));
+          });
+        }
+        if (cancelled) return;
+        lastTs = evt.ts;
+        setStreamEvents((prev) => [...prev, evt]);
+      }
+
+      // Brief pause at end of turn
+      await new Promise((r) => {
+        playTimerRef.current = setTimeout(r, calculateDelay(300, speed));
+      });
+      if (cancelled) return;
+
+      setStreaming(false);
+      setStreamEvents([]);
+
+      // Next turn
+      if (turnIdx < N - 1) {
+        playTurn(turnIdx + 1);
+      } else {
+        setPlaying(false);
+      }
+    };
+
+    playTurn(idx);
+
+    return () => {
+      cancelled = true;
+      if (playTimerRef.current) {
+        clearTimeout(playTimerRef.current);
+      }
+    };
+  }, [playing, N, turns, speed]);
+
+  // Stop playback helper
+  const stopPlayback = useCallback(() => {
+    setPlaying(false);
+    setStreaming(false);
+    setShowTyping(false);
+    setStreamEvents([]);
+    if (playTimerRef.current) {
+      clearTimeout(playTimerRef.current);
+    }
+  }, []);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -224,29 +350,33 @@ export default function FlightRecorder() {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
       if (e.key === 'ArrowRight' || e.key === 'l') {
         setIdx((p) => Math.min(p + 1, N - 1));
-        setPlaying(false);
+        stopPlayback();
       } else if (e.key === 'ArrowLeft' || e.key === 'h') {
         setIdx((p) => Math.max(p - 1, 0));
-        setPlaying(false);
+        stopPlayback();
       } else if (e.key === ' ') {
         e.preventDefault();
-        setPlaying((p) => !p);
+        if (playing) {
+          stopPlayback();
+        } else {
+          setPlaying(true);
+        }
       } else if (e.key >= '1' && e.key <= '6') {
         const tabs = ['rendered', 'output', 'diff', 'tree', 'prompt', 'cost'];
         setTab(tabs[+e.key - 1]);
       } else if (e.key === 'Home') {
         setIdx(0);
-        setPlaying(false);
+        stopPlayback();
       } else if (e.key === 'End') {
         setIdx(Math.max(0, N - 1));
-        setPlaying(false);
+        stopPlayback();
       } else if (e.key === 'Escape') {
         if (!data) navigate('/');
       }
     };
     window.addEventListener('keydown', fn);
     return () => window.removeEventListener('keydown', fn);
-  }, [N, data, navigate]);
+  }, [N, data, navigate, playing, stopPlayback]);
 
   // Landing page when no data loaded
   if (!data) {
@@ -345,6 +475,17 @@ export default function FlightRecorder() {
           <span className="fr-name">{data.name}</span>
         </div>
         <div className="fr-topbar-right">
+          <span className="fr-speed-label">Speed:</span>
+          {[1, 2, 5, 0].map((s) => (
+            <button
+              key={s}
+              className={`fr-speed-btn ${speed === s ? 'fr-speed-btn--active' : ''}`}
+              onClick={() => setSpeed(s)}
+            >
+              {s === 0 ? '∞' : `${s}×`}
+            </button>
+          ))}
+          <span className="fr-divider-v" />
           <span className="fr-turn-info">
             Turn {idx + 1}/{N}
           </span>
@@ -371,15 +512,83 @@ export default function FlightRecorder() {
               onClick={() => {
                 setIdx(i);
                 setPlaying(false);
+                setStreaming(false);
+                setShowTyping(false);
               }}
             >
               <div className="fr-chat-bubble">{tr.message}</div>
+              {/* Show streaming mutations for current turn */}
+              {i === idx && streaming && streamEvents.length > 0 && (
+                <div className="fr-mutations">
+                  {streamEvents.map((evt, j) => {
+                    if (evt.type === 'mutation') {
+                      const tag = getMutationTag(evt.data);
+                      if (!tag) return null;
+                      return (
+                        <div key={j} className="fr-mut-line">
+                          <span className={`fr-mut-tag fr-mut-tag--${tag.type}`}>
+                            {tag.label}
+                          </span>
+                          <span className="fr-mut-id">
+                            {tag.id || ''}
+                            {tag.from && tag.to && (
+                              <>
+                                {tag.from}
+                                <span className="fr-mut-arrow">→</span>
+                                {tag.to}
+                              </>
+                            )}
+                          </span>
+                        </div>
+                      );
+                    }
+                    if (evt.type === 'voice') {
+                      return (
+                        <div key={j} className="fr-voice-bubble">
+                          {evt.text}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })}
+                </div>
+              )}
+              {/* Show completed mutations for past turns */}
+              {i < idx && parseToolCalls(tr.tool_calls).length > 0 && (
+                <div className="fr-mutations">
+                  {parseToolCalls(tr.tool_calls).slice(0, 3).map((tc, j) => {
+                    const tag = getMutationTag(tc);
+                    if (!tag) return null;
+                    return (
+                      <div key={j} className="fr-mut-line">
+                        <span className={`fr-mut-tag fr-mut-tag--${tag.type}`}>
+                          {tag.label}
+                        </span>
+                        <span className="fr-mut-id">{tag.id || ''}</span>
+                      </div>
+                    );
+                  })}
+                  {parseToolCalls(tr.tool_calls).length > 3 && (
+                    <div className="fr-mut-line" style={{ color: 'var(--text-muted)' }}>
+                      +{parseToolCalls(tr.tool_calls).length - 3} more
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="fr-chat-meta">
                 <TierBadge tier={tr.tier} small />
                 <span className="fr-chat-timing">{tr.ttc_ms}ms</span>
               </div>
             </div>
           ))}
+          {/* Typing indicator */}
+          {showTyping && (
+            <div className="fr-typing">
+              <div className="fr-typing-dot" />
+              <div className="fr-typing-dot" />
+              <div className="fr-typing-dot" />
+            </div>
+          )}
         </div>
 
         {/* Center: Tabs + Content */}

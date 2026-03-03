@@ -6,6 +6,12 @@ import {
   eDiff,
   buildSnapshot,
   COST_RATES,
+  // Replay features
+  calculateDelay,
+  getMutationTag,
+  formatCostLabel,
+  buildStreamEvents,
+  getProgressPercent,
 } from '../flight-recorder-utils.js';
 
 describe('flight-recorder-utils', () => {
@@ -381,6 +387,200 @@ describe('flight-recorder-utils', () => {
       ];
       const snapshot = buildSnapshot(turns, 0);
       expect(snapshot.entities.nonexistent).toBeUndefined();
+    });
+  });
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // REPLAY FEATURES (TDD - RED phase)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  describe('calculateDelay', () => {
+    it('returns original ms at 1x speed', () => {
+      expect(calculateDelay(1000, 1)).toBe(1000);
+    });
+
+    it('returns half ms at 2x speed', () => {
+      expect(calculateDelay(1000, 2)).toBe(500);
+    });
+
+    it('returns 1/5 ms at 5x speed', () => {
+      expect(calculateDelay(1000, 5)).toBe(200);
+    });
+
+    it('returns 0 for instant (speed=0)', () => {
+      expect(calculateDelay(1000, 0)).toBe(0);
+    });
+
+    it('handles null/undefined ms', () => {
+      expect(calculateDelay(null, 2)).toBe(0);
+      expect(calculateDelay(undefined, 2)).toBe(0);
+    });
+  });
+
+  describe('getMutationTag', () => {
+    it('returns create tag for entity.create', () => {
+      const tc = { t: 'entity.create', id: 'e1', p: {} };
+      const tag = getMutationTag(tc);
+      expect(tag.type).toBe('create');
+      expect(tag.label).toBe('create');
+      expect(tag.id).toBe('e1');
+    });
+
+    it('returns update tag for entity.update', () => {
+      const tc = { t: 'entity.update', ref: 'e1', p: { name: 'X' } };
+      const tag = getMutationTag(tc);
+      expect(tag.type).toBe('update');
+      expect(tag.label).toBe('update');
+      expect(tag.id).toBe('e1');
+    });
+
+    it('returns remove tag for entity.remove', () => {
+      const tc = { t: 'entity.remove', ref: 'e1' };
+      const tag = getMutationTag(tc);
+      expect(tag.type).toBe('remove');
+      expect(tag.label).toBe('remove');
+      expect(tag.id).toBe('e1');
+    });
+
+    it('returns rel tag for relationship events', () => {
+      const tc = { t: 'relationship.set', from: 'e1', to: 'e2', type: 'contains' };
+      const tag = getMutationTag(tc);
+      expect(tag.type).toBe('rel');
+      expect(tag.from).toBe('e1');
+      expect(tag.to).toBe('e2');
+    });
+
+    it('returns meta tag for meta events', () => {
+      const tc = { t: 'meta.set', p: { title: 'Test' } };
+      const tag = getMutationTag(tc);
+      expect(tag.type).toBe('meta');
+      expect(tag.label).toBe('meta');
+    });
+
+    it('handles type/input format', () => {
+      const tc = { type: 'entity.create', input: { id: 'e1', p: {} } };
+      const tag = getMutationTag(tc);
+      expect(tag.type).toBe('create');
+      expect(tag.id).toBe('e1');
+    });
+
+    it('returns null for null/undefined input', () => {
+      expect(getMutationTag(null)).toBeNull();
+      expect(getMutationTag(undefined)).toBeNull();
+    });
+  });
+
+  describe('formatCostLabel', () => {
+    it('formats turn cost with 4 decimal places', () => {
+      const label = formatCostLabel(0.0045, 0.0045, 0);
+      expect(label).toContain('$0.0045');
+    });
+
+    it('includes cumulative cost', () => {
+      const label = formatCostLabel(0.01, 0.05, 0);
+      expect(label).toContain('$0.0500');
+    });
+
+    it('shows cache percentage when > 0', () => {
+      const label = formatCostLabel(0.01, 0.05, 75);
+      expect(label).toContain('75%');
+      expect(label).toContain('cached');
+    });
+
+    it('omits cache info when 0%', () => {
+      const label = formatCostLabel(0.01, 0.05, 0);
+      expect(label).not.toContain('cached');
+    });
+  });
+
+  describe('buildStreamEvents', () => {
+    it('returns empty array for turn with no events', () => {
+      const turn = { tool_calls: [], text_blocks: [] };
+      expect(buildStreamEvents(turn)).toEqual([]);
+    });
+
+    it('includes mutations as events', () => {
+      const turn = {
+        tool_calls: [{ t: 'entity.create', id: 'e1', timestamp_ms: 100 }],
+        text_blocks: [],
+      };
+      const events = buildStreamEvents(turn);
+      expect(events.length).toBe(1);
+      expect(events[0].type).toBe('mutation');
+      expect(events[0].ts).toBe(100);
+    });
+
+    it('includes voice/text as events', () => {
+      const turn = {
+        tool_calls: [],
+        text_blocks: [{ text: 'Hello', timestamp_ms: 200 }],
+      };
+      const events = buildStreamEvents(turn);
+      expect(events.length).toBe(1);
+      expect(events[0].type).toBe('voice');
+      expect(events[0].text).toBe('Hello');
+    });
+
+    it('sorts events by timestamp', () => {
+      const turn = {
+        tool_calls: [
+          { t: 'entity.create', id: 'e1', timestamp_ms: 300 },
+          { t: 'entity.create', id: 'e2', timestamp_ms: 100 },
+        ],
+        text_blocks: [{ text: 'Hello', timestamp_ms: 200 }],
+      };
+      const events = buildStreamEvents(turn);
+      expect(events[0].ts).toBe(100);
+      expect(events[1].ts).toBe(200);
+      expect(events[2].ts).toBe(300);
+    });
+
+    it('handles string text_blocks', () => {
+      const turn = {
+        tool_calls: [],
+        text_blocks: ['Hello world'],
+        ttfc_ms: 0,
+        ttc_ms: 100,
+      };
+      const events = buildStreamEvents(turn);
+      expect(events[0].text).toBe('Hello world');
+      expect(events[0].ts).toBe(0);
+    });
+
+    it('assigns sequential timestamps when missing', () => {
+      const turn = {
+        tool_calls: [
+          { t: 'entity.create', id: 'e1' },
+          { t: 'entity.create', id: 'e2' },
+        ],
+        text_blocks: [],
+        ttfc_ms: 500,
+        ttc_ms: 2000,
+      };
+      const events = buildStreamEvents(turn);
+      expect(events[0].ts).toBeLessThan(events[1].ts);
+    });
+  });
+
+  describe('getProgressPercent', () => {
+    it('returns 0 for turn -1', () => {
+      expect(getProgressPercent(-1, 10)).toBe(0);
+    });
+
+    it('returns correct percentage for middle turn', () => {
+      expect(getProgressPercent(4, 10)).toBe(50);
+    });
+
+    it('returns 100 for last turn', () => {
+      expect(getProgressPercent(9, 10)).toBe(100);
+    });
+
+    it('handles single turn', () => {
+      expect(getProgressPercent(0, 1)).toBe(100);
+    });
+
+    it('returns 0 for 0 total turns', () => {
+      expect(getProgressPercent(0, 0)).toBe(0);
     });
   });
 });
