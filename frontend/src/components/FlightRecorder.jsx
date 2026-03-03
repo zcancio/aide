@@ -604,8 +604,8 @@ export default function FlightRecorder() {
                     })}
                   </div>
                 )}
-                {/* Show completed response for turns up to current (when not streaming current) */}
-                {i + 1 <= idx && !(i + 1 === idx && streaming) && (
+                {/* Show completed response for current turn only (not streaming) */}
+                {i + 1 === idx && !streaming && (
                   <>
                     {/* Voice/text responses */}
                     {tr.text_blocks?.length > 0 && (
