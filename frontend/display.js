@@ -117,7 +117,22 @@ const RENDERER_CSS = `/* Import fonts for shadow DOM */
 :host .aide-page {
   max-width: 720px;
   margin: 0 auto;
-  padding: 80px 40px;
+  padding: 96px 40px;
+}
+
+/* Page header area: give intro content room before the first section divider */
+:host .aide-page > .aide-heading--1,
+body .aide-page > .aide-heading--1 {
+  margin-bottom: var(--space-7);
+}
+:host .aide-page > .aide-text,
+body .aide-page > .aide-text {
+  margin-bottom: var(--space-4);
+}
+/* Ensure sections after intro content have proper top spacing */
+:host .aide-page > .aide-text + .aide-section,
+body .aide-page > .aide-text + .aide-section {
+  margin-top: var(--space-4);
 }
 
 @media (max-width: 640px) {
@@ -135,13 +150,15 @@ const RENDERER_CSS = `/* Import fonts for shadow DOM */
 }
 
 /* ── Headings ── */
-:host .aide-heading { margin-bottom: var(--space-4); }
+:host .aide-heading { margin-bottom: var(--space-6); }
 :host .aide-heading--1 {
   font-family: var(--font-serif);
   font-size: clamp(36px, 4.5vw, 42px);
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.15;
   color: var(--text-primary);
+  letter-spacing: -0.01em;
+  margin-bottom: var(--space-9);
 }
 :host .aide-heading--2 {
   font-family: var(--font-serif);
@@ -163,9 +180,10 @@ const RENDERER_CSS = `/* Import fonts for shadow DOM */
   font-family: var(--font-sans);
   font-size: 15px;
   font-weight: 400;
-  line-height: 1.55;
+  line-height: 1.65;
   color: var(--text-secondary);
-  margin-bottom: 8px;
+  margin-bottom: var(--space-4);
+  max-width: 65ch;
 }
 :host .aide-text a {
   color: var(--accent);
@@ -178,17 +196,26 @@ const RENDERER_CSS = `/* Import fonts for shadow DOM */
 }
 
 /* ── Metric ── */
+:host .aide-section__content > .aide-metric:first-child {
+  /* When metrics are direct children, create an implicit flex row */
+}
 :host .aide-metric {
   display: inline-flex;
   align-items: baseline;
   gap: var(--space-2);
-  margin-right: 16px;
+  margin-right: var(--space-4);
+  margin-bottom: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  line-height: 1.4;
 }
 :host .aide-metric__label {
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 400;
   color: var(--text-secondary);
+  letter-spacing: 0.01em;
 }
 :host .aide-metric__label::after { content: ':'; }
 :host .aide-metric__value {
@@ -196,6 +223,7 @@ const RENDERER_CSS = `/* Import fonts for shadow DOM */
   font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ── Divider ── */
@@ -206,12 +234,13 @@ const RENDERER_CSS = `/* Import fonts for shadow DOM */
 }
 
 /* ── Image ── */
-:host .aide-image { margin: var(--space-6) 0; }
-:host .aide-image img { max-width: 100%; height: auto; border-radius: var(--radius-sm); }
-:host .aide-image__caption {
+:host .aide-image { margin: var(--space-5) 0; }
+:host .aide-image img { max-width: 100%; height: auto; border-radius: var(--radius-md); display: block; }
+:host .aide-image .aide-image__caption {
   font-size: 13px;
   color: var(--text-tertiary);
-  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  line-height: 1.4;
 }
 
 /* ── Callout ── */
@@ -219,7 +248,7 @@ const RENDERER_CSS = `/* Import fonts for shadow DOM */
   background: var(--bg-secondary);
   border-left: 3px solid var(--border);
   padding: var(--space-4) var(--space-5);
-  margin: var(--space-4) 0;
+  margin: var(--space-5) 0;
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   font-size: 15px;
   line-height: 1.55;
@@ -259,30 +288,40 @@ const RENDERER_CSS = `/* Import fonts for shadow DOM */
 :host .aide-list {
   list-style: none;
   padding: 0;
+  margin: 0 0 var(--space-6);
+}
+:host .aide-list:last-child {
+  margin-bottom: 0;
 }
 :host .aide-list__item {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 12px;
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--border-light);
+  gap: var(--space-4);
+  padding: var(--space-1) 0;
   font-size: 15px;
-  line-height: 1.5;
+  line-height: 1.4;
 }
-:host .aide-list__item:last-child { border-bottom: none; }
+:host .aide-list__item:last-child { }
 :host .aide-list__left {
+  font-weight: 500;
+  font-size: 13px;
   color: var(--text-secondary);
+  flex-shrink: 0;
 }
 :host .aide-list__right {
-  font-weight: 500;
   color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 400;
 }
 
 /* ── Table view ── */
 :host .aide-table-wrap {
   overflow-x: auto;
-  margin: var(--space-4) 0;
+  margin: var(--space-3) 0 var(--space-3);
+}
+:host .aide-table-wrap + .aide-table-wrap {
+  margin-top: var(--space-6);
 }
 :host .aide-table {
   width: 100%;
@@ -295,10 +334,11 @@ const RENDERER_CSS = `/* Import fonts for shadow DOM */
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   text-align: left;
-  padding: var(--space-2) var(--space-3);
-  border-bottom: 2px solid var(--border);
+  padding: var(--space-3) var(--space-3);
+  border-bottom: 2px solid var(--border-strong);
+  background: var(--bg-tertiary);
   cursor: pointer;
   user-select: none;
   transition: color 0.15s;
@@ -313,12 +353,19 @@ const RENDERER_CSS = `/* Import fonts for shadow DOM */
   opacity: 0.3;
   margin-left: 4px;
 }
+:host .aide-table tbody tr:nth-child(even) {
+  background: var(--bg-secondary);
+}
 :host .aide-table__td {
-  padding: 5px 8px;
+  padding: var(--space-3) var(--space-3);
   border-bottom: 1px solid var(--border-light);
   color: var(--text-secondary);
   vertical-align: top;
   font-size: 14px;
+  line-height: 1.4;
+}
+:host .aide-table tbody tr:last-child .aide-table__td {
+  border-bottom: none;
 }
 :host .aide-table__td--bool { text-align: center; }
 :host .aide-table__td--int,
@@ -360,7 +407,7 @@ const RENDERER_CSS = `/* Import fonts for shadow DOM */
   font-family: var(--font-sans);
   font-size: 11px;
   font-weight: 500;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-tertiary);
   margin-bottom: var(--space-3);
@@ -392,8 +439,8 @@ const RENDERER_CSS = `/* Import fonts for shadow DOM */
 
 /* ── Footer ── */
 :host .aide-footer {
-  margin-top: 48px;
-  padding-top: 12px;
+  margin-top: var(--space-12);
+  padding-top: var(--space-4);
   border-top: 1px solid var(--border-light);
   font-size: 12px;
   color: var(--text-tertiary);
@@ -412,20 +459,28 @@ const RENDERER_CSS = `/* Import fonts for shadow DOM */
   background: var(--bg-elevated);
   border: 1px solid var(--border-light);
   border-radius: 8px;
-  padding: 10px 12px;
-  margin-bottom: 8px;
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-4);
+}
+/* Nested cards get indentation and subtle background */
+:host .aide-card .aide-card {
+  margin-top: var(--space-4);
+  margin-left: var(--space-3);
+  background: var(--bg-secondary);
+  border-left: 3px solid var(--border-default);
 }
 :host .aide-card__title {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: var(--space-2);
+  line-height: 1.4;
+  margin-bottom: var(--space-3);
 }
 :host .aide-card__field {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  padding: var(--space-1) 0;
+  padding: var(--space-2) 0;
   border-bottom: 1px solid var(--border-light);
   gap: var(--space-3);
 }
@@ -433,55 +488,84 @@ const RENDERER_CSS = `/* Import fonts for shadow DOM */
 :host .aide-card__label {
   color: var(--text-tertiary);
   font-size: 12px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   flex-shrink: 0;
+}
+:host .aide-card__empty {
+  color: var(--text-tertiary);
+  font-size: 13px;
+  font-style: italic;
+  margin: 0;
 }
 
 /* ── Section (React component) ── */
 :host .aide-section {
-  margin-bottom: 14px;
+  margin-bottom: var(--space-4);
+  padding-top: var(--space-7);
+  padding-bottom: 0;
+  border-top: 1px solid var(--border-default);
+}
+:host .aide-section:first-child {
+  border-top: none;
+  padding-top: 0;
 }
 :host .aide-section__title {
   font-family: var(--font-serif);
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
   line-height: 1.25;
   color: var(--text-primary);
-  margin-bottom: 14px;
+  margin-bottom: var(--space-5);
 }
 :host .aide-section__content {
-  margin-top: 6px;
+  padding-top: var(--space-2);
+}
+/* Normalize first-child top spacing so all sections feel even */
+:host .aide-section__content > :first-child {
+  margin-top: 0;
+}
+/* Optical correction: bordered containers need extra air after section titles */
+:host .aide-section__content > .aide-card:first-child,
+:host .aide-section__content > .aide-checklist-container:first-child,
+:host .aide-section__content > .aide-image:first-child,
+:host .aide-section__content > .aide-metric:first-child {
+  margin-top: var(--space-2);
 }
 
 /* ── Checklist (React component) ── */
 :host .aide-checklist {
   list-style: none;
   padding: 0;
-  margin-bottom: var(--space-4);
+  margin-top: 0;
+  margin-bottom: 0;
 }
 :host .aide-checklist__title {
   font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+/* Headings used as checklist titles need tighter bottom margin */
+:host .aide-checklist-container > .aide-heading {
+  margin-bottom: 0;
 }
 :host .aide-checklist__item {
   display: flex;
   align-items: flex-start;
   gap: var(--space-3);
-  padding: 5px 0;
-  border-bottom: 1px solid var(--border-light);
+  padding: var(--space-1) 0;
   font-size: 14px;
   line-height: 1.5;
 }
-:host .aide-checklist__item:last-child { border-bottom: none; }
+:host .aide-checklist__item:last-child { }
 :host .aide-checklist__checkbox {
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
   cursor: pointer;
   accent-color: var(--accent);
   flex-shrink: 0;
-  margin-top: 2px;
+  margin-top: 3px;
 }
 :host .aide-checklist__label {
   font-weight: 500;
@@ -492,9 +576,12 @@ const RENDERER_CSS = `/* Import fonts for shadow DOM */
   color: var(--text-tertiary);
 }
 :host .aide-checklist__summary {
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--text-tertiary);
-  padding-top: var(--space-2);
+  padding: 0;
+  margin-top: 0;
+  margin-bottom: var(--space-7);
 }
 
 /* ── Editable field (React component) ── */
@@ -637,7 +724,7 @@ const RENDERER_CSS = `/* Import fonts for shadow DOM */
 
 /* ── Content offset for nav bar ── */
 :host .aide-page-with-nav {
-  padding-top: 44px;
+  padding-top: calc(44px + var(--space-7));
 }
 
 /* ── Legacy editable support (for vanilla JS fallback) ── */
@@ -942,12 +1029,8 @@ function buildNavBarHtml(pageTitle) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function renderHtml(store) {
-  const pageTitle = store.meta.title || 'AIde';
-  const navBar = buildNavBarHtml(pageTitle);
-  const stickyPill = '<div class="aide-pill-container" id="sticky-pill" style="display:none;"><div class="aide-pill"></div></div>';
-
   if (store.rootIds.length === 0 && Object.keys(store.meta).length === 0) {
-    return navBar + stickyPill + '<div class="aide-page aide-page-with-nav"><p class="aide-empty">Send a message to get started.</p></div>';
+    return '<div class="aide-page"><p class="aide-empty">Send a message to get started.</p></div>';
   }
   // Sort rootIds by _created_seq before rendering
   const sortedRootIds = [...store.rootIds].sort((a, b) => {
@@ -959,10 +1042,9 @@ function renderHtml(store) {
   const content = sortedRootIds.map(id => renderEntity(id, store.entities)).join('');
   // Check if content already has a page wrapper
   if (content.trim().startsWith('<div class="aide-page">')) {
-    // Insert nav bar and add padding class
-    return navBar + stickyPill + content.replace('class="aide-page"', 'class="aide-page aide-page-with-nav"');
+    return content;
   }
-  return navBar + stickyPill + `<div class="aide-page aide-page-with-nav">${content}</div>`;
+  return `<div class="aide-page">${content}</div>`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
