@@ -237,6 +237,31 @@ export function getMutationTag(tc) {
   if (tc.type && tc.input) {
     t = tc.type;
     data = tc.input;
+  } else if (tc.name && tc.input) {
+    // Handle API format (name/input)
+    const input = tc.input;
+    if (tc.name === 'mutate_entity') {
+      const action = input.action;
+      if (action === 'create') {
+        t = 'entity.create';
+        data = input;
+      } else if (action === 'update') {
+        t = 'entity.update';
+        data = { ref: input.ref, ...input };
+      } else if (action === 'remove') {
+        t = 'entity.remove';
+        data = { ref: input.ref };
+      }
+    } else if (tc.name === 'voice') {
+      t = 'voice';
+      data = input;
+    } else if (tc.name === 'set_relationship') {
+      t = 'rel.set';
+      data = input;
+    } else {
+      t = tc.name;
+      data = input;
+    }
   }
 
   if (!t) return null;
