@@ -131,18 +131,22 @@ graph TD
     subgraph CLIENT["CLIENT"]
         direction TB
         INPUT["Chat Input"]
+        WS_CLIENT["WebSocket Client"]
         CHAT["Chat Panel<br/><i>voice events</i>"]
         GRAPH["Entity Graph<br/><i>React state store</i>"]
         RENDERER["Display Components<br/><i>renderHtml()</i>"]
         PAGE["Live Page<br/><i>PageDisplay, TableDisplay,<br/>ChecklistDisplay, ...</i>"]
 
+        INPUT -->|"user message"| WS_CLIENT
+        WS_CLIENT -->|"entity deltas"| GRAPH
+        WS_CLIENT -->|"voice events"| CHAT
         GRAPH --> RENDERER
         RENDERER --> PAGE
     end
 
     subgraph SERVER["SERVER"]
         direction TB
-        WS["WebSocket Handler<br/><i>/ws/aide/{aide_id}</i>"]
+        WS_SERVER["WebSocket Handler<br/><i>/ws/aide/{aide_id}</i>"]
         ORCH["Orchestrator<br/><i>tier selection</i>"]
 
         OPUS["Opus<br/><i>L4 — first turn + queries</i>"]
@@ -151,7 +155,7 @@ graph TD
         REDUCER["Reducer<br/><i>engine/kernel/reducer.py</i>"]
         DB["PostgreSQL<br/><i>aides.state (JSONB)<br/>conversations.messages<br/>aide_files.html</i>"]
 
-        WS --> ORCH
+        WS_SERVER --> ORCH
         ORCH -->|"L4 (first turn)"| OPUS
         ORCH -->|"L3 (updates)"| SONNET
 
@@ -160,21 +164,19 @@ graph TD
         SONNET -.->|"escalate to L4"| OPUS
 
         REDUCER -->|"save snapshot"| DB
-        REDUCER -->|"events"| WS
+        REDUCER -->|"events"| WS_SERVER
     end
 
-    INPUT -->|"user message"| WS
-    WS -->|"entity deltas"| GRAPH
-    WS -->|"voice events"| CHAT
+    WS_CLIENT <-->|"WebSocket"| WS_SERVER
 ```
 
 </details>
 
 **The data flow:**
-1. User message → WebSocket → Orchestrator picks tier (L4 for first turn/queries, L3 for updates)
+1. User message → WebSocket Client → WebSocket Server → Orchestrator picks tier (L4 for first turn/queries, L3 for updates)
 2. L4/L3 → LLM streams tool calls → Reducer applies to snapshot
-3. Reducer sends events back to WebSocket handler
-4. WebSocket sends entity deltas → Entity Graph, voice events → Chat Panel
+3. Reducer sends events → WebSocket Server → WebSocket Client
+4. WebSocket Client distributes: entity deltas → Entity Graph, voice events → Chat Panel
 5. L3 can escalate to L4 for queries or complex reasoning
 
 **What's in PostgreSQL:**

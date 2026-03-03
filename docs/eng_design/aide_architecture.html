@@ -37,18 +37,22 @@ graph TD
     subgraph CLIENT["CLIENT"]
         direction TB
         INPUT["Chat Input"]
+        WS_CLIENT["WebSocket Client"]
         CHAT["Chat Panel&lt;br/&gt;&lt;i&gt;voice events&lt;/i&gt;"]
         GRAPH["Entity Graph&lt;br/&gt;&lt;i&gt;React state store&lt;/i&gt;"]
         RENDERER["Display Components&lt;br/&gt;&lt;i&gt;renderHtml()&lt;/i&gt;"]
         PAGE["Live Page&lt;br/&gt;&lt;i&gt;PageDisplay, TableDisplay,&lt;br/&gt;ChecklistDisplay, ...&lt;/i&gt;"]
 
+        INPUT -->|"user message"| WS_CLIENT
+        WS_CLIENT -->|"entity deltas"| GRAPH
+        WS_CLIENT -->|"voice events"| CHAT
         GRAPH --> RENDERER
         RENDERER --> PAGE
     end
 
     subgraph SERVER["SERVER"]
         direction TB
-        WS["WebSocket Handler&lt;br/&gt;&lt;i&gt;/ws/aide/{aide_id}&lt;/i&gt;"]
+        WS_SERVER["WebSocket Handler&lt;br/&gt;&lt;i&gt;/ws/aide/{aide_id}&lt;/i&gt;"]
         ORCH["Orchestrator&lt;br/&gt;&lt;i&gt;tier selection&lt;/i&gt;"]
 
         OPUS["Opus&lt;br/&gt;&lt;i&gt;L4 — first turn + queries&lt;/i&gt;"]
@@ -57,7 +61,7 @@ graph TD
         REDUCER["Reducer&lt;br/&gt;&lt;i&gt;engine/kernel/reducer.py&lt;/i&gt;"]
         DB["PostgreSQL&lt;br/&gt;&lt;i&gt;aides.state (JSONB)&lt;br/&gt;conversations.messages&lt;br/&gt;aide_files.html&lt;/i&gt;"]
 
-        WS --> ORCH
+        WS_SERVER --> ORCH
         ORCH -->|"L4 (first turn)"| OPUS
         ORCH -->|"L3 (updates)"| SONNET
 
@@ -66,12 +70,10 @@ graph TD
         SONNET -.->|"escalate to L4"| OPUS
 
         REDUCER -->|"save snapshot"| DB
-        REDUCER -->|"events"| WS
+        REDUCER -->|"events"| WS_SERVER
     end
 
-    INPUT -->|"user message"| WS
-    WS -->|"entity deltas"| GRAPH
-    WS -->|"voice events"| CHAT
+    WS_CLIENT &lt;--&gt;|"WebSocket"| WS_SERVER
   </div>
   <p class="instructions">Right-click the diagram and select "Save image as..." to export as PNG</p>
   <script>
