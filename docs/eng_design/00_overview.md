@@ -170,11 +170,11 @@ graph TD
 </details>
 
 **The data flow:**
-1. User message → WebSocket `/ws/aide/{aide_id}` → Orchestrator picks tier (L2, L3, or L4)
-2. L2/L3 → LLM streams tool calls → Reducer applies to snapshot → entity deltas → client via WebSocket
+1. User message → WebSocket `/ws/aide/{aide_id}` → Orchestrator picks tier (L3 or L4)
+2. L3 → LLM streams tool calls → Reducer applies to snapshot → entity deltas → client via WebSocket
 3. L4 → text response → client chat panel (no tool calls, no reducer)
 4. Voice events sent to client chat panel
-5. L2 escalation to L3 re-enters the tool call path (not the L4 path)
+5. L3 escalation to L4 re-enters via text response path
 
 **What's in PostgreSQL:**
 - `aides.state` — current entity snapshot (JSONB, source of truth)
@@ -196,7 +196,7 @@ At publish time, the server renders the snapshot to static HTML stored in `aide_
 | **[02 Tool Calls](02_tool_calls.md)** | mutate_entity, voice, set_relationship tools | Touch the LLM pipeline or server |
 | **[03 Streaming Pipeline](03_streaming_pipeline.md)** | Server parsing, WebSocket, caching, streaming rules | Touch server or client integration |
 | **[04 Display Components](04_display_components.md)** | React compiler, all 9 components, EditableField | Touch the frontend |
-| **[05 Intelligence Tiers](05_intelligence_tiers.md)** | L2/L3/L4, routing, escalation, multi-intent, costs | Touch LLM orchestration |
-| **[06 Prompts](06_prompts.md)** | System prompts for L2, L3, L4 | Touch LLM behavior |
+| **[05 Intelligence Tiers](05_intelligence_tiers.md)** | L3/L4, routing, escalation, multi-intent, costs | Touch LLM orchestration |
+| **[06 Prompts](06_prompts.md)** | System prompts for L3, L4 | Touch LLM behavior |
 | **[07 Edge Cases](07_edge_cases.md)** | Interrupt, undo, retry, errors, speed budget | Touch reliability or UX |
 | **[08 Capability Boundaries](08_capability_boundaries.md)** | Native/skills/redirects, scoping rules | Touch product scope |

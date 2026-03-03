@@ -1,29 +1,26 @@
 # 05: Intelligence Tiers
 
-> **Prerequisites:** [00 Overview](00_overview.md) · [02 JSONL Schema](02_tool_calls.md) (for escalation signals)
+> **Prerequisites:** [00 Overview](00_overview.md) · [02 Tool Calls](02_tool_calls.md) (for escalation signals)
 > **Next:** [06 Prompts](06_prompts.md) (the actual system prompts for each tier)
 
 ---
 
-## Three Models, Three Jobs
+## Two Models, Two Jobs
 
 | Tier | Model | Job | % of Turns | Target Latency | ~Cost/Call |
 |------|-------|-----|-----------|---------------|-----------|
-| L2 | Haiku | Routine mutations | ~85% | <1.5s | ~$0.001 |
-| L3 | Sonnet | Schema synthesis | ~10% | <4s complete | ~$0.02-0.05 |
+| L3 | Sonnet | Mutations + creation | ~95% | <4s complete | ~$0.02-0.05 |
 | L4 | Opus | Queries & reasoning | ~5% | <5s | ~$0.10-0.20 |
 
-**L2 (Haiku) — The Compiler.** Clear intent, obvious primitive. "Add Aunt Linda." "Mark potato salad as claimed." "Change date to May 22." Emits JSONL. Speed is everything.
+**L3 (Sonnet) — The Architect.** Handles all mutations: first creation, new sections, structural refactors, and routine updates. "Plan my graduation party." "Add Aunt Linda." "Change date to May 22." Emits tool calls. Handles both creation and updates.
 
-**L3 (Sonnet) — The Architect.** First creation, new sections, structural refactors. "Plan my graduation party." "Add a travel logistics section." Infers entity shapes, picks display hints. Emits JSONL.
-
-**L4 (Opus) — The Analyst.** Queries that reason over the entity graph. "Who hasn't RSVPed?" "Do we have enough food?" Reads full snapshot, produces text answer in chat. Does **not** emit JSONL — no page mutations, just answers.
+**L4 (Opus) — The Analyst.** Queries that reason over the entity graph. "Who hasn't RSVPed?" "Do we have enough food?" Reads full snapshot, produces text answer in chat. Does **not** emit tool calls — no page mutations, just answers.
 
 **Why Opus for queries:** The graduation parent asks "who hasn't RSVPed" and will call those people. A wrong answer has real consequences. The extra latency is invisible — the user is in "thinking mode" when asking questions, not "doing mode."
 
 ---
 
-## Routing: Three-Layer Safety Net
+## Routing: Two-Layer Safety Net
 
 ### Layer 1: Proactive Classifier
 
@@ -35,15 +32,7 @@ Server-side, rule-based, <10ms. Runs on every message before any LLM call.
 - Asks about completeness ("do we have enough", "what's missing", "are we ready")
 
 **Route to L3 (Sonnet):**
-- No entities exist yet (first message)
-- Requests new structural elements ("add a section", "create a", "set up")
-- Entity graph has spatial/indexed structures AND message references position
-- Complex conditional logic ("if... then...")
-- Image input present
-- References entity types that don't exist in the current graph
-
-**Route to L2 (Haiku):**
-- Everything else.
+- Everything else: creation, mutations, updates, structural changes
 
 **Confidence scoring:**
 - High (>0.8) → route to classified tier
@@ -54,21 +43,21 @@ Principle: **never show wrong data.** When in doubt, use the smarter model. Late
 
 ### Layer 2: LLM Self-Escalation
 
-L2 can emit an escalation signal mid-stream:
+L3 can emit an escalation signal for queries:
 
 ```json
-{"t":"escalate","tier":"L3","reason":"unknown_entity_shape","extract":"add a seating chart with 5 tables"}
+{"type": "tool_use", "name": "escalate", "input": {"tier": "L4", "reason": "query", "extract": "do we have enough food?"}}
 ```
 
-Server keeps mutations L2 already applied, sends the rest to L3. Escalation reasons: `unknown_entity_shape`, `ambiguous_intent`, `complex_conditional`, `structural_change`.
+Server keeps mutations L3 already applied, sends the query to L4.
 
 ### Layer 3: Reducer Validation
 
-Every JSONL line passes through the reducer. Catches: invalid entity references, type mismatches, constraint violations, structural errors.
+Every tool call passes through the reducer. Catches: invalid entity references, type mismatches, constraint violations, structural errors.
 
-If 3+ consecutive lines rejected → cancel stream → escalate entire message to next tier.
+If 3+ consecutive operations rejected → cancel stream → retry with more context.
 
-**What the reducer doesn't catch:** Semantically wrong but structurally valid mutations (Linda added to table 3, user said table 5). That's what the proactive classifier and direct edit are for.
+**What the reducer doesn't catch:** Semantically wrong but structurally valid mutations (Linda added to table 3, user said table 5). That's what direct edit is for.
 
 ---
 
@@ -78,35 +67,31 @@ Users don't speak in single intents:
 
 > "Aunt Linda RSVPed yes, she's bringing potato salad, Uncle Steve is driving her, and do we have enough food for everyone?"
 
-Three mutations and a query. The model handles what it can and escalates the rest:
+Three mutations and a query. L3 handles what it can and escalates the rest:
 
-```jsonl
-{"t":"entity.update","ref":"guest_linda","p":{"rsvp":"yes"}}
-{"t":"entity.create","id":"food_potato_salad","parent":"food","p":{"item":"Potato Salad","who":"Aunt Linda"}}
-{"t":"rel.set","from":"guest_steve","to":"guest_linda","type":"driving"}
-{"t":"escalate","tier":"L4","reason":"query","extract":"do we have enough food for everyone?"}
+```
+[mutate_entity tool call: update guest_linda with rsvp=yes]
+[mutate_entity tool call: create food_potato_salad under food]
+[set_relationship tool call: guest_steve driving guest_linda]
+[escalate tool call: tier=L4, query about food]
 ```
 
-**What the user sees:** Page updates fast (mutations, <1s). Query answer appears in chat a few seconds later (L4 async).
+**What the user sees:** Page updates fast (mutations, <2s). Query answer appears in chat a few seconds later (L4 async).
 
-**Mixed mutation tiers:** If any part of the message requires schema synthesis, route the whole thing to L3. L3 can handle simple mutations too. One L3 call > L2 failure + L3 retry.
-
-**Ordering guarantee:** Mutations applied in JSONL order. Escalated queries run against post-mutation snapshot.
+**Ordering guarantee:** Mutations applied in order. Escalated queries run against post-mutation snapshot.
 
 ---
 
 ## Known Model Weaknesses
 
-Haiku patterns proactively routed to a higher tier:
+Patterns proactively routed to L4:
 
 | Pattern | Example | Route To |
 |---------|---------|----------|
-| Positional indexing | "the third item", "row 2 col 3" | L3 |
-| Spatial reasoning | "swap table 3 and table 5" | L3 |
 | Arithmetic over entities | "what's the total budget?" | L4 |
 | Negation queries | "who has NOT RSVPed?" | L4 |
-| Conditional bulk updates | "everyone arriving Friday gets..." | L3 |
 | Cross-reference reasoning | "bringing food but hasn't RSVPed?" | L4 |
+| Comparison questions | "who's contributing the most?" | L4 |
 
 This table grows as the eval suite finds new patterns.
 
@@ -122,14 +107,14 @@ This table grows as the eval suite finds new patterns.
    → assigns tier with confidence score
 
 3. LLM call (selected tier)
-   → streams JSONL to server
-   → each line: parse → reduce → push delta to client
-   → escalation lines: queue for async dispatch
-   → rejected lines: skip, escalate if 3+ consecutive
+   → streams tool calls to server
+   → each tool call: reduce → push delta to client
+   → escalation tool calls: queue for async dispatch
+   → rejected operations: skip, retry if 3+ consecutive
 
 4. Stream complete
-   → mutations saved to R2
-   → escalated intents dispatched to higher tier
+   → mutations saved to PostgreSQL
+   → escalated intents dispatched to L4
 
 5. User sees
    → page updates progressively (fast)
@@ -141,13 +126,12 @@ This table grows as the eval suite finds new patterns.
 
 ## Cost Profile
 
-50-turn/week free tier with 85/10/5 distribution:
+50-turn/week free tier with 95/5 distribution:
 
 | Tier | Turns/Week | Cost/Turn | Weekly |
 |------|-----------|-----------|--------|
-| L2 (Haiku) | 42 | $0.001 | $0.042 |
-| L3 (Sonnet) | 5 | $0.035 | $0.175 |
-| L4 (Opus) | 3 | $0.15 | $0.450 |
-| **Total** | | | **~$0.67** |
+| L3 (Sonnet) | 47 | $0.035 | $1.65 |
+| L4 (Opus) | 3 | $0.15 | $0.45 |
+| **Total** | | | **~$2.10** |
 
-Monthly worst case: ~$2.68 per free user. Margin is healthy for $10/mo Pro subscribers.
+Monthly worst case: ~$8.40 per free user. Margin is healthy for $10/mo Pro subscribers.

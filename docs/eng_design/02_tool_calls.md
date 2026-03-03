@@ -71,7 +71,7 @@ State reflections shown in the chat panel:
 }
 ```
 
-Max ~100 characters. No first person, no encouragement, no emojis. Optional — most L2 updates don't need one.
+Max ~100 characters. No first person, no encouragement, no emojis. Optional — simple updates often don't need one.
 
 ### `set_relationship`
 
@@ -153,7 +153,7 @@ mutate_entity: action=create, id=todo_venue, parent=todos, props={task: "Book pa
 voice: "Graduation page created. Add guests to get started."
 ```
 
-### L2 Update (~2 tool calls)
+### Simple Update (~2 tool calls)
 
 ```
 mutate_entity: action=create, id=guest_linda, parent=guests, props={name: "Aunt Linda", rsvp: "yes"}

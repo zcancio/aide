@@ -1,6 +1,6 @@
 # 03: Streaming Pipeline
 
-> **Prerequisites:** [01 Data Model](01_data_model.md) · [02 JSONL Schema](02_tool_calls.md)
+> **Prerequisites:** [01 Data Model](01_data_model.md) · [02 Tool Calls](02_tool_calls.md)
 > **Next:** [04 Display Components](04_display_components.md) (what the client does with each delta)
 
 ---
@@ -9,7 +9,7 @@
 
 ```
 User sends message
-  → Classifier picks tier (L2/L3/L4)        [<10ms, see 05]
+  → Classifier picks tier (L3/L4)           [<10ms, see 05]
   → LLM streams JSONL
   → Server buffers until newline
   → Server parses JSON line
@@ -98,39 +98,38 @@ The client connects to `/ws/aide/{aide_id}` on page load.
 
 ## Prompt Caching Strategy
 
-Anthropic's prompt caching is **per-model** — a Haiku cache and a Sonnet cache are completely separate. This means we have three independent cache pools, one per tier.
+Anthropic's prompt caching is **per-model** — Sonnet and Opus caches are completely separate. This means we have two independent cache pools, one per tier.
 
 ```
-           L2 (Haiku) cache        L3 (Sonnet) cache       L4 (Opus) cache
-           85% of traffic          10% of traffic          5% of traffic
+           L3 (Sonnet) cache       L4 (Opus) cache
+           95% of traffic          5% of traffic
 
-┌──────────────────────┐  ┌──────────────────────┐  ┌──────────────────────┐
-│ System prompt + L2   │  │ System prompt + L3   │  │ System prompt + L4   │
-│ instructions         │  │ instructions         │  │ instructions         │
-│ TTL: 5-min (free)    │  │ TTL: 1-hour (2x)    │  │ TTL: 1-hour (2x)    │
-│ Hit rate: HIGH       │  │ Hit rate: MEDIUM     │  │ Hit rate: LOW        │
-├──────────────────────┤  ├──────────────────────┤  ├──────────────────────┤
-│ Aide snapshot        │  │ Aide snapshot        │  │ Aide snapshot        │
-│ TTL: 5-min           │  │ TTL: 5-min           │  │ TTL: 5-min           │
-├──────────────────────┤  ├──────────────────────┤  ├──────────────────────┤
-│ Conversation tail    │  │ Conversation tail    │  │ Conversation tail    │
-│ No cache             │  │ No cache             │  │ No cache             │
-└──────────────────────┘  └──────────────────────┘  └──────────────────────┘
+┌──────────────────────┐  ┌──────────────────────┐
+│ System prompt + L3   │  │ System prompt + L4   │
+│ instructions         │  │ instructions         │
+│ TTL: 1-hour (2x)     │  │ TTL: 1-hour (2x)     │
+│ Hit rate: HIGH       │  │ Hit rate: LOW        │
+├──────────────────────┤  ├──────────────────────┤
+│ Aide snapshot        │  │ Aide snapshot        │
+│ TTL: 5-min           │  │ TTL: 5-min           │
+├──────────────────────┤  ├──────────────────────┤
+│ Conversation tail    │  │ Conversation tail    │
+│ No cache             │  │ No cache             │
+└──────────────────────┘  └──────────────────────┘
 ```
 
-**Why different system prompt TTLs:**
-- **L2 (Haiku):** 85% of traffic. 5-minute TTL is free (1.25x write, 0.1x read). With multiple active users, Haiku calls happen every few minutes — the cache stays warm naturally.
-- **L3 (Sonnet):** 10% of traffic. Calls might be 10-20 minutes apart for a single user. 5-minute cache expires between calls. 1-hour TTL (2x write, 0.1x read) keeps it warm through gaps.
-- **L4 (Opus):** 5% of traffic. Even less frequent. 1-hour TTL for the same reason. But caching matters least here — queries have short input and expensive output. The savings are minimal.
+**Why 1-hour TTL for system prompts:**
+- **L3 (Sonnet):** 95% of traffic. 1-hour TTL (2x write, 0.1x read) keeps the system prompt warm between calls.
+- **L4 (Opus):** 5% of traffic. 1-hour TTL for the same reason. But caching matters least here — queries have short input and expensive output. The savings are minimal.
 
-**Snapshot caching across tiers:** The aide snapshot changes every turn, but the prefix is stable (existing entities keep their position, new ones append). Even with 5-minute TTL, consecutive L2 calls within a session get snapshot cache hits. L3/L4 calls are less likely to hit the snapshot cache because they're infrequent.
+**Snapshot caching:** The aide snapshot changes every turn, but the prefix is stable (existing entities keep their position, new ones append). With 5-minute TTL, consecutive calls within a session get snapshot cache hits.
 
 **Key rules:**
 - 1-hour TTL entries must appear before 5-minute TTL entries in the request.
 - Maximum 4 cache breakpoints per request. We use 2 (after system prompt, after snapshot).
 - Snapshot serialization must be deterministic and append-only to maximize prefix match.
 
-**Cost impact on an active aide (L2 calls):**
+**Cost impact on an active aide (L3 calls):**
 - Full price: ~200 tokens (conversation tail + message)
 - 0.1x price: ~4K tokens (system prompt + snapshot)
 - Effective input cost: ~75% less than without caching
@@ -175,14 +174,14 @@ R2 stores three files per aide:
 | ~2.5s | style.set | Colors apply |
 | ~3s | final voice line | "Add guests to get started." |
 
-### L2 Update (Haiku)
+### L3 Update (Sonnet)
 
 | Time | What Happens |
 |------|-------------|
 | 0ms | User sends "Aunt Linda RSVPed yes" |
-| ~400ms | First JSONL line → entity created → row appears |
-| ~800ms | Relationship line → food link established |
-| ~1s | Done |
+| ~500ms | First tool call → entity updated → row changes |
+| ~1s | Relationship tool call → food link established |
+| ~1.5s | Done |
 
 ### Direct Edit
 
