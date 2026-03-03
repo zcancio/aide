@@ -59,9 +59,9 @@ Cross-branch connections (Linda is *bringing* the potato salad) are modeled as *
 v1: LLM produces primitives + HTML + voice reflections + explanations. ~3-5K tokens.
 v2: LLM produces only entity operations as JSON. ~600-1500 tokens. The deterministic renderer produces all HTML.
 
-### 3. JSONL Streaming → [03_streaming_pipeline.md](03_streaming_pipeline.md)
+### 3. Streaming via WebSocket → [03_streaming_pipeline.md](03_streaming_pipeline.md)
 
-The LLM emits one JSON line per operation. The server parses each line on arrival, reduces it, and pushes a render delta to the client via WebSocket. The page builds itself in real time.
+The LLM emits tool calls (mutate_entity, voice, etc.). The server parses each tool call, applies it through the reducer, and pushes entity deltas to the client via WebSocket. The page builds itself in real time.
 
 The LLM emits in **render order** — page title first, sections next, items last. The user sees the page scaffold top-down.
 
@@ -122,8 +122,6 @@ The fast loop makes the slow loop trustworthy. If the user can fix any mistake i
 
 ## Architecture Diagram
 
-→ See rendered diagram: [aide_v2_architecture.mermaid](aide_v2_architecture.mermaid)
-
 ```mermaid
 graph TD
     subgraph CLIENT["CLIENT"]
@@ -131,56 +129,58 @@ graph TD
         INPUT["Chat Input"]
         CHAT["Chat Panel<br/><i>voice lines, L4 responses</i>"]
         GRAPH["Entity Graph<br/><i>React state store</i>"]
-        RENDERER["AideEntity<br/><i>recursive renderer</i>"]
+        RENDERER["Display Components<br/><i>renderHtml()</i>"]
         PAGE["Live Page<br/><i>PageDisplay, TableDisplay,<br/>ChecklistDisplay, ...</i>"]
-        
+
         GRAPH --> RENDERER
         RENDERER --> PAGE
     end
 
     subgraph SERVER["SERVER"]
         direction TB
-        CLASSIFIER["Classifier<br/><i>&lt;10ms, rule-based</i>"]
-        
+        WS["WebSocket Handler<br/><i>/ws/aide/{aide_id}</i>"]
+        ORCH["Orchestrator<br/><i>tier selection</i>"]
+
         HAIKU["Haiku<br/><i>L2 — routine mutations</i>"]
         SONNET["Sonnet<br/><i>L3 — schema synthesis</i>"]
         OPUS["Opus<br/><i>L4 — queries only</i>"]
-        
-        PARSER["JSONL Parser<br/><i>buffer → newline → parse</i>"]
-        REDUCER["Reducer<br/><i>pure function</i>"]
-        R2["R2 Store<br/><i>events.jsonl<br/>snapshot.json<br/>published.html</i>"]
-        
-        CLASSIFIER -->|"L2"| HAIKU
-        CLASSIFIER -->|"L3"| SONNET
-        CLASSIFIER -->|"L4"| OPUS
-        
-        HAIKU -->|"JSONL stream"| PARSER
-        SONNET -->|"JSONL stream"| PARSER
+
+        REDUCER["Reducer<br/><i>engine/kernel/reducer.py</i>"]
+        DB["PostgreSQL<br/><i>aides.state (JSONB)<br/>conversations.messages<br/>aide_files.html</i>"]
+
+        WS --> ORCH
+        ORCH -->|"L2"| HAIKU
+        ORCH -->|"L3"| SONNET
+        ORCH -->|"L4"| OPUS
+
+        HAIKU -->|"tool calls"| REDUCER
+        SONNET -->|"tool calls"| REDUCER
         HAIKU -.->|"escalate to L3"| SONNET
-        
-        PARSER --> REDUCER
-        REDUCER -->|"save"| R2
+
+        REDUCER -->|"save snapshot"| DB
     end
 
-    INPUT -->|"user message"| CLASSIFIER
-    REDUCER -->|"render deltas<br/>(WebSocket)"| GRAPH
-    PARSER -->|"voice lines"| CHAT
+    INPUT -->|"WebSocket message"| WS
+    REDUCER -->|"entity deltas<br/>(WebSocket)"| GRAPH
+    REDUCER -->|"voice events"| CHAT
     OPUS -->|"text response"| CHAT
 ```
 
 **The data flow:**
-1. User message → Classifier picks tier (L2, L3, or L4)
-2. L2/L3 → JSONL stream → Parser → Reducer → render deltas → client entity graph
-3. L4 → text response → client chat panel (no JSONL, no parser, no reducer)
-4. Voice lines extracted from JSONL stream → client chat panel
-5. L2 escalation to L3 re-enters the JSONL path (not the L4 path)
+1. User message → WebSocket `/ws/aide/{aide_id}` → Orchestrator picks tier (L2, L3, or L4)
+2. L2/L3 → LLM streams tool calls → Reducer applies to snapshot → entity deltas → client via WebSocket
+3. L4 → text response → client chat panel (no tool calls, no reducer)
+4. Voice events sent to client chat panel
+5. L2 escalation to L3 re-enters the tool call path (not the L4 path)
 
-**What's in R2:**
-- `{aide_id}/events.jsonl` — append-only event log (source of truth)
-- `{aide_id}/snapshot.json` — materialized entity graph (rebuilt each mutation)
-- `{aide_id}/published.html` — static server-rendered page for public URL
+**What's in PostgreSQL:**
+- `aides.state` — current entity snapshot (JSONB, source of truth)
+- `conversations.messages` — conversation history (JSONB array)
+- `aide_files.html` — rendered HTML for published pages
 
-HTML rendering is client-side during editing (React). At publish time, the server renders the same components to static HTML. Visitors see plain HTML — no React, no WebSocket, no account needed.
+**Reducer runs server-side** (`engine/kernel/reducer.py`). The client receives entity deltas and patches its local state. **Renderer runs client-side** (`frontend/src/lib/display/renderHtml.js`).
+
+At publish time, the server renders the snapshot to static HTML stored in `aide_files`. Published pages are served at `/s/{slug}` — plain HTML, no React, no WebSocket, no account needed.
 
 ---
 
