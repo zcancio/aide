@@ -52,12 +52,12 @@ grad_page (display: "page")
 
 Cross-branch connections (Linda is *bringing* the potato salad) are modeled as **relationships** — typed links between any two entities in the tree.
 
-### 2. LLM Emits Only Primitives → [02_jsonl_schema.md](02_jsonl_schema.md)
+### 2. LLM Emits Only Primitives via Tool Calls → [02_jsonl_schema.md](02_jsonl_schema.md)
 
 **The rule:** The LLM never generates what the renderer can derive.
 
 v1: LLM produces primitives + HTML + voice reflections + explanations. ~3-5K tokens.
-v2: LLM produces only entity operations as JSON. ~600-1500 tokens. The deterministic renderer produces all HTML.
+v2: LLM produces only entity operations via tool calls (`mutate_entity`, `voice`). ~600-1500 tokens. The deterministic renderer produces all HTML.
 
 ### 3. Streaming via WebSocket → [03_streaming_pipeline.md](03_streaming_pipeline.md)
 
