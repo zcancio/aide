@@ -8,36 +8,44 @@
 ## End-to-End Flow
 
 ```
-User sends message
+User sends message via WebSocket
   → Classifier picks tier (L3/L4)           [<10ms, see 05]
-  → LLM streams JSONL
-  → Server buffers until newline
-  → Server parses JSON line
-  → Reducer applies it
-    → accepted: push delta to client via WebSocket
+  → LLM streams tool calls
+  → Server parses tool_use events
+  → Converts to reducer events
+  → Reducer applies event
+    → accepted: update snapshot, push delta to client via WebSocket
     → rejected: skip, log, continue
   → Client patches entity graph in React state
   → React re-renders affected components
   → User sees page update progressively
 ```
 
+**Implementation:** `backend/routes/ws.py`, `backend/services/streaming_orchestrator.py`
+
 ---
 
-## Server-Side Parsing
+## Server-Side Processing
 
-The parser is simple: buffer bytes until `\n`, attempt `JSON.parse()`, fire through reducer, push delta.
+The orchestrator processes LLM tool calls and converts them to reducer events.
 
 ```
-LLM stream → buffer until \n → JSON.parse()
-  → expand abbreviated fields (t→type, p→props, etc.)
-  → wrap in event envelope (sequence, timestamp, actor, source)
+LLM stream → tool_use event → tool_use_to_reducer_event()
+  → mutate_entity(action="create") → {"t": "entity.create", ...}
+  → mutate_entity(action="update") → {"t": "entity.update", ...}
+  → set_relationship(action="set") → {"t": "rel.set", ...}
+  → voice(text="...") → {"t": "voice", ...}
+
+For each reducer event:
   → reducer(snapshot, event)
-    → applied: save to event log, push delta to client
-    → rejected: log rejection, skip, check consecutive failure count
-  → if 3+ consecutive rejections: cancel stream, escalate to next tier
+    → applied: update snapshot, yield delta to WebSocket
+    → rejected: log rejection, continue
 ```
 
-**Batch handling:** When `batch.start` is received, the server accumulates deltas in a buffer instead of pushing them. On `batch.end`, all buffered deltas are pushed as one atomic update. Safety valve: 30-second timeout forces flush.
+**Escalation handling:** When L3 signals it needs structural help (via `needs_escalation()`), the orchestrator runs:
+1. L4 creates structure with original snapshot
+2. L3 retries with L4's updated snapshot
+3. Results merged: L4 tool calls first, then L3
 
 ---
 
@@ -47,14 +55,12 @@ These rules ensure every intermediate state during streaming is renderable.
 
 ### Emission Order (enforced by system prompt)
 
-1. `meta.set` first (title, identity)
-2. Root page entity
-3. Section entities (direct children of page)
-4. Items within sections
-5. Relationships (both endpoints must exist)
-6. Style overrides
-7. Voice lines interleaved after milestones (~every 8-10 entity lines for L3)
-8. Final voice line last
+1. Page entity (root)
+2. Section entities (direct children of page)
+3. Items within sections
+4. Relationships (both endpoints must exist)
+5. Style overrides
+6. Voice lines (via `voice` tool call)
 
 ### Invariants
 
@@ -62,11 +68,7 @@ These rules ensure every intermediate state during streaming is renderable.
 2. **Empty containers are valid.** A `table` with zero children renders with a placeholder. The user sees structure scaffolding in, then items populating.
 3. **Display hints on creation.** The parent needs its `display` hint when created so the compiler knows how to render incoming children.
 4. **Relationships after both endpoints.** `rel.set` requires both entities to exist.
-5. **Batches for restructuring.** Wrap `entity.move` sequences in `batch.start`/`batch.end`. Normal top-down creation doesn't need batching.
-
-### Graceful Degradation
-
-If the LLM violates emission order (e.g., forgets batch signals during a restructure), the server renders each line as it arrives. The user may see entities briefly jump around. Not broken, just not smooth. Batch signals are an optimization, not a correctness requirement.
+5. **Voice is required.** Every response must include at least one `voice` tool call — without it, the user sees nothing in chat.
 
 ---
 
@@ -78,110 +80,113 @@ The client connects to `/ws/aide/{aide_id}` on page load.
 
 | Type | Payload | Client Action |
 |------|---------|--------------|
-| `delta` | Entity graph patch (one or more operations) | Patch React state store |
-| `voice` | `{ text: string }` | Display in chat panel |
-| `query_response` | `{ text: string, message_id: string }` | Display L4 answer in chat |
-| `error` | `{ message: string, entities_applied: number }` | Show error banner |
-| `status` | `{ state: "streaming" \| "complete" \| "interrupted" }` | Toggle typing indicator, enable input |
+| `snapshot.start` | `{}` | Begin hydration mode |
+| `entity.create` | `{ id, data }` | Add entity to state |
+| `entity.update` | `{ id, data }` | Patch entity in state |
+| `entity.remove` | `{ id }` | Mark entity removed |
+| `meta.update` | `{ data }` | Update page metadata |
+| `snapshot.end` | `{}` | End hydration mode |
+| `stream.start` | `{ message_id }` | Show typing indicator |
+| `voice` | `{ text }` | Display in chat panel |
+| `stream.end` | `{ message_id }` | Hide typing indicator, enable input |
+| `stream.error` | `{ error }` | Show error banner |
+| `stream.interrupted` | `{ message_id }` | Stream was cancelled |
+| `direct_edit.error` | `{ error }` | Direct edit failed |
 
 **Client → Server messages:**
 
 | Type | Payload | Server Action |
 |------|---------|--------------|
-| `message` | `{ text: string }` | Route through classifier → LLM |
-| `direct_edit` | `{ t: "entity.update", ref, p }` | Apply through reducer |
+| `message` | `{ content, message_id }` | Route through classifier → LLM |
+| `direct_edit` | `{ entity_id, field, value }` | Apply entity.update through reducer |
 | `interrupt` | `{}` | Cancel LLM stream |
-| `undo` | `{}` | Replay events minus last batch |
-| `redo` | `{}` | Replay undone batch |
+| `set_profile` | `{ profile }` | Set mock LLM profile (dev only) |
 
 ---
 
 ## Prompt Caching Strategy
 
-Anthropic's prompt caching is **per-model** — Sonnet and Opus caches are completely separate. This means we have two independent cache pools, one per tier.
+The system prompt is split into two blocks for Anthropic's prompt caching.
 
 ```
-           L3 (Sonnet) cache       L4 (Opus) cache
-           95% of traffic          5% of traffic
-
-┌──────────────────────┐  ┌──────────────────────┐
-│ System prompt + L3   │  │ System prompt + L4   │
-│ instructions         │  │ instructions         │
-│ TTL: 1-hour (2x)     │  │ TTL: 1-hour (2x)     │
-│ Hit rate: HIGH       │  │ Hit rate: LOW        │
-├──────────────────────┤  ├──────────────────────┤
-│ Aide snapshot        │  │ Aide snapshot        │
-│ TTL: 5-min           │  │ TTL: 5-min           │
-├──────────────────────┤  ├──────────────────────┤
-│ Conversation tail    │  │ Conversation tail    │
-│ No cache             │  │ No cache             │
-└──────────────────────┘  └──────────────────────┘
+┌──────────────────────────────────────┐
+│  Block 1: Static tier instructions   │  cache_control: { type: "ephemeral" }
+│  (shared_prefix + tier instructions) │
+│  ~2,200-2,800 tokens                 │
+├──────────────────────────────────────┤
+│  Block 2: Dynamic snapshot           │  no cache_control
+│  (current state as JSON)             │
+│  ~500-3,000 tokens                   │
+└──────────────────────────────────────┘
 ```
 
-**Why 1-hour TTL for system prompts:**
-- **L3 (Sonnet):** 95% of traffic. 1-hour TTL (2x write, 0.1x read) keeps the system prompt warm between calls.
-- **L4 (Opus):** 5% of traffic. 1-hour TTL for the same reason. But caching matters least here — queries have short input and expensive output. The savings are minimal.
+**Implementation:** `backend/services/prompt_builder.py`
 
-**Snapshot caching:** The aide snapshot changes every turn, but the prefix is stable (existing entities keep their position, new ones append). With 5-minute TTL, consecutive calls within a session get snapshot cache hits.
+```python
+def build_system_blocks(tier: str, snapshot: dict) -> list[dict]:
+    return [
+        {"type": "text", "text": base, "cache_control": {"type": "ephemeral"}},
+        {"type": "text", "text": f"## Current Snapshot\n```json\n{snapshot_json}\n```"},
+    ]
+```
 
-**Key rules:**
-- 1-hour TTL entries must appear before 5-minute TTL entries in the request.
-- Maximum 4 cache breakpoints per request. We use 2 (after system prompt, after snapshot).
-- Snapshot serialization must be deterministic and append-only to maximize prefix match.
+**Caching behavior:**
+- Block 1 (static) uses ephemeral caching — survives across turns within a session
+- Block 2 (snapshot) has no cache control — changes every turn
+- Anthropic's caching is per-model — Sonnet and Opus have separate caches
 
-**Cost impact on an active aide (L3 calls):**
-- Full price: ~200 tokens (conversation tail + message)
-- 0.1x price: ~4K tokens (system prompt + snapshot)
-- Effective input cost: ~75% less than without caching
-
-Conversation history is the enemy of caching — every message shifts the content. Keep the tail minimal (3-5 messages). The entity graph IS the memory.
+**Conversation windowing:** Messages are windowed via `build_messages()`:
+- Maximum 9 messages (~3 exchanges) to prevent unbounded growth
+- Always starts on a user message (API requirement)
 
 ---
 
-## Storage (R2)
+## Storage (PostgreSQL)
 
-R2 stores three files per aide:
+State is stored in the `aides` table:
 
-| File | Contents | Updated |
-|------|----------|---------|
-| `{aide_id}/events.jsonl` | Append-only event log with full event envelopes | Every mutation (append) |
-| `{aide_id}/snapshot.json` | Materialized entity graph as JSON | Every mutation (overwrite) |
-| `{aide_id}/published.html` | Static server-rendered HTML for public URL | On publish |
+| Column | Type | Contents |
+|--------|------|----------|
+| `state` | JSONB | Current snapshot (entities, relationships, meta, styles) |
+| `event_log` | JSONB | Append-only event history (for undo/replay) |
+| `r2_prefix` | TEXT | Legacy field (R2 path prefix) |
 
-**events.jsonl** is the source of truth. Replaying it through the reducer produces any historical state. Used for undo, time travel, and debugging.
+**Conversation history** is stored in the `conversations` table:
+- Messages as JSONB array of `{role, content, timestamp}`
+- Loaded on WebSocket connection, persisted after each turn
 
-**snapshot.json** is derived state, cached for fast client load. When a client connects or reconnects, it gets the snapshot — not the full event log. Rebuilt after each mutation by the reducer.
+**Published HTML** is stored in the `aide_files` table:
+- Generated by server-side rendering on publish
+- Served at `/s/{slug}` as static HTML
 
-**published.html** is the public-facing page at `toaide.com/s/{slug}`. Generated by server-side rendering the same React display components against the snapshot. Visitors see plain HTML — no React, no WebSocket, no account needed. Rebuilt when the user publishes (or auto-publishes on state change).
-
-**During editing, HTML only exists client-side.** The React compiler renders the entity graph in the browser. No HTML is stored or transmitted during the editing session — only entity graph deltas over WebSocket.
+**Implementation:**
+- `backend/repos/aide_repo.py` — aide CRUD, snapshot persistence
+- `backend/repos/conversation_repo.py` — conversation history
+- `backend/routes/ws.py` — `_load_snapshot()`, `_save_snapshot()`, `_load_conversation()`
 
 ---
 
 ## Rendering Timelines
 
-### First Creation (L3, Sonnet)
+### First Creation (L4 → L3)
 
 | Time | What Arrives | What the User Sees |
 |------|-------------|-------------------|
 | 0ms | — | Typing indicator |
-| ~300ms | meta.set + page entity | Page title appears |
-| ~500ms | ceremony card | Card with date, time, location |
-| ~600ms | voice: "Ceremony details set..." | Chat shows narration |
-| ~800ms | section entities | Empty scaffolds appear |
-| ~1.5s | voice: "Structure ready..." | Chat updates |
-| ~2s | todo items populate | Checklist fills in |
-| ~2.5s | style.set | Colors apply |
-| ~3s | final voice line | "Add guests to get started." |
+| ~300ms | First tool call → page entity | Page title appears |
+| ~500ms | Section entities | Empty scaffolds appear |
+| ~800ms | voice tool call | Chat shows "Page created." |
+| ~1.5s | Child entities populate | Content fills in |
+| ~2s | Final voice | "Add guests to get started." |
 
-### L3 Update (Sonnet)
+### L3 Update
 
 | Time | What Happens |
 |------|-------------|
 | 0ms | User sends "Aunt Linda RSVPed yes" |
 | ~500ms | First tool call → entity updated → row changes |
-| ~1s | Relationship tool call → food link established |
-| ~1.5s | Done |
+| ~1s | voice tool call → "Linda confirmed." |
+| ~1.2s | Done |
 
 ### Direct Edit
 
@@ -190,5 +195,5 @@ R2 stores three files per aide:
 | 0ms | User clicks "May 23" on ceremony card |
 | 0ms | Inline input opens |
 | — | User types "May 22", hits Enter |
-| ~100ms | Client emits entity.update to server |
-| ~200ms | Server confirms. Card shows "May 22." |
+| ~100ms | Client sends direct_edit to server |
+| ~200ms | Server confirms, broadcasts delta. Card shows "May 22." |

@@ -1,7 +1,17 @@
-# AIde v2: Implementation Plan
+# aide v2: Implementation Plan
 
 > **Prerequisites:** [00 Overview](00_overview.md)
-> **Status:** Pre-implementation
+> **Status:** ARCHIVED — Implementation complete
+
+---
+
+**Note:** This document was the original v2 implementation plan. All phases have been completed. Some details are outdated:
+
+- **Tiers:** L2/L3/L4 → now two-tier L3/L4 (L2 consolidated into L3)
+- **Output format:** JSONL → now tool calls (`mutate_entity`, `set_relationship`, `voice`)
+- **Storage:** R2 → now PostgreSQL (`aides.state`, `conversations` table)
+
+For current architecture, see [00 Overview](00_overview.md) and [03 Streaming Pipeline](03_streaming_pipeline.md).
 
 ---
 

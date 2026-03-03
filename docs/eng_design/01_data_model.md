@@ -1,7 +1,7 @@
 # 01: Data Model
 
 > **Prerequisites:** [00 Overview](00_overview.md)
-> **Next:** [02 JSONL Schema](02_tool_calls.md) (the wire format for mutating the model)
+> **Next:** [02 Tool Calls](02_tool_calls.md) (the wire format for mutating the model)
 
 ---
 
@@ -56,7 +56,7 @@ v1 had three parallel structures the LLM had to generate and keep consistent:
 | Collection + schema | Entity with children (schema inferred from props) |
 | Block tree | Entity tree (entity IS its block) |
 | View (list view, table view) | `display` hint on entity |
-| 25 primitive types | 13 primitive types + 4 signals |
+| 25 primitive types | 14 primitive types + 4 signals |
 
 Fewer concepts → fewer tokens → faster generation → simpler reducer.
 
@@ -164,4 +164,4 @@ This enables:
 
 Events are stored in the event log with full metadata (sequence number, timestamp, actor, source). The entity tree snapshot is derived state, rebuilt from events.
 
-→ The event format is defined in [02 JSONL Schema](02_tool_calls.md).
+→ The event format is defined in [02 Tool Calls](02_tool_calls.md).
