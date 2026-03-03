@@ -43,13 +43,13 @@
 
 ## Environments
 
-AIde uses three environments with isolated resources:
+aide uses three environments with isolated resources:
 
-| Environment | Purpose | Database | R2 Buckets | URL |
-|-------------|---------|----------|------------|-----|
-| **Local Dev** | Your machine | Docker Postgres | `aide-workspaces-dev`, `aide-published-dev` | `localhost:8000` |
-| **Staging** | Pre-prod testing, smoke tests | Neon `staging` branch | `aide-workspaces-staging`, `aide-published-staging` | Railway staging URL |
-| **Production** | Real users | Neon `main` branch | `aide-workspaces`, `aide-published` | `get.toaide.com` |
+| Environment | Purpose | Database | R2 Bucket | URL |
+|-------------|---------|----------|-----------|-----|
+| **Local Dev** | Your machine | Docker Postgres | `aide-published-dev` | `localhost:8000` |
+| **Staging** | Pre-prod testing, smoke tests | Neon `staging` branch | `aide-published-staging` | Railway staging URL |
+| **Production** | Real users | Neon `main` branch | `aide-published` | `get.toaide.com` |
 
 ### Environment Isolation
 
@@ -202,7 +202,7 @@ Every deploy is saved. Rollback takes ~30 seconds.
 - **Point-in-time recovery:** Restore to any second. No pg_dump crons.
 - **Branching:** Clone your prod database for testing in seconds.
 - **Connection pooling:** Built-in.
-- **RLS support:** Row-Level Security works natively. Critical for AIde's data access model.
+- **RLS support:** Row-Level Security works natively. Critical for aide's data access model.
 
 ### Tiers
 

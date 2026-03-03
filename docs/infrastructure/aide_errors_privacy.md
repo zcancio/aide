@@ -1,4 +1,4 @@
-# AIde — Error Logging & Data Privacy
+# aide — Error Logging & Data Privacy
 
 Two separate concerns, one document.
 

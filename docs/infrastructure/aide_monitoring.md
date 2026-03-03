@@ -1,4 +1,4 @@
-# AIde — Monitoring
+# aide — Monitoring
 
 Three things to watch. Three solutions. $0/mo.
 

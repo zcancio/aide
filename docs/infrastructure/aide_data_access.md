@@ -1,4 +1,4 @@
-# AIde — Data Access Layer
+# aide — Data Access Layer
 
 **Philosophy:** Define data shapes once. Write SQL by hand. Validate at the boundary. Log everything that matters. No magic.
 
@@ -111,7 +111,9 @@ class Aide(BaseModel):
     title: str = "Untitled"
     slug: str | None = None
     status: Literal["draft", "published", "archived"] = "draft"
-    r2_prefix: str | None = None
+    state: dict = {}              # Current snapshot (entities, meta, relationships)
+    event_log: list[dict] = []    # Append-only event history
+    r2_prefix: str | None = None  # Legacy field
     created_at: datetime
     updated_at: datetime
 
@@ -630,7 +632,7 @@ async def delete_aide(
 
 ### Like Google's Approach
 
-| Google | AIde |
+| Google | aide |
 |--------|------|
 | Proto definitions | Pydantic models |
 | Generated code from .proto files | Pydantic validation + FastAPI schema generation |
@@ -642,7 +644,7 @@ async def delete_aide(
 
 ### Unlike Google (and why that's fine)
 
-| Google | AIde | Why |
+| Google | aide | Why |
 |--------|------|-----|
 | Protobuf binary serialization | JSON serialization | You have one service, not thousands. JSON is fine. |
 | gRPC between services | HTTP/WebSocket | One service. No need for gRPC. |
@@ -796,7 +798,9 @@ def upgrade():
             title TEXT DEFAULT 'Untitled',
             slug TEXT UNIQUE,
             status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
-            r2_prefix TEXT,
+            state JSONB DEFAULT '{}'::jsonb,      -- Current snapshot
+            event_log JSONB DEFAULT '[]'::jsonb,  -- Append-only event history
+            r2_prefix TEXT,                       -- Legacy field
             created_at TIMESTAMPTZ DEFAULT now(),
             updated_at TIMESTAMPTZ DEFAULT now()
         );
