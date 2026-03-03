@@ -94,15 +94,24 @@ export default function FlightRecorder() {
   const playTimerRef = useRef(null);
 
   const turns = useMemo(() => data?.turns || [], [data]);
-  const N = turns.length;
-  const t = turns[idx] || {};
+  // N includes turn 0 (initial empty state) + all actual turns
+  const N = turns.length + 1;
+  // Turn 0 is synthetic (empty state), turns 1+ map to actual turns
+  const actualTurnIdx = idx - 1;
+  const t = actualTurnIdx >= 0 ? turns[actualTurnIdx] : {};
+  const isTurn0 = idx === 0;
 
   // Build snapshots for current turn
+  // Turn 0: before=empty, after=empty
+  // Turn 1+: before=snapshot up to prev turn, after=snapshot up to current turn
   const snapshotBefore = useMemo(
-    () => (idx > 0 ? buildSnapshot(turns, idx - 1) : { meta: {}, entities: {} }),
-    [turns, idx]
+    () => (actualTurnIdx > 0 ? buildSnapshot(turns, actualTurnIdx - 1) : { meta: {}, entities: {} }),
+    [turns, actualTurnIdx]
   );
-  const snapshotAfter = useMemo(() => buildSnapshot(turns, idx), [turns, idx]);
+  const snapshotAfter = useMemo(
+    () => (actualTurnIdx >= 0 ? buildSnapshot(turns, actualTurnIdx) : { meta: {}, entities: {} }),
+    [turns, actualTurnIdx]
+  );
   const diff = useMemo(
     () => eDiff(snapshotBefore.entities, snapshotAfter.entities),
     [snapshotBefore, snapshotAfter]
@@ -121,14 +130,14 @@ export default function FlightRecorder() {
   );
   const events = useMemo(() => parseToolCalls(t.tool_calls), [t.tool_calls]);
 
-  // Calculate cumulative cost
+  // Calculate cumulative cost (turn 0 has no cost)
   const cumulativeCost = useMemo(() => {
     let total = 0;
-    for (let i = 0; i <= idx && i < turns.length; i++) {
+    for (let i = 0; i <= actualTurnIdx && i < turns.length; i++) {
       total += calculateCost(turns[i].usage, turns[i].tier);
     }
     return total;
-  }, [turns, idx]);
+  }, [turns, actualTurnIdx]);
 
   const turnCost = calculateCost(t.usage, t.tier);
 
@@ -280,8 +289,25 @@ export default function FlightRecorder() {
         return;
       }
 
-      const turn = turns[turnIdx];
       setIdx(turnIdx);
+
+      // Turn 0 is the initial empty state - brief pause then continue
+      if (turnIdx === 0) {
+        await new Promise((r) => {
+          playTimerRef.current = setTimeout(r, calculateDelay(300, speed));
+        });
+        if (cancelled) return;
+        playTurn(1);
+        return;
+      }
+
+      // Actual turns (turnIdx >= 1 maps to turns[turnIdx - 1])
+      const turn = turns[turnIdx - 1];
+      if (!turn) {
+        setPlaying(false);
+        return;
+      }
+
       setStreaming(true);
       setStreamEvents([]);
 
@@ -493,13 +519,16 @@ export default function FlightRecorder() {
           ))}
           <span className="fr-divider-v" />
           <span className="fr-turn-info">
-            Turn {idx + 1}/{N}
+            Turn {idx}/{N - 1}
           </span>
-          <TierBadge tier={t.tier} />
-          <span className="fr-timing">
-            {t.ttfc_ms != null && `${t.ttfc_ms}ms ttft · `}
-            {t.ttc_ms}ms ttc
-          </span>
+          {!isTurn0 && <TierBadge tier={t.tier} />}
+          {!isTurn0 && (
+            <span className="fr-timing">
+              {t.ttfc_ms != null && `${t.ttfc_ms}ms ttft · `}
+              {t.ttc_ms}ms ttc
+            </span>
+          )}
+          {isTurn0 && <span className="fr-timing">Initial state</span>}
           <button className="fr-close-btn" onClick={() => setData(null)}>
             Close
           </button>
@@ -511,12 +540,25 @@ export default function FlightRecorder() {
         {/* Left: Chat */}
         <div className="fr-chat">
           <div className="fr-section-label">Conversation</div>
-          {turns.slice(0, idx + 1).map((tr, i) => (
+          {/* Turn 0: Initial state */}
+          <div
+            className={`fr-chat-turn fr-chat-turn--turn0 ${idx === 0 ? 'fr-chat-turn--active' : ''}`}
+            onClick={() => {
+              setIdx(0);
+              setPlaying(false);
+              setStreaming(false);
+              setShowTyping(false);
+            }}
+          >
+            <div className="fr-chat-bubble fr-chat-bubble--system">Initial state (empty)</div>
+          </div>
+          {/* Actual turns (1+) */}
+          {turns.slice(0, actualTurnIdx + 1).map((tr, i) => (
             <div
               key={i}
-              className={`fr-chat-turn ${i === idx ? 'fr-chat-turn--active' : ''}`}
+              className={`fr-chat-turn ${i + 1 === idx ? 'fr-chat-turn--active' : ''}`}
               onClick={() => {
-                setIdx(i);
+                setIdx(i + 1);
                 setPlaying(false);
                 setStreaming(false);
                 setShowTyping(false);
@@ -524,7 +566,7 @@ export default function FlightRecorder() {
             >
               <div className="fr-chat-bubble">{tr.message}</div>
               {/* Show streaming mutations for current turn */}
-              {i === idx && streaming && streamEvents.length > 0 && (
+              {i + 1 === idx && streaming && streamEvents.length > 0 && (
                 <div className="fr-mutations">
                   {streamEvents.map((evt, j) => {
                     if (evt.type === 'mutation') {
@@ -560,7 +602,7 @@ export default function FlightRecorder() {
                 </div>
               )}
               {/* Show completed mutations for past turns */}
-              {i < idx && parseToolCalls(tr.tool_calls).length > 0 && (
+              {i + 1 < idx && parseToolCalls(tr.tool_calls).length > 0 && (
                 <div className="fr-mutations">
                   {parseToolCalls(tr.tool_calls).slice(0, 3).map((tc, j) => {
                     const tag = getMutationTag(tc);
@@ -792,7 +834,7 @@ export default function FlightRecorder() {
                     <div className="fr-cost-value fr-cost-value--cumulative">
                       ${cumulativeCost.toFixed(6)}
                     </div>
-                    <div className="fr-cost-sub">Turns 1-{idx + 1}</div>
+                    <div className="fr-cost-sub">Turns 0-{idx}</div>
                   </div>
                 </div>
 
@@ -844,19 +886,20 @@ export default function FlightRecorder() {
                     );
                     const h = maxCost > 0 ? (cost / maxCost) * 80 : 0;
                     const c = TC[tr.tier] || TC.L3;
+                    const turnIdx = i + 1; // Account for turn 0
                     return (
                       <div
                         key={i}
-                        className={`fr-cost-bar ${i === idx ? 'fr-cost-bar--active' : ''} ${i > idx ? 'fr-cost-bar--future' : ''}`}
+                        className={`fr-cost-bar ${turnIdx === idx ? 'fr-cost-bar--active' : ''} ${turnIdx > idx ? 'fr-cost-bar--future' : ''}`}
                         style={{
                           height: h + 10,
-                          background: i === idx ? c.tx : c.bg,
+                          background: turnIdx === idx ? c.tx : c.bg,
                         }}
                         onClick={() => {
-                          setIdx(i);
+                          setIdx(turnIdx);
                           setPlaying(false);
                         }}
-                        title={`Turn ${i + 1}: $${cost.toFixed(6)}`}
+                        title={`Turn ${turnIdx}: $${cost.toFixed(6)}`}
                       />
                     );
                   })}
@@ -1027,14 +1070,29 @@ export default function FlightRecorder() {
             className="fr-timeline-progress"
             style={{ width: `${(idx / Math.max(N - 1, 1)) * 100}%` }}
           />
+          {/* Turn 0 marker */}
+          <div
+            className="fr-timeline-marker"
+            style={{ left: '0%' }}
+          >
+            <div
+              className={`fr-timeline-dot ${idx === 0 ? 'fr-timeline-dot--active' : ''}`}
+              style={{
+                background: idx === 0 ? '#94a3b8' : '#475569',
+                borderColor: '#334155',
+              }}
+            />
+          </div>
+          {/* Actual turn markers */}
           {turns.map((tr, i) => {
             const c = TC[tr.tier] || TC.L3;
-            const active = i === idx;
+            const turnIdx = i + 1; // Account for turn 0
+            const active = turnIdx === idx;
             return (
               <div
                 key={i}
                 className="fr-timeline-marker"
-                style={{ left: `${(i / Math.max(N - 1, 1)) * 100}%` }}
+                style={{ left: `${(turnIdx / Math.max(N - 1, 1)) * 100}%` }}
               >
                 <div
                   className={`fr-timeline-dot ${active ? 'fr-timeline-dot--active' : ''}`}
