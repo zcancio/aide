@@ -1,9 +1,13 @@
 # Architecture Change: Inline Preview (Kill the Iframe)
 
 **Date:** 2026-02-20
-**Status:** Approved
+**Status:** Implemented
 **Supersedes:** Editor PRD § "Preview Iframe" and § "State Flow"
 **Affects:** `frontend/`, `backend/routes/`, `backend/services/`
+
+---
+
+> **Implementation Note:** This architecture change has been implemented. The actual implementation uses **WebSocket** (`/ws/aide/{aide_id}`) instead of SSE, and state is stored in **PostgreSQL** (`aides.state` column) rather than R2. See `backend/routes/ws.py` and `frontend/src/hooks/useWebSocket.js` for the current implementation.
 
 ---
 
@@ -111,72 +115,48 @@ The renderer already produces CSS scoped to `.aide-page`. We just need to ensure
 
 ## Streaming Primitives
 
-This is the key UX improvement. On first turn (L3), the page builds live as primitives stream in. On subsequent turns, it's fast enough to feel like a snap.
+This is the key UX improvement. On first turn (L4), the page builds live as primitives stream in. On subsequent turns (L3), it's fast enough to feel like a snap.
 
-### SSE Protocol
+### WebSocket Protocol (Implemented)
+
+> **Note:** The original spec proposed SSE. Implementation uses WebSocket for bidirectional communication.
 
 ```
-POST /api/aide/{aide_id}/chat
-Content-Type: application/json
-Accept: text/event-stream
+WebSocket: /ws/aide/{aide_id}
 
-Request:  { "message": "poker league, 8 players, biweekly thursdays" }
+Client → Server:
+  { "type": "message", "content": "poker league, 8 players, biweekly thursdays", "message_id": "..." }
 
-Response (SSE stream):
-
-event: token
-data: {"text": "Setting up an 8-player poker league..."}
-
-event: token
-data: {"text": " with biweekly rotation."}
-
-event: primitive
-data: {"type": "meta.update", "payload": {"title": "Poker League"}, "sequence": 1, ...}
-
-event: primitive
-data: {"type": "collection.create", "payload": {"id": "roster", ...}, "sequence": 2, ...}
-
-event: primitive
-data: {"type": "entity.create", "payload": {"collection": "roster", ...}, "sequence": 3, ...}
-
-...more primitives...
-
-event: done
-data: {"snapshot_hash": "abc123", "event_count": 24}
+Server → Client:
+  { "type": "stream.start", "message_id": "..." }
+  { "type": "entity.create", "id": "page", "data": {...} }
+  { "type": "entity.create", "id": "roster", "data": {...} }
+  { "type": "voice", "text": "Poker league created. 8-player roster ready." }
+  { "type": "stream.end", "message_id": "..." }
 ```
 
-### Client-Side Handling
+See [03 Streaming Pipeline](03_streaming_pipeline.md) for the full WebSocket protocol.
+
+### Client-Side Handling (Implemented)
+
+**Implementation:** `frontend/src/hooks/useWebSocket.js`
 
 ```javascript
-const eventSource = new EventSource(...)  // or fetch + ReadableStream
+// useWebSocket hook handles connection lifecycle
+const { send, sendDirectEdit } = useWebSocket(aideId, {
+  onDelta: handleDelta,      // entity.create, entity.update, entity.remove
+  onSnapshot: handleSnapshot, // snapshot.start/end for hydration
+  onVoice: handleVoice,      // voice messages for chat
+});
 
-eventSource.on('token', (data) => {
-  // Append to streaming chat message
-  appendToCurrentMessage(data.text)
-})
+// Send user message
+send({ type: 'message', content: userInput });
 
-eventSource.on('primitive', (data) => {
-  const event = data  // already a valid primitive event
-  const result = reduce(entityState, event)
-
-  if (result.applied) {
-    setEntityState(result.snapshot)
-    setEvents(prev => [...prev, event])
-    // React re-renders → previewHtml updates → DOM updates
-    // User sees the page building in real-time
-  } else {
-    console.warn('Primitive rejected:', result.error)
-    // Don't break — server will reconcile on done
-  }
-})
-
-eventSource.on('done', (data) => {
-  // Server has persisted everything.
-  // Optionally verify snapshot_hash matches local state.
-  // If mismatch: fetch canonical state from server and replace.
-  setIsProcessing(false)
-})
+// Direct edit (no LLM)
+sendDirectEdit(entityId, field, value);
 ```
+
+The reducer runs server-side. The client receives already-validated deltas via WebSocket and patches its local store.
 
 ### What the User Sees
 
@@ -206,85 +186,54 @@ The first turn feels like watching a page build itself — similar to Claude's a
 
 ---
 
-## Server Changes
+## Server Changes (Implemented)
 
-### Endpoint: `POST /api/aide/{aide_id}/chat`
+### WebSocket Endpoint: `/ws/aide/{aide_id}`
 
-Currently returns `{ response_text, html, mutated }`. Change to SSE stream.
+**Implementation:** `backend/routes/ws.py`
 
-```python
-@router.post("/api/aide/{aide_id}/chat")
-async def chat(aide_id: str, body: ChatRequest, user=Depends(get_current_user)):
-    async def event_stream():
-        # 1. Load current state from DB
-        aide = await aide_repo.get(aide_id, user.id)
-        snapshot = aide.current_snapshot
-        events = aide.event_log
-
-        # 2. Call L3/L4 with streaming
-        async for chunk in orchestrator.stream(
-            message=body.message,
-            snapshot=snapshot,
-            events=events,
-        ):
-            if chunk.type == "token":
-                yield sse_event("token", {"text": chunk.text})
-
-            elif chunk.type == "primitive":
-                # Validate + apply server-side (server stays authoritative)
-                result = reduce(snapshot, chunk.event)
-                if result.applied:
-                    snapshot = result.snapshot
-                    events.append(chunk.event)
-                    yield sse_event("primitive", chunk.event)
-                else:
-                    yield sse_event("warning", {"error": result.error})
-
-        # 3. Persist final state
-        await aide_repo.update_state(aide_id, snapshot, events)
-
-        # 4. If published, update R2 async
-        if aide.status == "published":
-            background_tasks.add_task(publish_to_r2, aide_id, snapshot, events)
-
-        yield sse_event("done", {
-            "snapshot_hash": hash_snapshot(snapshot),
-            "event_count": len(events),
-        })
-
-    return StreamingResponse(event_stream(), media_type="text/event-stream")
-```
-
-Key: the server applies each primitive to its own copy of the snapshot as it streams. Both client and server process the same primitives in the same order. They arrive at the same state. The `snapshot_hash` on `done` is a checksum the client can verify.
-
-### Orchestrator Changes
-
-The orchestrator needs to stream primitives as the LLM generates them, not batch them at the end.
-
-The L3 prompt already asks for tool calls. As the LLM streams, parse complete tool calls as they arrive:
+The WebSocket handler:
+1. Loads snapshot and conversation from PostgreSQL on connect
+2. Hydrates client with existing entities via `snapshot.start`/`snapshot.end`
+3. Processes messages through `StreamingOrchestrator`
+4. Broadcasts deltas as they're applied
+5. Persists state after each turn
 
 ```python
-async def stream(self, message, snapshot, events):
-    buffer = ""
-    async for token in llm.stream(prompt):
-        buffer += token
+@router.websocket("/ws/aide/{aide_id}")
+async def aide_websocket(websocket: WebSocket, aide_id: str):
+    await websocket.accept()
 
-        # Try to extract complete JSONL primitives from buffer
-        while "\n" in buffer:
-            line, buffer = buffer.split("\n", 1)
-            line = line.strip()
-            if not line:
-                continue
+    # Load existing state
+    snapshot = await _load_snapshot(user_id, aide_id)
+    conversation = await _load_conversation(user_id, aide_id)
 
-            parsed = try_parse_primitive(line)
-            if parsed:
-                yield StreamChunk(type="primitive", event=parsed)
-            else:
-                # It's response text
-                yield StreamChunk(type="token", text=line)
+    # Hydrate client with existing entities
+    await websocket.send_text(json.dumps({"type": "snapshot.start"}))
+    for entity_id, entity_data in entities.items():
+        await websocket.send_text(json.dumps({
+            "type": "entity.create", "id": entity_id, "data": entity_data
+        }))
+    await websocket.send_text(json.dumps({"type": "snapshot.end"}))
+
+    # Message loop
+    while True:
+        msg = await websocket.receive_json()
+        if msg["type"] == "message":
+            # Process through orchestrator
+            async for result in orchestrator.process_message(content):
+                # Broadcast deltas to client
+                ...
+        elif msg["type"] == "direct_edit":
+            # Apply through reducer, broadcast delta
+            ...
 ```
 
-This requires the LLM to emit primitives as JSONL lines in the response (one per line, parseable as they arrive). The system prompt should instruct the model to emit primitives first, then response text — or interleave them with clear delimiters.
+### Orchestrator
+
+**Implementation:** `backend/services/streaming_orchestrator.py`
+
+The orchestrator processes LLM tool calls (`mutate_entity`, `set_relationship`, `voice`) and converts them to reducer events. See [03 Streaming Pipeline](03_streaming_pipeline.md) for details.
 
 ---
 
@@ -292,7 +241,9 @@ This requires the LLM to emit primitives as JSONL lines in the response (one per
 
 When the user refreshes the page, returns to an aide from the dashboard, or opens a direct link — the editor has no state in memory. It needs to hydrate from the server.
 
-### Endpoint
+### Hydration Approaches (Two paths)
+
+**1. REST Hydrate Endpoint** (exists but not primary)
 
 ```
 GET /api/aides/{aide_id}/hydrate
@@ -305,45 +256,46 @@ GET /api/aides/{aide_id}/hydrate
   }
 ```
 
-### Client Hydration
+**2. WebSocket Hydration** (primary, implemented)
+
+When the WebSocket connects, the server sends existing state via `snapshot.start`/`snapshot.end`:
+
+```
+Client connects to /ws/aide/{aide_id}
+  → Server sends: { type: "snapshot.start" }
+  → Server sends: { type: "entity.create", id: "page", data: {...} }
+  → Server sends: { type: "entity.create", id: "roster", data: {...} }
+  → ...all entities...
+  → Server sends: { type: "meta.update", data: {...} }
+  → Server sends: { type: "snapshot.end" }
+```
+
+### Client Implementation
+
+**Implementation:** `frontend/src/components/Editor.jsx`, `frontend/src/hooks/useAide.js`
 
 ```javascript
-async function loadAide(aideId) {
-  const res = await fetch(`/api/aides/${aideId}/hydrate`)
-  const { snapshot, events, blueprint, messages, snapshot_hash } = await res.json()
+// Editor loads aide metadata and conversation history via REST
+useEffect(() => {
+  api.fetchAide(aideId);              // GET /api/aides/{aide_id}
+  api.fetchConversationHistory(aideId); // GET /api/aides/{aide_id}/history
+}, [aideId]);
 
-  setEntityState(snapshot)       // NOT replayed — snapshot is already current
-  setEvents(events)
-  setBlueprint(blueprint)
-  setMessages(messages)
-
-  // Preview renders immediately from snapshot
-  // render(snapshot, blueprint, events) → HTML → div
-}
+// WebSocket hydrates entity state on connect
+const { entityStore, handleDelta, handleSnapshot } = useAide();
+useWebSocket(aideId, {
+  onDelta: handleDelta,
+  onSnapshot: handleSnapshot,  // handles snapshot.start/end
+  onVoice: handleVoice,
+});
 ```
 
 ### Key Points
 
-- **No replay on load.** The server persists the reduced snapshot after every turn. The client receives the current state directly — it does not replay the event log to reconstruct it. The events are carried for the audit trail and for embedding in published HTML, not for client-side reconstruction.
-- **No HTML transfer.** The server does not send rendered HTML. The client renders locally from the snapshot using the same `render()` function used during streaming. This means the cold load path and the streaming path produce identical output — same engine, same function, same result.
-- **Load time.** A typical aide's JSON payload (snapshot + events + messages) is 20-100KB. The client-side render is milliseconds. Total cold load: one network round-trip + a few ms of rendering. Fast.
-- **New aide (no state yet).** When creating a new aide, there's no server state to load. The client starts with `emptyState()` and an empty event log. The first message creates everything via streamed primitives.
-
-### Sequence
-
-```
-Cold load:
-  t=0ms     GET /api/aides/{id}/hydrate
-  t=200ms   JSON response arrives (snapshot + events + blueprint + messages + snapshot_hash)
-  t=205ms   render(snapshot, blueprint, events) → HTML string
-  t=210ms   DOM update. Preview visible. Chat history populated.
-  t=210ms   Ready for input.
-
-New aide:
-  t=0ms     emptyState() + empty events + no blueprint
-  t=0ms     render(emptyState()) → "This page is empty."
-  t=0ms     Ready for input. Placeholder: "What are you running?"
-```
+- **No replay on load.** The server persists the reduced snapshot after every turn. The client receives the current state directly — it does not replay the event log.
+- **No HTML transfer.** The server does not send rendered HTML. The client renders locally from the entity store using `renderHtml()`.
+- **Load time.** A typical aide's entities are sent as individual messages. Total cold load: WebSocket connect + entity messages + render. Fast.
+- **New aide (no state yet).** The WebSocket connects with empty state. The first message creates everything via streamed deltas.
 
 ---
 
@@ -380,25 +332,25 @@ The compact build (`engine.compact.js`) is also available if bundle size matters
 
 ## What Stays the Same
 
-- **Published pages** are still static HTML files on R2. `render()` still produces full standalone HTML with embedded `aide+json`, `aide-events+json`, and `aide-blueprint+json` blocks. Publishing runs server-side after state is persisted.
-- **The chat overlay** spec is unchanged — floating input bar, expandable history, backdrop blur, auto-collapse.
+- **Published pages** are still static HTML files. Publishing runs server-side after state is persisted.
+- **The chat overlay** spec is unchanged — floating input bar, expandable history, backdrop blur.
 - **Voice rules** are unchanged.
 - **L3/L4 routing** is unchanged.
-- **Server is still authoritative.** Client-side reduce is for real-time preview. Server persists. On mismatch, server wins.
-- **Database schema** is unchanged. `aides` table stores snapshot + event log.
+- **Server is still authoritative.** The reducer runs server-side. Client receives validated deltas. On mismatch, server wins.
+- **Database schema** is unchanged. `aides` table stores snapshot + event log in `state` and `event_log` JSONB columns.
 
 ---
 
 ## What Changes
 
-| Before (PRD) | After |
+| Before (PRD) | After (Implemented) |
 |---|---|
-| Preview is a sandboxed `<iframe>` with `srcdoc` | Preview is a `<div>` with `dangerouslySetInnerHTML` |
-| Server returns `{ html }` per turn | Server streams primitives via SSE |
-| Engine runs server-side only | Engine runs on both client and server |
-| Preview updates once on turn completion | Preview updates incrementally as primitives arrive |
-| Editor holds no entityState | Editor holds entityState as single source of truth during session |
-| No streaming | SSE streaming of tokens + primitives |
+| Preview is a sandboxed `<iframe>` with `srcdoc` | Preview is a `<div>` inside Shadow DOM |
+| Server returns `{ html }` per turn | Server streams deltas via WebSocket |
+| Engine runs server-side only | Reducer runs server-side, renderer runs client-side |
+| Preview updates once on turn completion | Preview updates incrementally as deltas arrive |
+| Editor holds no entityState | Editor holds entityStore as single source of truth during session |
+| No streaming | WebSocket streaming of entity deltas + voice |
 
 ---
 

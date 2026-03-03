@@ -1,9 +1,16 @@
-# AIde — Editor PRD
+# aide — Editor PRD
 
 **Author:** Zach Cancio
 **Date:** 2026-02-15
-**Status:** v1 specification
+**Status:** v1 specification (partially superseded)
 **Depends on:** aide_prd.md, aide_living_objects.md, aide_renderer_spec.md
+
+> **Implementation Note:** Some sections of this PRD have been superseded by [aide_editor_architecture_change.md](../eng_design/aide_editor_architecture_change.md). Key differences:
+> - **Preview:** Inline `<div>` with Shadow DOM, not sandboxed `<iframe>`
+> - **Streaming:** WebSocket with real-time deltas, not batch updates per turn
+> - **State flow:** Entity store in React state, not HTML via `srcdoc`
+>
+> See `frontend/src/components/Editor.jsx` for the current implementation.
 
 ---
 
@@ -114,25 +121,27 @@ The chat overlay is the input surface. It's a floating bar at the bottom of the 
 
 The preview is the page itself, filling the entire viewport behind the chat overlay.
 
-### Rendering
+> **Superseded:** The iframe approach was replaced with inline rendering. See [aide_editor_architecture_change.md](../eng_design/aide_editor_architecture_change.md).
 
-- The preview is a sandboxed `<iframe>` that fills the viewport (minus the header).
-- The iframe reloads after each AI response that mutates state. Not on every keystroke — per turn.
-- The rendered HTML is the same output the renderer produces for published pages. What you see is what gets published.
-- The preview scrolls naturally. The user can scroll the aide while the chat overlay stays pinned at the bottom.
+### Rendering (Current Implementation)
+
+- The preview is a `<div>` with Shadow DOM for style isolation (not an iframe)
+- Entity state is stored in React state and rendered via `renderHtml()` from `frontend/src/lib/display/render-html.js`
+- Updates stream in real-time via WebSocket as entities are created/updated
+- The rendered HTML is the same output the renderer produces for published pages
 
 ### Update Behavior
 
-- After a turn that changes state, the iframe refreshes.
-- Changed elements get a subtle highlight pulse: 150–250ms fade, light background highlight, then gone. This shows what changed without being intrusive.
-- No toast notifications. No "Page updated!" banners. The visual change in the preview *is* the notification.
-- If the aide responds but nothing changes visually (e.g., an advisory response), the preview doesn't refresh.
+- Entities stream in progressively during first turn — the page "builds itself"
+- Subsequent updates are fast enough to feel like a snap
+- Voice messages appear in the chat overlay as they arrive
+- No toast notifications. The visual change in the preview *is* the notification.
 
 ### Interaction
 
-- The preview is read-only. No clicking to edit, no drag-to-reorder, no inline editing.
-- Links in the preview open in a new tab (not inside the iframe).
-- Scroll position in the preview is preserved across refreshes when possible. If the changed content is off-screen, auto-scroll to it.
+- **Direct editing is enabled.** Click any editable field to edit inline. Emits `direct_edit` via WebSocket.
+- Links in the preview open in a new tab.
+- Checkboxes toggle immediately without LLM involvement.
 
 ---
 
@@ -273,32 +282,34 @@ The editor is a full-page preview with a chat overlay at the bottom. You're look
 
 ## Technical Notes
 
-### Preview Iframe
+> **Superseded:** See [aide_editor_architecture_change.md](../eng_design/aide_editor_architecture_change.md) for current architecture.
 
-- Use `srcdoc` attribute to inject rendered HTML directly — no network round-trip.
-- Iframe fills the viewport below the header: `position: absolute; top: header-height; bottom: 0; width: 100%;`
-- Sandbox: `sandbox="allow-same-origin"` — no scripts, no forms, no popups. The preview is a pure visual render.
-- CSP on the iframe should block all external resources except fonts (Google Fonts).
+### Preview (Current Implementation)
+
+- Shadow DOM container with scoped styles from `frontend/display/tokens.css`
+- Rendered via `renderHtml(entityStore)` from `frontend/src/lib/display/render-html.js`
+- Direct editing via `editable-field` class and data attributes
 
 ### Chat Overlay
 
-- `position: fixed; bottom: 0;` with `z-index` above the iframe.
-- Backdrop: `backdrop-filter: blur(12px); background: rgba(255,255,255,0.85);` with a subtle `box-shadow` on top edge.
-- Expanded history scrolls internally. Max-height transition for smooth expand/collapse.
-- Safe area padding: `padding-bottom: env(safe-area-inset-bottom);` for iOS.
+- Implemented in `frontend/src/components/ChatOverlay.jsx`
+- Messages stored in React state, synced with conversation history
+- Voice messages from WebSocket appended to chat
 
-### State Flow
+### State Flow (Current Implementation)
 
 ```
 User sends message
-  → Chat overlay shows typing indicator
-  → Backend processes (L2/L3 → primitives → reducer → renderer)
-  → Response returns: { message: "...", html: "...", mutated: true/false }
-  → Chat overlay appends aide message in expanded history
-  → If mutated: preview iframe updates via srcdoc
-  → If published: R2 upload happens async (user doesn't wait)
-  → After 3s inactivity: chat history auto-collapses to input bar
+  → WebSocket sends: { type: "message", content: "..." }
+  → Backend: classifier picks tier (L3/L4)
+  → Backend: LLM streams tool calls → reducer applies → deltas broadcast
+  → WebSocket receives: entity deltas + voice messages
+  → Client: entityStore updated → renderHtml() → DOM updates
+  → User sees page building progressively
+  → Backend: persists state to PostgreSQL after stream.end
 ```
+
+**Implementation:** `frontend/src/components/Editor.jsx`, `frontend/src/hooks/useWebSocket.js`, `backend/routes/ws.py`
 
 ### Image Input
 
