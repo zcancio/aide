@@ -102,3 +102,7 @@ export async function logout() {
     method: 'POST',
   });
 }
+
+export async function fetchConversationHistory(aideId) {
+  return apiCall(`/api/aides/${aideId}/history`);
+}
