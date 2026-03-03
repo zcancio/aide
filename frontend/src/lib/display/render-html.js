@@ -209,7 +209,15 @@ function buildNavBarHtml(pageTitle) {
 export function renderHtml(store) {
   if (!store || !store.entities) return '';
 
-  const pageTitle = store.meta?.title || 'AIde';
+  // Find page title from page entity (prefer over meta.title for nav bar)
+  let pageTitle = store.meta?.title || 'AIde';
+  const pageEntity = store.rootIds
+    .map(id => store.entities[id])
+    .find(e => e?.display === 'page');
+  if (pageEntity?.props?.title || pageEntity?.props?.name) {
+    pageTitle = pageEntity.props.title || pageEntity.props.name;
+  }
+
   const navBar = buildNavBarHtml(pageTitle);
   const stickyPill = '<div class="aide-pill-container" id="sticky-pill" style="display:none;"><div class="aide-pill"></div></div>';
 
@@ -224,9 +232,11 @@ export function renderHtml(store) {
   });
   // Always wrap in .aide-page for consistent padding/layout
   const content = sortedRootIds.map(id => renderEntity(id, store.entities)).join('');
-  // Check if content already has a page wrapper
+  // Check if content already has a page wrapper - remove the h1 since nav bar shows title
   if (content.trim().startsWith('<div class="aide-page">')) {
-    return navBar + stickyPill + content.replace('class="aide-page"', 'class="aide-page aide-page-with-nav"');
+    // Remove the h1 heading since nav bar shows the title
+    const contentWithoutH1 = content.replace(/<h1 class="aide-heading aide-heading--1[^>]*>.*?<\/h1>\s*/s, '');
+    return navBar + stickyPill + contentWithoutH1.replace('class="aide-page"', 'class="aide-page aide-page-with-nav"');
   }
   return navBar + stickyPill + `<div class="aide-page aide-page-with-nav">${content}</div>`;
 }
