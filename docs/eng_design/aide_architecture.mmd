@@ -1,0 +1,41 @@
+graph TD
+    subgraph CLIENT["CLIENT"]
+        direction TB
+        INPUT["Chat Input"]
+        CHAT["Chat Panel<br/><i>voice lines, L4 responses</i>"]
+        GRAPH["Entity Graph<br/><i>React state store</i>"]
+        RENDERER["Display Components<br/><i>renderHtml()</i>"]
+        PAGE["Live Page<br/><i>PageDisplay, TableDisplay,<br/>ChecklistDisplay, ...</i>"]
+
+        GRAPH --> RENDERER
+        RENDERER --> PAGE
+    end
+
+    subgraph SERVER["SERVER"]
+        direction TB
+        WS["WebSocket Handler<br/><i>/ws/aide/{aide_id}</i>"]
+        ORCH["Orchestrator<br/><i>tier selection</i>"]
+
+        HAIKU["Haiku<br/><i>L2 — routine mutations</i>"]
+        SONNET["Sonnet<br/><i>L3 — schema synthesis</i>"]
+        OPUS["Opus<br/><i>L4 — queries only</i>"]
+
+        REDUCER["Reducer<br/><i>engine/kernel/reducer.py</i>"]
+        DB["PostgreSQL<br/><i>aides.state (JSONB)<br/>conversations.messages<br/>aide_files.html</i>"]
+
+        WS --> ORCH
+        ORCH -->|"L2"| HAIKU
+        ORCH -->|"L3"| SONNET
+        ORCH -->|"L4"| OPUS
+
+        HAIKU -->|"tool calls"| REDUCER
+        SONNET -->|"tool calls"| REDUCER
+        HAIKU -.->|"escalate to L3"| SONNET
+
+        REDUCER -->|"save snapshot"| DB
+    end
+
+    INPUT -->|"WebSocket message"| WS
+    REDUCER -->|"entity deltas<br/>(WebSocket)"| GRAPH
+    REDUCER -->|"voice events"| CHAT
+    OPUS -->|"text response"| CHAT

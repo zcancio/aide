@@ -122,6 +122,11 @@ The fast loop makes the slow loop trustworthy. If the user can fix any mistake i
 
 ## Architecture Diagram
 
+<img src="aide_architecture.png" alt="aide Architecture" width="800">
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 graph TD
     subgraph CLIENT["CLIENT"]
@@ -165,6 +170,8 @@ graph TD
     REDUCER -->|"voice events"| CHAT
     OPUS -->|"text response"| CHAT
 ```
+
+</details>
 
 **The data flow:**
 1. User message → WebSocket `/ws/aide/{aide_id}` → Orchestrator picks tier (L2, L3, or L4)

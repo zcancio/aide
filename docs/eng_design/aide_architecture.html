@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>aide Architecture Diagram</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      margin-bottom: 30px;
+      font-weight: 500;
+    }
+    .mermaid {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+    }
+    .instructions {
+      margin-top: 20px;
+      color: #888;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>aide Architecture</h1>
+  <div class="mermaid">
+graph TD
+    subgraph CLIENT["CLIENT"]
+        direction TB
+        INPUT["Chat Input"]
+        CHAT["Chat Panel&lt;br/&gt;&lt;i&gt;voice lines, L4 responses&lt;/i&gt;"]
+        GRAPH["Entity Graph&lt;br/&gt;&lt;i&gt;React state store&lt;/i&gt;"]
+        RENDERER["Display Components&lt;br/&gt;&lt;i&gt;renderHtml()&lt;/i&gt;"]
+        PAGE["Live Page&lt;br/&gt;&lt;i&gt;PageDisplay, TableDisplay,&lt;br/&gt;ChecklistDisplay, ...&lt;/i&gt;"]
+
+        GRAPH --> RENDERER
+        RENDERER --> PAGE
+    end
+
+    subgraph SERVER["SERVER"]
+        direction TB
+        WS["WebSocket Handler&lt;br/&gt;&lt;i&gt;/ws/aide/{aide_id}&lt;/i&gt;"]
+        ORCH["Orchestrator&lt;br/&gt;&lt;i&gt;tier selection&lt;/i&gt;"]
+
+        HAIKU["Haiku&lt;br/&gt;&lt;i&gt;L2 — routine mutations&lt;/i&gt;"]
+        SONNET["Sonnet&lt;br/&gt;&lt;i&gt;L3 — schema synthesis&lt;/i&gt;"]
+        OPUS["Opus&lt;br/&gt;&lt;i&gt;L4 — queries only&lt;/i&gt;"]
+
+        REDUCER["Reducer&lt;br/&gt;&lt;i&gt;engine/kernel/reducer.py&lt;/i&gt;"]
+        DB["PostgreSQL&lt;br/&gt;&lt;i&gt;aides.state (JSONB)&lt;br/&gt;conversations.messages&lt;br/&gt;aide_files.html&lt;/i&gt;"]
+
+        WS --> ORCH
+        ORCH -->|"L2"| HAIKU
+        ORCH -->|"L3"| SONNET
+        ORCH -->|"L4"| OPUS
+
+        HAIKU -->|"tool calls"| REDUCER
+        SONNET -->|"tool calls"| REDUCER
+        HAIKU -.->|"escalate to L3"| SONNET
+
+        REDUCER -->|"save snapshot"| DB
+    end
+
+    INPUT -->|"WebSocket message"| WS
+    REDUCER -->|"entity deltas (WebSocket)"| GRAPH
+    REDUCER -->|"voice events"| CHAT
+    OPUS -->|"text response"| CHAT
+  </div>
+  <p class="instructions">Right-click the diagram and select "Save image as..." to export as PNG</p>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'default',
+      flowchart: {
+        useMaxWidth: false,
+        htmlLabels: true
+      }
+    });
+  </script>
+</body>
+</html>
