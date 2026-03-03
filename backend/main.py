@@ -138,11 +138,6 @@ if _FRONTEND.is_dir():
     if _FRONTEND_DIST.is_dir():
         app.mount("/assets", StaticFiles(directory=str(_FRONTEND_DIST / "assets")), name="assets")
 
-    @app.get("/flight-recorder")
-    async def serve_flight_recorder():
-        """Serve the flight recorder replay page."""
-        return FileResponse(str(_FRONTEND / "flight-recorder.html"))
-
     @app.get("/cli/auth")
     async def serve_cli_auth():
         """Serve the CLI authorization page."""
