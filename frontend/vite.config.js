@@ -1,32 +1,8 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// Plugin to rewrite SPA routes to spa.html
-function spaFallback() {
-  return {
-    name: 'spa-fallback',
-    configureServer(server) {
-      server.middlewares.use((req, res, next) => {
-        // SPA routes that should fallback to spa.html
-        const spaRoutes = ['/', '/demo', '/a/', '/flight-recorder'];
-        const isSpaRoute = spaRoutes.some(route =>
-          req.url === route || req.url.startsWith(route)
-        );
-        // Don't rewrite files with extensions or special paths
-        const hasExtension = /\.\w+$/.test(req.url);
-        const isSpecialPath = req.url.startsWith('/@') || req.url.startsWith('/src') || req.url.startsWith('/node_modules');
-
-        if (isSpaRoute && !hasExtension && !isSpecialPath) {
-          req.url = '/spa.html';
-        }
-        next();
-      });
-    },
-  };
-}
-
 export default defineConfig({
-  plugins: [react(), spaFallback()],
+  plugins: [react()],
   root: '.',
   build: {
     outDir: 'dist',
