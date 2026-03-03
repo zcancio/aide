@@ -17,7 +17,7 @@ export default function Editor() {
   const [messages, setMessages] = useState([]);
   const { entityStore, handleDelta, handleSnapshot } = useAide();
 
-  // Fetch aide data on mount
+  // Fetch aide data and conversation history on mount
   useEffect(() => {
     async function loadAide() {
       const result = await api.fetchAide(aideId);
@@ -25,8 +25,15 @@ export default function Editor() {
         setAide(result.data);
       }
     }
+    async function loadHistory() {
+      const result = await api.fetchConversationHistory(aideId);
+      if (result.data?.messages) {
+        setMessages(result.data.messages);
+      }
+    }
     if (aideId) {
       loadAide();
+      loadHistory();
     }
   }, [aideId]);
 

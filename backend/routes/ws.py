@@ -12,6 +12,7 @@ import logging
 import re
 import time
 import uuid
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -19,9 +20,11 @@ import jwt
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from backend.config import settings
+from backend.models.conversation import Message
 from backend.models.telemetry import TelemetryEvent
 from backend.repos import telemetry_repo
 from backend.repos.aide_repo import AideRepo
+from backend.repos.conversation_repo import ConversationRepo
 from backend.services.streaming_orchestrator import StreamingOrchestrator
 from engine.kernel.mock_llm import MockLLM
 from engine.kernel.reducer import empty_snapshot, reduce
@@ -32,6 +35,7 @@ logger = logging.getLogger(__name__)
 _UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE)
 
 aide_repo = AideRepo()
+conversation_repo = ConversationRepo()
 
 
 def _get_user_id_from_websocket(websocket: WebSocket) -> UUID | None:
@@ -92,6 +96,86 @@ async def _save_snapshot(user_id: UUID | None, aide_id: str, snapshot: dict[str,
         logger.info("ws: saved %d entities for aide_id=%s", len(snapshot.get("entities", {})), aide_id)
     except Exception as e:
         logger.warning("ws: failed to save snapshot for aide_id=%s: %s", aide_id, e)
+
+
+async def _load_conversation(user_id: UUID | None, aide_id: str) -> tuple[list[dict[str, str]], UUID | None, int]:
+    """
+    Load conversation history for the given aide.
+
+    Returns:
+        Tuple of (conversation_messages, conversation_id, turn_num)
+        - conversation_messages: List of {"role": "...", "content": "..."} dicts
+        - conversation_id: UUID of the conversation if exists, None otherwise
+        - turn_num: Current turn number (based on user messages count + 1)
+    """
+    if not user_id or not _UUID_RE.match(aide_id):
+        return [], None, 1
+
+    try:
+        aide_uuid = UUID(aide_id)
+        conversation = await conversation_repo.get_for_aide(user_id, aide_uuid)
+        if conversation:
+            # Convert Message objects to dict format for orchestrator
+            messages = [{"role": m.role, "content": m.content} for m in conversation.messages]
+            # Turn number is count of user messages + 1
+            turn_num = sum(1 for m in conversation.messages if m.role == "user") + 1
+            logger.info(
+                "ws: loaded %d messages for aide_id=%s, turn_num=%d",
+                len(messages),
+                aide_id,
+                turn_num,
+            )
+            return messages, conversation.id, turn_num
+    except Exception as e:
+        logger.warning("ws: failed to load conversation for aide_id=%s: %s", aide_id, e)
+
+    return [], None, 1
+
+
+async def _save_conversation_messages(
+    user_id: UUID | None,
+    aide_id: str,
+    conversation_id: UUID | None,
+    user_message: str,
+    assistant_response: str,
+) -> None:
+    """
+    Save user message and assistant response to conversation.
+
+    Creates a new conversation if one doesn't exist.
+    """
+    if not user_id or not _UUID_RE.match(aide_id):
+        return
+
+    try:
+        aide_uuid = UUID(aide_id)
+        now = datetime.now(UTC)
+
+        # Get or create conversation
+        if not conversation_id:
+            conversation = await conversation_repo.create(user_id, aide_uuid, channel="web")
+            conversation_id = conversation.id
+            logger.info("ws: created conversation for aide_id=%s", aide_id)
+
+        # Append user message
+        if user_message:
+            await conversation_repo.append_message(
+                user_id,
+                conversation_id,
+                Message(role="user", content=user_message, timestamp=now),
+            )
+
+        # Append assistant response
+        if assistant_response:
+            await conversation_repo.append_message(
+                user_id,
+                conversation_id,
+                Message(role="assistant", content=assistant_response, timestamp=now),
+            )
+
+        logger.info("ws: saved conversation messages for aide_id=%s", aide_id)
+    except Exception as e:
+        logger.warning("ws: failed to save conversation for aide_id=%s: %s", aide_id, e)
 
 
 router = APIRouter(tags=["websocket"])
@@ -305,6 +389,12 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
             in_batch = False
             batch_buffer: list[dict[str, Any]] = []
 
+            # Load conversation history
+            conversation_history, conversation_id, turn_num = await _load_conversation(user_id, aide_id)
+
+            # Collect voice text during streaming for conversation history
+            voice_texts: list[str] = []
+
             # Determine if we should use real LLM or mock
             # Use mock LLM in tests (TESTING=true) or when USE_MOCK_LLM=true
             use_real_llm = settings.ANTHROPIC_API_KEY and not settings.USE_MOCK_LLM and not settings.TESTING
@@ -316,10 +406,10 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
                         orchestrator = StreamingOrchestrator(
                             aide_id=aide_id,
                             snapshot=snapshot,
-                            conversation=[],  # TODO: Load conversation history
+                            conversation=conversation_history,
                             api_key=settings.ANTHROPIC_API_KEY,
                             user_id=user_id,
-                            turn_num=1,  # TODO: Track turn number across conversation
+                            turn_num=turn_num,
                         )
 
                         async for result in orchestrator.process_message(content):
@@ -342,7 +432,9 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
 
                             # Voice events
                             if result_type == "voice":
-                                await websocket.send_text(json.dumps({"type": "voice", "text": result.get("text", "")}))
+                                voice_text = result.get("text", "")
+                                voice_texts.append(voice_text)
+                                await websocket.send_text(json.dumps({"type": "voice", "text": voice_text}))
                                 continue
 
                             # Event processed
@@ -429,9 +521,10 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
                                 continue
 
                             if event_type in _VOICE_TYPES:
-                                voice_text: str = event.get("text", "")
-                                if voice_text:
-                                    await websocket.send_text(json.dumps({"type": "voice", "text": voice_text}))
+                                voice_text_mock: str = event.get("text", "")
+                                if voice_text_mock:
+                                    voice_texts.append(voice_text_mock)
+                                    await websocket.send_text(json.dumps({"type": "voice", "text": voice_text_mock}))
                                 continue
 
                             if event_type not in _ENTITY_TYPES and not event_type.startswith(
@@ -495,6 +588,11 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
             if not interrupt_requested:
                 # Persist snapshot to database and R2
                 await _save_snapshot(user_id, aide_id, snapshot)
+
+                # Save conversation history (user message + assistant response)
+                assistant_response = " ".join(voice_texts) if voice_texts else ""
+                await _save_conversation_messages(user_id, aide_id, conversation_id, content, assistant_response)
+
                 await websocket.send_text(json.dumps({"type": "stream.end", "message_id": message_id}))
             current_message_id = None
 

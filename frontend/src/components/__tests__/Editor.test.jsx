@@ -21,6 +21,7 @@ vi.mock('../../hooks/useWebSocket.js', () => ({
 // Mock API
 vi.mock('../../lib/api.js', () => ({
   fetchAide: vi.fn().mockResolvedValue({ data: { id: 'test-aide-id', title: 'Test Aide' } }),
+  fetchConversationHistory: vi.fn().mockResolvedValue({ data: { messages: [] } }),
 }));
 
 // Mock child components
