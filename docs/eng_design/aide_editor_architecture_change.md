@@ -111,7 +111,7 @@ The renderer already produces CSS scoped to `.aide-page`. We just need to ensure
 
 ## Streaming Primitives
 
-This is the key UX improvement. On first turn (L3), the page builds live as primitives stream in. On subsequent turns (L2), it's fast enough to feel like a snap.
+This is the key UX improvement. On first turn (L3), the page builds live as primitives stream in. On subsequent turns, it's fast enough to feel like a snap.
 
 ### SSE Protocol
 
@@ -194,7 +194,7 @@ t=4-8s   Block, view, style primitives arrive.
 t=8-15s  Done. Final state. Page is complete.
 ```
 
-**Subsequent turns (L2, ~1.5-3 seconds):**
+**Subsequent turns (L3, ~1.5-3 seconds):**
 ```
 t=0s     User hits send. Message appears in chat.
 t=0.8s   TTFT. Chat streams: "Mike out. Dave substituting."
@@ -221,7 +221,7 @@ async def chat(aide_id: str, body: ChatRequest, user=Depends(get_current_user)):
         snapshot = aide.current_snapshot
         events = aide.event_log
 
-        # 2. Call L2/L3 with streaming
+        # 2. Call L3/L4 with streaming
         async for chunk in orchestrator.stream(
             message=body.message,
             snapshot=snapshot,
@@ -261,7 +261,7 @@ Key: the server applies each primitive to its own copy of the snapshot as it str
 
 The orchestrator needs to stream primitives as the LLM generates them, not batch them at the end.
 
-The L2/L3 prompt already asks for JSONL primitives. As the LLM streams tokens, parse complete JSON lines as they arrive:
+The L3 prompt already asks for tool calls. As the LLM streams, parse complete tool calls as they arrive:
 
 ```python
 async def stream(self, message, snapshot, events):
@@ -383,7 +383,7 @@ The compact build (`engine.compact.js`) is also available if bundle size matters
 - **Published pages** are still static HTML files on R2. `render()` still produces full standalone HTML with embedded `aide+json`, `aide-events+json`, and `aide-blueprint+json` blocks. Publishing runs server-side after state is persisted.
 - **The chat overlay** spec is unchanged — floating input bar, expandable history, backdrop blur, auto-collapse.
 - **Voice rules** are unchanged.
-- **L2/L3 routing** is unchanged.
+- **L3/L4 routing** is unchanged.
 - **Server is still authoritative.** Client-side reduce is for real-time preview. Server persists. On mismatch, server wins.
 - **Database schema** is unchanged. `aides` table stores snapshot + event log.
 
