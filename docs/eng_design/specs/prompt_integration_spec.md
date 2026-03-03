@@ -9,7 +9,6 @@ Integrate the eval-validated prompt architecture (`evals/scripts/`) into product
 ```
 backend/
 ├── prompts/
-│   ├── l2_system.md          # L2 instructions (~80 lines)
 │   ├── l3_system.md          # L3 instructions
 │   ├── l4_system.md          # L4 instructions
 │   └── primitive_schemas.md   # Event schemas
@@ -32,12 +31,11 @@ backend/
 backend/
 ├── prompts/
 │   ├── shared_prefix.md      # Voice, format, primitives, entity tree (~200 lines)
-│   ├── l2_tier.md            # L2-specific rules (~180 lines)
 │   ├── l3_tier.md            # L3-specific rules (~160 lines)
 │   └── l4_tier.md            # L4-specific rules (~110 lines)
 ├── services/
 │   ├── prompt_builder.py     # Content blocks with cache control
-│   ├── tier_classifier.py    # Rule-based L2/L3/L4 routing
+│   ├── tier_classifier.py    # Rule-based L3/L4 routing
 │   ├── anthropic_client.py   # Updated for content blocks
 │   └── llm_provider.py       # Unchanged
 ```
@@ -49,7 +47,7 @@ backend/
 ```
 ┌─────────────────────────────┐
 │  shared_prefix.md           │  cache_control: ephemeral
-│  (~2,500 tokens)            │  — shared across L2/L3/L4
+│  (~2,500 tokens)            │  — shared across L3/L4
 │                             │
 │  - Voice rules              │
 │  - Output format (JSONL)    │
@@ -176,7 +174,7 @@ def build_system_blocks(
     3. Snapshot (uncached — changes every mutation)
 
     Args:
-        tier: "L2", "L3", or "L4"
+        tier: "L3" or "L4"
         snapshot: Current entityState
         user_timezone: IANA timezone for date context
 
@@ -195,7 +193,7 @@ def build_system_blocks(
     )
 
     # Load tier-specific instructions
-    tier_file = {"L2": "l2_tier", "L3": "l3_tier", "L4": "l4_tier"}[tier]
+    tier_file = {"L3": "l3_tier", "L4": "l4_tier"}[tier]
     tier_text = _load(tier_file)
 
     # Format snapshot
@@ -270,10 +268,6 @@ def build_messages(
 
 # --- Convenience wrappers (flat string, for tests) ---
 
-def build_l2_prompt(snapshot: dict[str, Any]) -> str:
-    blocks = build_system_blocks("L2", snapshot)
-    return "\n\n".join(b["text"] for b in blocks)
-
 def build_l3_prompt(snapshot: dict[str, Any]) -> str:
     blocks = build_system_blocks("L3", snapshot)
     return "\n\n".join(b["text"] for b in blocks)
@@ -291,7 +285,7 @@ Create `backend/services/tier_classifier.py`:
 """
 Rule-based tier classifier.
 
-Routes user messages to L2/L3/L4 based on intent detection.
+Routes user messages to L3/L4 based on intent detection.
 Validated against 63 multi-turn scenarios with 100% accuracy.
 """
 
@@ -311,14 +305,14 @@ def classify_tier(message: str, snapshot: dict[str, Any] | None) -> str:
     3. No entities exist → L3 (first turn)
     4. Budget/quotes/tasks introduction (empty tables) → L3
     5. Multi-item creation (3+ comma items) → L3
-    6. Default → L2 (routine mutations)
+    6. Default → L3 (mutations)
 
     Args:
         message: User's message text
         snapshot: Current entity state (or None if empty)
 
     Returns:
-        "L2", "L3", or "L4"
+        "L3" or "L4"
     """
     msg_lower = message.lower().strip()
     entities = snapshot.get("entities", {}) if snapshot else {}
@@ -332,7 +326,7 @@ def classify_tier(message: str, snapshot: dict[str, Any] | None) -> str:
             thing in eid or thing.rstrip('s') in eid or thing + 's' in eid
             for eid in entity_ids_lower
         )
-        return "L2" if thing_exists else "L3"
+        return "L3"  # All mutations now use L3
 
     # Structural keywords → L3
     structural = [
@@ -412,8 +406,8 @@ def classify_tier(message: str, snapshot: dict[str, Any] | None) -> str:
                 if not table_parents:
                     return "L3"
 
-    # Default → L2
-    return "L2"
+    # Default → L3
+    return "L3"
 ```
 
 ### Phase 4: Update anthropic_client.py
@@ -468,9 +462,8 @@ async def handle_message(user_message: str, snapshot: dict, conversation: list):
 
     # Select model based on tier
     model = {
-        "L2": "claude-haiku-4-5-20251001",
         "L3": "claude-sonnet-4-5-20250929",
-        "L4": "claude-sonnet-4-5-20250929",
+        "L4": "claude-opus-4-5-20251101",
     }[tier]
 
     # Stream response
