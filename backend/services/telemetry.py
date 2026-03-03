@@ -14,11 +14,13 @@ Usage:
 from __future__ import annotations
 
 import time
+from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID
 
-from backend.models.telemetry import TelemetryEvent, TokenUsage, TurnTelemetry
+from backend.models.telemetry import AideTelemetry, TelemetryEvent, TokenUsage, TurnTelemetry
 from backend.repos import telemetry_repo
+from backend.repos.aide_repo import AideRepo
 
 # ---------------------------------------------------------------------------
 # Pricing (per 1M tokens, as of 2026)
@@ -247,3 +249,30 @@ class TurnRecorder:
         )
 
         return await telemetry_repo.insert_turn(self._user_id, self._aide_id, turn)
+
+
+# ---------------------------------------------------------------------------
+# get_aide_telemetry
+# ---------------------------------------------------------------------------
+
+
+async def get_aide_telemetry(user_id: UUID, aide_id: UUID) -> AideTelemetry | None:
+    """
+    Get full telemetry for an aide in eval-compatible format.
+
+    Returns None if aide not found or user doesn't have access.
+    """
+    repo = AideRepo()
+    aide = await repo.get(user_id, aide_id)
+    if not aide:
+        return None
+
+    turns = await telemetry_repo.get_turns_for_aide(user_id, aide_id)
+
+    return AideTelemetry(
+        aide_id=str(aide_id),
+        name=aide.title,
+        timestamp=datetime.now(UTC).isoformat(),
+        turns=turns,
+        final_snapshot=aide.state,
+    )

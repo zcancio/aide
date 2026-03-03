@@ -24,6 +24,7 @@ from backend.routes import engine as engine_routes
 from backend.routes import flight_recorder as flight_recorder_routes
 from backend.routes import pages as pages_routes
 from backend.routes import publish as publish_routes
+from backend.routes import telemetry as telemetry_routes
 from backend.routes import ws as ws_routes
 from backend.services.flight_recorder_uploader import flight_recorder_uploader
 
@@ -114,6 +115,7 @@ app.include_router(conversation_routes.router)
 app.include_router(publish_routes.router)
 app.include_router(pages_routes.router)
 app.include_router(flight_recorder_routes.router)
+app.include_router(telemetry_routes.router)
 app.include_router(ws_routes.router)
 app.include_router(engine_routes.router)
 
