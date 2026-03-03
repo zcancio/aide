@@ -1,7 +1,7 @@
 # 01: Data Model
 
 > **Prerequisites:** [00 Overview](00_overview.md)
-> **Next:** [02 JSONL Schema](02_jsonl_schema.md) (the wire format for mutating the model)
+> **Next:** [02 JSONL Schema](02_tool_calls.md) (the wire format for mutating the model)
 
 ---
 
@@ -164,4 +164,4 @@ This enables:
 
 Events are stored in the event log with full metadata (sequence number, timestamp, actor, source). The entity tree snapshot is derived state, rebuilt from events.
 
-→ The event format is defined in [02 JSONL Schema](02_jsonl_schema.md).
+→ The event format is defined in [02 JSONL Schema](02_tool_calls.md).

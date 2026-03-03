@@ -1,6 +1,6 @@
 # 05: Intelligence Tiers
 
-> **Prerequisites:** [00 Overview](00_overview.md) · [02 JSONL Schema](02_jsonl_schema.md) (for escalation signals)
+> **Prerequisites:** [00 Overview](00_overview.md) · [02 JSONL Schema](02_tool_calls.md) (for escalation signals)
 > **Next:** [06 Prompts](06_prompts.md) (the actual system prompts for each tier)
 
 ---

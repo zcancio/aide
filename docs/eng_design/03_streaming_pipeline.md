@@ -1,6 +1,6 @@
 # 03: Streaming Pipeline
 
-> **Prerequisites:** [01 Data Model](01_data_model.md) · [02 JSONL Schema](02_jsonl_schema.md)
+> **Prerequisites:** [01 Data Model](01_data_model.md) · [02 JSONL Schema](02_tool_calls.md)
 > **Next:** [04 Display Components](04_display_components.md) (what the client does with each delta)
 
 ---

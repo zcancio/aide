@@ -2,7 +2,7 @@
 
 > **Read time:** 5 minutes
 > **Audience:** Everyone on the team
-> **Next:** Pick the doc for your area → [Data Model](01_data_model.md) · [JSONL Schema](02_jsonl_schema.md) · [Streaming Pipeline](03_streaming_pipeline.md) · [Display Components](04_display_components.md) · [Intelligence Tiers](05_intelligence_tiers.md)
+> **Next:** Pick the doc for your area → [Data Model](01_data_model.md) · [JSONL Schema](02_tool_calls.md) · [Streaming Pipeline](03_streaming_pipeline.md) · [Display Components](04_display_components.md) · [Intelligence Tiers](05_intelligence_tiers.md)
 
 ---
 
@@ -52,7 +52,7 @@ grad_page (display: "page")
 
 Cross-branch connections (Linda is *bringing* the potato salad) are modeled as **relationships** — typed links between any two entities in the tree.
 
-### 2. LLM Emits Only Primitives via Tool Calls → [02_jsonl_schema.md](02_jsonl_schema.md)
+### 2. LLM Emits Only Primitives via Tool Calls → [02_tool_calls.md](02_tool_calls.md)
 
 **The rule:** The LLM never generates what the renderer can derive.
 
@@ -190,7 +190,7 @@ At publish time, the server renders the snapshot to static HTML stored in `aide_
 |-----|---------------|----------------|
 | **[00 Overview](00_overview.md)** | This doc. The big picture. | Are new to the project |
 | **[01 Data Model](01_data_model.md)** | Entity tree, relationships, schema inference | Touch state or the reducer |
-| **[02 JSONL Schema](02_jsonl_schema.md)** | All 13 primitives + 4 signals, event wrapping | Touch the LLM pipeline or server |
+| **[02 Tool Calls](02_tool_calls.md)** | mutate_entity, voice, set_relationship tools | Touch the LLM pipeline or server |
 | **[03 Streaming Pipeline](03_streaming_pipeline.md)** | Server parsing, WebSocket, caching, streaming rules | Touch server or client integration |
 | **[04 Display Components](04_display_components.md)** | React compiler, all 9 components, EditableField | Touch the frontend |
 | **[05 Intelligence Tiers](05_intelligence_tiers.md)** | L2/L3/L4, routing, escalation, multi-intent, costs | Touch LLM orchestration |
