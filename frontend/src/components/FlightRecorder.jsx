@@ -18,7 +18,7 @@ import {
   buildSnapshot,
   COST_RATES,
 } from '../lib/flight-recorder-utils.js';
-import { renderDocument } from '../lib/display/index.js';
+import { renderHtml } from '../lib/display/index.js';
 import '../styles/flight-recorder.css';
 
 // Tier colors
@@ -185,8 +185,13 @@ export default function FlightRecorder() {
     if (previewRef.current && data && N > 0 && tab === 'rendered') {
       const snapshot =
         idx === N - 1 && data.final_snapshot ? data.final_snapshot : snapshotAfter;
-      // Use the display library to render
-      const html = renderDocument(snapshot);
+      // Convert snapshot to renderHtml format (needs rootIds)
+      const entities = snapshot.entities || {};
+      const rootIds = Object.keys(entities).filter(
+        (id) => !entities[id].parent || entities[id].parent === 'root'
+      );
+      const store = { entities, rootIds, meta: snapshot.meta || {} };
+      const html = renderHtml(store);
       previewRef.current.innerHTML = html;
     }
   }, [idx, data, N, tab, snapshotAfter]);
