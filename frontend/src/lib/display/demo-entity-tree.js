@@ -15,7 +15,7 @@ export function getDemoEntityTree() {
       'demo-page': {
         id: 'demo-page',
         display: 'page',
-        props: { title: 'AIde Pattern Library' },
+        props: { title: 'aide Pattern Library' },
         _created_seq: 1
       },
 

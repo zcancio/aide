@@ -35,7 +35,7 @@ function AppRoutes() {
   const location = useLocation();
 
   // Public routes (no auth required)
-  if (location.pathname === '/demo') {
+  if (location.pathname.startsWith('/demo')) {
     return <DemoPatterns />;
   }
 
