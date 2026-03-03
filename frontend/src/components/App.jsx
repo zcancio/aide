@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from '../hooks/useAuth.jsx';
 import AuthScreen from './AuthScreen.jsx';
 import Dashboard from './Dashboard.jsx';
 import Editor from './Editor.jsx';
+import FlightRecorder from './FlightRecorder.jsx';
 
 function AppRoutes() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -23,6 +24,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<Dashboard />} />
       <Route path="/a/:aideId" element={<Editor />} />
+      <Route path="/flight-recorder" element={<FlightRecorder />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
