@@ -46,7 +46,28 @@ export function parseToolCalls(toolCalls) {
   return toolCalls
     .map((tc) => {
       if (!tc) return null;
+      // Handle { type, input } format (eval format)
       if (tc.type && tc.input) return { t: tc.type, ...tc.input };
+      // Handle { name, input } format (telemetry API format)
+      if (tc.name && tc.input) {
+        const input = tc.input;
+        if (tc.name === 'mutate_entity') {
+          const action = input.action;
+          if (action === 'create') {
+            return { t: 'entity.create', id: input.id, parent: input.parent, display: input.display, p: input.props };
+          } else if (action === 'update') {
+            return { t: 'entity.update', ref: input.ref, p: input.props };
+          } else if (action === 'remove') {
+            return { t: 'entity.remove', ref: input.ref };
+          }
+        } else if (tc.name === 'voice') {
+          return { t: 'voice', text: input.text };
+        } else if (tc.name === 'set_relationship') {
+          return { t: 'rel.set', ...input };
+        }
+        return { t: tc.name, ...input };
+      }
+      // Handle already normalized format
       if (tc.t) return tc;
       return tc;
     })

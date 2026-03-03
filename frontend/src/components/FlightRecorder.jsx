@@ -192,7 +192,13 @@ export default function FlightRecorder() {
     reader.readAsText(file);
   }, []);
 
-  // Reset shadow ref when data changes (new aide loaded or closed)
+  // Reset shadow ref when data changes or tab switches away from rendered
+  useEffect(() => {
+    if (tab !== 'rendered') {
+      shadowRef.current = null;
+    }
+  }, [tab]);
+
   useEffect(() => {
     shadowRef.current = null;
   }, [data]);
