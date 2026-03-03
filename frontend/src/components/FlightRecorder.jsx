@@ -132,13 +132,17 @@ export default function FlightRecorder() {
 
   // Build streaming snapshot - applies mutations incrementally as they stream in
   const streamingSnapshot = useMemo(() => {
-    if (!streaming || streamEvents.length === 0) return null;
+    if (!streaming) return null;
 
-    // Start from the state before current turn
+    // Start from state before current turn, but don't copy meta until we have entities
+    // This ensures title doesn't show until first entity.create
     const snapshot = {
-      meta: { ...snapshotBefore.meta },
+      meta: {},
       entities: { ...snapshotBefore.entities },
     };
+
+    // Track if we've seen any entity.create in the stream
+    let hasCreatedEntity = Object.keys(snapshotBefore.entities).length > 0;
 
     // Apply each streamed mutation
     for (const evt of streamEvents) {
@@ -169,6 +173,7 @@ export default function FlightRecorder() {
 
       // Apply the mutation
       if (eventType === 'entity.create') {
+        hasCreatedEntity = true;
         snapshot.entities[input.id] = {
           id: input.id,
           parent: input.parent || 'root',
@@ -189,8 +194,16 @@ export default function FlightRecorder() {
       } else if (eventType === 'entity.remove') {
         delete snapshot.entities[input.ref];
       } else if (eventType === 'meta.set' || eventType === 'meta.update') {
-        snapshot.meta = { ...snapshot.meta, ...(input.p || input.props || {}) };
+        // Only apply meta after we have entities (or had them before)
+        if (hasCreatedEntity) {
+          snapshot.meta = { ...snapshot.meta, ...(input.p || input.props || {}) };
+        }
       }
+    }
+
+    // If we have entities, include previous meta as base
+    if (hasCreatedEntity) {
+      snapshot.meta = { ...snapshotBefore.meta, ...snapshot.meta };
     }
 
     return snapshot;
