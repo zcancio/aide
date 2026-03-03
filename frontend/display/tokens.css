@@ -438,9 +438,9 @@
 
 /* ── Section (React component) ── */
 :host .aide-section {
-  margin-bottom: var(--space-8);
-  padding-top: var(--space-6);
-  border-top: 1px solid var(--border-light);
+  margin-bottom: var(--space-10);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-default);
 }
 :host .aide-section:first-child {
   border-top: none;
