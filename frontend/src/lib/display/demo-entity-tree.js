@@ -423,7 +423,7 @@ export function getDemoEntityTree() {
         parent: 'section-images',
         display: 'image',
         props: {
-          src: 'https://via.placeholder.com/600x300/7C8C6E/FFFFFF?text=Basic+Image',
+          src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='300'%3E%3Crect fill='%237C8C6E' width='600' height='300'/%3E%3Ctext x='50%25' y='50%25' fill='white' font-family='sans-serif' font-size='24' text-anchor='middle' dy='.3em'%3EBasic Image%3C/text%3E%3C/svg%3E",
           alt: 'Placeholder image'
         },
         _created_seq: 50
@@ -434,7 +434,7 @@ export function getDemoEntityTree() {
         parent: 'section-images',
         display: 'image',
         props: {
-          src: 'https://via.placeholder.com/600x300/8FA07E/FFFFFF?text=Image+with+Caption',
+          src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='300'%3E%3Crect fill='%238FA07E' width='600' height='300'/%3E%3Ctext x='50%25' y='50%25' fill='white' font-family='sans-serif' font-size='24' text-anchor='middle' dy='.3em'%3EImage with Caption%3C/text%3E%3C/svg%3E",
           alt: 'Image with caption',
           caption: 'Figure 1: This image demonstrates the caption feature'
         },
@@ -446,7 +446,7 @@ export function getDemoEntityTree() {
         parent: 'section-images',
         display: 'image',
         props: {
-          url: 'https://via.placeholder.com/600x300/A3B394/FFFFFF?text=URL+Prop+Fallback',
+          url: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='300'%3E%3Crect fill='%23A3B394' width='600' height='300'/%3E%3Ctext x='50%25' y='50%25' fill='white' font-family='sans-serif' font-size='24' text-anchor='middle' dy='.3em'%3EURL Prop Fallback%3C/text%3E%3C/svg%3E",
           alt: 'Using url prop instead of src'
         },
         _created_seq: 52
@@ -659,7 +659,7 @@ export function getDemoEntityTree() {
       'auto-detect-image': {
         id: 'auto-detect-image',
         parent: 'section-auto-detect',
-        props: { src: 'https://via.placeholder.com/400x200/C2CCB8/FFFFFF?text=Auto-Detected+Image' },
+        props: { src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='200'%3E%3Crect fill='%23C2CCB8' width='400' height='200'/%3E%3Ctext x='50%25' y='50%25' fill='white' font-family='sans-serif' font-size='18' text-anchor='middle' dy='.3em'%3EAuto-Detected Image%3C/text%3E%3C/svg%3E" },
         _created_seq: 78
       },
 
