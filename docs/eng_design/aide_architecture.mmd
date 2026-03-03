@@ -2,7 +2,7 @@ graph TD
     subgraph CLIENT["CLIENT"]
         direction TB
         INPUT["Chat Input"]
-        CHAT["Chat Panel<br/><i>voice events, L4 responses</i>"]
+        CHAT["Chat Panel<br/><i>voice events, query responses</i>"]
         GRAPH["Entity Graph<br/><i>React state store</i>"]
         RENDERER["Display Components<br/><i>renderHtml()</i>"]
         PAGE["Live Page<br/><i>PageDisplay, TableDisplay,<br/>ChecklistDisplay, ...</i>"]
@@ -16,17 +16,18 @@ graph TD
         WS["WebSocket Handler<br/><i>/ws/aide/{aide_id}</i>"]
         ORCH["Orchestrator<br/><i>tier selection</i>"]
 
-        SONNET["Sonnet<br/><i>L3 — mutations + creation</i>"]
-        OPUS["Opus<br/><i>L4 — queries</i>"]
+        OPUS["Opus<br/><i>L4 — first turn + queries</i>"]
+        SONNET["Sonnet<br/><i>L3 — subsequent mutations</i>"]
 
         REDUCER["Reducer<br/><i>engine/kernel/reducer.py</i>"]
         DB["PostgreSQL<br/><i>aides.state (JSONB)<br/>conversations.messages<br/>aide_files.html</i>"]
 
         WS --> ORCH
-        ORCH -->|"L3"| SONNET
-        ORCH -->|"L4"| OPUS
+        ORCH -->|"L4 (first turn)"| OPUS
+        ORCH -->|"L3 (updates)"| SONNET
 
-        SONNET -->|"tool calls<br/>(mutate_entity, voice)"| REDUCER
+        OPUS -->|"tool calls"| REDUCER
+        SONNET -->|"tool calls"| REDUCER
         SONNET -.->|"escalate to L4"| OPUS
 
         REDUCER -->|"save snapshot"| DB
@@ -35,4 +36,4 @@ graph TD
     INPUT -->|"WebSocket message"| WS
     REDUCER -->|"entity deltas<br/>(WebSocket)"| GRAPH
     REDUCER -->|"voice events"| CHAT
-    OPUS -->|"text response"| CHAT
+    OPUS -->|"query response"| CHAT

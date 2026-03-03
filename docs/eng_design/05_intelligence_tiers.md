@@ -7,16 +7,16 @@
 
 ## Two Models, Two Jobs
 
-| Tier | Model | Job | % of Turns | Target Latency | ~Cost/Call |
+| Tier | Model | Job | When Used | Target Latency | ~Cost/Call |
 |------|-------|-----|-----------|---------------|-----------|
-| L3 | Sonnet | Mutations + creation | ~95% | <4s complete | ~$0.02-0.05 |
-| L4 | Opus | Queries & reasoning | ~5% | <5s | ~$0.10-0.20 |
+| L4 | Opus | First turn + queries | First turn, escalations | <5s | ~$0.10-0.20 |
+| L3 | Sonnet | Subsequent mutations | After first turn | <4s complete | ~$0.02-0.05 |
 
-**L3 (Sonnet) — The Architect.** Handles all mutations: first creation, new sections, structural refactors, and routine updates. "Plan my graduation party." "Add Aunt Linda." "Change date to May 22." Emits tool calls. Handles both creation and updates.
+**L4 (Opus) — The Creator & Analyst.** Handles first turn (aide creation) and queries. "Plan my graduation party." "Who hasn't RSVPed?" Emits tool calls for mutations, text for query answers. First turn always routes here for best quality initial structure.
 
-**L4 (Opus) — The Analyst.** Queries that reason over the entity graph. "Who hasn't RSVPed?" "Do we have enough food?" Reads full snapshot, produces text answer in chat. Does **not** emit tool calls — no page mutations, just answers.
+**L3 (Sonnet) — The Updater.** Handles subsequent mutations after the aide exists. "Add Aunt Linda." "Change date to May 22." Emits tool calls. Can escalate to L4 for queries or complex reasoning.
 
-**Why Opus for queries:** The graduation parent asks "who hasn't RSVPed" and will call those people. A wrong answer has real consequences. The extra latency is invisible — the user is in "thinking mode" when asking questions, not "doing mode."
+**Why Opus for first turn:** The initial structure defines the aide's shape. Getting it right matters more than speed. Users expect the first creation to take a moment. Subsequent updates need to feel snappy — that's where Sonnet shines.
 
 ---
 
@@ -27,23 +27,24 @@
 Server-side, rule-based, <10ms. Runs on every message before any LLM call.
 
 **Route to L4 (Opus):**
+- **First turn** (no entities exist yet) — always L4 for initial creation
 - Message is a question (?, who, what, how many, do we, is there, which)
 - Asks for analysis, comparison, recommendation
 - Asks about completeness ("do we have enough", "what's missing", "are we ready")
 
 **Route to L3 (Sonnet):**
-- Everything else: creation, mutations, updates, structural changes
+- Subsequent turns with mutations: updates, additions, structural changes
 
 **Confidence scoring:**
 - High (>0.8) → route to classified tier
-- Medium (0.5-0.8) → default to L3
-- Low (<0.5) → default to L3
+- Medium (0.5-0.8) → default to L4
+- Low (<0.5) → default to L4
 
 Principle: **never show wrong data.** When in doubt, use the smarter model. Latency is recoverable. Broken trust is not.
 
 ### Layer 2: LLM Self-Escalation
 
-L3 can emit an escalation signal for queries:
+L3 can emit an escalation signal for queries or complex reasoning:
 
 ```json
 {"type": "tool_use", "name": "escalate", "input": {"tier": "L4", "reason": "query", "extract": "do we have enough food?"}}

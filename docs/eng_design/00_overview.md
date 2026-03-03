@@ -75,10 +75,10 @@ A recursive React component walks the entity tree. Each entity maps to a display
 
 | Tier | Model | Job | Latency |
 |------|-------|-----|---------|
-| L3 | Sonnet | Mutations + creation ("plan my graduation party", "add Aunt Linda") | <4s |
-| L4 | Opus | Queries ("who hasn't RSVPed?") | <5s |
+| L4 | Opus | First turn + queries ("plan my graduation party", "who hasn't RSVPed?") | <5s |
+| L3 | Sonnet | Subsequent mutations ("add Aunt Linda", "change date") | <4s |
 
-Most interactions hit Sonnet (L3). L3 can escalate to L4 for queries. Queries use Opus because wrong answers erode trust.
+First turn always routes to Opus (L4) for best quality initial structure. Subsequent turns hit Sonnet (L3) for speed. L3 can escalate to L4 for queries.
 
 ---
 
@@ -131,7 +131,7 @@ graph TD
     subgraph CLIENT["CLIENT"]
         direction TB
         INPUT["Chat Input"]
-        CHAT["Chat Panel<br/><i>voice events, L4 responses</i>"]
+        CHAT["Chat Panel<br/><i>voice events, query responses</i>"]
         GRAPH["Entity Graph<br/><i>React state store</i>"]
         RENDERER["Display Components<br/><i>renderHtml()</i>"]
         PAGE["Live Page<br/><i>PageDisplay, TableDisplay,<br/>ChecklistDisplay, ...</i>"]
@@ -145,17 +145,18 @@ graph TD
         WS["WebSocket Handler<br/><i>/ws/aide/{aide_id}</i>"]
         ORCH["Orchestrator<br/><i>tier selection</i>"]
 
-        SONNET["Sonnet<br/><i>L3 — mutations + creation</i>"]
-        OPUS["Opus<br/><i>L4 — queries</i>"]
+        OPUS["Opus<br/><i>L4 — first turn + queries</i>"]
+        SONNET["Sonnet<br/><i>L3 — subsequent mutations</i>"]
 
         REDUCER["Reducer<br/><i>engine/kernel/reducer.py</i>"]
         DB["PostgreSQL<br/><i>aides.state (JSONB)<br/>conversations.messages<br/>aide_files.html</i>"]
 
         WS --> ORCH
-        ORCH -->|"L3"| SONNET
-        ORCH -->|"L4"| OPUS
+        ORCH -->|"L4 (first turn)"| OPUS
+        ORCH -->|"L3 (updates)"| SONNET
 
-        SONNET -->|"tool calls<br/>(mutate_entity, voice)"| REDUCER
+        OPUS -->|"tool calls"| REDUCER
+        SONNET -->|"tool calls"| REDUCER
         SONNET -.->|"escalate to L4"| OPUS
 
         REDUCER -->|"save snapshot"| DB
@@ -164,17 +165,17 @@ graph TD
     INPUT -->|"WebSocket message"| WS
     REDUCER -->|"entity deltas<br/>(WebSocket)"| GRAPH
     REDUCER -->|"voice events"| CHAT
-    OPUS -->|"text response"| CHAT
+    OPUS -->|"query response"| CHAT
 ```
 
 </details>
 
 **The data flow:**
-1. User message → WebSocket `/ws/aide/{aide_id}` → Orchestrator picks tier (L3 or L4)
-2. L3 → LLM streams tool calls → Reducer applies to snapshot → entity deltas → client via WebSocket
-3. L4 → text response → client chat panel (no tool calls, no reducer)
+1. User message → WebSocket `/ws/aide/{aide_id}` → Orchestrator picks tier (L4 for first turn/queries, L3 for updates)
+2. L4/L3 → LLM streams tool calls → Reducer applies to snapshot → entity deltas → client via WebSocket
+3. For queries, L4 also sends text response → client chat panel
 4. Voice events sent to client chat panel
-5. L3 escalation to L4 re-enters via text response path
+5. L3 can escalate to L4 for queries or complex reasoning
 
 **What's in PostgreSQL:**
 - `aides.state` — current entity snapshot (JSONB, source of truth)
