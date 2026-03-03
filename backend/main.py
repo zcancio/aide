@@ -143,6 +143,11 @@ if _FRONTEND.is_dir():
         """Serve the flight recorder replay page."""
         return FileResponse(str(_FRONTEND / "flight-recorder.html"))
 
+    @app.get("/flight-recorder-new")
+    async def serve_flight_recorder_new():
+        """Serve the new unified flight recorder UI."""
+        return FileResponse(str(_FRONTEND / "flight_recorder_new.html"))
+
     @app.get("/cli/auth")
     async def serve_cli_auth():
         """Serve the CLI authorization page."""

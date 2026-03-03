@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Flight Recorder - aide</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { overflow: hidden; background: #0b0b13; }
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+button:focus { outline: none; }
+input:focus { outline: none; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback, useRef, useMemo } = React;
+
+// Tier colors
+const TC = {
+  L2: { bg: "#0c4a6e", tx: "#7dd3fc", bd: "#0369a1", lb: "L2 Haiku" },
+  L3: { bg: "#06b6d4", tx: "#cffafe", bd: "#0891b2", lb: "L3 Sonnet" },
+  L4: { bg: "#7c3aed", tx: "#e9d5ff", bd: "#6d28d9", lb: "L4 Opus" },
+};
+
+// Event type colors
+const EC = {
+  "entity.create": { bg: "#064e3b", tx: "#6ee7b7", bd: "#047857" },
+  "entity.update": { bg: "#1e3a5f", tx: "#93c5fd", bd: "#2563eb" },
+  "entity.remove": { bg: "#4c0519", tx: "#fda4af", bd: "#be123c" },
+  "meta.set": { bg: "#422006", tx: "#fdba74", bd: "#c2410c" },
+  "meta.update": { bg: "#422006", tx: "#fdba74", bd: "#c2410c" },
+  voice: { bg: "#1a2e05", tx: "#bef264", bd: "#4d7c0f" },
+  clarify: { bg: "#4a1d96", tx: "#e9d5ff", bd: "#7c3aed" },
+  "view.create": { bg: "#3b1f63", tx: "#c4b5fd", bd: "#7c3aed" },
+  "block.set": { bg: "#1e293b", tx: "#94a3b8", bd: "#334155" },
+  "field.add": { bg: "#7c2d12", tx: "#fed7aa", bd: "#c2410c" },
+  "style.set": { bg: "#831843", tx: "#fbcfe8", bd: "#be185d" },
+  "collection.create": { bg: "#064e3b", tx: "#6ee7b7", bd: "#047857" },
+};
+
+const mono = "ui-monospace, 'SF Mono', Monaco, Consolas, monospace";
+
+// Cost rates per 1M tokens
+const COST_RATES = {
+  L4: { in: 15, out: 75, cache_read: 1.5, cache_write: 18.75 },
+  L3: { in: 3, out: 15, cache_read: 0.3, cache_write: 3.75 },
+  L2: { in: 0.25, out: 1.25, cache_read: 0.03, cache_write: 0.3125 },
+};
+
+function calculateCost(usage, tier) {
+  if (!usage) return 0;
+  const r = COST_RATES[tier?.split("->")[0]] || COST_RATES.L3;
+  return (
+    (usage.input_tokens || 0) * r.in / 1e6 +
+    (usage.output_tokens || 0) * r.out / 1e6 +
+    (usage.cache_read || 0) * r.cache_read / 1e6 +
+    (usage.cache_creation || 0) * r.cache_write / 1e6
+  );
+}
+
+// Parse JSONL tool calls into event array
+function parseToolCalls(toolCalls) {
+  if (!toolCalls || !Array.isArray(toolCalls)) return [];
+  return toolCalls.map(tc => {
+    if (tc.type && tc.input) return { t: tc.type, ...tc.input };
+    if (tc.t) return tc;
+    return tc;
+  }).filter(Boolean);
+}
+
+// Build entity tree from snapshot
+function mkTree(ents, removedEnts) {
+  if (!ents) return [];
+  const merged = { ...ents };
+  if (removedEnts) {
+    for (const [id, e] of Object.entries(removedEnts)) {
+      if (!merged[id]) merged[id] = { ...e, _removed: true };
+    }
+  }
+  const all = Object.values(merged).filter(e => e && e.id);
+  const allIds = new Set(all.map(e => e.id));
+  allIds.add("root");
+  const ch = {};
+  all.forEach(e => { const p = e.parent || "root"; (ch[p] = ch[p] || []).push(e); });
+  for (const p of Object.keys(ch)) {
+    ch[p].sort((a, b) => (a._removed ? 1 : 0) - (b._removed ? 1 : 0));
+  }
+  const out = [];
+  const visited = new Set();
+  const walk = (pid, d) => { (ch[pid] || []).forEach(c => { visited.add(c.id); out.push({ ...c, depth: d }); walk(c.id, d + 1); }); };
+  walk("root", 0);
+  const orphans = all.filter(e => !visited.has(e.id) && !allIds.has(e.parent || "root"));
+  if (orphans.length > 0) {
+    orphans.forEach(o => { out.push({ ...o, depth: 0, _orphan: true }); });
+  }
+  return out;
+}
+
+// Compute entity diff between snapshots
+function eDiff(b, a) {
+  const bk = new Set(Object.keys(b || {}));
+  const ak = new Set(Object.keys(a || {}));
+  const add = [...ak].filter(k => !bk.has(k));
+  const rem = [...bk].filter(k => !ak.has(k));
+  const mod = [];
+  const modDetails = {};
+  const moved = {};
+  for (const k of ak) {
+    if (!bk.has(k)) continue;
+    const bp = JSON.stringify((b[k]?.props || b[k]?.p || {}));
+    const ap = JSON.stringify((a[k]?.props || a[k]?.p || {}));
+    const bParent = b[k]?.parent;
+    const aParent = a[k]?.parent;
+    const parentChanged = bParent !== aParent;
+    if (bp !== ap || parentChanged) {
+      mod.push(k);
+      const bObj = b[k]?.props || b[k]?.p || {};
+      const aObj = a[k]?.props || a[k]?.p || {};
+      const changed = [];
+      const allKeys = new Set([...Object.keys(bObj), ...Object.keys(aObj)]);
+      for (const pk of allKeys) {
+        if (JSON.stringify(bObj[pk]) !== JSON.stringify(aObj[pk])) {
+          changed.push(bObj[pk] === undefined ? `+${pk}` : aObj[pk] === undefined ? `-${pk}` : `${pk}: ${JSON.stringify(bObj[pk])}->${JSON.stringify(aObj[pk])}`);
+        }
+      }
+      if (parentChanged) {
+        changed.push(`parent: ${bParent}->${aParent}`);
+        moved[k] = { from: bParent, to: aParent };
+      }
+      modDetails[k] = changed;
+    }
+  }
+  return { add, rem, mod, modDetails, moved };
+}
+
+// Build cumulative snapshot from turns
+function buildSnapshot(turns, upToIndex) {
+  let snapshot = { meta: {}, entities: {} };
+  for (let i = 0; i <= upToIndex && i < turns.length; i++) {
+    const turn = turns[i];
+    const events = parseToolCalls(turn.tool_calls);
+    for (const evt of events) {
+      if (evt.t === "meta.set" || evt.t === "meta.update") {
+        snapshot.meta = { ...snapshot.meta, ...evt.p };
+      } else if (evt.t === "entity.create") {
+        snapshot.entities[evt.id] = {
+          id: evt.id,
+          parent: evt.parent || "root",
+          display: evt.display,
+          props: evt.p || {},
+        };
+      } else if (evt.t === "entity.update") {
+        if (snapshot.entities[evt.ref]) {
+          snapshot.entities[evt.ref].props = {
+            ...snapshot.entities[evt.ref].props,
+            ...evt.p,
+          };
+        }
+      } else if (evt.t === "entity.remove") {
+        delete snapshot.entities[evt.ref];
+      }
+    }
+  }
+  return snapshot;
+}
+
+function FlightRecorder() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [idx, setIdx] = useState(0);
+  const [tab, setTab] = useState("rendered");
+  const [playing, setPlaying] = useState(false);
+  const [aideIdInput, setAideIdInput] = useState("");
+  const fileRef = useRef(null);
+  const iframeRef = useRef(null);
+
+  const turns = useMemo(() => data?.turns || [], [data]);
+  const N = turns.length;
+  const t = turns[idx] || {};
+
+  // Build snapshots for current turn
+  const snapshotBefore = useMemo(() => idx > 0 ? buildSnapshot(turns, idx - 1) : { meta: {}, entities: {} }, [turns, idx]);
+  const snapshotAfter = useMemo(() => buildSnapshot(turns, idx), [turns, idx]);
+  const diff = useMemo(() => eDiff(snapshotBefore.entities, snapshotAfter.entities), [snapshotBefore, snapshotAfter]);
+  const removedEnts = useMemo(() => {
+    if (!diff.rem.length) return null;
+    const out = {};
+    for (const id of diff.rem) { if (snapshotBefore.entities[id]) out[id] = snapshotBefore.entities[id]; }
+    return out;
+  }, [diff.rem, snapshotBefore]);
+  const tree = useMemo(() => mkTree(snapshotAfter.entities, removedEnts), [snapshotAfter, removedEnts]);
+  const events = useMemo(() => parseToolCalls(t.tool_calls), [t.tool_calls]);
+
+  // Calculate cumulative cost
+  const cumulativeCost = useMemo(() => {
+    let total = 0;
+    for (let i = 0; i <= idx && i < turns.length; i++) {
+      total += calculateCost(turns[i].usage, turns[i].tier);
+    }
+    return total;
+  }, [turns, idx]);
+
+  // Load from API
+  const loadFromAPI = useCallback(async (aideId) => {
+    if (!aideId) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/aides/${aideId}/telemetry`, {
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        if (response.status === 401) {
+          setError("Not authenticated. Please log in.");
+        } else if (response.status === 404) {
+          setError("Aide not found or no telemetry data.");
+        } else {
+          setError(`Failed to load: ${response.status}`);
+        }
+        setLoading(false);
+        return;
+      }
+      const json = await response.json();
+      setData(json);
+      setIdx(0);
+      setTab("rendered");
+    } catch (err) {
+      setError(err.message);
+    }
+    setLoading(false);
+  }, []);
+
+  // Load from file
+  const loadFromFile = useCallback((file) => {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const json = JSON.parse(ev.target.result);
+        // Handle both direct format and wrapped format
+        let loaded;
+        if (json.turns) {
+          loaded = json;
+        } else if (json.results?.length) {
+          const pick = json.results[0];
+          loaded = {
+            aide_id: pick.aide_id || pick.name || "loaded",
+            name: pick.name || pick.scenario || "Loaded File",
+            timestamp: pick.timestamp || new Date().toISOString(),
+            turns: pick.turns || [],
+            final_snapshot: pick.final_snapshot,
+          };
+        }
+        if (loaded?.turns?.length) {
+          setData(loaded);
+          setIdx(0);
+          setTab("rendered");
+          setError(null);
+        } else {
+          setError("Invalid file format: no turns found");
+        }
+      } catch (err) {
+        setError("Failed to parse JSON file");
+      }
+    };
+    reader.readAsText(file);
+  }, []);
+
+  // Update iframe when turn changes
+  useEffect(() => {
+    if (iframeRef.current && data && N > 0 && tab === "rendered") {
+      // If we have a final_snapshot and this is the last turn, use it
+      // Otherwise render from built snapshot
+      const snapshot = idx === N - 1 && data.final_snapshot
+        ? data.final_snapshot
+        : snapshotAfter;
+
+      // Simple HTML render
+      const title = snapshot.meta?.title || data.name || "Preview";
+      const html = renderSnapshotToHTML(snapshot, title);
+      iframeRef.current.srcdoc = html;
+    }
+  }, [idx, data, N, tab, snapshotAfter]);
+
+  // Playback
+  useEffect(() => {
+    if (!playing || N === 0) return;
+    const id = setInterval(() => {
+      setIdx(p => {
+        if (p >= N - 1) {
+          setPlaying(false);
+          return p;
+        }
+        return p + 1;
+      });
+    }, 2000);
+    return () => clearInterval(id);
+  }, [playing, N]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const fn = (e) => {
+      if (e.target.tagName === "INPUT") return;
+      if (e.key === "ArrowRight" || e.key === "l") {
+        setIdx(p => Math.min(p + 1, N - 1));
+        setPlaying(false);
+      } else if (e.key === "ArrowLeft" || e.key === "h") {
+        setIdx(p => Math.max(p - 1, 0));
+        setPlaying(false);
+      } else if (e.key === " ") {
+        e.preventDefault();
+        setPlaying(p => !p);
+      } else if (e.key >= "1" && e.key <= "6") {
+        const tabs = ["rendered", "output", "diff", "tree", "prompt", "cost"];
+        setTab(tabs[+e.key - 1]);
+      } else if (e.key === "Home") {
+        setIdx(0);
+        setPlaying(false);
+      } else if (e.key === "End") {
+        setIdx(Math.max(0, N - 1));
+        setPlaying(false);
+      }
+    };
+    window.addEventListener("keydown", fn);
+    return () => window.removeEventListener("keydown", fn);
+  }, [N]);
+
+  // Check URL params on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const aideId = params.get('aide_id');
+    if (aideId) {
+      setAideIdInput(aideId);
+      loadFromAPI(aideId);
+    }
+  }, [loadFromAPI]);
+
+  const sc = v => v >= 0.9 ? "#4ade80" : v >= 0.75 ? "#facc15" : v >= 0.6 ? "#fb923c" : "#f87171";
+  const Tier = ({ tier, small }) => {
+    const c = TC[tier] || TC.L3;
+    return (
+      <span style={{
+        padding: small ? "1px 5px" : "2px 7px",
+        borderRadius: 3,
+        background: c.bg,
+        border: `1px solid ${c.bd}`,
+        color: c.tx,
+        fontWeight: 600,
+        fontSize: small ? 9 : 11,
+        fontFamily: mono,
+        display: "inline-block"
+      }}>
+        {c.lb}
+      </span>
+    );
+  };
+  const Lbl = ({ children }) => (
+    <div style={{
+      fontSize: 10,
+      textTransform: "uppercase",
+      letterSpacing: 1.5,
+      color: "#64748b",
+      marginBottom: 8,
+      fontWeight: 700,
+      fontFamily: mono
+    }}>
+      {children}
+    </div>
+  );
+  const Pre = ({ text, mh }) => (
+    <pre style={{
+      background: "#08080f",
+      border: "1px solid #1e1e2e",
+      borderRadius: 6,
+      padding: 12,
+      fontSize: 12,
+      lineHeight: 1.6,
+      fontFamily: mono,
+      color: "#c9d1d9",
+      overflow: "auto",
+      maxHeight: mh || 9999,
+      whiteSpace: "pre-wrap",
+      wordBreak: "break-word",
+      margin: 0
+    }}>
+      {text || "(empty)"}
+    </pre>
+  );
+
+  // Landing page when no data loaded
+  if (!data) {
+    return (
+      <div style={{
+        width: "100%",
+        height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "#0b0b13",
+        color: "#e2e8f0",
+        fontFamily: "system-ui, sans-serif",
+        gap: 24,
+      }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#64748b", fontFamily: mono }}>
+          Flight Recorder
+        </div>
+        <div style={{ fontSize: 24, fontWeight: 600, color: "#e2e8f0" }}>Load Telemetry</div>
+
+        {/* Load from API */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
+          <div style={{ fontSize: 12, color: "#64748b" }}>Enter Aide ID</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              type="text"
+              value={aideIdInput}
+              onChange={(e) => setAideIdInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && loadFromAPI(aideIdInput)}
+              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+              style={{
+                width: 320,
+                padding: "8px 12px",
+                fontSize: 13,
+                fontFamily: mono,
+                background: "#1e293b",
+                border: "1px solid #334155",
+                borderRadius: 6,
+                color: "#e2e8f0",
+              }}
+            />
+            <button
+              onClick={() => loadFromAPI(aideIdInput)}
+              disabled={loading || !aideIdInput}
+              style={{
+                padding: "8px 16px",
+                fontSize: 12,
+                fontWeight: 600,
+                background: loading ? "#1e293b" : "#3b82f6",
+                border: "1px solid #3b82f6",
+                borderRadius: 6,
+                color: loading ? "#64748b" : "#fff",
+                cursor: loading ? "wait" : "pointer",
+              }}
+            >
+              {loading ? "Loading..." : "Load"}
+            </button>
+          </div>
+        </div>
+
+        <div style={{ fontSize: 12, color: "#334155" }}>or</div>
+
+        {/* Load from file */}
+        <div>
+          <button
+            onClick={() => fileRef.current?.click()}
+            style={{
+              padding: "8px 16px",
+              fontSize: 12,
+              fontWeight: 600,
+              background: "#1e293b",
+              border: "1px solid #334155",
+              borderRadius: 6,
+              color: "#94a3b8",
+              cursor: "pointer",
+            }}
+          >
+            Upload JSON File
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".json"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) loadFromFile(f);
+            }}
+            style={{ display: "none" }}
+          />
+        </div>
+
+        {error && (
+          <div style={{
+            padding: "8px 16px",
+            background: "#4c0519",
+            border: "1px solid #be123c",
+            borderRadius: 6,
+            color: "#fda4af",
+            fontSize: 12,
+          }}>
+            {error}
+          </div>
+        )}
+
+        <div style={{ fontSize: 11, color: "#334155", marginTop: 24, fontFamily: mono }}>
+          Supports eval golden format and telemetry API format
+        </div>
+      </div>
+    );
+  }
+
+  const turnCost = calculateCost(t.usage, t.tier);
+  const isL4 = t.tier === "L4";
+
+  return (
+    <div style={{
+      width: "100%",
+      height: "100vh",
+      display: "grid",
+      gridTemplateRows: "44px 1fr 48px",
+      gridTemplateColumns: "260px 1fr 200px",
+      background: "#0b0b13",
+      color: "#e2e8f0",
+      fontFamily: "system-ui, sans-serif",
+      overflow: "hidden",
+    }}>
+
+      {/* TOP BAR */}
+      <div style={{
+        gridColumn: "1/-1",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "0 16px",
+        borderBottom: "1px solid #1a1a2a",
+        background: "#0e0e18"
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: playing ? "#ef4444" : "#4ade80" }} />
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "#64748b", fontFamily: mono }}>
+            Flight Recorder
+          </span>
+          <span style={{ fontSize: 13, color: "#94a3b8" }}>{data.name}</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 12, color: "#64748b", fontFamily: mono }}>Turn {idx + 1}/{N}</span>
+          <Tier tier={t.tier} />
+          <span style={{ fontSize: 11, color: "#475569", fontFamily: mono }}>
+            {t.ttfc_ms != null ? t.ttfc_ms + "ms ttft" : ""}{t.ttfc_ms != null ? " · " : ""}{t.ttc_ms}ms ttc
+          </span>
+          <button
+            onClick={() => { setData(null); setError(null); }}
+            style={{
+              padding: "3px 8px",
+              fontSize: 10,
+              background: "#1e293b",
+              border: "1px solid #334155",
+              borderRadius: 4,
+              color: "#94a3b8",
+              cursor: "pointer",
+              fontFamily: mono
+            }}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+
+      {/* LEFT: CHAT */}
+      <div style={{ borderRight: "1px solid #1a1a2a", overflowY: "auto", padding: 12 }}>
+        <Lbl>Conversation</Lbl>
+        {turns.slice(0, idx + 1).map((tr, i) => (
+          <div
+            key={i}
+            onClick={() => { setIdx(i); setPlaying(false); }}
+            style={{ cursor: "pointer", marginBottom: 12, opacity: i === idx ? 1 : 0.35 }}
+          >
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 3 }}>
+              <div style={{
+                maxWidth: "92%",
+                padding: "6px 10px",
+                borderRadius: "10px 10px 3px 10px",
+                background: "#1a1a2e",
+                color: "#cbd5e1",
+                fontSize: 12.5,
+                lineHeight: 1.4
+              }}>
+                {tr.message}
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
+              <Tier tier={tr.tier} small />
+              <span style={{ fontSize: 9, color: "#64748b", fontFamily: mono }}>
+                {tr.ttc_ms}ms
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* CENTER: TABS + CONTENT */}
+      <div style={{ display: "grid", gridTemplateRows: "36px 1fr", overflow: "hidden" }}>
+        {/* Tab bar */}
+        <div style={{
+          display: "flex",
+          gap: 3,
+          padding: "4px 12px",
+          borderBottom: "1px solid #1a1a2a",
+          background: "#0e0e18",
+          alignItems: "center"
+        }}>
+          {[
+            ["rendered", "Rendered"],
+            ["output", "Raw Output"],
+            ["diff", "Before/After"],
+            ["tree", "Entity Tree"],
+            ["prompt", "Prompt"],
+            ["cost", "Cost"],
+          ].map(([k, label], i) => (
+            <button
+              key={k}
+              onClick={() => setTab(k)}
+              style={{
+                padding: "4px 10px",
+                fontSize: 11,
+                fontWeight: tab === k ? 600 : 400,
+                fontFamily: mono,
+                color: tab === k ? "#e2e8f0" : "#64748b",
+                background: tab === k ? "#1e293b" : "transparent",
+                border: tab === k ? "1px solid #334155" : "1px solid transparent",
+                borderRadius: 4,
+                cursor: "pointer"
+              }}
+            >
+              {i + 1}. {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Content */}
+        <div key={tab + "-" + idx} style={{ overflowY: "auto", padding: tab === "rendered" ? 0 : 14, height: "100%" }}>
+
+          {/* 1. Rendered */}
+          {tab === "rendered" && (
+            <iframe
+              ref={iframeRef}
+              title="Preview"
+              style={{
+                width: "100%",
+                height: "100%",
+                border: "none",
+                background: "#fff",
+              }}
+              sandbox="allow-same-origin"
+            />
+          )}
+
+          {/* 2. Raw Output */}
+          {tab === "output" && (
+            <>
+              {/* Event pills */}
+              {!isL4 && events.length > 0 && (
+                <div style={{ marginBottom: 14, lineHeight: 2.2 }}>
+                  {events.map((e, i) => {
+                    const c = EC[e.t] || { bg: "#1e293b", tx: "#94a3b8", bd: "#334155" };
+                    return (
+                      <span key={i} style={{
+                        display: "inline-block",
+                        padding: "2px 7px",
+                        borderRadius: 4,
+                        background: c.bg,
+                        border: `1px solid ${c.bd}`,
+                        color: c.tx,
+                        fontSize: 11,
+                        fontFamily: mono,
+                        marginRight: 5,
+                        marginBottom: 4
+                      }}>
+                        <b>{e.t}</b>{(e.id || e.ref) ? " " + (e.id || e.ref) : ""}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+
+              <Lbl>Tool Calls</Lbl>
+              <Pre text={JSON.stringify(t.tool_calls, null, 2)} mh={300} />
+
+              {t.text_blocks && t.text_blocks.length > 0 && (
+                <>
+                  <div style={{ marginTop: 16 }} />
+                  <Lbl>Text Blocks</Lbl>
+                  <Pre text={t.text_blocks.map(b => typeof b === 'string' ? b : JSON.stringify(b)).join('\n\n')} mh={200} />
+                </>
+              )}
+            </>
+          )}
+
+          {/* 3. Before/After */}
+          {tab === "diff" && (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <Lbl>Before</Lbl>
+                  <Pre text={JSON.stringify(snapshotBefore, null, 2)} mh={320} />
+                </div>
+                <div>
+                  <Lbl>After</Lbl>
+                  <Pre text={JSON.stringify(snapshotAfter, null, 2)} mh={320} />
+                </div>
+              </div>
+              <div style={{ marginTop: 14 }}>
+                <Lbl>Entity Diff</Lbl>
+                <div>
+                  {diff.add.map(k => <span key={k} style={{ display: "inline-block", padding: "2px 7px", borderRadius: 4, background: "#064e3b", border: "1px solid #047857", color: "#6ee7b7", fontSize: 11, fontFamily: mono, marginRight: 5, marginBottom: 4 }}>+ {k}</span>)}
+                  {diff.mod.filter(k => !diff.moved[k]).map(k => <span key={k} style={{ display: "inline-block", padding: "2px 7px", borderRadius: 4, background: "#1e3a5f", border: "1px solid #2563eb", color: "#93c5fd", fontSize: 11, fontFamily: mono, marginRight: 5, marginBottom: 4 }} title={(diff.modDetails[k] || []).join(", ")}>~ {k}</span>)}
+                  {Object.keys(diff.moved).map(k => <span key={k} style={{ display: "inline-block", padding: "2px 7px", borderRadius: 4, background: "#3b1f63", border: "1px solid #7c3aed", color: "#c4b5fd", fontSize: 11, fontFamily: mono, marginRight: 5, marginBottom: 4 }} title={`${diff.moved[k].from} -> ${diff.moved[k].to}`}>-> {k}</span>)}
+                  {diff.rem.map(k => <span key={k} style={{ display: "inline-block", padding: "2px 7px", borderRadius: 4, background: "#4c0519", border: "1px solid #be123c", color: "#fda4af", fontSize: 11, fontFamily: mono, marginRight: 5, marginBottom: 4 }}>- {k}</span>)}
+                  {diff.add.length === 0 && diff.rem.length === 0 && diff.mod.length === 0 && <span style={{ fontSize: 12, color: "#64748b" }}>No entity changes</span>}
+                </div>
+                {diff.mod.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    {diff.mod.map(k => <div key={k} style={{ fontSize: 11, fontFamily: mono, color: "#93c5fd", marginBottom: 2 }}>{k}: {(diff.modDetails[k] || []).join(", ")}</div>)}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* 4. Entity Tree */}
+          {tab === "tree" && (
+            <>
+              <Lbl>Entity Tree - Turn {t.turn}</Lbl>
+              {tree.length > 0 ? (
+                <div style={{ background: "#08080f", border: "1px solid #1e1e2e", borderRadius: 6, padding: 12 }}>
+                  {tree.map((e, i) => {
+                    const nw = diff.add.includes(e.id);
+                    const md = diff.mod.includes(e.id);
+                    const rm = !!e._removed;
+                    const mv = !!diff.moved[e.id];
+                    const orph = !!e._orphan;
+                    const clr = rm ? "#f87171" : orph ? "#fb923c" : nw ? "#6ee7b7" : md ? "#93c5fd" : "#cbd5e1";
+                    return (
+                      <div key={i} style={{ paddingLeft: e.depth * 20, paddingTop: 3, paddingBottom: 3, fontSize: 12, fontFamily: mono, opacity: rm ? 0.5 : 1 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                          <span style={{ color: "#475569" }}>{e.depth > 0 ? "|-" : "*"}</span>
+                          <span style={{ color: clr, fontWeight: nw || md || rm || orph ? 700 : 400, textDecoration: rm ? "line-through" : "none" }}>{e.id}</span>
+                          {rm && <span style={{ fontSize: 9, padding: "0 4px", borderRadius: 3, background: "#4c0519", color: "#fda4af", border: "1px solid #be123c" }}>del</span>}
+                          {orph && <span style={{ fontSize: 9, padding: "0 4px", borderRadius: 3, background: "#431407", color: "#fb923c", border: "1px solid #c2410c" }}>orphan</span>}
+                          {nw && <span style={{ fontSize: 9, padding: "0 4px", borderRadius: 3, background: "#064e3b", color: "#6ee7b7", border: "1px solid #047857" }}>new</span>}
+                          {mv && <span style={{ fontSize: 9, padding: "0 4px", borderRadius: 3, background: "#3b1f63", color: "#c4b5fd", border: "1px solid #7c3aed" }}>moved</span>}
+                          {md && !mv && !orph && <span style={{ fontSize: 9, padding: "0 4px", borderRadius: 3, background: "#1e3a5f", color: "#93c5fd", border: "1px solid #2563eb" }}>mod</span>}
+                          {e.display && <span style={{ fontSize: 10, padding: "0 4px", marginLeft: 2, borderRadius: 3, background: rm ? "#1a0a0a" : "#1e293b", color: rm ? "#6b7280" : "#94a3b8" }}>{e.display}</span>}
+                        </div>
+                        {e.props && Object.keys(e.props).length > 0 && (
+                          <div style={{ paddingLeft: 20, fontSize: 11, color: rm ? "#6b7280" : orph ? "#9a7050" : "#475569", fontFamily: mono, textDecoration: rm ? "line-through" : "none" }}>
+                            {Object.entries(e.props).slice(0, 5).map(([k, v]) => {
+                              const changes = diff.modDetails[e.id] || [];
+                              const isChanged = !rm && !orph && changes.some(c => c.startsWith(k + ":") || c === "+" + k);
+                              return <span key={k} style={{ marginRight: 8, color: rm ? "#6b7280" : isChanged ? "#93c5fd" : orph ? "#9a7050" : "#475569", fontWeight: isChanged ? 600 : 400 }}>{k}={JSON.stringify(v).slice(0, 24)}</span>;
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div style={{ color: "#64748b", fontSize: 13, padding: 12, background: "#08080f", border: "1px solid #1e1e2e", borderRadius: 6 }}>
+                  No entities. {isL4 ? "L4 turns are read-only queries." : "Snapshot may be empty."}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* 5. Prompt */}
+          {tab === "prompt" && (
+            <>
+              <Lbl>System Prompt</Lbl>
+              <Pre text={t.system_prompt} mh={600} />
+            </>
+          )}
+
+          {/* 6. Cost */}
+          {tab === "cost" && (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+                <div>
+                  <Lbl>This Turn</Lbl>
+                  <div style={{ background: "#08080f", border: "1px solid #1e1e2e", borderRadius: 6, padding: 16 }}>
+                    <div style={{ fontSize: 28, fontWeight: 700, color: "#4ade80", fontFamily: mono }}>
+                      ${turnCost.toFixed(6)}
+                    </div>
+                    <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>{t.tier} pricing</div>
+                  </div>
+                </div>
+                <div>
+                  <Lbl>Cumulative</Lbl>
+                  <div style={{ background: "#08080f", border: "1px solid #1e1e2e", borderRadius: 6, padding: 16 }}>
+                    <div style={{ fontSize: 28, fontWeight: 700, color: "#60a5fa", fontFamily: mono }}>
+                      ${cumulativeCost.toFixed(6)}
+                    </div>
+                    <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>Turns 1-{idx + 1}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginTop: 24 }}>
+                <Lbl>Token Breakdown</Lbl>
+                <div style={{ background: "#08080f", border: "1px solid #1e1e2e", borderRadius: 6, padding: 16 }}>
+                  <table style={{ width: "100%", fontSize: 12, fontFamily: mono, borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr style={{ color: "#64748b", textAlign: "left" }}>
+                        <th style={{ padding: "4px 8px" }}>Type</th>
+                        <th style={{ padding: "4px 8px", textAlign: "right" }}>Tokens</th>
+                        <th style={{ padding: "4px 8px", textAlign: "right" }}>Rate</th>
+                        <th style={{ padding: "4px 8px", textAlign: "right" }}>Cost</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        ["Input", t.usage?.input_tokens, COST_RATES[t.tier]?.in || COST_RATES.L3.in],
+                        ["Output", t.usage?.output_tokens, COST_RATES[t.tier]?.out || COST_RATES.L3.out],
+                        ["Cache Read", t.usage?.cache_read, COST_RATES[t.tier]?.cache_read || COST_RATES.L3.cache_read],
+                        ["Cache Write", t.usage?.cache_creation, COST_RATES[t.tier]?.cache_write || COST_RATES.L3.cache_write],
+                      ].map(([label, tokens, rate]) => (
+                        <tr key={label} style={{ color: "#94a3b8" }}>
+                          <td style={{ padding: "4px 8px" }}>{label}</td>
+                          <td style={{ padding: "4px 8px", textAlign: "right" }}>{tokens || 0}</td>
+                          <td style={{ padding: "4px 8px", textAlign: "right" }}>${rate}/1M</td>
+                          <td style={{ padding: "4px 8px", textAlign: "right" }}>${((tokens || 0) * rate / 1e6).toFixed(6)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div style={{ marginTop: 24 }}>
+                <Lbl>Cost by Turn</Lbl>
+                <div style={{ background: "#08080f", border: "1px solid #1e1e2e", borderRadius: 6, padding: 16 }}>
+                  <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 100 }}>
+                    {turns.map((tr, i) => {
+                      const cost = calculateCost(tr.usage, tr.tier);
+                      const maxCost = Math.max(...turns.map(x => calculateCost(x.usage, x.tier)));
+                      const h = maxCost > 0 ? (cost / maxCost) * 80 : 0;
+                      const c = TC[tr.tier] || TC.L3;
+                      return (
+                        <div
+                          key={i}
+                          onClick={() => { setIdx(i); setPlaying(false); }}
+                          style={{
+                            flex: 1,
+                            height: h + 10,
+                            background: i === idx ? c.tx : c.bg,
+                            borderRadius: 2,
+                            cursor: "pointer",
+                            opacity: i <= idx ? 1 : 0.3,
+                          }}
+                          title={`Turn ${i + 1}: $${cost.toFixed(6)}`}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+        </div>
+      </div>
+
+      {/* RIGHT: METRICS */}
+      <div style={{ borderLeft: "1px solid #1a1a2a", overflowY: "auto", padding: 12 }}>
+        <Lbl>Routing</Lbl>
+        <div style={{ fontSize: 11, marginBottom: 8 }}>
+          <Tier tier={t.tier} /> <span style={{ color: "#64748b" }}>{t.model}</span>
+        </div>
+
+        <div style={{ marginTop: 14 }}>
+          <Lbl>Latency</Lbl>
+          {[
+            ["TTFC", t.ttfc_ms != null ? (t.ttfc_ms + "ms") : "-"],
+            ["TTC", t.ttc_ms ? (t.ttc_ms + "ms") : "-"],
+          ].map(([k, v]) => (
+            <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 3 }}>
+              <span style={{ color: "#64748b" }}>{k}</span>
+              <span style={{ fontFamily: mono, color: k === "TTFC" ? "#c4b5fd" : "#94a3b8" }}>{v}</span>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ marginTop: 14 }}>
+          <Lbl>Tokens</Lbl>
+          {[
+            ["Input", t.usage?.input_tokens],
+            ["Output", t.usage?.output_tokens],
+            ["Cache R", t.usage?.cache_read],
+            ["Cache W", t.usage?.cache_creation],
+          ].map(([k, v]) => (
+            <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 3 }}>
+              <span style={{ color: "#64748b" }}>{k}</span>
+              <span style={{ fontFamily: mono, color: k === "Cache R" && v > 0 ? "#4ade80" : "#94a3b8" }}>{v != null ? v : "-"}</span>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ marginTop: 14 }}>
+          <Lbl>Cost</Lbl>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 3 }}>
+            <span style={{ color: "#64748b" }}>This turn</span>
+            <span style={{ fontFamily: mono, color: "#4ade80" }}>${turnCost.toFixed(4)}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 3 }}>
+            <span style={{ color: "#64748b" }}>Cumulative</span>
+            <span style={{ fontFamily: mono, color: "#60a5fa" }}>${cumulativeCost.toFixed(4)}</span>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 14 }}>
+          <Lbl>Tool Calls</Lbl>
+          <div style={{ fontSize: 11, color: "#94a3b8", fontFamily: mono }}>
+            {events.length} events
+          </div>
+          {events.length > 0 && (
+            <div style={{ fontSize: 10, color: "#64748b", marginTop: 4 }}>
+              {Object.entries(
+                events.reduce((acc, e) => { acc[e.t] = (acc[e.t] || 0) + 1; return acc; }, {})
+              ).map(([type, count]) => (
+                <div key={type}>{type}: {count}</div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {t.validation && (
+          <div style={{ marginTop: 14 }}>
+            <Lbl>Validation</Lbl>
+            <div style={{
+              fontSize: 11,
+              color: t.validation.passed ? "#4ade80" : "#f87171",
+              fontFamily: mono
+            }}>
+              {t.validation.passed ? "PASSED" : "FAILED"}
+            </div>
+            {t.validation.issues?.length > 0 && (
+              <div style={{ fontSize: 10, color: "#f87171", marginTop: 4 }}>
+                {t.validation.issues.map((issue, i) => (
+                  <div key={i}>{issue}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* BOTTOM: TIMELINE */}
+      <div style={{
+        gridColumn: "1/-1",
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "0 16px",
+        borderTop: "1px solid #1a1a2a",
+        background: "#0e0e18"
+      }}>
+        <button onClick={() => { setIdx(0); setPlaying(false); }} style={{ background: "none", border: "none", color: "#64748b", fontSize: 12, cursor: "pointer" }}>|&lt;</button>
+        <button onClick={() => { setIdx(p => Math.max(p - 1, 0)); setPlaying(false); }} style={{ background: "none", border: "none", color: "#64748b", fontSize: 15, cursor: "pointer" }}>&lt;</button>
+        <button onClick={() => setPlaying(p => !p)} style={{ background: "none", border: "none", color: playing ? "#ef4444" : "#4ade80", fontSize: 17, cursor: "pointer", width: 22, textAlign: "center" }}>{playing ? "||" : ">"}</button>
+        <button onClick={() => { setIdx(p => Math.min(p + 1, N - 1)); setPlaying(false); }} style={{ background: "none", border: "none", color: "#64748b", fontSize: 15, cursor: "pointer" }}>&gt;</button>
+        <button onClick={() => { setIdx(N - 1); setPlaying(false); }} style={{ background: "none", border: "none", color: "#64748b", fontSize: 12, cursor: "pointer" }}>&gt;|</button>
+
+        <div
+          onClick={(e) => {
+            const r = e.currentTarget.getBoundingClientRect();
+            const p = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+            setIdx(Math.round(p * (N - 1)));
+            setPlaying(false);
+          }}
+          style={{ flex: 1, height: 28, cursor: "pointer", position: "relative", display: "flex", alignItems: "center" }}
+        >
+          <div style={{ position: "absolute", left: 0, right: 0, height: 3, background: "#1e293b", borderRadius: 2 }} />
+          <div style={{ position: "absolute", left: 0, width: `${(idx / Math.max(N - 1, 1)) * 100}%`, height: 3, background: "#3b82f6", borderRadius: 2 }} />
+          {turns.map((tr, i) => {
+            const c = TC[tr.tier] || TC.L3;
+            const a = i === idx;
+            return (
+              <div key={i} style={{ position: "absolute", left: `${(i / Math.max(N - 1, 1)) * 100}%`, transform: "translateX(-50%)" }}>
+                <div style={{
+                  width: a ? 12 : 8,
+                  height: a ? 12 : 8,
+                  borderRadius: "50%",
+                  background: a ? c.tx : c.bg,
+                  border: `2px solid ${c.bd}`
+                }} />
+              </div>
+            );
+          })}
+        </div>
+
+        <span style={{ fontSize: 9, color: "#334155", fontFamily: mono }}>&lt;-&gt; spc 1-6</span>
+      </div>
+
+    </div>
+  );
+}
+
+// Simple HTML renderer for snapshots
+function renderSnapshotToHTML(snapshot, title) {
+  const meta = snapshot.meta || {};
+  const entities = snapshot.entities || {};
+
+  // Build tree
+  const children = {};
+  for (const e of Object.values(entities)) {
+    const p = e.parent || "root";
+    if (!children[p]) children[p] = [];
+    children[p].push(e);
+  }
+
+  const renderEntity = (e) => {
+    const props = e.props || {};
+    const kids = children[e.id] || [];
+    const display = e.display || "card";
+
+    if (display === "page") {
+      return `<div style="padding:24px;">${props.title ? `<h1 style="margin-bottom:16px;color:#1f2937;">${esc(props.title)}</h1>` : ""}${kids.map(renderEntity).join("")}</div>`;
+    }
+    if (display === "section") {
+      return `<section style="margin-bottom:24px;"><h2 style="color:#374151;margin-bottom:12px;">${esc(props.title || e.id)}</h2>${kids.map(renderEntity).join("")}</section>`;
+    }
+    if (display === "card") {
+      const content = Object.entries(props).filter(([k]) => k !== "title").map(([k, v]) => `<div style="margin:4px 0;"><strong style="color:#6b7280;">${esc(k)}:</strong> ${esc(String(v))}</div>`).join("");
+      return `<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin-bottom:12px;">${props.title ? `<h3 style="margin-bottom:8px;color:#1f2937;">${esc(props.title)}</h3>` : ""}${content}${kids.map(renderEntity).join("")}</div>`;
+    }
+    if (display === "table") {
+      const rows = kids.filter(k => k.display === "row");
+      if (rows.length === 0) return `<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin-bottom:12px;"><h3 style="color:#1f2937;">${esc(props.title || e.id)}</h3><p style="color:#9ca3af;">No rows</p></div>`;
+      const allKeys = [...new Set(rows.flatMap(r => Object.keys(r.props || {})))];
+      return `<div style="margin-bottom:12px;"><h3 style="color:#1f2937;margin-bottom:8px;">${esc(props.title || e.id)}</h3><table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;"><thead><tr style="background:#f3f4f6;">${allKeys.map(k => `<th style="padding:8px 12px;text-align:left;color:#374151;font-weight:600;">${esc(k)}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr style="border-top:1px solid #e5e7eb;">${allKeys.map(k => `<td style="padding:8px 12px;color:#4b5563;">${esc(String(r.props?.[k] || ""))}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+    }
+    if (display === "checklist") {
+      return `<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:16px;margin-bottom:12px;"><h3 style="color:#1f2937;margin-bottom:8px;">${esc(props.title || e.id)}</h3><ul style="list-style:none;padding:0;">${kids.map(k => `<li style="padding:4px 0;color:#4b5563;">${k.props?.done ? "x" : "o"} ${esc(k.props?.text || k.props?.item || k.id)}</li>`).join("")}</ul></div>`;
+    }
+    if (display === "row") {
+      return "";  // Handled by parent table
+    }
+    // Default
+    const content = Object.entries(props).map(([k, v]) => `<div><strong>${esc(k)}:</strong> ${esc(String(v))}</div>`).join("");
+    return `<div style="margin-bottom:8px;">${content}${kids.map(renderEntity).join("")}</div>`;
+  };
+
+  const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+  const roots = children["root"] || [];
+  const body = roots.length > 0 ? roots.map(renderEntity).join("") : `<div style="padding:24px;color:#9ca3af;">Empty snapshot</div>`;
+
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(title)}</title><style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#1f2937;line-height:1.5;}</style></head><body>${body}</body></html>`;
+}
+
+ReactDOM.render(React.createElement(FlightRecorder), document.getElementById("root"));
+</script>
+</body>
+</html>
