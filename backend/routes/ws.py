@@ -318,6 +318,8 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
                             snapshot=snapshot,
                             conversation=[],  # TODO: Load conversation history
                             api_key=settings.ANTHROPIC_API_KEY,
+                            user_id=user_id,
+                            turn_num=1,  # TODO: Track turn number across conversation
                         )
 
                         async for result in orchestrator.process_message(content):

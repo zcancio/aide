@@ -7,17 +7,20 @@ for WebSocket-based interactions.
 
 from __future__ import annotations
 
+import asyncio
 import copy
 import json
 import logging
 import time
 from collections.abc import AsyncIterator
 from typing import Any
+from uuid import UUID
 
 from backend.services.anthropic_client import AnthropicClient
 from backend.services.classifier import TIER_MODELS, classify
 from backend.services.escalation import needs_escalation
 from backend.services.prompt_builder import build_messages, build_system_blocks
+from backend.services.telemetry import TurnRecorder
 from backend.services.tool_defs import TOOLS
 from engine.kernel.reducer import reduce
 
@@ -113,6 +116,8 @@ class StreamingOrchestrator:
         snapshot: dict[str, Any],
         conversation: list[dict[str, Any]],
         api_key: str,
+        user_id: UUID | None = None,
+        turn_num: int = 1,
     ):
         """
         Initialize streaming orchestrator.
@@ -122,11 +127,15 @@ class StreamingOrchestrator:
             snapshot: Current snapshot state (v2 format)
             conversation: Conversation history
             api_key: Anthropic API key
+            user_id: User ID for telemetry tracking (optional)
+            turn_num: Current turn number (default 1)
         """
         self.aide_id = aide_id
         self.snapshot = snapshot
         self.conversation = conversation
         self.client = AnthropicClient(api_key)
+        self.user_id = user_id
+        self.turn_num = turn_num
         self.tier: str | None = None
         self.model: str | None = None
 
@@ -300,6 +309,27 @@ class StreamingOrchestrator:
         # Build messages array
         messages = build_messages(self.conversation, content)
 
+        # Initialize TurnRecorder if user_id is available
+        turn_recorder: TurnRecorder | None = None
+        if self.user_id:
+            try:
+                turn_recorder = TurnRecorder(UUID(self.aide_id), self.user_id)
+                turn_recorder.start_turn(
+                    turn_num=self.turn_num,
+                    tier=tier,
+                    model=self.model,
+                    message=content,
+                )
+                # Build system prompt to capture it
+                system_blocks = build_system_blocks(tier, self.snapshot)
+                system_prompt = "\n\n".join(
+                    block.get("text", "") for block in system_blocks if block.get("type") == "text"
+                )
+                turn_recorder.set_system_prompt(system_prompt)
+            except (ValueError, AttributeError) as e:
+                logger.debug("streaming_orchestrator: failed to initialize TurnRecorder: %s", e)
+                turn_recorder = None
+
         # Yield classification metadata
         yield {
             "type": "meta.classification",
@@ -372,6 +402,21 @@ class StreamingOrchestrator:
             # No escalation - update snapshot from result
             self.snapshot = result["snapshot"]
 
+        # Record all data in TurnRecorder from the result
+        if turn_recorder:
+            # Record tool calls
+            for tc in result["tool_calls"]:
+                turn_recorder.record_tool_call(tc["name"], tc["input"])
+            # Record text blocks
+            for tb in result["text_blocks"]:
+                text = tb["text"] if isinstance(tb, dict) else tb
+                if text.strip():
+                    turn_recorder.record_text_block(text)
+            # Set TTFC from result (already computed in _run_tier)
+            if result["ttfc_ms"] > 0:
+                # Manually set the TTFC since we're recording after the fact
+                turn_recorder._ttfc_ms = result["ttfc_ms"]
+
         # Yield tool_calls as events
         for tc in result["tool_calls"]:
             # Convert tool call to reducer event for yielding
@@ -394,6 +439,17 @@ class StreamingOrchestrator:
 
         # Compute cost
         cost_usd = calculate_cost("L3" if tier == "L3->L4->L3" else tier, result["usage"])
+
+        # Set usage metrics and finalize TurnRecorder (fire and forget)
+        if turn_recorder:
+            turn_recorder.set_usage(
+                input_tokens=result["usage"]["input_tokens"],
+                output_tokens=result["usage"]["output_tokens"],
+                cache_read=result["usage"]["cache_read"],
+                cache_creation=result["usage"]["cache_creation"],
+            )
+            # Persist asynchronously without blocking response
+            asyncio.create_task(turn_recorder.finish())
 
         # Yield stream.end with metrics
         yield {
