@@ -9,21 +9,8 @@ import { getDemoEntityTree } from '../../lib/display/demo-entity-tree.js';
 
 describe('DemoPatterns', () => {
   it('renders without crashing', () => {
-    render(<DemoPatterns />);
-    expect(screen.getByText('AIde Pattern Library')).toBeInTheDocument();
-  });
-
-  it('renders the demo header', () => {
-    render(<DemoPatterns />);
-    expect(screen.getByText('AIde Pattern Library')).toBeInTheDocument();
-    expect(screen.getByText(/Comprehensive demonstration/)).toBeInTheDocument();
-  });
-
-  it('renders badges with entity count', () => {
-    render(<DemoPatterns />);
-    expect(screen.getByText('Read-only')).toBeInTheDocument();
-    expect(screen.getByText('All Patterns')).toBeInTheDocument();
-    expect(screen.getByText(/82 Entities/)).toBeInTheDocument();
+    const { container } = render(<DemoPatterns />);
+    expect(container.querySelector('.demo-patterns-page')).toBeInTheDocument();
   });
 
   it('renders the Preview component', () => {

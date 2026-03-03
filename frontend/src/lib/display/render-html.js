@@ -148,11 +148,11 @@ function renderList(entity, childIds, entities) {
     const primaryValue = primaryField ? cp[primaryField] : '';
     const secondaryProps = Object.entries(cp).filter(([k]) => !k.startsWith('_') && k !== 'name' && k !== 'title');
 
-    const rightHtml = primaryValue
-      ? `<span class="aide-list__right editable-field" data-entity-id="${id}" data-field="${primaryField}">${escapeHtml(primaryValue)}</span>`
+    const leftHtml = primaryValue
+      ? `<span class="aide-list__left editable-field" data-entity-id="${id}" data-field="${primaryField}">${escapeHtml(primaryValue)}</span>`
       : '';
-    const leftHtml = secondaryProps.map(([k, v]) =>
-      `<span class="aide-list__left editable-field" data-entity-id="${id}" data-field="${k}">${escapeHtml(v)}</span>`
+    const rightHtml = secondaryProps.map(([k, v]) =>
+      `<span class="aide-list__right editable-field" data-entity-id="${id}" data-field="${k}">${escapeHtml(v)}</span>`
     ).join(' ');
 
     return `<li class="aide-list__item">${leftHtml}${rightHtml}</li>`;
@@ -175,18 +175,46 @@ function renderCard(entity, childIds, entities) {
 
   const children = childIds.map(id => renderEntity(id, entities)).join('');
 
+  // Show placeholder for empty cards (no title, no fields, no children)
+  const isEmpty = !title && displayProps.length === 0 && childIds.length === 0;
+
   return `<div class="aide-card">
     ${title ? `<div class="aide-card__title editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</div>` : ''}
     ${fields}
     ${children}
+    ${isEmpty ? '<p class="aide-card__empty">No properties set</p>' : ''}
   </div>`;
+}
+
+function buildNavBarHtml(pageTitle) {
+  return `<nav class="aide-nav">
+    <button class="aide-nav__back" onclick="history.replaceState({}, '', '/'); location.reload();">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/>
+      </svg>
+      Back
+    </button>
+    <div class="aide-nav__title">${escapeHtml(pageTitle)}</div>
+    <button class="aide-nav__share" onclick="navigator.clipboard.writeText(window.location.href).then(() => alert('Link copied'))">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+        <polyline points="16 6 12 2 8 6"/>
+        <line x1="12" y1="2" x2="12" y2="15"/>
+      </svg>
+      Share
+    </button>
+  </nav>`;
 }
 
 export function renderHtml(store) {
   if (!store || !store.entities) return '';
 
+  const pageTitle = store.meta?.title || 'AIde';
+  const navBar = buildNavBarHtml(pageTitle);
+  const stickyPill = '<div class="aide-pill-container" id="sticky-pill" style="display:none;"><div class="aide-pill"></div></div>';
+
   if (store.rootIds.length === 0 && Object.keys(store.meta || {}).length === 0) {
-    return '<div class="aide-page"><p class="aide-empty">Send a message to get started.</p></div>';
+    return navBar + stickyPill + '<div class="aide-page aide-page-with-nav"><p class="aide-empty">Send a message to get started.</p></div>';
   }
   // Sort rootIds by _created_seq before rendering
   const sortedRootIds = [...store.rootIds].sort((a, b) => {
@@ -198,7 +226,7 @@ export function renderHtml(store) {
   const content = sortedRootIds.map(id => renderEntity(id, store.entities)).join('');
   // Check if content already has a page wrapper
   if (content.trim().startsWith('<div class="aide-page">')) {
-    return content;
+    return navBar + stickyPill + content.replace('class="aide-page"', 'class="aide-page aide-page-with-nav"');
   }
-  return `<div class="aide-page">${content}</div>`;
+  return navBar + stickyPill + `<div class="aide-page aide-page-with-nav">${content}</div>`;
 }
