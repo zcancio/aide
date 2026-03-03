@@ -186,35 +186,13 @@ function renderCard(entity, childIds, entities) {
   </div>`;
 }
 
-function buildNavBarHtml(pageTitle) {
-  return `<nav class="aide-nav">
-    <button class="aide-nav__back" onclick="history.replaceState({}, '', '/'); location.reload();">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/>
-      </svg>
-      Back
-    </button>
-    <div class="aide-nav__title">${escapeHtml(pageTitle)}</div>
-    <button class="aide-nav__share" onclick="navigator.clipboard.writeText(window.location.href).then(() => alert('Link copied'))">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-        <polyline points="16 6 12 2 8 6"/>
-        <line x1="12" y1="2" x2="12" y2="15"/>
-      </svg>
-      Share
-    </button>
-  </nav>`;
-}
-
 export function renderHtml(store) {
   if (!store || !store.entities) return '';
 
-  const pageTitle = store.meta?.title || 'AIde';
-  const navBar = buildNavBarHtml(pageTitle);
   const stickyPill = '<div class="aide-pill-container" id="sticky-pill" style="display:none;"><div class="aide-pill"></div></div>';
 
   if (store.rootIds.length === 0 && Object.keys(store.meta || {}).length === 0) {
-    return navBar + stickyPill + '<div class="aide-page aide-page-with-nav"><p class="aide-empty">Send a message to get started.</p></div>';
+    return stickyPill + '<div class="aide-page"><p class="aide-empty">Send a message to get started.</p></div>';
   }
   // Sort rootIds by _created_seq before rendering
   const sortedRootIds = [...store.rootIds].sort((a, b) => {
@@ -226,7 +204,7 @@ export function renderHtml(store) {
   const content = sortedRootIds.map(id => renderEntity(id, store.entities)).join('');
   // Check if content already has a page wrapper
   if (content.trim().startsWith('<div class="aide-page">')) {
-    return navBar + stickyPill + content.replace('class="aide-page"', 'class="aide-page aide-page-with-nav"');
+    return stickyPill + content;
   }
-  return navBar + stickyPill + `<div class="aide-page aide-page-with-nav">${content}</div>`;
+  return stickyPill + `<div class="aide-page">${content}</div>`;
 }
