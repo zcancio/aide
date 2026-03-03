@@ -1,6 +1,6 @@
 # 06: Prompts
 
-> **Prerequisites:** [02 JSONL Schema](02_tool_calls.md) · [05 Intelligence Tiers](05_intelligence_tiers.md)
+> **Prerequisites:** [02 Tool Calls](02_tool_calls.md) · [05 Intelligence Tiers](05_intelligence_tiers.md)
 > **Related:** [03 Streaming Pipeline](03_streaming_pipeline.md) (caching strategy) · [08 Capability Boundaries](08_capability_boundaries.md)
 
 ---
@@ -15,7 +15,7 @@
 │  ┌────────────────────────────────┐  │
 │  │ Role + Voice Rules             │  │
 │  ├────────────────────────────────┤  │
-│  │ JSONL Schema Reference         │  │
+│  │ Tool Call Schema Reference     │  │
 │  ├────────────────────────────────┤  │
 │  │ Display Hint Vocabulary        │  │
 │  ├────────────────────────────────┤  │
@@ -23,7 +23,7 @@
 │  └────────────────────────────────┘  │
 │                                      │
 │  ┌────────────────────────────────┐  │
-│  │ TIER INSTRUCTIONS (L2/L3/L4)  │  │
+│  │ TIER INSTRUCTIONS (L3/L4)     │  │
 │  │ (swap per tier, still static)  │  │
 │  └────────────────────────────────┘  │
 ├──────────────────────────────────────┤
@@ -47,7 +47,7 @@
 └──────────────────────────────────────┘
 ```
 
-**Caching note:** Anthropic's prompt caching is per-model — Haiku, Sonnet, and Opus each have separate caches. The shared prefix is identical text across tiers (maintenance benefit) but produces three separate cached entries. L2 (Haiku) uses 5-min TTL since high traffic keeps it warm. L3 (Sonnet) and L4 (Opus) use 1-hour TTL since calls are less frequent. See [03 Streaming Pipeline](03_streaming_pipeline.md) for the full caching strategy.
+**Caching note:** Anthropic's prompt caching is per-model — Sonnet and Opus each have separate caches. The shared prefix is identical text across tiers (maintenance benefit) but produces two separate cached entries. L3 (Sonnet) and L4 (Opus) use 1-hour TTL. See [03 Streaming Pipeline](03_streaming_pipeline.md) for the full caching strategy.
 
 ---
 
@@ -149,42 +149,6 @@ Props are schemaless — types inferred from values. String, number, boolean, da
 ## Scope
 
 Only structure what the user has stated. No premature scaffolding. Text entities max ~100 words. For out-of-scope requests, emit a voice redirect: {"t":"voice","text":"For a graduation speech, try Claude or Google Docs. Drop a link here to add it."}
-```
-
----
-
-## L2 Instructions (Haiku — The Compiler)
-
-Appended after shared prefix. Static, part of 1-hour cache.
-
-```
-## Your Tier: L2 (Compiler)
-
-You handle routine mutations on existing entities. Speed is everything.
-
-- Emit JSONL only. One line per operation.
-- Only modify existing entities or create children under existing parents.
-- NEVER create new sections. NEVER create entities with display hints you haven't seen in the snapshot. If you would need to pick a display hint, escalate. If you would need to create a new top-level grouping, escalate.
-- If unsure, escalate. Never guess.
-- Voice lines optional. For 1-2 operations, skip voice — the page change is the response. For 3+ operations, a brief voice summary helps.
-
-Escalation:
-{"t":"escalate","tier":"L3","reason":"REASON","extract":"the part you can't handle"}
-
-Reasons:
-- unknown_entity_shape: entities you don't know how to structure
-- ambiguous_intent: can't determine which entities to modify
-- complex_conditional: if/then logic, bulk conditions
-- structural_change: new sections or restructuring needed
-
-Queries — always escalate, never answer:
-{"t":"escalate","tier":"L4","reason":"query","extract":"the question"}
-
-Multi-intent: handle mutations FIRST, then escalate. Do both. Example:
-User: "Steve confirmed, do we have enough food?"
-→ emit entity.update for Steve's RSVP
-→ THEN emit escalate for the query
-Never skip the mutation just because there's also a query.
 ```
 
 ---
@@ -313,7 +277,7 @@ User: "{current_user_message}"
 
 **Design rules:**
 - 3-5 recent messages max. The entity graph is the memory, not conversation history.
-- Previous L2/L3 responses summarized as "[N operations applied]" — no raw JSONL (wastes tokens, hurts cache).
+- Previous L3 responses summarized as "[N operations applied]" — no raw tool calls (wastes tokens, hurts cache).
 - Previous L4 responses included in full (short text).
 - Current message always last.
 
@@ -321,17 +285,17 @@ User: "{current_user_message}"
 
 ## Token Budget
 
-| Section | Tokens | L2 Cache | L3/L4 Cache |
-|---------|--------|----------|-------------|
-| Shared prefix | ~1,800 | 5-min | 1-hour |
-| Tier instructions | ~400-600 | 5-min | 1-hour |
-| Aide context (small aide) | ~500 | 5-min | 5-min |
-| Aide context (40-guest aide) | ~3,000 | 5-min | 5-min |
-| Conversation tail | ~150-300 | none | none |
-| **Total (small aide)** | **~2,850** | | |
-| **Total (large aide)** | **~5,700** | | |
+| Section | Tokens | Cache TTL |
+|---------|--------|-----------|
+| Shared prefix | ~1,800 | 1-hour |
+| Tier instructions | ~400-600 | 1-hour |
+| Aide context (small aide) | ~500 | 5-min |
+| Aide context (40-guest aide) | ~3,000 | 5-min |
+| Conversation tail | ~150-300 | none |
+| **Total (small aide)** | **~2,850** | |
+| **Total (large aide)** | **~5,700** | |
 
-L2 (Haiku) gets the most cache hits because it handles 85% of traffic. L3/L4 use 1-hour TTL on the system prompt to survive gaps between infrequent calls. Effective input cost reduction is ~75% for L2 on active aides.
+L3 (Sonnet) handles most traffic for mutations and creation. L4 (Opus) handles queries. Both use 1-hour TTL on the system prompt.
 
 ---
 
