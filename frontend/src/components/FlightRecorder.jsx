@@ -213,12 +213,12 @@ export default function FlightRecorder() {
   const cumulativeCost = useMemo(() => {
     let total = 0;
     for (let i = 0; i <= actualTurnIdx && i < turns.length; i++) {
-      total += calculateCost(turns[i].usage, turns[i].tier);
+      total += calculateCost(turns[i].usage, turns[i].model || turns[i].tier);
     }
     return total;
   }, [turns, actualTurnIdx]);
 
-  const turnCost = calculateCost(t.usage, t.tier);
+  const turnCost = calculateCost(t.usage, t.model || t.tier);
 
   // Load aides list on mount for picker
   useEffect(() => {
@@ -993,9 +993,9 @@ export default function FlightRecorder() {
                 </div>
                 <div className="fr-cost-chart">
                   {turns.map((tr, i) => {
-                    const cost = calculateCost(tr.usage, tr.tier);
+                    const cost = calculateCost(tr.usage, tr.model || tr.tier);
                     const maxCost = Math.max(
-                      ...turns.map((x) => calculateCost(x.usage, x.tier))
+                      ...turns.map((x) => calculateCost(x.usage, x.model || x.tier))
                     );
                     const h = maxCost > 0 ? (cost / maxCost) * 80 : 0;
                     const c = TC[tr.tier] || TC.L3;
