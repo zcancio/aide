@@ -2,7 +2,7 @@
 
 > **Read time:** 5 minutes
 > **Audience:** Everyone on the team
-> **Next:** Pick the doc for your area → [Data Model](01_data_model.md) · [JSONL Schema](02_tool_calls.md) · [Streaming Pipeline](03_streaming_pipeline.md) · [Display Components](04_display_components.md) · [Intelligence Tiers](05_intelligence_tiers.md)
+> **Next:** Pick the doc for your area → [Data Model](core/core_data_model.md) · [Tool Calls](core/core_tool_calls.md) · [Streaming Pipeline](core/core_streaming_pipeline.md) · [Display Components](core/core_display_components.md) · [Intelligence Tiers](core/core_intelligence_tiers.md)
 
 ---
 
@@ -34,7 +34,7 @@ v1 is too slow. Creating a new aide takes ~10 seconds. For our target user — a
 
 ## The Five Changes
 
-### 1. Entities All the Way Down → [01_data_model.md](01_data_model.md)
+### 1. Entities All the Way Down → [core_data_model.md](core/core_data_model.md)
 
 v1 had three parallel structures: collections, blocks, and views. The LLM generates all three.
 
@@ -52,26 +52,26 @@ grad_page (display: "page")
 
 Cross-branch connections (Linda is *bringing* the potato salad) are modeled as **relationships** — typed links between any two entities in the tree.
 
-### 2. LLM Emits Only Primitives via Tool Calls → [02_tool_calls.md](02_tool_calls.md)
+### 2. LLM Emits Only Primitives via Tool Calls → [core_tool_calls.md](core/core_tool_calls.md)
 
 **The rule:** The LLM never generates what the renderer can derive.
 
 v1: LLM produces primitives + HTML + voice reflections + explanations. ~3-5K tokens.
 v2: LLM produces only entity operations via tool calls (`mutate_entity`, `voice`). ~600-1500 tokens. The deterministic renderer produces all HTML.
 
-### 3. Streaming via WebSocket → [03_streaming_pipeline.md](03_streaming_pipeline.md)
+### 3. Streaming via WebSocket → [core_streaming_pipeline.md](core/core_streaming_pipeline.md)
 
 The LLM emits tool calls (mutate_entity, voice, etc.). The server parses each tool call, applies it through the reducer, and pushes entity deltas to the client via WebSocket. The page builds itself in real time.
 
 The LLM emits in **render order** — page title first, sections next, items last. The user sees the page scaffold top-down.
 
-### 4. React Compiler → [04_display_components.md](04_display_components.md)
+### 4. Display Components → [core_display_components.md](core/core_display_components.md)
 
 A recursive React component walks the entity tree. Each entity maps to a display component based on its `display` hint: `table` → TableDisplay, `checklist` → ChecklistDisplay, etc.
 
 ~9 components, ~385 lines total. Every rendered value is **directly editable** — click to change, no LLM round trip. Under 200ms.
 
-### 5. Two-Tier Intelligence → [05_intelligence_tiers.md](05_intelligence_tiers.md)
+### 5. Two-Tier Intelligence → [core_intelligence_tiers.md](core/core_intelligence_tiers.md)
 
 | Tier | Model | Job | Latency |
 |------|-------|-----|---------|
@@ -92,7 +92,7 @@ aide has two interaction speeds. Both always available.
 
 The fast loop makes the slow loop trustworthy. If the user can fix any mistake instantly, they'll tolerate the AI being occasionally wrong.
 
-→ Details in [Edge Cases & Reliability](07_edge_cases.md)
+→ Details in [Reliability & Performance](core/core_reliability_and_performance.md)
 
 ---
 
@@ -115,7 +115,7 @@ The fast loop makes the slow loop trustworthy. If the user can fix any mistake i
 
 **Redirects:** "Write a graduation speech" → suggests Claude or Google Docs. "Generate an invitation graphic" → suggests Canva. Tells the user how to bring the result back.
 
-→ Details in [Capability Boundaries](08_capability_boundaries.md)
+→ Details in [Intelligence Tiers](core/core_intelligence_tiers.md) (includes capability boundaries)
 
 ---
 
@@ -194,12 +194,12 @@ At publish time, the server renders the snapshot to static HTML stored in `aide_
 
 | Doc | What It Covers | Read If You... |
 |-----|---------------|----------------|
-| **[00 Overview](00_overview.md)** | This doc. The big picture. | Are new to the project |
-| **[01 Data Model](01_data_model.md)** | Entity tree, relationships, schema inference | Touch state or the reducer |
-| **[02 Tool Calls](02_tool_calls.md)** | mutate_entity, voice, set_relationship tools | Touch the LLM pipeline or server |
-| **[03 Streaming Pipeline](03_streaming_pipeline.md)** | Server parsing, WebSocket, caching, streaming rules | Touch server or client integration |
-| **[04 Display Components](04_display_components.md)** | React compiler, all 9 components, EditableField | Touch the frontend |
-| **[05 Intelligence Tiers](05_intelligence_tiers.md)** | L3/L4, routing, escalation, multi-intent, costs | Touch LLM orchestration |
-| **[06 Prompts](06_prompts.md)** | System prompts for L3, L4 | Touch LLM behavior |
-| **[07 Edge Cases](07_edge_cases.md)** | Interrupt, undo, retry, errors, speed budget | Touch reliability or UX |
-| **[08 Capability Boundaries](08_capability_boundaries.md)** | Native/skills/redirects, scoping rules | Touch product scope |
+| **[Overview](architecture_overview.md)** | This doc. The big picture. | Are new to the project |
+| **[Data Model](core/core_data_model.md)** | Entity tree, relationships, schema inference | Touch state or the reducer |
+| **[Tool Calls](core/core_tool_calls.md)** | mutate_entity, voice, set_relationship tools | Touch the LLM pipeline or server |
+| **[Streaming Pipeline](core/core_streaming_pipeline.md)** | Server parsing, WebSocket, caching, streaming rules | Touch server or client integration |
+| **[Display Components](core/core_display_components.md)** | Render algorithm, 9 display types, inference | Touch the renderer |
+| **[Web Editor](web/web_editor_spec.md)** | Shadow DOM, editing chrome, SPA, React hooks | Touch the web frontend |
+| **[Intelligence Tiers](core/core_intelligence_tiers.md)** | L3/L4, routing, escalation, multi-intent, costs | Touch LLM orchestration |
+| **[Prompts](core/core_prompts.md)** | System prompts for L3, L4 | Touch LLM behavior |
+| **[Reliability & Performance](core/core_reliability_and_performance.md)** | Interrupt, undo, retry, errors, speed budget | Touch reliability or UX |

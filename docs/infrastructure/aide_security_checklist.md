@@ -1,4 +1,4 @@
-# AIde — Security Checklist
+# aide — Security Checklist
 
 Everything that needs to be true before real users touch this.
 
@@ -62,12 +62,12 @@ Everything that needs to be true before real users touch this.
 
 ## XSS (Cross-Site Scripting)
 
-- [ ] Published aide pages served in sandboxed iframe or separate origin
+- [ ] Published aide pages served as static HTML from separate origin (R2/CDN)
 - [ ] `Content-Security-Policy` header on editor domain
-- [ ] User-generated HTML (aide content) stored in R2, served from separate domain/subdomain
-- [ ] Editor UI does not render raw user HTML inline — always iframe
+- [ ] Editor preview uses Shadow DOM for style isolation
+- [ ] User-generated content rendered via `renderHtml()` with escaped values
 - [ ] API responses set `Content-Type: application/json` (not `text/html`)
-- [ ] No `innerHTML` or `dangerouslySetInnerHTML` with unsanitized user input in editor UI
+- [ ] `escapeHtml()` used for all user-provided text in display components
 
 ---
 
@@ -110,7 +110,7 @@ Everything that needs to be true before real users touch this.
 - [ ] Sentry receives user UUID only, never email/name/IP
 - [ ] Stripe customer IDs and subscription IDs never exposed in API responses
 - [ ] Conversation content (user messages) never logged to Sentry or application logs
-- [ ] R2 workspace bucket is private (not publicly accessible)
+- [ ] Aide state stored in PostgreSQL (`aides.state` JSONB), protected by RLS
 - [ ] R2 published bucket only serves published aides, not draft content
 
 ---
@@ -159,7 +159,7 @@ _Railway is a managed platform — no servers to harden. This section is handled
 ## Content Safety (Published Pages)
 
 - [ ] Safety scanner runs on publish — check for phishing, malware, adult content
-- [ ] "Made with AIde" footer on free tier pages (visible, not hidden)
+- [ ] "Made with aide" footer on free tier pages (visible, not hidden)
 - [ ] Report button or `abuse@toaide.com` email for flagging malicious pages
 - [ ] Unpublish mechanism: admin can set aide status to `archived` without break-glass
 - [ ] `robots.txt` on published pages (allow indexing)

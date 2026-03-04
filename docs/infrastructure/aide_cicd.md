@@ -1,4 +1,4 @@
-# AIde — CI/CD Pipeline
+# aide — CI/CD Pipeline
 
 **CI:** GitHub Actions (lint + test on every push)
 **CD:** Railway (auto-deploys from `main`, runs migrations, zero downtime)

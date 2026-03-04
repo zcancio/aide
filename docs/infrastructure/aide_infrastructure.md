@@ -1,7 +1,9 @@
-# AIde — Infrastructure Plan
+# aide — Infrastructure Plan
 
-**Goal:** Deploy and run AIde with zero ops work. Push a branch, it deploys.
+**Goal:** Deploy and run aide with zero ops work. Push a branch, it deploys.
 **Constraint:** Keep it cheap. ~$6/mo at launch, scales with usage.
+
+> **Note:** This document has been updated to reflect the current implementation. State is stored in PostgreSQL (`aides.state` JSONB column), not R2. R2 is only used for published static pages.
 
 ---
 
@@ -41,13 +43,13 @@
 
 ## Environments
 
-AIde uses three environments with isolated resources:
+aide uses three environments with isolated resources:
 
-| Environment | Purpose | Database | R2 Buckets | URL |
-|-------------|---------|----------|------------|-----|
-| **Local Dev** | Your machine | Docker Postgres | `aide-workspaces-dev`, `aide-published-dev` | `localhost:8000` |
-| **Staging** | Pre-prod testing, smoke tests | Neon `staging` branch | `aide-workspaces-staging`, `aide-published-staging` | Railway staging URL |
-| **Production** | Real users | Neon `main` branch | `aide-workspaces`, `aide-published` | `get.toaide.com` |
+| Environment | Purpose | Database | R2 Bucket | URL |
+|-------------|---------|----------|-----------|-----|
+| **Local Dev** | Your machine | Docker Postgres | `aide-published-dev` | `localhost:8000` |
+| **Staging** | Pre-prod testing, smoke tests | Neon `staging` branch | `aide-published-staging` | Railway staging URL |
+| **Production** | Real users | Neon `main` branch | `aide-published` | `get.toaide.com` |
 
 ### Environment Isolation
 
@@ -127,7 +129,6 @@ Migrations run with `DATABASE_URL_OWNER`, app runs with `DATABASE_URL`. RLS is e
 
 **Optional (with defaults):**
 ```
-R2_WORKSPACE_BUCKET=aide-workspaces        # Override per environment
 R2_PUBLISHED_BUCKET=aide-published         # Override per environment
 RESEND_API_KEY=xxx
 STRIPE_SECRET_KEY=xxx
@@ -140,7 +141,6 @@ SLACK_WEBHOOK=xxx
 | Variable | Local Dev | Staging | Production |
 |----------|-----------|---------|------------|
 | `DATABASE_URL` | `postgres://aide:test@localhost:5432/aide_test` | Neon staging branch | Neon main |
-| `R2_WORKSPACE_BUCKET` | `aide-workspaces-dev` | `aide-workspaces-staging` | `aide-workspaces` |
 | `R2_PUBLISHED_BUCKET` | `aide-published-dev` | `aide-published-staging` | `aide-published` |
 
 ### Deploy Flow
@@ -202,7 +202,7 @@ Every deploy is saved. Rollback takes ~30 seconds.
 - **Point-in-time recovery:** Restore to any second. No pg_dump crons.
 - **Branching:** Clone your prod database for testing in seconds.
 - **Connection pooling:** Built-in.
-- **RLS support:** Row-Level Security works natively. Critical for AIde's data access model.
+- **RLS support:** Row-Level Security works natively. Critical for aide's data access model.
 
 ### Tiers
 
@@ -244,7 +244,9 @@ CREATE TABLE aides (
     title           TEXT DEFAULT 'Untitled',
     slug            TEXT UNIQUE,
     status          TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
-    r2_prefix       TEXT,
+    state           JSONB DEFAULT '{}'::jsonb,   -- Current snapshot (entities, meta, relationships)
+    event_log       JSONB DEFAULT '[]'::jsonb,   -- Append-only event history for undo/replay
+    r2_prefix       TEXT,                        -- Legacy field (R2 path prefix)
     created_at      TIMESTAMPTZ DEFAULT now(),
     updated_at      TIMESTAMPTZ DEFAULT now()
 );
@@ -278,18 +280,19 @@ CREATE INDEX idx_versions_aide ON published_versions(aide_id);
 
 ## File Storage: Cloudflare R2
 
-Aide files and published snapshots live in R2. App stays stateless.
+R2 stores published static HTML pages. Working state is stored in PostgreSQL (see schema above).
+
+> **Note:** The original plan used R2 for workspace state (`aide-workspaces` bucket). The current implementation stores all working state in PostgreSQL's `aides.state` JSONB column for simpler architecture and atomic updates.
 
 ### Buckets
 
-| Environment | Workspace Bucket | Published Bucket |
-|-------------|------------------|------------------|
-| **Local Dev** | `aide-workspaces-dev` | `aide-published-dev` |
-| **Staging** | `aide-workspaces-staging` | `aide-published-staging` |
-| **Production** | `aide-workspaces` | `aide-published` |
+| Environment | Published Bucket |
+|-------------|------------------|
+| **Local Dev** | `aide-published-dev` |
+| **Staging** | `aide-published-staging` |
+| **Production** | `aide-published` |
 
-Bucket names are configured via environment variables:
-- `R2_WORKSPACE_BUCKET` (default: `aide-workspaces`)
+Bucket name configured via environment variable:
 - `R2_PUBLISHED_BUCKET` (default: `aide-published`)
 
 ### Published Page Serving
@@ -401,15 +404,14 @@ No backup scripts. No cron jobs. No snapshots to manage.
 
 ### Storage
 - [ ] Generate R2 API token (Object Read & Write)
-- [ ] Create R2 buckets:
-  - [ ] `aide-workspaces` (production)
+- [ ] Create R2 buckets (published pages only):
   - [ ] `aide-published` (production)
-  - [ ] `aide-workspaces-staging` (staging)
   - [ ] `aide-published-staging` (staging)
-  - [ ] `aide-workspaces-dev` (local dev)
   - [ ] `aide-published-dev` (local dev)
 - [ ] Save R2 credentials to Railway env vars
 - [ ] Configure R2 custom domain for published pages (production)
+
+> **Note:** Working state is stored in PostgreSQL (`aides.state`), not R2.
 
 ### Local Development
 - [ ] Create `.env` file (gitignored) with dev values:
@@ -419,7 +421,6 @@ No backup scripts. No cron jobs. No snapshots to manage.
   R2_ENDPOINT=https://ACCOUNT.r2.cloudflarestorage.com
   R2_ACCESS_KEY=xxx
   R2_SECRET_KEY=xxx
-  R2_WORKSPACE_BUCKET=aide-workspaces-dev
   R2_PUBLISHED_BUCKET=aide-published-dev
   ANTHROPIC_API_KEY=xxx
   ```

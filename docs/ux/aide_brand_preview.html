@@ -1,0 +1,1408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>aide — Brand Identity Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300;1,9..40,400&family=Instrument+Sans:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Libre+Baskerville:wght@400;700&family=DM+Serif+Display&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* === LIGHT MODE === */
+    --bg-primary: #F7F5F2;
+    --bg-secondary: #EFECEA;
+    --bg-tertiary: #E6E3DF;
+    --bg-elevated: #FFFFFF;
+
+    --text-primary: #2D2D2A;
+    --text-secondary: #6B6963;
+    --text-tertiary: #A8A5A0;
+    --text-inverse: #F7F5F2;
+
+    --border-subtle: #E0DDD8;
+    --border-default: #D4D1CC;
+    --border-strong: #A8A5A0;
+
+    --sage-50: #F0F3ED;
+    --sage-100: #DDE4D7;
+    --sage-200: #C2CCB8;
+    --sage-300: #A3B394;
+    --sage-400: #8B9E7C;
+    --sage-500: #7C8C6E;
+    --sage-600: #667358;
+    --sage-700: #515C46;
+    --sage-800: #3C4534;
+    --sage-900: #282E23;
+
+    --accent: var(--sage-500);
+    --accent-hover: var(--sage-600);
+    --accent-subtle: var(--sage-50);
+    --accent-muted: var(--sage-100);
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --radius-full: 999px;
+  }
+
+  .dark {
+    --bg-primary: #1E1E1C;
+    --bg-secondary: #262624;
+    --bg-tertiary: #2E2E2B;
+    --bg-elevated: #333330;
+
+    --text-primary: #E8E6E1;
+    --text-secondary: #A8A5A0;
+    --text-tertiary: #6B6963;
+    --text-inverse: #1E1E1C;
+
+    --border-subtle: #333330;
+    --border-default: #3D3D39;
+    --border-strong: #5A5850;
+
+    --accent: var(--sage-400);
+    --accent-hover: var(--sage-300);
+    --accent-subtle: #2A2E27;
+    --accent-muted: #333829;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    transition: background 0.4s ease, color 0.4s ease;
+  }
+
+  /* === MODE TOGGLE === */
+  .mode-toggle {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 100;
+    display: flex;
+    gap: 2px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-full);
+    padding: 3px;
+  }
+
+  .mode-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: var(--radius-full);
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.25s ease;
+  }
+
+  .mode-btn.active {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  /* === LAYOUT === */
+  .container {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 80px 40px 120px;
+  }
+
+  section {
+    margin-bottom: 80px;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 24px;
+  }
+
+  /* === HERO / WORDMARK === */
+  .hero {
+    padding: 80px 0 40px;
+    text-align: center;
+  }
+
+  .wordmark {
+    font-family: 'Playfair Display', serif;
+    font-size: 72px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+  }
+
+  .wordmark .dot {
+    color: var(--accent);
+  }
+
+  .tagline {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 18px;
+    color: var(--text-secondary);
+    font-weight: 400;
+    letter-spacing: 0.01em;
+  }
+
+  .wordmark-variants {
+    display: flex;
+    justify-content: center;
+    gap: 60px;
+    margin-top: 48px;
+    padding-top: 48px;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .variant {
+    text-align: center;
+  }
+
+  .variant-label {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+  }
+
+  .variant .wordmark {
+    font-size: 36px;
+  }
+
+  .variant .wordmark.baskerville {
+    font-family: 'Libre Baskerville', serif;
+    font-weight: 700;
+  }
+
+  .variant .wordmark.dm-serif {
+    font-family: 'DM Serif Display', serif;
+    font-weight: 400;
+  }
+
+  .variant .wordmark.source-serif {
+    font-family: 'Source Serif 4', serif;
+    font-weight: 600;
+  }
+
+  /* === COLOR PALETTE === */
+  .palette-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 16px;
+  }
+
+  .swatch {
+    aspect-ratio: 1;
+    border-radius: var(--radius-md);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 12px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s ease;
+  }
+
+  .swatch:hover {
+    transform: scale(1.03);
+  }
+
+  .swatch-name {
+    font-size: 12px;
+    font-weight: 500;
+    margin-bottom: 2px;
+  }
+
+  .swatch-hex {
+    font-size: 11px;
+    font-family: 'DM Sans', sans-serif;
+    opacity: 0.7;
+  }
+
+  .swatch.light-text .swatch-name,
+  .swatch.light-text .swatch-hex { color: #F7F5F2; }
+  .swatch.dark-text .swatch-name,
+  .swatch.dark-text .swatch-hex { color: #2D2D2A; }
+
+  .palette-section-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    margin-top: 32px;
+  }
+
+  .palette-section-title:first-child { margin-top: 0; }
+
+  /* === TYPOGRAPHY === */
+  .type-specimen {
+    margin-bottom: 48px;
+    padding-bottom: 48px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .type-specimen:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  .type-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 16px;
+  }
+
+  .type-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  .type-details {
+    font-size: 12px;
+    color: var(--text-tertiary);
+  }
+
+  .type-sample-display {
+    font-family: 'Playfair Display', serif;
+    font-size: 48px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+  }
+
+  .type-sample-heading {
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+  }
+
+  .type-sample-body {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    max-width: 600px;
+  }
+
+  .type-sample-ui {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    display: flex;
+    gap: 24px;
+    align-items: center;
+  }
+
+  .type-sample-ui span {
+    padding: 8px 16px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+  }
+
+  /* === COMPONENTS === */
+  .components-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  @media (max-width: 700px) {
+    .components-grid { grid-template-columns: 1fr; }
+    .wordmark-variants { flex-direction: column; gap: 32px; }
+    .wordmark { font-size: 48px; }
+  }
+
+  .component-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    transition: border-color 0.2s ease;
+  }
+
+  .component-card:hover {
+    border-color: var(--border-default);
+  }
+
+  .component-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    margin-bottom: 20px;
+  }
+
+  /* Buttons */
+  .btn-row { display: flex; gap: 12px; flex-wrap: wrap; }
+
+  .btn {
+    padding: 10px 20px;
+    border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: var(--text-inverse);
+  }
+  .btn-primary:hover { background: var(--accent-hover); }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--border-default);
+  }
+  .btn-secondary:hover { border-color: var(--border-strong); }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--accent);
+  }
+  .btn-ghost:hover { background: var(--accent-subtle); }
+
+  /* Inputs */
+  .input-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .input-field {
+    padding: 10px 14px;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s ease;
+  }
+
+  .input-field:focus {
+    border-color: var(--accent);
+  }
+
+  .input-field::placeholder {
+    color: var(--text-tertiary);
+  }
+
+  /* Tags / Chips */
+  .tag-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .tag {
+    padding: 5px 12px;
+    border-radius: var(--radius-full);
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .tag-sage {
+    background: var(--accent-muted);
+    color: var(--sage-700);
+  }
+
+  .tag-neutral {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+  }
+
+  .tag-outline {
+    background: transparent;
+    border: 1px solid var(--border-default);
+    color: var(--text-secondary);
+  }
+
+  /* Checkbox */
+  .check-row {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .check-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    color: var(--text-primary);
+    cursor: pointer;
+  }
+
+  .check-box {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    border: 1.5px solid var(--border-strong);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+  }
+
+  .check-item.checked .check-box {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .check-item.checked .check-box::after {
+    content: '✓';
+    color: var(--text-inverse);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .check-item.checked .check-text {
+    color: var(--text-tertiary);
+    text-decoration: line-through;
+  }
+
+  /* Metric */
+  .metric-row { display: flex; gap: 24px; }
+
+  .metric {
+    flex: 1;
+  }
+
+  .metric-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.1;
+  }
+
+  .metric-label {
+    font-size: 13px;
+    color: var(--text-tertiary);
+    margin-top: 4px;
+  }
+
+  /* Card preview */
+  .card-preview {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    padding: 20px;
+  }
+
+  .card-preview-title {
+    font-family: 'Instrument Sans', sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+  }
+
+  .card-preview-meta {
+    font-size: 13px;
+    color: var(--text-tertiary);
+    margin-bottom: 12px;
+  }
+
+  .card-preview-body {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  /* Status indicator */
+  .status-row {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  .status-dot.active {
+    background: var(--sage-400);
+    box-shadow: 0 0 0 3px var(--accent-muted);
+  }
+
+  .status-dot.idle { background: var(--border-strong); }
+  .status-dot.thinking {
+    background: var(--sage-300);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.85); }
+  }
+
+  /* FAB */
+  .fab-preview {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 16px;
+  }
+
+  .fab {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: none;
+    color: var(--text-inverse);
+    font-size: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    transition: all 0.2s ease;
+  }
+
+  .fab:hover {
+    background: var(--accent-hover);
+    transform: scale(1.05);
+  }
+
+  /* === PAGE MOCKUP === */
+  .page-mockup {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-top: 16px;
+  }
+
+  .mockup-chrome {
+    background: var(--bg-secondary);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .mockup-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--border-default);
+  }
+
+  .mockup-url {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    margin-left: 12px;
+    background: var(--bg-primary);
+    padding: 4px 12px;
+    border-radius: var(--radius-full);
+    flex: 1;
+    max-width: 300px;
+  }
+
+  .mockup-body {
+    padding: 48px 40px;
+  }
+
+  .mockup-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+  }
+
+  .mockup-subtitle {
+    font-size: 14px;
+    color: var(--text-tertiary);
+    margin-bottom: 32px;
+  }
+
+  .mockup-section-head {
+    font-family: 'Instrument Sans', sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .mockup-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    margin-bottom: 32px;
+  }
+
+  .mockup-table th {
+    text-align: left;
+    padding: 8px 12px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .mockup-table td {
+    padding: 10px 12px;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .mockup-table tr:last-child td { border-bottom: none; }
+
+  .mockup-chat {
+    position: relative;
+    margin-top: 32px;
+  }
+
+  .mockup-chat-input {
+    width: 100%;
+    padding: 14px 48px 14px 16px;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-full);
+    background: var(--bg-primary);
+    color: var(--text-tertiary);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+  }
+
+  .mockup-chat-send {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: none;
+    color: var(--text-inverse);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Sage accent bar */
+  .accent-bar {
+    width: 3px;
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+
+  /* === SPACING PREVIEW === */
+  .spacing-row {
+    display: flex;
+    gap: 16px;
+    align-items: flex-end;
+  }
+
+  .spacing-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .spacing-box {
+    background: var(--accent-muted);
+    border: 1px dashed var(--accent);
+    border-radius: 4px;
+  }
+
+  .spacing-label {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  /* === RADIUS PREVIEW === */
+  .radius-row {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+
+  .radius-sample {
+    width: 64px;
+    height: 64px;
+    background: var(--accent-muted);
+    border: 1px solid var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  /* === ICONS === */
+  .icon-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 36px;
+  }
+
+  .icon-group-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 14px;
+  }
+
+  .icon-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .icon-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 80px;
+  }
+
+  .icon-box {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+    transition: all 0.2s ease;
+  }
+
+  .icon-box:hover {
+    border-color: var(--accent);
+    background: var(--accent-subtle);
+    color: var(--accent);
+  }
+
+  .icon-box.icon-filled {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .icon-box.icon-outlined {
+    color: var(--text-tertiary);
+  }
+
+  .icon-name {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    text-align: center;
+    line-height: 1.3;
+  }
+
+  .icon-spin {
+    animation: spin 2s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+</style>
+</head>
+<body>
+  <div class="mode-toggle">
+    <button class="mode-btn active" onclick="setMode('light')">Light</button>
+    <button class="mode-btn" onclick="setMode('dark')">Dark</button>
+  </div>
+
+  <div class="container">
+
+    <!-- HERO -->
+    <section class="hero">
+      <div class="wordmark"><span style="text-decoration:underline;text-decoration-color:#7C8C6E;text-underline-offset:3px;text-decoration-thickness:1px">ai</span>de</div>
+      <div class="tagline">For what you're living.</div>
+    </section>
+
+    <!-- COLORS -->
+    <section>
+      <div class="section-label">Color Palette</div>
+
+      <div class="palette-section-title">Warm Grays</div>
+      <div class="palette-grid">
+        <div class="swatch dark-text" style="background:#F7F5F2; border: 1px solid #E0DDD8;">
+          <div class="swatch-name">Off White</div><div class="swatch-hex">#F7F5F2</div>
+        </div>
+        <div class="swatch dark-text" style="background:#EFECEA;">
+          <div class="swatch-name">Warm Gray 50</div><div class="swatch-hex">#EFECEA</div>
+        </div>
+        <div class="swatch dark-text" style="background:#E6E3DF;">
+          <div class="swatch-name">Warm Gray 100</div><div class="swatch-hex">#E6E3DF</div>
+        </div>
+        <div class="swatch dark-text" style="background:#D4D1CC;">
+          <div class="swatch-name">Warm Gray 200</div><div class="swatch-hex">#D4D1CC</div>
+        </div>
+        <div class="swatch dark-text" style="background:#A8A5A0;">
+          <div class="swatch-name">Warm Gray 400</div><div class="swatch-hex">#A8A5A0</div>
+        </div>
+        <div class="swatch light-text" style="background:#6B6963;">
+          <div class="swatch-name">Warm Gray 600</div><div class="swatch-hex">#6B6963</div>
+        </div>
+        <div class="swatch light-text" style="background:#2D2D2A;">
+          <div class="swatch-name">Charcoal</div><div class="swatch-hex">#2D2D2A</div>
+        </div>
+        <div class="swatch light-text" style="background:#1E1E1C;">
+          <div class="swatch-name">Near Black</div><div class="swatch-hex">#1E1E1C</div>
+        </div>
+      </div>
+
+      <div class="palette-section-title">Sage Green</div>
+      <div class="palette-grid">
+        <div class="swatch dark-text" style="background:#F0F3ED;">
+          <div class="swatch-name">Sage 50</div><div class="swatch-hex">#F0F3ED</div>
+        </div>
+        <div class="swatch dark-text" style="background:#DDE4D7;">
+          <div class="swatch-name">Sage 100</div><div class="swatch-hex">#DDE4D7</div>
+        </div>
+        <div class="swatch dark-text" style="background:#C2CCB8;">
+          <div class="swatch-name">Sage 200</div><div class="swatch-hex">#C2CCB8</div>
+        </div>
+        <div class="swatch dark-text" style="background:#A3B394;">
+          <div class="swatch-name">Sage 300</div><div class="swatch-hex">#A3B394</div>
+        </div>
+        <div class="swatch dark-text" style="background:#8B9E7C;">
+          <div class="swatch-name">Sage 400</div><div class="swatch-hex">#8B9E7C</div>
+        </div>
+        <div class="swatch light-text" style="background:#7C8C6E;">
+          <div class="swatch-name">Sage 500</div><div class="swatch-hex">#7C8C6E</div>
+        </div>
+        <div class="swatch light-text" style="background:#667358;">
+          <div class="swatch-name">Sage 600</div><div class="swatch-hex">#667358</div>
+        </div>
+        <div class="swatch light-text" style="background:#515C46;">
+          <div class="swatch-name">Sage 700</div><div class="swatch-hex">#515C46</div>
+        </div>
+        <div class="swatch light-text" style="background:#3C4534;">
+          <div class="swatch-name">Sage 800</div><div class="swatch-hex">#3C4534</div>
+        </div>
+        <div class="swatch light-text" style="background:#282E23;">
+          <div class="swatch-name">Sage 900</div><div class="swatch-hex">#282E23</div>
+        </div>
+      </div>
+
+      <div class="palette-section-title">Dark Mode Surfaces</div>
+      <div class="palette-grid">
+        <div class="swatch light-text" style="background:#1E1E1C;">
+          <div class="swatch-name">BG Primary</div><div class="swatch-hex">#1E1E1C</div>
+        </div>
+        <div class="swatch light-text" style="background:#262624;">
+          <div class="swatch-name">BG Secondary</div><div class="swatch-hex">#262624</div>
+        </div>
+        <div class="swatch light-text" style="background:#2E2E2B;">
+          <div class="swatch-name">BG Tertiary</div><div class="swatch-hex">#2E2E2B</div>
+        </div>
+        <div class="swatch light-text" style="background:#333330;">
+          <div class="swatch-name">BG Elevated</div><div class="swatch-hex">#333330</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TYPOGRAPHY -->
+    <section>
+      <div class="section-label">Typography</div>
+
+      <div class="type-specimen">
+        <div class="type-meta">
+          <div class="type-name">Display — Playfair Display</div>
+          <div class="type-details">Page titles, wordmark, metrics</div>
+        </div>
+        <div class="type-sample-display">Sophie's Graduation Party</div>
+        <div class="type-sample-body" style="margin-top: 8px; font-size: 13px; color: var(--text-tertiary);">
+          Playfair Display — high-contrast transitional serif. Editorial gravitas, sharp details, timeless.
+        </div>
+      </div>
+
+      <div class="type-specimen">
+        <div class="type-meta">
+          <div class="type-name">Headings — Instrument Sans</div>
+          <div class="type-details">Section headings, card titles, navigation</div>
+        </div>
+        <div class="type-sample-heading">Guest List & RSVPs</div>
+        <div class="type-sample-body" style="margin-top: 8px; font-size: 13px; color: var(--text-tertiary);">
+          Instrument Sans — clean, confident, slightly humanist. Tight but legible.
+        </div>
+      </div>
+
+      <div class="type-specimen">
+        <div class="type-meta">
+          <div class="type-name">Body — DM Sans</div>
+          <div class="type-details">Body text, descriptions, chat messages</div>
+        </div>
+        <div class="type-sample-body">
+          Track who's coming, what they're bringing, and whether you have enough chairs. 
+          Updated through conversation — just tell aide what changed and the page stays current.
+        </div>
+      </div>
+
+      <div class="type-specimen">
+        <div class="type-meta">
+          <div class="type-name">UI — DM Sans Medium</div>
+          <div class="type-details">Buttons, labels, inputs, tags</div>
+        </div>
+        <div class="type-sample-ui">
+          <span>Dashboard</span>
+          <span>New aide</span>
+          <span>Publish</span>
+          <span>Settings</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- COMPONENTS -->
+    <section>
+      <div class="section-label">Components</div>
+      <div class="components-grid">
+
+        <div class="component-card">
+          <div class="component-label">Buttons</div>
+          <div class="btn-row">
+            <button class="btn btn-primary">New aide</button>
+            <button class="btn btn-secondary">Cancel</button>
+            <button class="btn btn-ghost">View all</button>
+          </div>
+        </div>
+
+        <div class="component-card">
+          <div class="component-label">Inputs</div>
+          <div class="input-preview">
+            <input class="input-field" placeholder="What are you running?" />
+            <input class="input-field" value="Sophie's Graduation Party" />
+          </div>
+        </div>
+
+        <div class="component-card">
+          <div class="component-label">Tags</div>
+          <div class="tag-row">
+            <span class="tag tag-sage">Confirmed</span>
+            <span class="tag tag-neutral">Pending</span>
+            <span class="tag tag-outline">Draft</span>
+            <span class="tag tag-sage">8 guests</span>
+          </div>
+        </div>
+
+        <div class="component-card">
+          <div class="component-label">Checklist</div>
+          <div class="check-row">
+            <label class="check-item checked">
+              <div class="check-box"></div>
+              <span class="check-text">Book venue</span>
+            </label>
+            <label class="check-item checked">
+              <div class="check-box"></div>
+              <span class="check-text">Send invitations</span>
+            </label>
+            <label class="check-item">
+              <div class="check-box"></div>
+              <span class="check-text">Order cake</span>
+            </label>
+            <label class="check-item">
+              <div class="check-box"></div>
+              <span class="check-text">Arrange parking</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="component-card">
+          <div class="component-label">Metrics</div>
+          <div class="metric-row">
+            <div class="metric">
+              <div class="metric-value">24</div>
+              <div class="metric-label">Confirmed</div>
+            </div>
+            <div class="metric">
+              <div class="metric-value">8</div>
+              <div class="metric-label">Pending</div>
+            </div>
+            <div class="metric">
+              <div class="metric-value">3</div>
+              <div class="metric-label">Declined</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="component-card">
+          <div class="component-label">Card</div>
+          <div class="card-preview">
+            <div class="card-preview-title">Ceremony Details</div>
+            <div class="card-preview-meta">May 22, 2026 · UC Davis</div>
+            <div class="card-preview-body">Main auditorium, doors open at 9:30 AM. Seating is first-come.</div>
+          </div>
+        </div>
+
+        <div class="component-card">
+          <div class="component-label">Status Indicator</div>
+          <div class="status-row">
+            <div class="status"><div class="status-dot active"></div> Ready</div>
+            <div class="status"><div class="status-dot thinking"></div> Thinking</div>
+            <div class="status"><div class="status-dot idle"></div> Idle</div>
+          </div>
+          <div class="fab-preview">
+            <button class="fab">+</button>
+          </div>
+        </div>
+
+        <div class="component-card">
+          <div class="component-label">Spacing & Radius</div>
+          <div class="spacing-row" style="margin-bottom: 24px;">
+            <div class="spacing-block">
+              <div class="spacing-box" style="width:16px;height:16px;"></div>
+              <div class="spacing-label">4px</div>
+            </div>
+            <div class="spacing-block">
+              <div class="spacing-box" style="width:24px;height:24px;"></div>
+              <div class="spacing-label">8px</div>
+            </div>
+            <div class="spacing-block">
+              <div class="spacing-box" style="width:36px;height:36px;"></div>
+              <div class="spacing-label">16px</div>
+            </div>
+            <div class="spacing-block">
+              <div class="spacing-box" style="width:48px;height:48px;"></div>
+              <div class="spacing-label">24px</div>
+            </div>
+            <div class="spacing-block">
+              <div class="spacing-box" style="width:64px;height:64px;"></div>
+              <div class="spacing-label">40px</div>
+            </div>
+          </div>
+          <div class="radius-row">
+            <div class="radius-sample" style="border-radius:6px;">6</div>
+            <div class="radius-sample" style="border-radius:10px;">10</div>
+            <div class="radius-sample" style="border-radius:16px;">16</div>
+            <div class="radius-sample" style="border-radius:999px;">full</div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ICONOGRAPHY -->
+    <section>
+      <div class="section-label">Iconography — Tabler Icons (1.0px stroke)</div>
+
+      <div class="icon-grid">
+        <div class="icon-group">
+          <div class="icon-group-title">Navigation</div>
+          <div class="icon-row">
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l-2 0l9 -9l9 9l-2 0"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"/><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"/></svg></div>
+              <span class="icon-name">Home</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h6v8H4z"/><path d="M4 16h6v4H4z"/><path d="M14 12h6v8h-6z"/><path d="M14 4h6v4h-6z"/></svg></div>
+              <span class="icon-name">Dashboard</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 0 0-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 0 0-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 0 0-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 0 0-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 0 0 1.066-2.573c-.94-1.543.826-3.31 2.37-2.37 1 .608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg></div>
+              <span class="icon-name">Settings</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+              <span class="icon-name">Account</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8v-2a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2v-2"/><path d="M9 12h12l-3-3"/><path d="M18 15l3-3"/></svg></div>
+              <span class="icon-name">Logout</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M21 21l-6-6"/></svg></div>
+              <span class="icon-name">Search</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="icon-group">
+          <div class="icon-group-title">aide Actions</div>
+          <div class="icon-row">
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg></div>
+              <span class="icon-name">New aide</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5-10.5a2.828 2.828 0 1 0-4-4L4 16v4"/><path d="M13.5 6.5l4 4"/></svg></div>
+              <span class="icon-name">Edit</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0-18 0"/><path d="M3.6 9h16.8"/><path d="M3.6 15h16.8"/><path d="M11.5 3a17 17 0 0 0 0 18"/><path d="M12.5 3a17 17 0 0 1 0 18"/></svg></div>
+              <span class="icon-name">Publish</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0-4 0"/><path d="M21 12c-2.4 4-5.4 6-9 6c-3.6 0-6.6-2-9-6c2.4-4 5.4-6 9-6c3.6 0 6.6 2 9 6"/></svg></div>
+              <span class="icon-name">Preview</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8v-2a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></div>
+              <span class="icon-name">Duplicate</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg></div>
+              <span class="icon-name">Delete</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0"/><path d="M18 6m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0"/><path d="M18 18m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0"/><path d="M8.7 10.7l6.6-3.4"/><path d="M8.7 13.3l6.6 3.4"/></svg></div>
+              <span class="icon-name">Share</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><polyline points="7 11 12 16 17 11"/><line x1="12" x2="12" y1="4" y2="16"/></svg></div>
+              <span class="icon-name">Export</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="icon-group">
+          <div class="icon-group-title">Content & Display</div>
+          <div class="icon-row">
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="4" x2="20" y1="10" y2="10"/><line x1="10" x2="10" y1="4" y2="20"/></svg></div>
+              <span class="icon-name">Table</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11"/><path d="M9 12h11"/><path d="M9 18h11"/><path d="M5 6v.01"/><path d="M5 12v.01"/><path d="M5 18v.01"/></svg></div>
+              <span class="icon-name">List</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 5.5l1.5 1.5l2.5-2.5"/><path d="M3.5 11.5l1.5 1.5l2.5-2.5"/><path d="M3.5 17.5l1.5 1.5l2.5-2.5"/><path d="M11 6h9"/><path d="M11 12h9"/><path d="M11 18h9"/></svg></div>
+              <span class="icon-name">Checklist</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 12h.01"/></svg></div>
+              <span class="icon-name">Card</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-9l4 18l3-9h4"/></svg></div>
+              <span class="icon-name">Metric</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M15 8h.01"/><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M4 15l4-4a3 5 0 0 1 3 0l5 5"/><path d="M14 14l1-1a3 5 0 0 1 3 0l2 2"/></svg></div>
+              <span class="icon-name">Image</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/><path d="M9 9h1"/><path d="M9 13h6"/><path d="M9 17h6"/></svg></div>
+              <span class="icon-name">Section</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0"/><path d="M9 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0"/><path d="M9 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0"/><path d="M15 5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0"/><path d="M15 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0"/><path d="M15 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0-2 0"/></svg></div>
+              <span class="icon-name">Reorder</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="icon-group">
+          <div class="icon-group-title">Chat & AI</div>
+          <div class="icon-row">
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9h8"/><path d="M8 13h6"/><path d="M18 4a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-5l-5 3v-3H6a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h12z"/></svg></div>
+              <span class="icon-name">Chat</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14l11-11"/><path d="M21 3l-6.5 18a.55.55 0 0 1-1 0L10 14l-7-3.5a.55.55 0 0 1 0-1L21 3"/></svg></div>
+              <span class="icon-name">Send</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2m0 3a3 3 0 0 1 3-3h0a3 3 0 0 1 3 3v5a3 3 0 0 1-3 3h0a3 3 0 0 1-3-3z"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M8 21h8"/><path d="M12 17v4"/></svg></div>
+              <span class="icon-name">Voice</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></div>
+              <span class="icon-name">Stop</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M15 8h.01"/><path d="M3 6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6z"/><path d="M3 16l5-5c.928-.893 2.072-.893 3 0l5 5"/><path d="M14 14l1-1c.928-.893 2.072-.893 3 0l3 3"/></svg></div>
+              <span class="icon-name">Upload</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l-4 4l4 4m-4-4h11.5a4.5 4.5 0 1 0-4.5-4.5v.5"/></svg></div>
+              <span class="icon-name">Undo</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="icon-group">
+          <div class="icon-group-title">Status & State</div>
+          <div class="icon-row">
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5l10-10"/></svg></div>
+              <span class="icon-name">Done</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round" class="icon-spin"><path d="M12 3a9 9 0 1 0 9 9"/></svg></div>
+              <span class="icon-name">Loading</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="1"/></svg></div>
+              <span class="icon-name">Active</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></div>
+              <span class="icon-name">Idle</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/></svg></div>
+              <span class="icon-name">Draft</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0-18 0"/><path d="M3.6 9h16.8"/><path d="M3.6 15h16.8"/><path d="M11.5 3a17 17 0 0 0 0 18"/><path d="M12.5 3a17 17 0 0 1 0 18"/></svg></div>
+              <span class="icon-name">Published</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="icon-group">
+          <div class="icon-group-title">Sizes</div>
+          <div class="icon-row icon-sizes">
+            <div class="icon-item">
+              <div class="icon-box"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg></div>
+              <span class="icon-name">16px Inline</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg></div>
+              <span class="icon-name">20px Default</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg></div>
+              <span class="icon-name">24px Prominent</span>
+            </div>
+            <div class="icon-item">
+              <div class="icon-box"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg></div>
+              <span class="icon-name">32px FAB</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAGE MOCKUP -->
+    <section>
+      <div class="section-label">Page Mockup</div>
+      <div class="page-mockup">
+        <div class="mockup-chrome">
+          <div class="mockup-dot"></div>
+          <div class="mockup-dot"></div>
+          <div class="mockup-dot"></div>
+          <div class="mockup-url">toaide.com/s/sophies-graduation</div>
+        </div>
+        <div class="mockup-body">
+          <div class="mockup-title">Sophie's Graduation Party</div>
+          <div class="mockup-subtitle">May 22, 2026 · UC Davis · Hosted by the Millers</div>
+
+          <div class="mockup-section-head">Guest List</div>
+          <table class="mockup-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>RSVP</th>
+                <th>Bringing</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Uncle Steve</td>
+                <td><span class="tag tag-sage" style="font-size:12px;padding:2px 8px;">Confirmed</span></td>
+                <td>Potato salad</td>
+              </tr>
+              <tr>
+                <td>Aunt Carol</td>
+                <td><span class="tag tag-neutral" style="font-size:12px;padding:2px 8px;">Pending</span></td>
+                <td>—</td>
+              </tr>
+              <tr>
+                <td>Cousin James</td>
+                <td><span class="tag tag-neutral" style="font-size:12px;padding:2px 8px;">Pending</span></td>
+                <td>—</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="mockup-section-head">To-Do</div>
+          <div class="check-row" style="margin-bottom:32px;">
+            <label class="check-item checked">
+              <div class="check-box"></div>
+              <span class="check-text">Book venue</span>
+            </label>
+            <label class="check-item">
+              <div class="check-box"></div>
+              <span class="check-text">Order cake</span>
+            </label>
+            <label class="check-item">
+              <div class="check-box"></div>
+              <span class="check-text">Arrange parking</span>
+            </label>
+          </div>
+
+          <div class="mockup-chat">
+            <input class="mockup-chat-input" value="Uncle Steve confirmed, he's bringing potato salad" disabled />
+            <button class="mockup-chat-send">↑</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    function setMode(mode) {
+      document.body.classList.toggle('dark', mode === 'dark');
+      document.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent.toLowerCase() === mode);
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 # 01: Data Model
 
 > **Prerequisites:** [00 Overview](00_overview.md)
-> **Next:** [02 JSONL Schema](02_tool_calls.md) (the wire format for mutating the model)
+> **Next:** [Tool Calls](core_tool_calls.md) (the wire format for mutating the model)
 
 ---
 
@@ -56,7 +56,7 @@ v1 had three parallel structures the LLM had to generate and keep consistent:
 | Collection + schema | Entity with children (schema inferred from props) |
 | Block tree | Entity tree (entity IS its block) |
 | View (list view, table view) | `display` hint on entity |
-| 25 primitive types | 13 primitive types + 4 signals |
+| 25 primitive types | 14 primitive types + 4 signals |
 
 Fewer concepts → fewer tokens → faster generation → simpler reducer.
 
@@ -116,7 +116,7 @@ This eliminates an entire class of primitives and means the LLM doesn't have to 
 
 ## Display Hints
 
-The `display` field tells the React compiler how to render an entity and its children. See [04 Display Components](04_display_components.md) for the full component catalog.
+The `display` field tells the React compiler how to render an entity and its children. See [Display Components](core_display_components.md) for the full component catalog.
 
 | Hint | Renders As | Best For |
 |------|-----------|----------|
@@ -157,11 +157,11 @@ Constraints can be strict (violations reject the operation) or non-strict (viola
 The entity tree is built by replaying an ordered list of events. Every mutation (from the LLM or from direct user edits) is an event. The reducer is a pure function: `events[] → snapshot`.
 
 This enables:
-- **Undo:** Replay events minus the last batch → previous state. See [07 Edge Cases](07_edge_cases.md).
+- **Undo:** Replay events minus the last batch → previous state. See [Reliability & Performance](core_reliability_and_performance.md).
 - **Time travel:** Replay events up to any point → state at that point.
 - **Determinism:** Same events always produce the same snapshot.
 - **Debugging:** The event log is a complete audit trail.
 
 Events are stored in the event log with full metadata (sequence number, timestamp, actor, source). The entity tree snapshot is derived state, rebuilt from events.
 
-→ The event format is defined in [02 JSONL Schema](02_tool_calls.md).
+→ The event format is defined in [Tool Calls](core_tool_calls.md).
