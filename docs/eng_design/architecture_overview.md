@@ -34,7 +34,7 @@ v1 is too slow. Creating a new aide takes ~10 seconds. For our target user — a
 
 ## The Five Changes
 
-### 1. Entities All the Way Down → [core_data_model.md](core_data_model.md)
+### 1. Entities All the Way Down → [core_data_model.md](core/core_data_model.md)
 
 v1 had three parallel structures: collections, blocks, and views. The LLM generates all three.
 
@@ -52,14 +52,14 @@ grad_page (display: "page")
 
 Cross-branch connections (Linda is *bringing* the potato salad) are modeled as **relationships** — typed links between any two entities in the tree.
 
-### 2. LLM Emits Only Primitives via Tool Calls → [core_tool_calls.md](core_tool_calls.md)
+### 2. LLM Emits Only Primitives via Tool Calls → [core_tool_calls.md](core/core_tool_calls.md)
 
 **The rule:** The LLM never generates what the renderer can derive.
 
 v1: LLM produces primitives + HTML + voice reflections + explanations. ~3-5K tokens.
 v2: LLM produces only entity operations via tool calls (`mutate_entity`, `voice`). ~600-1500 tokens. The deterministic renderer produces all HTML.
 
-### 3. Streaming via WebSocket → [core_streaming_pipeline.md](core_streaming_pipeline.md)
+### 3. Streaming via WebSocket → [core_streaming_pipeline.md](core/core_streaming_pipeline.md)
 
 The LLM emits tool calls (mutate_entity, voice, etc.). The server parses each tool call, applies it through the reducer, and pushes entity deltas to the client via WebSocket. The page builds itself in real time.
 
@@ -71,7 +71,7 @@ A recursive React component walks the entity tree. Each entity maps to a display
 
 ~9 components, ~385 lines total. Every rendered value is **directly editable** — click to change, no LLM round trip. Under 200ms.
 
-### 5. Two-Tier Intelligence → [core_intelligence_tiers.md](core_intelligence_tiers.md)
+### 5. Two-Tier Intelligence → [core_intelligence_tiers.md](core/core_intelligence_tiers.md)
 
 | Tier | Model | Job | Latency |
 |------|-------|-----|---------|
@@ -92,7 +92,7 @@ aide has two interaction speeds. Both always available.
 
 The fast loop makes the slow loop trustworthy. If the user can fix any mistake instantly, they'll tolerate the AI being occasionally wrong.
 
-→ Details in [Reliability & Performance](core_reliability_and_performance.md)
+→ Details in [Reliability & Performance](core/core_reliability_and_performance.md)
 
 ---
 
@@ -115,7 +115,7 @@ The fast loop makes the slow loop trustworthy. If the user can fix any mistake i
 
 **Redirects:** "Write a graduation speech" → suggests Claude or Google Docs. "Generate an invitation graphic" → suggests Canva. Tells the user how to bring the result back.
 
-→ Details in [Capability Boundaries](08_capability_boundaries.md)
+→ Details in [Intelligence Tiers](core/core_intelligence_tiers.md) (includes capability boundaries)
 
 ---
 
