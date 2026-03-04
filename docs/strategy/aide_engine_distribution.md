@@ -8,39 +8,36 @@
 
 ## Kernel vs. Engine
 
-**The kernel** is the core of AIde: primitives, events, reducer, renderer, and validator. Pure functions, deterministic, no AI. The kernel is the same whether it runs on the AIde server or in a Claude conversation. It is the trust boundary — nothing touches state except through primitives that the kernel validates and applies.
+**The kernel** is the core of AIde: the reducer. A pure function `reduce(snapshot, event) → snapshot` that validates and applies entity mutations. The kernel is the same whether it runs on the AIde server or in a Claude conversation. It is the trust boundary — nothing touches state except through events that the reducer validates and applies.
 
-**The engine** is the kernel packaged for distribution. It wraps the kernel in a skill — adding the L2 intent compilation instructions (SKILL.md), voice rules, examples, and evals — so that Claude can act as the brain that feeds primitives into the kernel.
+**The engine** is the kernel packaged for distribution. It wraps the reducer in a skill — adding the tool call instructions (SKILL.md), voice rules, examples, and evals — so that Claude can act as the brain that emits tool calls which map to reducer events.
 
 ```
-kernel = primitives + events + reducer + renderer + validator
+kernel = reducer (validate + apply)
 engine = kernel + SKILL.md + voice rules + examples + evals
 ```
 
 The engine has two layers:
 
-**L2 intent compilation (Claude's job).** Understand natural language ("Mike's out, Dave's subbing") and compile it into primitive events (`entity.update` on the roster). This is the AI part. It lives in prose instructions in SKILL.md and improves through prompt iteration and evals.
+**Tool call compilation (Claude's job).** Understand natural language ("Mike's out, Dave's subbing") and emit tool calls (`mutate_entity`, `voice`, `set_relationship`). This is the AI part. It lives in prose instructions in SKILL.md and improves through prompt iteration and evals.
 
-**Kernel execution (code's job).** Validate events, apply them to the snapshot, render HTML. These are the pure functions — `reducer.py`, `renderer.py`, `validator.py` — that produce identical output every time. Same code runs everywhere.
+**Kernel execution (code's job).** Validate events, apply them to the snapshot. The reducer is a pure function that produces identical output every time. Same code runs everywhere. The renderer is client-specific (web uses React, CLI uses ANSI, etc.).
 
 ```
 engine/
-├── SKILL.md                  ← orchestration + L2 intent compilation instructions
-├── scripts/
-│   ├── reducer.py            ← reduce(snapshot, event) → snapshot  ┐
-│   ├── renderer.py           ← render(snapshot, blueprint) → HTML  │ kernel
-│   ├── validator.py          ← validate(event, snapshot) → pass    │
-│   └── primitives.py         ← schema definitions, field types     ┘
+├── SKILL.md                  ← tool call instructions for Claude
+├── kernel/
+│   └── reducer.py            ← reduce(snapshot, event) → snapshot (the kernel)
 ├── references/
 │   ├── voice-rules.md        ← AIde voice system (no first person, no emojis, etc.)
-│   └── primitive-catalog.md  ← all 22 primitives with payload shapes
+│   └── tool-catalog.md       ← mutate_entity, voice, set_relationship tools
 ├── evals/
 │   └── evals.json            ← test cases with expectations
 └── examples/
     └── poker-league.html     ← reference output
 ```
 
-Claude handles the fuzzy part (what did the user mean?). The kernel handles the precise part (apply it correctly, render it identically). This split means the engine gets smarter at understanding without risking correctness in execution.
+Claude handles the fuzzy part (what did the user mean?). The reducer handles the precise part (validate and apply correctly). Rendering is client-specific — web uses React display components, CLI uses ANSI. This split means the engine gets smarter at understanding without risking correctness in execution.
 
 ---
 
@@ -347,12 +344,10 @@ No coordination needed across surfaces. The engine URL is the single sync point.
 ## What Gets Built When
 
 ### Now (pre-launch)
-- [x] Engine skill with SKILL.md, voice rules, primitive catalog
+- [x] Engine skill with SKILL.md, voice rules, tool catalog
 - [x] Reference examples (poker league, renovation)
 - [x] Eval suite (9 test cases covering creation and reducer modes)
-- [ ] `reducer.py` — executable reducer from spec
-- [ ] `renderer.py` — executable renderer from spec
-- [ ] `validator.py` — event validation
+- [x] `reducer.py` — pure reducer with built-in validation
 - [ ] Host engine files on R2 at `toaide.com/engine/v1/`
 
 ### Phase 1 (with launch)
@@ -375,7 +370,7 @@ No coordination needed across surfaces. The engine URL is the single sync point.
 
 ## Summary
 
-The AIde kernel — primitives, events, reducer, renderer, validator — is the trust boundary. Nothing touches state without going through it. The engine wraps the kernel in a skill so Claude can act as the L2 compiler that feeds it. One URL syncs the engine everywhere.
+The AIde kernel — the reducer — is the trust boundary. Nothing touches state without going through it. The engine wraps the reducer in a skill so Claude can emit tool calls that map to reducer events. One URL syncs the engine everywhere.
 
 | Surface | Install | Engine sync | Can publish? | API access? |
 |---------|---------|-------------|--------------|-------------|

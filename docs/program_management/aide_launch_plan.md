@@ -1,7 +1,7 @@
 # AIde — Launch Plan
 
 **Goal:** Ship a public product where someone can sign up, build a living page through conversation, update it via Signal, and share it.
-**Starting point:** Phase 0 complete (Railway, Neon Postgres, magic link auth, domain). Kernel implemented (primitives, reducer, renderer, assembly — all passing smoke tests).
+**Starting point:** Phase 0 complete (Railway, Neon Postgres, magic link auth, domain). Kernel implemented (reducer with built-in validation — all passing tests).
 **What's left:** L2/L3 orchestrator, multi-aide management, Signal ear, rate limiting, Stripe, landing page.
 
 ---
@@ -27,24 +27,12 @@
 _Wire the kernel to users. Web chat for creation, Signal for ongoing updates._
 
 ### 1.1 Kernel ✅ COMPLETE
-- [x] `types.py` — Event, Blueprint, AideFile, Warning, constants
-- [x] `events.py` — make_event factory, assign_metadata
-- [x] `primitives.py` — structural validation for all 22 primitives
-- [x] `reducer.py` — pure `reduce(snapshot, event) → ReduceResult`, all primitive handlers
-- [x] `renderer.py` — pure `render(snapshot, blueprint) → HTML`, list/table/grid views, CSS generation
-- [x] `assembly.py` — IO coordinator (load, apply, save, create, publish, fork) + MemoryStorage
-- [x] PostgresStorage adapter for assembly layer (Neon integration)
-- [x] End-to-end smoke test: events → reducer → renderer → HTML
-- [x] Engine builds:
-  - [x] `engine.py` — single-file Python build (concatenated, no dependencies)
-  - [x] `engine.js` — JavaScript build (transpiled from Python or hand-ported)
-  - [x] `engine.ts` — TypeScript build with full type definitions
-  - [x] `engine.compact.js` — minified JS for browser distribution
-- [x] Test runs for all builds:
-  - [x] Python tests passing (`pytest engine/kernel/tests/`) — 905 tests
-  - [x] JS tests passing (same test cases, Node.js runner) — 38 tests
-  - [x] TS type checking passing (`tsc --noEmit`)
-  - [x] Minified JS functional test (browser smoke test)
+- [x] `reducer.py` — pure `reduce(snapshot, event) → ReduceResult`, validation + all event handlers
+- [x] Entity CRUD: create, update, remove, move, reorder
+- [x] Relationship CRUD: set, remove, constrain
+- [x] Style/Meta: global styles, entity styles, meta update, annotate, constrain
+- [x] Signals: voice, escalate, batch
+- [x] Tests: entity, relationship, style/meta/signals (pytest engine/kernel/tests/)
 
 ### 1.2 Data Model ✅ COMPLETE
 - [x] Neon Postgres tables (Alembic migration):
