@@ -138,35 +138,17 @@ def score_validity(text: str, tier: str) -> DimensionScore:
     Can the output be consumed by the pipeline?
 
     Sub-checks:
-      - parseable: all lines parse as JSON (L2/L3) or is text (L4)
+      - parseable: all lines parse as JSON
       - no_fences: no markdown code fences
       - valid_types: all 't' values are recognized primitives/signals
       - valid_json_structure: each line has required fields for its type
+
+    NOTE: All tiers now use tool calls that produce JSONL output.
     """
     checks = {}
     notes = []
 
-    if tier == "L4":
-        # L4 should be plain text, not JSON
-        stripped = text.strip()
-        is_json_blob = False
-        try:
-            obj = json.loads(stripped)
-            if isinstance(obj, dict) and ("primitives" in obj or "response" in obj):
-                is_json_blob = True
-        except json.JSONDecodeError:
-            pass
-
-        checks["is_plain_text"] = 0.0 if is_json_blob else 1.0
-        checks["not_empty"] = 1.0 if len(stripped) > 0 else 0.0
-
-        if is_json_blob:
-            notes.append("L4 output is JSON blob — should be plain text")
-
-        score = sum(checks.values()) / max(len(checks), 1)
-        return DimensionScore("validity", score, checks, notes)
-
-    # L2/L3: JSONL validation
+    # All tiers now use JSONL validation (tool calls)
     parsed, errors = parse_jsonl(text)
 
     # Parseable
@@ -194,8 +176,11 @@ def score_validity(text: str, tier: str) -> DimensionScore:
         valid_struct = 0
         for p in parsed:
             t = p.get("t", "")
-            if t == "entity.create" and "id" in p and "parent" in p:
-                valid_struct += 1
+            if t == "entity.create" and "id" in p:
+                # Root entities (page) don't need parent
+                is_root = p.get("display") == "page" or p.get("id") == "page"
+                if is_root or "parent" in p:
+                    valid_struct += 1
             elif t == "entity.update" and "ref" in p and "p" in p:
                 valid_struct += 1
             elif t in ("voice", "escalate", "clarify", "batch.start", "batch.end", "style.set",
@@ -274,18 +259,13 @@ def score_structure(text: str, tier: str, scenario_hints: dict | None = None, sn
       - "expect_page_entity": True
       - "max_lines": 4
     snapshot: current entity state (used to seed parent resolution)
+
+    NOTE: Both L3 and L4 now use tool calls that produce JSONL output.
+    L4 handles schema synthesis (first turn) and queries.
     """
     checks = {}
     notes = []
     hints = scenario_hints or {}
-
-    if tier == "L4":
-        # L4 structure is simple — just check it's not JSONL
-        parsed, _ = parse_jsonl(text)
-        jsonl_lines = [p for p in parsed if p.get("t") in VALID_TYPES]
-        checks["no_jsonl_emission"] = 1.0 if not jsonl_lines else 0.0
-        score = checks["no_jsonl_emission"]
-        return DimensionScore("structure", score, checks, notes)
 
     parsed, _ = parse_jsonl(text)
     if not parsed:
@@ -409,6 +389,7 @@ def score_efficiency(output_tokens: int, tier: str, scenario_hints: dict | None 
     hints = scenario_hints or {}
 
     # Expected output token ranges by tier
+    # NOTE: All tiers now use tool calls, which produce more tokens than plain text
     expected = hints.get("expected_tokens", None)
     if expected is None:
         if tier == "L2":
@@ -421,8 +402,22 @@ def score_efficiency(output_tokens: int, tier: str, scenario_hints: dict | None 
             expected = (15 * op_count, max(100, 50 * op_count))
         elif tier == "L3":
             expected = (80, 1200)  # Lowered floor — v3.1 prompts produce leaner output
+        elif tier == "L4":
+            # L4 handles schema synthesis (first turn) and queries
+            # Schema synthesis uses tool calls and produces significant output
+            # Queries are lighter but still use voice tool
+            if output_text:
+                parsed, _ = parse_jsonl(output_text)
+                if any(p.get("t") == "entity.create" for p in parsed):
+                    # Schema synthesis turn — more tokens expected
+                    expected = (200, 800)
+                else:
+                    # Query turn — lighter output
+                    expected = (50, 300)
+            else:
+                expected = (50, 600)  # Default for L4
         else:
-            expected = (20, 200)  # L4 text answers
+            expected = (50, 600)  # Fallback
 
     low, high = expected
     if output_tokens <= high:
@@ -655,10 +650,17 @@ def score_fidelity(text: str, tier: str, scenario_hints: dict | None = None, sna
         checks["tier_appropriate"] = 1.0 if has_creates else 0.0
 
     elif tier == "L4":
-        # L4 should produce a substantive text answer
-        stripped = text.strip()
-        checks["has_content"] = 1.0 if len(stripped) > 10 else 0.0
-        checks["not_json"] = 0.0 if stripped.startswith("{") else 1.0
+        # L4 uses tool calls like other tiers
+        # On first turn: creates schema (entity.create)
+        # On queries: uses voice tool to respond
+        parsed, _ = parse_jsonl(text)
+        has_voice = any(p.get("t") == "voice" for p in parsed)
+        has_creates = any(p.get("t") == "entity.create" for p in parsed)
+        # L4 should always have voice (user communication)
+        checks["has_voice"] = 1.0 if has_voice else 0.0
+        # First turn should create entities, queries should not
+        # We can't easily distinguish here, so just check output is non-empty
+        checks["has_output"] = 1.0 if parsed else 0.0
 
     # Clarify signal checks (from turn-level hints)
     has_clarify = any(p.get("t") == "clarify" for p in parsed) if parsed else False

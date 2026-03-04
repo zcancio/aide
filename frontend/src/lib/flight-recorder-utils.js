@@ -5,24 +5,35 @@
  * Extracted for testability.
  */
 
-// Cost rates per 1M tokens
-export const COST_RATES = {
+// Cost rates per 1M tokens - by model
+export const MODEL_RATES = {
+  // Sonnet 4.5
+  'claude-sonnet-4-5-20250929': { in: 3, out: 15, cache_read: 0.3, cache_write: 3.75 },
+  // Opus 4.5
+  'claude-opus-4-5-20251101': { in: 15, out: 75, cache_read: 1.5, cache_write: 18.75 },
+  // Haiku 3.5
+  'claude-3-5-haiku-20241022': { in: 0.8, out: 4, cache_read: 0.08, cache_write: 1 },
+  // Legacy tier-based fallbacks
   L4: { in: 15, out: 75, cache_read: 1.5, cache_write: 18.75 },
   L3: { in: 3, out: 15, cache_read: 0.3, cache_write: 3.75 },
   L2: { in: 0.25, out: 1.25, cache_read: 0.03, cache_write: 0.3125 },
 };
 
+// Alias for backwards compatibility
+export const COST_RATES = MODEL_RATES;
+
 /**
- * Calculate cost in USD based on token usage and tier.
+ * Calculate cost in USD based on token usage and model/tier.
  *
  * @param {Object|null} usage - Token usage object with input_tokens, output_tokens, cache_read, cache_creation
- * @param {string} tier - Pricing tier (L2, L3, L4, or with arrow like "L3->L4")
+ * @param {string} tierOrModel - Model ID or tier (L2, L3, L4)
  * @returns {number} Cost in USD
  */
-export function calculateCost(usage, tier) {
+export function calculateCost(usage, tierOrModel) {
   if (!usage) return 0;
-  const tierKey = tier?.split('->')[0] || 'L3';
-  const r = COST_RATES[tierKey] || COST_RATES.L3;
+  // Try model ID first, then tier fallback
+  const key = tierOrModel?.split('->')[0] || 'L3';
+  const r = MODEL_RATES[key] || MODEL_RATES.L3;
   return (
     ((usage.input_tokens || 0) * r.in) / 1e6 +
     ((usage.output_tokens || 0) * r.out) / 1e6 +
@@ -325,14 +336,26 @@ export function buildStreamEvents(turn) {
     (toolCalls.length > 0 && toolCalls[0].timestamp_ms !== undefined) ||
     (textBlocks.length > 0 && typeof textBlocks[0] === 'object' && textBlocks[0].timestamp_ms !== undefined);
 
+  // Helper to check if a tool call is a voice call
+  const isVoiceCall = (tc) => tc.name === 'voice' || tc.t === 'voice';
+  const getVoiceText = (tc) => tc.input?.text || tc.text || '';
+
   if (hasTimestamps) {
     // Use real timestamps
     for (const tc of toolCalls) {
-      events.push({
-        type: 'mutation',
-        ts: tc.timestamp_ms || 0,
-        data: tc,
-      });
+      if (isVoiceCall(tc)) {
+        events.push({
+          type: 'voice',
+          ts: tc.timestamp_ms || 0,
+          text: getVoiceText(tc),
+        });
+      } else {
+        events.push({
+          type: 'mutation',
+          ts: tc.timestamp_ms || 0,
+          data: tc,
+        });
+      }
     }
     for (const tb of textBlocks) {
       const text = typeof tb === 'string' ? tb : tb.text;
@@ -351,11 +374,19 @@ export function buildStreamEvents(turn) {
 
     let currentTs = ttfc;
     for (const tc of toolCalls) {
-      events.push({
-        type: 'mutation',
-        ts: currentTs,
-        data: tc,
-      });
+      if (isVoiceCall(tc)) {
+        events.push({
+          type: 'voice',
+          ts: currentTs,
+          text: getVoiceText(tc),
+        });
+      } else {
+        events.push({
+          type: 'mutation',
+          ts: currentTs,
+          data: tc,
+        });
+      }
       currentTs += perItem;
     }
     for (const tb of textBlocks) {

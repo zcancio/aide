@@ -31,9 +31,9 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import sys
 import time
+import uuid
 from datetime import datetime
 from pathlib import Path
 
@@ -45,19 +45,21 @@ from scoring import parse_jsonl, score_scenario
 # Prompt loading — unified with backend
 # ---------------------------------------------------------------------------
 
-# Add backend to path and import prompt builder
+# Add backend to path and import modules
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from backend.services.classifier import classify as backend_classify
 from backend.services.prompt_builder import build_system_blocks
-from engine.kernel.kernel import apply
+from backend.services.tool_defs import TOOLS
+from backend.services.tool_utils import tool_use_to_reducer_event
+from engine.kernel.kernel import apply, empty_snapshot
 
 # ---------------------------------------------------------------------------
 # Models
 # ---------------------------------------------------------------------------
 
 DEFAULT_MODELS = {
-    "L2": "claude-haiku-4-5-20251001",
     "L3": "claude-sonnet-4-5-20250929",
-    "L4": "claude-sonnet-4-5-20250929",
+    "L4": "claude-opus-4-5-20251101",
 }
 
 # ---------------------------------------------------------------------------
@@ -69,12 +71,8 @@ def apply_output_to_snapshot(snapshot: dict, output_text: str, tier: str) -> dic
     """
     Apply LLM output through the production kernel.
 
-    For L2/L3: parse JSONL and apply events through kernel.
-    For L4: no state change (read-only).
+    Both L3 and L4 can emit mutations (L4 creates initial structure).
     """
-    if tier == "L4":
-        return json.loads(json.dumps(snapshot))  # L4 is read-only
-
     parsed, _ = parse_jsonl(output_text)
     working = json.loads(json.dumps(snapshot))
 
@@ -117,141 +115,13 @@ def build_messages_with_history(
 
 def classify_tier(message: str, snapshot: dict | None) -> str:
     """
-    Simple rule-based classifier (mirrors the server-side classifier).
-    Returns expected tier based on message + snapshot.
+    Classify message to appropriate tier using the backend classifier.
+    Returns tier string (L3 or L4).
     """
-    msg_lower = message.lower().strip()
-    entities = snapshot.get("entities", {}) if snapshot else {}
-    entity_ids_lower = [eid.lower() for eid in entities.keys()]
-
-    # "add a new [thing]" — L3 only if the [thing] table doesn't exist yet
-    # e.g. "add a new chore" when chores table exists → L2 (adding row)
-    add_new_match = re.search(r"add a new (\w+)", msg_lower)
-    if add_new_match:
-        thing = add_new_match.group(1)
-        # Check if a table for this thing exists (singular or plural)
-        thing_exists = any(thing in eid or thing.rstrip("s") in eid or thing + "s" in eid for eid in entity_ids_lower)
-        if thing_exists:
-            return "L2"  # Adding to existing structure
-        else:
-            return "L3"  # Creating new structure
-
-    # Structural keywords → L3 (check BEFORE query phrases to avoid "create a summary" → L4)
-    # Note: "gonna be" removed — too aggressive for "it's gonna be me, mike..." (adding to roster)
-    structural = [
-        "add a section",
-        "set up a",
-        "create a",
-        "make a",
-        "we should track",
-        "we should do",
-        "gotta do",
-        "redoing",
-        "reorganize",
-        "group the",
-        "split the",
-        "separate the",
-    ]
-    if any(kw in msg_lower for kw in structural):
-        return "L3"
-
-    # Questions → L4
-    # Question mark anywhere (not just at end) — handles "is X working? feels like..."
-    if "?" in msg_lower:
-        return "L4"
-    # Query starters — expanded to catch "is the X working" patterns
-    query_starts = [
-        "how many",
-        "who",
-        "what's left",
-        "what do we",
-        "how much",
-        "is there",
-        "is the",
-        "is it",
-        "are the",
-        "are they",
-        "do we",
-        "does it",
-        "does the",
-        "where are we",
-        "show me",
-        "give me",
-    ]
-    if any(msg_lower.startswith(q) for q in query_starts):
-        return "L4"
-    # Query phrases anywhere (summaries, breakdowns, status checks)
-    query_phrases = [
-        "breakdown",
-        "looking like",
-        "status update",
-        "where do we stand",
-        "how are we",
-        "what's the total",
-        "run the numbers",
-        "full picture",
-    ]
-    if any(qp in msg_lower for qp in query_phrases):
-        return "L4"
-
-    # No entities → L3
-    if not entities:
-        return "L3"
-
-    # Helper: check if an entity has children (is populated, not just skeleton)
-    def has_children(prefix):
-        parent_ids = [eid for eid in entities.keys() if prefix in eid.lower()]
-        if not parent_ids:
-            return False
-        # Check if any other entity has one of these as parent
-        for e in entities.values():
-            if e.get("parent") in parent_ids:
-                return True
-        return False
-
-    # Budget/cost introduction → L3 if budget is empty or doesn't exist
-    # e.g. "budget is around 35k" or "already spent 8k"
-    if re.search(r"budget\s+(is|around|of|:)", msg_lower):
-        if not has_children("budget"):
-            return "L3"
-
-    # Quotes introduction → L3 if no quote children exist
-    # e.g. "got 3 quotes" or "quotes for the cabinets"
-    if re.search(r"(\d+\s+)?quotes?\s+(for|from|:)", msg_lower) or ("got" in msg_lower and "quote" in msg_lower):
-        if not has_children("quote"):
-            return "L3"
-
-    # Scheduling multiple contractors/tasks → L3 if tasks table is empty
-    # e.g. "plumber can start march 10, electrician march 3"
-    contractor_pattern = r"(plumber|electrician|contractor|installer|painter|carpenter)"
-    if re.search(contractor_pattern, msg_lower) and re.search(r"(start|begin|come|schedule)", msg_lower):
-        if not has_children("task"):
-            return "L3"
-
-    # Multi-item creation: 3+ comma/and-separated values suggest table creation → L3
-    # e.g. "quotes: woodworks 12k, cabinet depot 9500, custom craft 15k"
-    # e.g. "chores: dishes, vacuuming, bathroom, trash, mopping"
-    segments = [s.strip() for s in msg_lower.split(",") if s.strip()]
-    if len(segments) >= 3:
-        # Check if this looks like a list of new items (not just a complex sentence)
-        # Heuristic: multiple segments with numbers, or introducing a set of things
-        has_numbers = sum(1 for s in segments if re.search(r"\d", s))
-        intro_patterns = ["quotes", "chores", "tasks", "items", "players", "guests", "weekly", "daily", "monthly"]
-        matched_intro = next((ip for ip in intro_patterns if ip in msg_lower), None)
-        if has_numbers >= 2 or matched_intro:
-            # Check if a table for THIS specific intro pattern has children
-            # (not just exists — "chores:" needs populated chores, not just skeleton)
-            if matched_intro:
-                if not has_children(matched_intro):
-                    return "L3"
-            else:
-                # No specific intro, fall back to checking if ANY table exists
-                table_parents = [e for e in entities.values() if e.get("display") in ("table", "list", "checklist")]
-                if not table_parents:
-                    return "L3"
-
-    # Default → L2
-    return "L2"
+    snapshot = snapshot or {"entities": {}}
+    has_schema = bool(snapshot.get("entities"))
+    result = backend_classify(message, snapshot, has_schema)
+    return result.tier
 
 
 def run_turn(
@@ -269,40 +139,58 @@ def run_turn(
 
     start = time.time()
     first_token_time = None
-    full_text = ""
+    tool_calls: list[dict] = []
+    text_blocks: list[str] = []
 
+    # Use tools like production
     with client.messages.stream(
         model=model,
         max_tokens=4096,
         system=system,
         messages=messages,
+        tools=TOOLS,
     ) as stream:
-        for chunk in stream.text_stream:
-            if first_token_time is None:
+        for event in stream:
+            if first_token_time is None and event.type in ("content_block_start", "content_block_delta"):
                 first_token_time = time.time()
-            full_text += chunk
 
     end = time.time()
-    usage = stream.get_final_message().usage
+    final_message = stream.get_final_message()
+    usage = final_message.usage
 
-    # Strip code fences if model wraps output (common Sonnet behavior)
-    raw_output = full_text
-    clean_output = full_text.strip()
-    if clean_output.startswith("```"):
-        lines = clean_output.split("\n")
-        # Remove opening fence (```jsonl, ```json, ```)
-        lines = lines[1:]
-        # Remove closing fence
-        if lines and lines[-1].strip() == "```":
-            lines = lines[:-1]
-        clean_output = "\n".join(lines)
+    # Extract tool calls and text from response
+    for block in final_message.content:
+        if block.type == "tool_use":
+            tool_calls.append({"name": block.name, "input": block.input})
+        elif block.type == "text":
+            text_blocks.append(block.text)
+
+    # Convert tool calls to reducer events (JSONL format for scoring compatibility)
+    reducer_events = []
+    voice_text = ""
+    for tc in tool_calls:
+        if tc["name"] == "voice":
+            voice_text = tc["input"].get("text", "")
+            reducer_events.append({"t": "voice", "text": voice_text})
+        else:
+            event = tool_use_to_reducer_event(tc["name"], tc["input"])
+            if event:
+                reducer_events.append(event)
+
+    # Build JSONL output for scoring (maintains compatibility with existing scoring code)
+    output_lines = [json.dumps(e) for e in reducer_events]
+    clean_output = "\n".join(output_lines)
 
     return {
         "tier": tier,
         "model": model,
         "output": clean_output,
-        "raw_output": raw_output,
-        "had_fences": raw_output.strip() != clean_output.strip(),
+        "raw_output": clean_output,
+        "had_fences": False,
+        "tool_calls": tool_calls,
+        "text_blocks": text_blocks,
+        "voice_text": voice_text,
+        "reducer_events": reducer_events,
         "ttfc_ms": int((first_token_time - start) * 1000) if first_token_time else -1,
         "ttc_ms": int((end - start) * 1000),
         "input_tokens": usage.input_tokens,
@@ -336,7 +224,7 @@ def run_multiturn_scenario(
     print(f"   {len(turns)} turns")
     print(f"{'=' * 70}")
 
-    snapshot: dict = {"meta": {}, "entities": {}}
+    snapshot: dict = empty_snapshot()
     history: list[dict] = []
     turn_results: list[dict] = []
 
@@ -354,12 +242,14 @@ def run_multiturn_scenario(
             try:
                 warm_start = time.time()
                 warm_system = build_system_blocks(tier, snapshot, version=prompt_version)
-                # Minimal request — just enough for the API to cache the prefix
+                # Minimal request — must include tools to match actual calls
+                # Anthropic cache is prefix-based: system + tools must match
                 client.messages.create(
                     model=DEFAULT_MODELS[tier],
                     max_tokens=1,
                     system=warm_system,
                     messages=[{"role": "user", "content": "ping"}],
+                    tools=TOOLS,
                 )
                 warm_ms = int((time.time() - warm_start) * 1000)
                 print(f"    {tier} warmed in {warm_ms}ms")
@@ -396,9 +286,9 @@ def run_multiturn_scenario(
 
             result = run_turn(client, message, actual_tier, snapshot, history, prompt_version=prompt_version)
 
-            # Retry guard: if L2/L3 produced zero parseable JSONL, it slipped
+            # Retry guard: if L3 produced zero parseable JSONL, it slipped
             # into conversational mode. Retry once with explicit nudge.
-            if actual_tier in ("L2", "L3"):
+            if actual_tier == "L3":
                 check_parsed, _ = parse_jsonl(result["output"])
                 if not check_parsed:
                     print(f"    ⚠ {actual_tier} produced plain text, retrying with nudge...")
@@ -415,47 +305,7 @@ def run_multiturn_scenario(
                         result["retried"] = True
                         print("    ✗ Retry also failed — plain text output")
 
-            # Check for escalation signals in L2 output
-            # Production server: apply L2 mutations, then re-route to escalation tier
-            escalation_result = None
-            if actual_tier == "L2":
-                parsed_events, _ = parse_jsonl(result["output"])
-                escalation = next((e for e in parsed_events if e.get("t") == "escalate"), None)
-                if escalation:
-                    esc_tier = escalation.get("tier", "L3")
-                    esc_extract = escalation.get("extract", message)
-                    print(f"    ↗ L2 escalated to {esc_tier}: {escalation.get('reason', '')}")
-
-                    # Apply L2's mutations first (everything before the escalate)
-                    pre_escalation_snapshot = apply_output_to_snapshot(snapshot, result["output"], "L2")
-
-                    # Run escalation tier with the extracted/original message
-                    escalation_result = run_turn(
-                        client, esc_extract, esc_tier, pre_escalation_snapshot, history, prompt_version=prompt_version
-                    )
-
-                    # Merge: L2's output + escalation output
-                    result = {
-                        **result,
-                        "output": result["output"] + "\n" + escalation_result["output"],
-                        "raw_output": (
-                            result.get("raw_output", result["output"])
-                            + "\n"
-                            + escalation_result.get("raw_output", escalation_result["output"])
-                        ),
-                        "had_fences": (result.get("had_fences", False) or escalation_result.get("had_fences", False)),
-                        "output_tokens": result["output_tokens"] + escalation_result["output_tokens"],
-                        "input_tokens": result["input_tokens"] + escalation_result["input_tokens"],
-                        "ttc_ms": result["ttc_ms"] + escalation_result["ttc_ms"],
-                        # TTFT is from the first call
-                        "cache_creation": result["cache_creation"] + escalation_result.get("cache_creation", 0),
-                        "cache_read": result["cache_read"] + escalation_result.get("cache_read", 0),
-                        "escalated_to": esc_tier,
-                    }
-
-            # If escalated, use the escalated tier for scoring and snapshot
-            # (the merged output has L3-style entity creates, not L2-only mutations)
-            effective_tier = result.get("escalated_to", actual_tier)
+            effective_tier = actual_tier
 
             # Update snapshot from clean output (fences stripped)
             # Done BEFORE scoring so structure scorer can detect orphans
@@ -611,6 +461,9 @@ def run_multiturn_scenario(
                     # Content (viewer needs these inline)
                     "output": result.get("raw_output", result["output"]),
                     "had_fences": result.get("had_fences", False),
+                    "tool_calls": result.get("tool_calls", []),
+                    "text_blocks": result.get("text_blocks", []),
+                    "voice_text": result.get("voice_text", ""),
                     "system_prompt": system_prompt_text,
                     "snapshot_before": snapshot_before,
                     "snapshot_after": json.loads(json.dumps(new_snapshot)),
@@ -659,6 +512,61 @@ def run_multiturn_scenario(
         f"tokens: {total_tokens} | time: {total_time}ms | "
         f"tier accuracy: {tier_accuracy:.0%}"
     )
+
+    # Save telemetry.json in flight recorder format
+    if save_dir:
+
+        def build_validation(t: dict) -> dict:
+            """Convert eval score to flight recorder validation format."""
+            score = t.get("score", {})
+            composite = score.get("composite", 0) if isinstance(score, dict) else 0
+            issues = []
+
+            # Collect issues from score_details
+            details = t.get("score_details", {})
+            for dim_name, dim_data in details.items():
+                if dim_data.get("score", 1.0) < 1.0:
+                    for note in dim_data.get("notes", []):
+                        issues.append(f"{dim_name}: {note}")
+
+            return {
+                "passed": composite >= 0.8,
+                "score": composite,
+                "issues": issues,
+            }
+
+        telemetry = {
+            "aide_id": str(uuid.uuid4()),
+            "name": name,
+            "scenario_id": name,
+            "timestamp": datetime.now().isoformat(),
+            "turns": [
+                {
+                    "turn": t["turn"],
+                    "tier": t.get("tier", "L3"),
+                    "model": DEFAULT_MODELS.get(t.get("tier", "L3"), "unknown"),
+                    "message": t["message"],
+                    "tool_calls": t.get("tool_calls", []),
+                    "text_blocks": t.get("text_blocks", []),
+                    "system_prompt": t.get("system_prompt"),
+                    "usage": {
+                        "input_tokens": t.get("input_tokens", 0),
+                        "output_tokens": t.get("output_tokens", 0),
+                        "cache_read": t.get("cache_read", 0),
+                        "cache_creation": t.get("cache_creation", 0),
+                    },
+                    "ttfc_ms": t.get("ttfc_ms", 0),
+                    "ttc_ms": t.get("ttc_ms", 0),
+                    "validation": build_validation(t),
+                }
+                for t in turn_results
+                if "error" not in t
+            ],
+            "final_snapshot": turn_results[-1].get("snapshot_after") if turn_results else None,
+        }
+        telemetry_path = save_dir / name / "telemetry.json"
+        telemetry_path.write_text(json.dumps(telemetry, indent=2))
+        print(f"  📼 Telemetry saved: {telemetry_path}")
 
     return {
         "name": name,
