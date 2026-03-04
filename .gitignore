@@ -35,6 +35,10 @@ htmlcov/
 skills/*-workspace/
 .obsidian/
 
+# Evals (local run artifacts)
+eval_baseline/
+eval_output/
+
 # Frontend
 node_modules/
 frontend/dist/
