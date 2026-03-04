@@ -59,7 +59,7 @@ from engine.kernel.kernel import apply, empty_snapshot
 
 DEFAULT_MODELS = {
     "L3": "claude-sonnet-4-5-20250929",
-    "L4": "claude-sonnet-4-5-20250929",
+    "L4": "claude-opus-4-5-20251101",
 }
 
 # ---------------------------------------------------------------------------
