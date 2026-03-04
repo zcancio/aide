@@ -2,7 +2,7 @@
 WebSocket endpoint for real-time aide interaction.
 
 Accepts connections at /ws/aide/{aide_id}, streams deltas back to the client
-as the MockLLM processes each JSONL line through the reducer.
+as the LLM processes tool calls through the reducer.
 """
 
 from __future__ import annotations
@@ -26,7 +26,6 @@ from backend.repos import telemetry_repo
 from backend.repos.aide_repo import AideRepo
 from backend.repos.conversation_repo import ConversationRepo
 from backend.services.streaming_orchestrator import StreamingOrchestrator
-from engine.kernel.mock_llm import MockLLM
 from engine.kernel.reducer import empty_snapshot, reduce
 
 logger = logging.getLogger(__name__)
@@ -330,8 +329,6 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
         await websocket.send_text(json.dumps({"type": "snapshot.end"}))
         logger.info("ws: hydrated %d entities for aide_id=%s", len(entities), aide_id)
 
-    mock_llm = MockLLM()
-    current_profile = "realistic_l3"
     interrupt_requested = False
     current_message_id: str | None = None
 
@@ -356,14 +353,6 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
                     logger.info("ws: interrupt requested for message_id=%s", current_message_id)
                 continue
 
-            # ── set_profile ──────────────────────────────────────────
-            if msg_type == "set_profile":
-                profile = msg.get("profile", "realistic_l3")
-                if profile in {"instant", "realistic_l2", "realistic_l3", "realistic_l4", "slow"}:
-                    current_profile = profile
-                    logger.info("ws: profile set to %s", current_profile)
-                continue
-
             # ── direct_edit ──────────────────────────────────────────
             if msg_type == "direct_edit":
                 snapshot = await _handle_direct_edit(websocket, user_id, aide_id, snapshot, msg)
@@ -383,195 +372,85 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
             ttfc: float | None = None
             start_time = time.monotonic()
 
-            # Buffer for partial lines
-            line_buffer = ""
-            # Batch buffering state
-            in_batch = False
-            batch_buffer: list[dict[str, Any]] = []
-
             # Load conversation history
             conversation_history, conversation_id, turn_num = await _load_conversation(user_id, aide_id)
 
             # Collect voice text during streaming for conversation history
             voice_texts: list[str] = []
 
-            # Determine if we should use real LLM or mock
-            # Use mock LLM in tests (TESTING=true) or when USE_MOCK_LLM=true
-            use_real_llm = settings.ANTHROPIC_API_KEY and not settings.USE_MOCK_LLM and not settings.TESTING
+            # Check for API key - required for LLM streaming
+            if not settings.ANTHROPIC_API_KEY:
+                await websocket.send_text(json.dumps({"type": "stream.error", "error": "API key not configured"}))
+                await websocket.send_text(json.dumps({"type": "stream.end", "message_id": message_id}))
+                continue
 
             try:
-                if use_real_llm:
-                    # Use real Anthropic API streaming
-                    try:
-                        orchestrator = StreamingOrchestrator(
-                            aide_id=aide_id,
-                            snapshot=snapshot,
-                            conversation=conversation_history,
-                            api_key=settings.ANTHROPIC_API_KEY,
-                            user_id=user_id,
-                            turn_num=turn_num,
-                        )
-
-                        async for result in orchestrator.process_message(content):
-                            # Check for interrupt request
-                            if interrupt_requested:
-                                logger.info("ws: stream interrupted message_id=%s", message_id)
-                                break
-
-                            result_type = result.get("type")
-
-                            # Classification metadata
-                            if result_type == "meta.classification":
-                                logger.info(
-                                    "ws: tier=%s model=%s reason=%s",
-                                    result.get("tier"),
-                                    result.get("model"),
-                                    result.get("reason"),
-                                )
-                                continue
-
-                            # Voice events
-                            if result_type == "voice":
-                                voice_text = result.get("text", "")
-                                voice_texts.append(voice_text)
-                                await websocket.send_text(json.dumps({"type": "voice", "text": voice_text}))
-                                continue
-
-                            # Event processed
-                            if result_type == "event":
-                                event = result.get("event", {})
-                                snapshot = result.get("snapshot", snapshot)
-                                event_type = event.get("t", "")
-
-                                if ttfc is None:
-                                    ttfc = (time.monotonic() - start_time) * 1000
-
-                                if event_type in _ENTITY_TYPES:
-                                    entity_id = event.get("id") or event.get("ref")
-                                    delta = _make_delta(event_type, entity_id, snapshot)
-                                    await websocket.send_text(json.dumps(delta))
-                                elif event_type in _META_TYPES:
-                                    # Send meta update to client
-                                    meta = snapshot.get("meta", {})
-                                    await websocket.send_text(json.dumps({"type": "meta.update", "data": meta}))
-                                continue
-
-                            # Rejection
-                            if result_type == "rejection":
-                                logger.debug("ws: event rejected reason=%s", result.get("reason"))
-                                continue
-
-                    except Exception as e:
-                        # Log the error and send error message to client
-                        logger.error("ws: real LLM failed: %s", e)
-                        try:
-                            error_msg = "Anthropic API is temporarily unavailable. Please try again."
-                            await websocket.send_text(json.dumps({"type": "stream.error", "error": error_msg}))
-                        except RuntimeError:
-                            pass
-                        continue  # Skip to next message, don't process this one
-
-                if not use_real_llm:
-                    # Use mock LLM (Phase 1-3: static golden files)
-                    scenario = _pick_scenario(content)
-                    async for line in mock_llm.stream(scenario, profile=current_profile):
-                        # Check for interrupt request
-                        if interrupt_requested:
-                            logger.info("ws: stream interrupted message_id=%s", message_id)
-                            break
-                        # The mock LLM already yields one complete JSONL line per iteration.
-                        # Parse the raw line and pass it directly to the v2 reducer
-                        # (which expects the short-hand keys: t, p, id, parent, display).
-                        line_buffer += line + "\n"
-                        while "\n" in line_buffer:
-                            raw_line, line_buffer = line_buffer.split("\n", 1)
-                            raw_line = raw_line.strip()
-                            if not raw_line:
-                                continue
-                            try:
-                                event: dict[str, Any] = json.loads(raw_line)
-                            except json.JSONDecodeError:
-                                logger.warning("ws: malformed JSONL line: %r", raw_line[:200])
-                                continue
-
-                            # v2 reducer uses "t" for event type
-                            event_type: str = event.get("t", "")
-
-                            # Handle batch signals
-                            if event_type == "batch.start":
-                                in_batch = True
-                                batch_buffer = []
-                                continue
-
-                            if event_type == "batch.end":
-                                in_batch = False
-                                # Apply all buffered events at once
-                                for buffered_event in batch_buffer:
-                                    buffered_type = buffered_event.get("t", "")
-                                    result = reduce(snapshot, buffered_event)
-                                    if result.accepted:
-                                        snapshot = result.snapshot
-                                        if ttfc is None:
-                                            ttfc = (time.monotonic() - start_time) * 1000
-                                        if buffered_type in _ENTITY_TYPES:
-                                            entity_id = buffered_event.get("id")
-                                            delta = _make_delta(buffered_type, entity_id, snapshot)
-                                            await websocket.send_text(json.dumps(delta))
-                                batch_buffer = []
-                                continue
-
-                            if event_type in _VOICE_TYPES:
-                                voice_text_mock: str = event.get("text", "")
-                                if voice_text_mock:
-                                    voice_texts.append(voice_text_mock)
-                                    await websocket.send_text(json.dumps({"type": "voice", "text": voice_text_mock}))
-                                continue
-
-                            if event_type not in _ENTITY_TYPES and not event_type.startswith(
-                                ("meta.", "style.", "collection.", "field.", "block.", "view.", "relationship.", "rel.")
-                            ):
-                                continue
-
-                            # Buffer events during batch mode
-                            if in_batch:
-                                batch_buffer.append(event)
-                                continue
-
-                            # Apply to snapshot via v2 reducer (raw event, not expanded)
-                            result = reduce(snapshot, event)
-
-                            if result.accepted:
-                                snapshot = result.snapshot
-
-                                if ttfc is None:
-                                    ttfc = (time.monotonic() - start_time) * 1000
-
-                                if event_type in _ENTITY_TYPES:
-                                    entity_id = event.get("id") or event.get("ref")
-                                    delta = _make_delta(event_type, entity_id, snapshot)
-                                    await websocket.send_text(json.dumps(delta))
-                                elif event_type in _META_TYPES:
-                                    # Send meta update to client
-                                    meta = snapshot.get("meta", {})
-                                    await websocket.send_text(json.dumps({"type": "meta.update", "data": meta}))
-                            else:
-                                logger.debug(
-                                    "ws: reducer rejected %s (reason=%s)",
-                                    event_type,
-                                    result.reason,
-                                )
-
-            except FileNotFoundError:
-                logger.error("ws: golden file not found for scenario=%s", scenario)
-                await websocket.send_text(
-                    json.dumps(
-                        {
-                            "type": "stream.error",
-                            "message_id": message_id,
-                            "error": f"Scenario '{scenario}' not found.",
-                        }
-                    )
+                orchestrator = StreamingOrchestrator(
+                    aide_id=aide_id,
+                    snapshot=snapshot,
+                    conversation=conversation_history,
+                    api_key=settings.ANTHROPIC_API_KEY,
+                    user_id=user_id,
+                    turn_num=turn_num,
                 )
+
+                async for result in orchestrator.process_message(content):
+                    # Check for interrupt request
+                    if interrupt_requested:
+                        logger.info("ws: stream interrupted message_id=%s", message_id)
+                        break
+
+                    result_type = result.get("type")
+
+                    # Classification metadata
+                    if result_type == "meta.classification":
+                        logger.info(
+                            "ws: tier=%s model=%s reason=%s",
+                            result.get("tier"),
+                            result.get("model"),
+                            result.get("reason"),
+                        )
+                        continue
+
+                    # Voice events
+                    if result_type == "voice":
+                        voice_text = result.get("text", "")
+                        voice_texts.append(voice_text)
+                        await websocket.send_text(json.dumps({"type": "voice", "text": voice_text}))
+                        continue
+
+                    # Event processed
+                    if result_type == "event":
+                        event = result.get("event", {})
+                        snapshot = result.get("snapshot", snapshot)
+                        event_type = event.get("t", "")
+
+                        if ttfc is None:
+                            ttfc = (time.monotonic() - start_time) * 1000
+
+                        if event_type in _ENTITY_TYPES:
+                            entity_id = event.get("id") or event.get("ref")
+                            delta = _make_delta(event_type, entity_id, snapshot)
+                            await websocket.send_text(json.dumps(delta))
+                        elif event_type in _META_TYPES:
+                            # Send meta update to client
+                            meta = snapshot.get("meta", {})
+                            await websocket.send_text(json.dumps({"type": "meta.update", "data": meta}))
+                        continue
+
+                    # Rejection
+                    if result_type == "rejection":
+                        logger.debug("ws: event rejected reason=%s", result.get("reason"))
+                        continue
+
+            except Exception as e:
+                # Log the error and send error message to client
+                logger.error("ws: LLM streaming failed: %s", e)
+                try:
+                    error_msg = "Anthropic API is temporarily unavailable. Please try again."
+                    await websocket.send_text(json.dumps({"type": "stream.error", "error": error_msg}))
+                except RuntimeError:
+                    pass
                 continue
 
             ttc = (time.monotonic() - start_time) * 1000
@@ -598,28 +477,3 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
 
     except WebSocketDisconnect:
         logger.info("WebSocket disconnected: aide_id=%s", aide_id)
-
-
-def _pick_scenario(content: str) -> str:
-    """
-    Choose a golden file scenario based on message content.
-
-    Phase 1: simple keyword matching against available scenarios.
-    """
-    content_lower = content.lower()
-
-    if any(kw in content_lower for kw in ("graduation", "party", "sophie")):
-        return "create_graduation"
-    if any(kw in content_lower for kw in ("poker", "card", "chips")):
-        return "create_poker"
-    if any(kw in content_lower for kw in ("inspo", "inspiration", "mood")):
-        return "create_inspo"
-    if any(kw in content_lower for kw in ("football", "squares", "grid", "pool")):
-        return "create_football_squares"
-    if any(kw in content_lower for kw in ("trip", "travel", "group")):
-        return "create_group_trip"
-    if any(kw in content_lower for kw in ("update", "add", "guest")):
-        return "update_simple"
-
-    # Default: graduation party demo
-    return "create_graduation"

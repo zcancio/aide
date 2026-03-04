@@ -2,16 +2,25 @@
 Integration tests for the WebSocket aide endpoint.
 
 Tests /ws/aide/{aide_id} — message input, delta streaming, stream status.
+
+NOTE: Tests that require LLM streaming are skipped when ANTHROPIC_API_KEY is not set.
 """
 
 from __future__ import annotations
 
 import json
+import os
 
 import pytest
 from fastapi.testclient import TestClient
 
 from backend.main import app
+
+# Skip LLM-dependent tests when no API key is configured
+requires_llm = pytest.mark.skipif(
+    not os.environ.get("ANTHROPIC_API_KEY"),
+    reason="ANTHROPIC_API_KEY not set - LLM streaming tests skipped",
+)
 
 
 @pytest.fixture
@@ -31,6 +40,7 @@ class TestWebSocketConnect:
             pass
 
 
+@requires_llm
 class TestWebSocketMessageFlow:
     def test_message_yields_stream_start(self, client):
         with client.websocket_connect("/ws/aide/test-aide-id") as ws:
@@ -153,6 +163,7 @@ class TestWebSocketMessageFlow:
             assert first["message_id"]
 
 
+@requires_llm
 class TestWebSocketEdgeCases:
     def test_malformed_json_from_client_ignored(self, client):
         with client.websocket_connect("/ws/aide/test-aide-id") as ws:
@@ -199,6 +210,7 @@ class TestWebSocketEdgeCases:
             assert "stream.end" in types
 
 
+@requires_llm
 class TestDirectEdit:
     """Tests for the direct_edit WebSocket message type."""
 

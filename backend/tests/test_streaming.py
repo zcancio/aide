@@ -2,13 +2,24 @@
 Tests for WebSocket streaming behavior.
 
 Phase 3: Tests for interrupt, batch handling, and progressive rendering.
+
+NOTE: Most tests require ANTHROPIC_API_KEY for LLM streaming.
 """
 
 from __future__ import annotations
 
+import os
+
+import pytest
 from fastapi.testclient import TestClient
 
 from backend.main import app
+
+# Skip LLM-dependent tests when no API key is configured
+requires_llm = pytest.mark.skipif(
+    not os.environ.get("ANTHROPIC_API_KEY"),
+    reason="ANTHROPIC_API_KEY not set - LLM streaming tests skipped",
+)
 
 
 def test_websocket_accepts_connection():
@@ -23,6 +34,7 @@ def test_websocket_accepts_connection():
         assert msg["message_id"] == "test-1"
 
 
+@requires_llm
 def test_interrupt_stops_stream():
     """Interrupt message stops the stream and keeps partial state."""
     # Note: This test is limited by TestClient's synchronous nature.
@@ -54,6 +66,7 @@ def test_interrupt_stops_stream():
         assert stream_completed, "Stream should complete or be interrupted"
 
 
+@requires_llm
 def test_profile_selection():
     """Profile selection message changes streaming delay profile."""
     client = TestClient(app)
@@ -86,6 +99,7 @@ def test_profile_selection():
         assert entity_count > 0, "Should have received entities"
 
 
+@requires_llm
 def test_batch_events():
     """Batch events are buffered and applied together."""
     client = TestClient(app)
@@ -108,6 +122,7 @@ def test_batch_events():
                 break
 
 
+@requires_llm
 def test_voice_messages_appear_in_stream():
     """Voice messages are sent as separate voice deltas."""
     client = TestClient(app)
@@ -131,6 +146,7 @@ def test_voice_messages_appear_in_stream():
         assert len(voice_messages) > 0, "Expected at least one voice message"
 
 
+@requires_llm
 def test_entity_deltas_have_correct_format():
     """Entity deltas have the expected structure."""
     client = TestClient(app)
@@ -157,6 +173,7 @@ def test_entity_deltas_have_correct_format():
         assert entity_delta["data"] is not None, "Data should not be None for entity.create"
 
 
+@requires_llm
 def test_direct_edit_after_stream():
     """Direct edit can be sent after stream completes."""
     client = TestClient(app)
