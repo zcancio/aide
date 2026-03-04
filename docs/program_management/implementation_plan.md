@@ -33,7 +33,7 @@ This phase answers the most important question: **does the architecture hold up 
 
 ### 0a: Prompts + Real API Runs
 
-Write the prompts from [06 Prompts](06_prompts.md). Run them against real Anthropic models. Not in a product — just a script that assembles the prompt, calls the API, and saves the raw output.
+Write the prompts from [Prompts](../eng_design/core/core_prompts.md). Run them against real Anthropic models. Not in a product — just a script that assembles the prompt, calls the API, and saves the raw output.
 
 ```typescript
 // prompt_test.ts — run against real API, save output

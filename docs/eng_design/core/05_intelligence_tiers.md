@@ -1,7 +1,7 @@
 # 05: Intelligence Tiers
 
 > **Prerequisites:** [Overview](../architecture_overview.md) · [Tool Calls](core_tool_calls.md) (for escalation signals)
-> **Next:** [06 Prompts](06_prompts.md) (the actual system prompts for each tier)
+> **Next:** [Prompts](core_prompts.md) (the actual system prompts for each tier)
 
 ---
 

@@ -200,6 +200,6 @@ At publish time, the server renders the snapshot to static HTML stored in `aide_
 | **[Streaming Pipeline](core_streaming_pipeline.md)** | Server parsing, WebSocket, caching, streaming rules | Touch server or client integration |
 | **[04 Display Components](04_display_components.md)** | React compiler, all 9 components, EditableField | Touch the frontend |
 | **[05 Intelligence Tiers](05_intelligence_tiers.md)** | L3/L4, routing, escalation, multi-intent, costs | Touch LLM orchestration |
-| **[06 Prompts](06_prompts.md)** | System prompts for L3, L4 | Touch LLM behavior |
+| **[Prompts](core_prompts.md)** | System prompts for L3, L4 | Touch LLM behavior |
 | **[Reliability & Performance](core_reliability_and_performance.md)** | Interrupt, undo, retry, errors, speed budget | Touch reliability or UX |
 | **[08 Capability Boundaries](08_capability_boundaries.md)** | Native/skills/redirects, scoping rules | Touch product scope |
