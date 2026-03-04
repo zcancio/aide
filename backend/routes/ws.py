@@ -378,6 +378,14 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
             # Collect voice text during streaming for conversation history
             voice_texts: list[str] = []
 
+            # Check for API key - required for LLM streaming
+            if not settings.ANTHROPIC_API_KEY:
+                await websocket.send_text(
+                    json.dumps({"type": "stream.error", "error": "API key not configured"})
+                )
+                await websocket.send_text(json.dumps({"type": "stream.end", "message_id": message_id}))
+                continue
+
             try:
                 orchestrator = StreamingOrchestrator(
                     aide_id=aide_id,
