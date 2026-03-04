@@ -31,7 +31,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import sys
 import time
 from datetime import datetime
@@ -45,8 +44,9 @@ from scoring import parse_jsonl, score_scenario
 # Prompt loading — unified with backend
 # ---------------------------------------------------------------------------
 
-# Add backend to path and import prompt builder
+# Add backend to path and import modules
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from backend.services.classifier import classify as backend_classify
 from backend.services.prompt_builder import build_system_blocks
 from engine.kernel.kernel import apply
 
@@ -55,7 +55,6 @@ from engine.kernel.kernel import apply
 # ---------------------------------------------------------------------------
 
 DEFAULT_MODELS = {
-    "L2": "claude-haiku-4-5-20251001",
     "L3": "claude-sonnet-4-5-20250929",
     "L4": "claude-sonnet-4-5-20250929",
 }
@@ -69,7 +68,7 @@ def apply_output_to_snapshot(snapshot: dict, output_text: str, tier: str) -> dic
     """
     Apply LLM output through the production kernel.
 
-    For L2/L3: parse JSONL and apply events through kernel.
+    For L3: parse JSONL and apply events through kernel.
     For L4: no state change (read-only).
     """
     if tier == "L4":
@@ -117,141 +116,13 @@ def build_messages_with_history(
 
 def classify_tier(message: str, snapshot: dict | None) -> str:
     """
-    Simple rule-based classifier (mirrors the server-side classifier).
-    Returns expected tier based on message + snapshot.
+    Classify message to appropriate tier using the backend classifier.
+    Returns tier string (L3 or L4).
     """
-    msg_lower = message.lower().strip()
-    entities = snapshot.get("entities", {}) if snapshot else {}
-    entity_ids_lower = [eid.lower() for eid in entities.keys()]
-
-    # "add a new [thing]" — L3 only if the [thing] table doesn't exist yet
-    # e.g. "add a new chore" when chores table exists → L2 (adding row)
-    add_new_match = re.search(r"add a new (\w+)", msg_lower)
-    if add_new_match:
-        thing = add_new_match.group(1)
-        # Check if a table for this thing exists (singular or plural)
-        thing_exists = any(thing in eid or thing.rstrip("s") in eid or thing + "s" in eid for eid in entity_ids_lower)
-        if thing_exists:
-            return "L2"  # Adding to existing structure
-        else:
-            return "L3"  # Creating new structure
-
-    # Structural keywords → L3 (check BEFORE query phrases to avoid "create a summary" → L4)
-    # Note: "gonna be" removed — too aggressive for "it's gonna be me, mike..." (adding to roster)
-    structural = [
-        "add a section",
-        "set up a",
-        "create a",
-        "make a",
-        "we should track",
-        "we should do",
-        "gotta do",
-        "redoing",
-        "reorganize",
-        "group the",
-        "split the",
-        "separate the",
-    ]
-    if any(kw in msg_lower for kw in structural):
-        return "L3"
-
-    # Questions → L4
-    # Question mark anywhere (not just at end) — handles "is X working? feels like..."
-    if "?" in msg_lower:
-        return "L4"
-    # Query starters — expanded to catch "is the X working" patterns
-    query_starts = [
-        "how many",
-        "who",
-        "what's left",
-        "what do we",
-        "how much",
-        "is there",
-        "is the",
-        "is it",
-        "are the",
-        "are they",
-        "do we",
-        "does it",
-        "does the",
-        "where are we",
-        "show me",
-        "give me",
-    ]
-    if any(msg_lower.startswith(q) for q in query_starts):
-        return "L4"
-    # Query phrases anywhere (summaries, breakdowns, status checks)
-    query_phrases = [
-        "breakdown",
-        "looking like",
-        "status update",
-        "where do we stand",
-        "how are we",
-        "what's the total",
-        "run the numbers",
-        "full picture",
-    ]
-    if any(qp in msg_lower for qp in query_phrases):
-        return "L4"
-
-    # No entities → L3
-    if not entities:
-        return "L3"
-
-    # Helper: check if an entity has children (is populated, not just skeleton)
-    def has_children(prefix):
-        parent_ids = [eid for eid in entities.keys() if prefix in eid.lower()]
-        if not parent_ids:
-            return False
-        # Check if any other entity has one of these as parent
-        for e in entities.values():
-            if e.get("parent") in parent_ids:
-                return True
-        return False
-
-    # Budget/cost introduction → L3 if budget is empty or doesn't exist
-    # e.g. "budget is around 35k" or "already spent 8k"
-    if re.search(r"budget\s+(is|around|of|:)", msg_lower):
-        if not has_children("budget"):
-            return "L3"
-
-    # Quotes introduction → L3 if no quote children exist
-    # e.g. "got 3 quotes" or "quotes for the cabinets"
-    if re.search(r"(\d+\s+)?quotes?\s+(for|from|:)", msg_lower) or ("got" in msg_lower and "quote" in msg_lower):
-        if not has_children("quote"):
-            return "L3"
-
-    # Scheduling multiple contractors/tasks → L3 if tasks table is empty
-    # e.g. "plumber can start march 10, electrician march 3"
-    contractor_pattern = r"(plumber|electrician|contractor|installer|painter|carpenter)"
-    if re.search(contractor_pattern, msg_lower) and re.search(r"(start|begin|come|schedule)", msg_lower):
-        if not has_children("task"):
-            return "L3"
-
-    # Multi-item creation: 3+ comma/and-separated values suggest table creation → L3
-    # e.g. "quotes: woodworks 12k, cabinet depot 9500, custom craft 15k"
-    # e.g. "chores: dishes, vacuuming, bathroom, trash, mopping"
-    segments = [s.strip() for s in msg_lower.split(",") if s.strip()]
-    if len(segments) >= 3:
-        # Check if this looks like a list of new items (not just a complex sentence)
-        # Heuristic: multiple segments with numbers, or introducing a set of things
-        has_numbers = sum(1 for s in segments if re.search(r"\d", s))
-        intro_patterns = ["quotes", "chores", "tasks", "items", "players", "guests", "weekly", "daily", "monthly"]
-        matched_intro = next((ip for ip in intro_patterns if ip in msg_lower), None)
-        if has_numbers >= 2 or matched_intro:
-            # Check if a table for THIS specific intro pattern has children
-            # (not just exists — "chores:" needs populated chores, not just skeleton)
-            if matched_intro:
-                if not has_children(matched_intro):
-                    return "L3"
-            else:
-                # No specific intro, fall back to checking if ANY table exists
-                table_parents = [e for e in entities.values() if e.get("display") in ("table", "list", "checklist")]
-                if not table_parents:
-                    return "L3"
-
-    # Default → L2
-    return "L2"
+    snapshot = snapshot or {"entities": {}}
+    has_schema = bool(snapshot.get("entities"))
+    result = backend_classify(message, snapshot, has_schema)
+    return result.tier
 
 
 def run_turn(
@@ -396,9 +267,9 @@ def run_multiturn_scenario(
 
             result = run_turn(client, message, actual_tier, snapshot, history, prompt_version=prompt_version)
 
-            # Retry guard: if L2/L3 produced zero parseable JSONL, it slipped
+            # Retry guard: if L3 produced zero parseable JSONL, it slipped
             # into conversational mode. Retry once with explicit nudge.
-            if actual_tier in ("L2", "L3"):
+            if actual_tier == "L3":
                 check_parsed, _ = parse_jsonl(result["output"])
                 if not check_parsed:
                     print(f"    ⚠ {actual_tier} produced plain text, retrying with nudge...")
@@ -415,47 +286,7 @@ def run_multiturn_scenario(
                         result["retried"] = True
                         print("    ✗ Retry also failed — plain text output")
 
-            # Check for escalation signals in L2 output
-            # Production server: apply L2 mutations, then re-route to escalation tier
-            escalation_result = None
-            if actual_tier == "L2":
-                parsed_events, _ = parse_jsonl(result["output"])
-                escalation = next((e for e in parsed_events if e.get("t") == "escalate"), None)
-                if escalation:
-                    esc_tier = escalation.get("tier", "L3")
-                    esc_extract = escalation.get("extract", message)
-                    print(f"    ↗ L2 escalated to {esc_tier}: {escalation.get('reason', '')}")
-
-                    # Apply L2's mutations first (everything before the escalate)
-                    pre_escalation_snapshot = apply_output_to_snapshot(snapshot, result["output"], "L2")
-
-                    # Run escalation tier with the extracted/original message
-                    escalation_result = run_turn(
-                        client, esc_extract, esc_tier, pre_escalation_snapshot, history, prompt_version=prompt_version
-                    )
-
-                    # Merge: L2's output + escalation output
-                    result = {
-                        **result,
-                        "output": result["output"] + "\n" + escalation_result["output"],
-                        "raw_output": (
-                            result.get("raw_output", result["output"])
-                            + "\n"
-                            + escalation_result.get("raw_output", escalation_result["output"])
-                        ),
-                        "had_fences": (result.get("had_fences", False) or escalation_result.get("had_fences", False)),
-                        "output_tokens": result["output_tokens"] + escalation_result["output_tokens"],
-                        "input_tokens": result["input_tokens"] + escalation_result["input_tokens"],
-                        "ttc_ms": result["ttc_ms"] + escalation_result["ttc_ms"],
-                        # TTFT is from the first call
-                        "cache_creation": result["cache_creation"] + escalation_result.get("cache_creation", 0),
-                        "cache_read": result["cache_read"] + escalation_result.get("cache_read", 0),
-                        "escalated_to": esc_tier,
-                    }
-
-            # If escalated, use the escalated tier for scoring and snapshot
-            # (the merged output has L3-style entity creates, not L2-only mutations)
-            effective_tier = result.get("escalated_to", actual_tier)
+            effective_tier = actual_tier
 
             # Update snapshot from clean output (fences stripped)
             # Done BEFORE scoring so structure scorer can detect orphans

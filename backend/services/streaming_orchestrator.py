@@ -17,7 +17,7 @@ from typing import Any
 from uuid import UUID
 
 from backend.services.anthropic_client import AnthropicClient
-from backend.services.classifier import TIER_MODELS, classify
+from backend.services.classifier import classify, get_tier_models
 from backend.services.escalation import needs_escalation
 from backend.services.prompt_builder import build_messages, build_system_blocks
 from backend.services.telemetry import TurnRecorder
@@ -171,7 +171,7 @@ class StreamingOrchestrator:
             }
         """
         # Get model for tier
-        model = TIER_MODELS[tier]
+        model = get_tier_models()[tier]
 
         # Build system prompt blocks
         system_blocks = build_system_blocks(tier, snapshot)
@@ -297,7 +297,7 @@ class StreamingOrchestrator:
 
         tier = classification.tier
         self.tier = tier
-        self.model = TIER_MODELS[tier]
+        self.model = get_tier_models()[tier]
 
         logger.info(
             "streaming_orchestrator: classified message aide_id=%s tier=%s reason=%s",

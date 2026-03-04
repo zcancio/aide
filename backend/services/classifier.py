@@ -9,9 +9,8 @@ Routes user messages to appropriate tier:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any, Literal
-
-from backend.config import settings
 
 Tier = Literal["L3", "L4"]
 
@@ -24,11 +23,16 @@ class ClassificationResult:
     reason: str
 
 
-# Model mapping - uses settings for configurable models
-TIER_MODELS = {
-    "L3": settings.L3_MODEL,
-    "L4": settings.L3_MODEL,  # L4 uses same as L3 for now
-}
+@lru_cache
+def get_tier_models() -> dict[str, str]:
+    """Get model mapping - lazy load to avoid config import at module level."""
+    from backend.config import settings
+
+    return {
+        "L3": settings.L3_MODEL,
+        "L4": settings.L3_MODEL,  # L4 uses same as L3 for now
+    }
+
 
 # Cache TTLs (seconds)
 TIER_CACHE_TTL = {
