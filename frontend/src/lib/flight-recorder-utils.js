@@ -325,14 +325,26 @@ export function buildStreamEvents(turn) {
     (toolCalls.length > 0 && toolCalls[0].timestamp_ms !== undefined) ||
     (textBlocks.length > 0 && typeof textBlocks[0] === 'object' && textBlocks[0].timestamp_ms !== undefined);
 
+  // Helper to check if a tool call is a voice call
+  const isVoiceCall = (tc) => tc.name === 'voice' || tc.t === 'voice';
+  const getVoiceText = (tc) => tc.input?.text || tc.text || '';
+
   if (hasTimestamps) {
     // Use real timestamps
     for (const tc of toolCalls) {
-      events.push({
-        type: 'mutation',
-        ts: tc.timestamp_ms || 0,
-        data: tc,
-      });
+      if (isVoiceCall(tc)) {
+        events.push({
+          type: 'voice',
+          ts: tc.timestamp_ms || 0,
+          text: getVoiceText(tc),
+        });
+      } else {
+        events.push({
+          type: 'mutation',
+          ts: tc.timestamp_ms || 0,
+          data: tc,
+        });
+      }
     }
     for (const tb of textBlocks) {
       const text = typeof tb === 'string' ? tb : tb.text;
@@ -351,11 +363,19 @@ export function buildStreamEvents(turn) {
 
     let currentTs = ttfc;
     for (const tc of toolCalls) {
-      events.push({
-        type: 'mutation',
-        ts: currentTs,
-        data: tc,
-      });
+      if (isVoiceCall(tc)) {
+        events.push({
+          type: 'voice',
+          ts: currentTs,
+          text: getVoiceText(tc),
+        });
+      } else {
+        events.push({
+          type: 'mutation',
+          ts: currentTs,
+          data: tc,
+        });
+      }
       currentTs += perItem;
     }
     for (const tb of textBlocks) {

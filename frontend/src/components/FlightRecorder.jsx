@@ -695,31 +695,42 @@ export default function FlightRecorder() {
                 {/* Show completed response for all turns up to current (except current while streaming) */}
                 {i + 1 <= idx && !(i + 1 === idx && streaming) && (
                   <>
-                    {/* Voice/text responses */}
-                    {tr.text_blocks?.length > 0 && (
-                      <div className="fr-voice-responses">
-                        {tr.text_blocks.map((tb, j) => (
-                          <div key={j} className="fr-voice-bubble">
-                            {typeof tb === 'string' ? tb : tb.text}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {/* All tool calls */}
-                    {parseToolCalls(tr.tool_calls).length > 0 && (
-                      <div className="fr-mutations">
-                        {parseToolCalls(tr.tool_calls).map((tc, j) => {
-                          const tag = getMutationTag(tc);
-                          if (!tag) return null;
-                          return (
-                            <div key={j} className="fr-mut-line">
-                              <span className={`fr-mut-tag fr-mut-tag--${tag.type}`}>
-                                {tag.label}
-                              </span>
-                              <span className="fr-mut-id">{tag.id || ''}</span>
+                    {/* Voice/text responses - from text_blocks OR voice tool calls */}
+                    {(() => {
+                      const textBlockVoices = (tr.text_blocks || []).map((tb) =>
+                        typeof tb === 'string' ? tb : tb.text
+                      );
+                      const toolCallVoices = parseToolCalls(tr.tool_calls)
+                        .filter((tc) => tc.t === 'voice')
+                        .map((tc) => tc.text);
+                      const allVoices = [...textBlockVoices, ...toolCallVoices];
+                      return allVoices.length > 0 ? (
+                        <div className="fr-voice-responses">
+                          {allVoices.map((text, j) => (
+                            <div key={j} className="fr-voice-bubble">
+                              {text}
                             </div>
-                          );
-                        })}
+                          ))}
+                        </div>
+                      ) : null;
+                    })()}
+                    {/* All tool calls (excluding voice) */}
+                    {parseToolCalls(tr.tool_calls).filter((tc) => tc.t !== 'voice').length > 0 && (
+                      <div className="fr-mutations">
+                        {parseToolCalls(tr.tool_calls)
+                          .filter((tc) => tc.t !== 'voice')
+                          .map((tc, j) => {
+                            const tag = getMutationTag(tc);
+                            if (!tag) return null;
+                            return (
+                              <div key={j} className="fr-mut-line">
+                                <span className={`fr-mut-tag fr-mut-tag--${tag.type}`}>
+                                  {tag.label}
+                                </span>
+                                <span className="fr-mut-id">{tag.id || ''}</span>
+                              </div>
+                            );
+                          })}
                       </div>
                     )}
                   </>
