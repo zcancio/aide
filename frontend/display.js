@@ -174,7 +174,7 @@ var display = (() => {
     const props = entity.props || {};
     const title = props.title || props.name || "";
     const titleField = props.title !== void 0 ? "title" : "name";
-    const titleHtml = title ? `<h3 class="aide-heading aide-heading--3 editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</h3>` : "";
+    const titleHtml = title ? `<div class="aide-section__title editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</div>` : "";
     if (childIds.length === 0) {
       return `<div class="aide-table-container">
       ${titleHtml}
