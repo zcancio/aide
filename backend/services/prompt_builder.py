@@ -15,10 +15,15 @@ PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
 
 
 def load_prompt(tier: str) -> str:
-    """Load and assemble system prompt for tier, resolving shared prefix."""
+    """Load and assemble system prompt for tier, resolving shared prefix.
+
+    L2 tier is deprecated and uses L3 prompts.
+    """
     shared_path = PROMPTS_DIR / "shared_prefix.md"
     shared = shared_path.read_text()
-    tier_path = PROMPTS_DIR / f"{tier.lower()}_system.md"
+    # L2 deprecated - use L3 prompts
+    effective_tier = "l3" if tier.lower() == "l2" else tier.lower()
+    tier_path = PROMPTS_DIR / f"{effective_tier}_system.md"
     tier_prompt = tier_path.read_text()
     return tier_prompt.replace("{{shared_prefix}}", shared)
 
