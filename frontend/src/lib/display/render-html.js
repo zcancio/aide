@@ -205,12 +205,21 @@ function renderCard(entity, childIds, entities) {
   // Show placeholder for empty cards (no title, no fields, no children)
   const isEmpty = !title && displayProps.length === 0 && childIds.length === 0;
 
-  return `<div class="aide-card">
-    ${title ? `<div class="aide-card__title editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</div>` : ''}
+  const cardContent = `<div class="aide-card">
     ${fields}
     ${children}
     ${isEmpty ? '<p class="aide-card__empty">No properties set</p>' : ''}
   </div>`;
+
+  // If card has a title, wrap in section structure
+  if (title) {
+    return `<div class="aide-section">
+      <div class="aide-section__title editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</div>
+      <div class="aide-section__content">${cardContent}</div>
+    </div>`;
+  }
+
+  return cardContent;
 }
 
 export function renderHtml(store) {
