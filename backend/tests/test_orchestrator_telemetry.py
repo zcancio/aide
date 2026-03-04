@@ -10,7 +10,7 @@ from backend.models.aide import CreateAideRequest
 from backend.repos import telemetry_repo
 from backend.repos.aide_repo import AideRepo
 from backend.services.streaming_orchestrator import StreamingOrchestrator
-from engine.kernel.reducer import empty_snapshot
+from engine.kernel import empty_snapshot
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
 

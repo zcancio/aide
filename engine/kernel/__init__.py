@@ -1,12 +1,15 @@
 """
-AIde Kernel — the pure reducer.
+AIde Kernel
 
-reduce(snapshot, event) → ReduceResult (pure, deterministic)
+apply(snapshot, event) → ApplyResult (pure, deterministic)
 """
 
-from engine.kernel.reducer import empty_snapshot, reduce
+from engine.kernel.kernel import apply, apply_all, empty_snapshot, replay, ApplyResult
 
 __all__ = [
+    "apply",
+    "apply_all",
     "empty_snapshot",
-    "reduce",
+    "replay",
+    "ApplyResult",
 ]

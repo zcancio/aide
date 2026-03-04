@@ -12,7 +12,7 @@ from backend.models.aide import CreateAideRequest, SendMessageRequest, SendMessa
 from backend.models.user import User
 from backend.repos.aide_repo import AideRepo
 from backend.services.streaming_orchestrator import StreamingOrchestrator
-from engine.kernel.reducer import empty_snapshot
+from engine.kernel import empty_snapshot
 
 router = APIRouter(prefix="/api", tags=["conversations"])
 aide_repo = AideRepo()

@@ -1,17 +1,15 @@
 """
-AIde Kernel — v2 Reducer
+AIde Kernel
 
-Pure function: (snapshot, event) → ReduceResult
+Pure function: apply(snapshot, event) → ApplyResult
 
-The v2 reducer handles the simplified JSONL event format used by the AI compiler.
+The kernel handles entity mutations via tool call events.
 Events use short-hand keys: t (type), p (props), ref, id, parent, display.
 
-This is a rewrite of the v1 reducer with a flat entity hierarchy:
-- No collections — entities are stored flat with parent references
+Flat entity hierarchy:
+- Entities are stored flat with parent references
 - "root" is the implicit top-level parent
 - entity.create with parent=None or parent="root" creates top-level entities
-
-Reference: docs/program_management/PHASE_0B_REDUCER.md
 """
 
 from __future__ import annotations
@@ -71,11 +69,11 @@ def empty_snapshot() -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# ReduceResult
+# ApplyResult
 # ---------------------------------------------------------------------------
 
 
-class ReduceResult:
+class ApplyResult:
     """
     Result of applying one v2 event to a snapshot.
     Never throws — always returns one of these.
@@ -97,8 +95,8 @@ class ReduceResult:
 
     def __repr__(self) -> str:  # pragma: no cover
         if self.accepted:
-            return "ReduceResult(accepted=True)"
-        return f"ReduceResult(accepted=False, reason={self.reason!r})"
+            return "ApplyResult(accepted=True)"
+        return f"ApplyResult(accepted=False, reason={self.reason!r})"
 
 
 # ---------------------------------------------------------------------------
@@ -106,12 +104,12 @@ class ReduceResult:
 # ---------------------------------------------------------------------------
 
 
-def _reject(snap: dict, reason: str) -> ReduceResult:
-    return ReduceResult(snapshot=snap, accepted=False, reason=reason)
+def _reject(snap: dict, reason: str) -> ApplyResult:
+    return ApplyResult(snapshot=snap, accepted=False, reason=reason)
 
 
-def _ok(snap: dict, signal: dict[str, Any] | None = None) -> ReduceResult:
-    return ReduceResult(snapshot=snap, accepted=True, signal=signal)
+def _ok(snap: dict, signal: dict[str, Any] | None = None) -> ApplyResult:
+    return ApplyResult(snapshot=snap, accepted=True, signal=signal)
 
 
 def _inc(snap: dict) -> int:
@@ -162,20 +160,20 @@ def _cascade_remove(snap: dict, entity_id: str, seq: int) -> None:
 # ---------------------------------------------------------------------------
 
 
-def reduce(snapshot: dict[str, Any], event: dict[str, Any]) -> ReduceResult:
+def apply(snapshot: dict[str, Any], event: dict[str, Any]) -> ApplyResult:
     """
-    Apply one v2 event to the current snapshot.
-    Returns ReduceResult with new snapshot + accepted flag.
+    Apply one event to the current snapshot.
+    Returns ApplyResult with new snapshot + accepted flag.
 
     Pure function. Input snapshot is never modified (deep copy on mutation).
     """
     event_type = event.get("t")
     if event_type is None:
-        return ReduceResult(snapshot=snapshot, accepted=False, reason="MISSING_TYPE: event has no 't' field")
+        return ApplyResult(snapshot=snapshot, accepted=False, reason="MISSING_TYPE: event has no 't' field")
 
     handler = _HANDLERS.get(event_type)
     if handler is None:
-        return ReduceResult(
+        return ApplyResult(
             snapshot=snapshot,
             accepted=False,
             reason=f"UNKNOWN_PRIMITIVE: {event_type}",
@@ -185,7 +183,7 @@ def reduce(snapshot: dict[str, Any], event: dict[str, Any]) -> ReduceResult:
     return handler(snap, event)
 
 
-def reduce_all(snapshot: dict[str, Any], events: list[dict[str, Any]]) -> dict[str, Any]:
+def apply_all(snapshot: dict[str, Any], events: list[dict[str, Any]]) -> dict[str, Any]:
     """
     Apply a sequence of events to a snapshot.
     Signals are accepted but don't mutate snapshot.
@@ -193,15 +191,15 @@ def reduce_all(snapshot: dict[str, Any], events: list[dict[str, Any]]) -> dict[s
     Returns the final snapshot.
     """
     for event in events:
-        result = reduce(snapshot, event)
+        result = apply(snapshot, event)
         if result.accepted:
             snapshot = result.snapshot
     return snapshot
 
 
 def replay(events: list[dict[str, Any]]) -> dict[str, Any]:
-    """Rebuild snapshot from scratch by reducing over all events."""
-    return reduce_all(empty_snapshot(), events)
+    """Rebuild snapshot from scratch by applying all events."""
+    return apply_all(empty_snapshot(), events)
 
 
 # ---------------------------------------------------------------------------
@@ -209,7 +207,7 @@ def replay(events: list[dict[str, Any]]) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def _handle_entity_create(snap: dict, event: dict) -> ReduceResult:
+def _handle_entity_create(snap: dict, event: dict) -> ApplyResult:
     entity_id = event.get("id")
     parent = event.get("parent", "root")
     display = event.get("display")
@@ -254,7 +252,7 @@ def _handle_entity_create(snap: dict, event: dict) -> ReduceResult:
     return _ok(snap)
 
 
-def _handle_entity_update(snap: dict, event: dict) -> ReduceResult:
+def _handle_entity_update(snap: dict, event: dict) -> ApplyResult:
     ref = event.get("ref")
     props = event.get("p", {})
 
@@ -272,7 +270,7 @@ def _handle_entity_update(snap: dict, event: dict) -> ReduceResult:
     return _ok(snap)
 
 
-def _handle_entity_remove(snap: dict, event: dict) -> ReduceResult:
+def _handle_entity_remove(snap: dict, event: dict) -> ApplyResult:
     ref = event.get("ref")
 
     if ref is None:
@@ -291,7 +289,7 @@ def _handle_entity_remove(snap: dict, event: dict) -> ReduceResult:
     return _ok(snap)
 
 
-def _handle_entity_move(snap: dict, event: dict) -> ReduceResult:
+def _handle_entity_move(snap: dict, event: dict) -> ApplyResult:
     ref = event.get("ref")
     new_parent = event.get("parent", "root")
     position = event.get("position")
@@ -352,7 +350,7 @@ def _get_descendants(snap: dict, entity_id: str) -> set[str]:
     return result
 
 
-def _handle_entity_reorder(snap: dict, event: dict) -> ReduceResult:
+def _handle_entity_reorder(snap: dict, event: dict) -> ApplyResult:
     ref = event.get("ref")
     new_children = event.get("children", [])
 
@@ -392,7 +390,7 @@ def _handle_entity_reorder(snap: dict, event: dict) -> ReduceResult:
 # ---------------------------------------------------------------------------
 
 
-def _handle_rel_set(snap: dict, event: dict) -> ReduceResult:
+def _handle_rel_set(snap: dict, event: dict) -> ApplyResult:
     from_id = event.get("from")
     to_id = event.get("to")
     rel_type = event.get("type")
@@ -446,7 +444,7 @@ def _handle_rel_set(snap: dict, event: dict) -> ReduceResult:
     return _ok(snap)
 
 
-def _handle_rel_remove(snap: dict, event: dict) -> ReduceResult:
+def _handle_rel_remove(snap: dict, event: dict) -> ApplyResult:
     from_id = event.get("from")
     to_id = event.get("to")
     rel_type = event.get("type")
@@ -465,7 +463,7 @@ def _handle_rel_remove(snap: dict, event: dict) -> ReduceResult:
     return _ok(snap)
 
 
-def _handle_rel_constrain(snap: dict, event: dict) -> ReduceResult:
+def _handle_rel_constrain(snap: dict, event: dict) -> ApplyResult:
     constraint_id = event.get("id")
     if constraint_id is None:
         return _reject(snap, "MISSING_ID: rel.constrain requires 'id'")
@@ -508,14 +506,14 @@ def _handle_rel_constrain(snap: dict, event: dict) -> ReduceResult:
 # ---------------------------------------------------------------------------
 
 
-def _handle_style_set(snap: dict, event: dict) -> ReduceResult:
+def _handle_style_set(snap: dict, event: dict) -> ApplyResult:
     props = event.get("p", {})
     snap["styles"]["global"].update(props)
     _inc(snap)
     return _ok(snap)
 
 
-def _handle_style_entity(snap: dict, event: dict) -> ReduceResult:
+def _handle_style_entity(snap: dict, event: dict) -> ApplyResult:
     ref = event.get("ref")
     props = event.get("p", {})
 
@@ -543,7 +541,7 @@ def _handle_style_entity(snap: dict, event: dict) -> ReduceResult:
 # ---------------------------------------------------------------------------
 
 
-def _handle_meta_set(snap: dict, event: dict) -> ReduceResult:
+def _handle_meta_set(snap: dict, event: dict) -> ApplyResult:
     # Support both {"t":"meta.set","p":{...}} and {"t":"meta.update","title":...} formats
     props = event.get("p", {})
     # Also check for direct properties (meta.update format from L3)
@@ -559,7 +557,7 @@ def _handle_meta_set(snap: dict, event: dict) -> ReduceResult:
     return _ok(snap)
 
 
-def _handle_meta_annotate(snap: dict, event: dict) -> ReduceResult:
+def _handle_meta_annotate(snap: dict, event: dict) -> ApplyResult:
     props = event.get("p", {})
     note = props.get("note", "")
     pinned = props.get("pinned", False)
@@ -576,7 +574,7 @@ def _handle_meta_annotate(snap: dict, event: dict) -> ReduceResult:
     return _ok(snap)
 
 
-def _handle_meta_constrain(snap: dict, event: dict) -> ReduceResult:
+def _handle_meta_constrain(snap: dict, event: dict) -> ApplyResult:
     constraint_id = event.get("id")
     if constraint_id is None:
         return _reject(snap, "MISSING_ID: meta.constrain requires 'id'")
@@ -618,7 +616,7 @@ def _handle_meta_constrain(snap: dict, event: dict) -> ReduceResult:
 # ---------------------------------------------------------------------------
 
 
-def _handle_voice(snap: dict, event: dict) -> ReduceResult:
+def _handle_voice(snap: dict, event: dict) -> ApplyResult:
     """Voice signal — pass through for chat display. No snapshot mutation."""
     signal = {
         "type": "voice",
@@ -627,7 +625,7 @@ def _handle_voice(snap: dict, event: dict) -> ReduceResult:
     return _ok(snap, signal=signal)
 
 
-def _handle_escalate(snap: dict, event: dict) -> ReduceResult:
+def _handle_escalate(snap: dict, event: dict) -> ApplyResult:
     """Escalate signal — pass through for tier routing. No snapshot mutation."""
     signal = {
         "type": "escalate",
@@ -638,13 +636,13 @@ def _handle_escalate(snap: dict, event: dict) -> ReduceResult:
     return _ok(snap, signal=signal)
 
 
-def _handle_batch_start(snap: dict, event: dict) -> ReduceResult:
+def _handle_batch_start(snap: dict, event: dict) -> ApplyResult:
     """Batch start signal. No snapshot mutation."""
     signal = {"type": "batch.start"}
     return _ok(snap, signal=signal)
 
 
-def _handle_batch_end(snap: dict, event: dict) -> ReduceResult:
+def _handle_batch_end(snap: dict, event: dict) -> ApplyResult:
     """Batch end signal. No snapshot mutation."""
     signal = {"type": "batch.end"}
     return _ok(snap, signal=signal)
