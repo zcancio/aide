@@ -648,6 +648,16 @@ def _handle_batch_end(snap: dict, event: dict) -> ApplyResult:
     return _ok(snap, signal=signal)
 
 
+def _handle_clarify(snap: dict, event: dict) -> ApplyResult:
+    """Clarify signal — pass through for user prompting. No snapshot mutation."""
+    signal = {
+        "type": "clarify",
+        "text": event.get("text", ""),
+        "options": event.get("options", []),
+    }
+    return _ok(snap, signal=signal)
+
+
 # ---------------------------------------------------------------------------
 # Handler dispatch table
 # ---------------------------------------------------------------------------
@@ -674,6 +684,7 @@ _HANDLERS: dict[str, Any] = {
     # Signals
     "voice": _handle_voice,
     "escalate": _handle_escalate,
+    "clarify": _handle_clarify,
     "batch.start": _handle_batch_start,
     "batch.end": _handle_batch_end,
 }
