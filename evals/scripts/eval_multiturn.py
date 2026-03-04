@@ -18,6 +18,9 @@ Usage:
   # Save run artifacts for review
   python eval_multiturn.py --save
 
+  # Test candidate prompt version
+  python eval_multiturn.py --prompt-version v2
+
 Environment:
   ANTHROPIC_API_KEY  — required
   AIDE_EVAL_DIR      — output dir (default: ./eval_output)
@@ -257,10 +260,11 @@ def run_turn(
     tier: str,
     snapshot: dict | None,
     history: list[dict],
+    prompt_version: str | None = None,
 ) -> dict:
     """Run a single turn and return results."""
     model = DEFAULT_MODELS[tier]
-    system = build_system_blocks(tier, snapshot)
+    system = build_system_blocks(tier, snapshot, version=prompt_version)
     messages = build_messages_with_history(history, message)
 
     start = time.time()
@@ -319,6 +323,7 @@ def run_multiturn_scenario(
     verbose: bool = False,
     save_dir: Path | None = None,
     max_turns: int | None = None,
+    prompt_version: str | None = None,
 ) -> dict:
     """Run a complete multi-turn scenario, building state across turns."""
     name = scenario["name"]
@@ -348,7 +353,7 @@ def run_multiturn_scenario(
         for tier in sorted(warmed_tiers):
             try:
                 warm_start = time.time()
-                warm_system = build_system_blocks(tier, snapshot)
+                warm_system = build_system_blocks(tier, snapshot, version=prompt_version)
                 # Minimal request — just enough for the API to cache the prefix
                 client.messages.create(
                     model=DEFAULT_MODELS[tier],
@@ -385,10 +390,11 @@ def run_multiturn_scenario(
                 for b in build_system_blocks(
                     classified_tier if classified_tier in accept_tiers else expected_tier,
                     snapshot,
+                    version=prompt_version,
                 )
             )
 
-            result = run_turn(client, message, actual_tier, snapshot, history)
+            result = run_turn(client, message, actual_tier, snapshot, history, prompt_version=prompt_version)
 
             # Retry guard: if L2/L3 produced zero parseable JSONL, it slipped
             # into conversational mode. Retry once with explicit nudge.
@@ -397,7 +403,9 @@ def run_multiturn_scenario(
                 if not check_parsed:
                     print(f"    ⚠ {actual_tier} produced plain text, retrying with nudge...")
                     retry_msg = message + "\n\n[System: respond with JSONL operations only. No prose.]"
-                    retry_result = run_turn(client, retry_msg, actual_tier, snapshot, history)
+                    retry_result = run_turn(
+                        client, retry_msg, actual_tier, snapshot, history, prompt_version=prompt_version
+                    )
                     retry_parsed, _ = parse_jsonl(retry_result["output"])
                     if retry_parsed:
                         result = retry_result
@@ -422,7 +430,9 @@ def run_multiturn_scenario(
                     pre_escalation_snapshot = apply_output_to_snapshot(snapshot, result["output"], "L2")
 
                     # Run escalation tier with the extracted/original message
-                    escalation_result = run_turn(client, esc_extract, esc_tier, pre_escalation_snapshot, history)
+                    escalation_result = run_turn(
+                        client, esc_extract, esc_tier, pre_escalation_snapshot, history, prompt_version=prompt_version
+                    )
 
                     # Merge: L2's output + escalation output
                     result = {
@@ -527,12 +537,14 @@ def run_multiturn_scenario(
                 turn_dir = save_dir / name / f"turn_{i + 1:02d}"
                 turn_dir.mkdir(parents=True, exist_ok=True)
 
+                sys_prompt_blocks = build_system_blocks(actual_tier, snapshot, version=prompt_version)
+                sys_prompt_text = chr(10).join(b["text"] for b in sys_prompt_blocks)
                 (turn_dir / "input.md").write_text(
                     f"# Turn {i + 1}: {message}\n\n"
                     f"## Tier: {actual_tier} (expected: {expected_tier}, classified: {classified_tier})\n\n"
                     f"## Notes\n{notes}\n\n"
                     f"## Snapshot before this turn\n```json\n{json.dumps(snapshot, indent=2)}\n```\n\n"
-                    f"## System prompt\n{chr(10).join(b['text'] for b in build_system_blocks(actual_tier, snapshot))}"
+                    f"## System prompt\n{sys_prompt_text}"
                 )
                 (turn_dir / "output.txt").write_text(result.get("raw_output", result["output"]))
                 (turn_dir / "snapshot_after.json").write_text(json.dumps(new_snapshot, indent=2))
@@ -671,6 +683,7 @@ def main():
     p.add_argument("-v", "--verbose", action="store_true")
     p.add_argument("--save", action="store_true", help="Save run artifacts")
     p.add_argument("--output-dir", default=os.environ.get("AIDE_EVAL_DIR", "./eval_output"))
+    p.add_argument("--prompt-version", type=str, help="Prompt version to use (e.g., v1, v2)")
     args = p.parse_args()
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
@@ -704,7 +717,12 @@ def main():
     for scenario in to_run:
         try:
             result = run_multiturn_scenario(
-                client, scenario, verbose=args.verbose, save_dir=save_dir, max_turns=args.turns
+                client,
+                scenario,
+                verbose=args.verbose,
+                save_dir=save_dir,
+                max_turns=args.turns,
+                prompt_version=args.prompt_version,
             )
             results.append(result)
         except Exception as e:
