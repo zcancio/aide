@@ -1,7 +1,7 @@
 # 02: Tool Calls
 
-> **Prerequisites:** [01 Data Model](01_data_model.md)
-> **Next:** [03 Streaming Pipeline](03_streaming_pipeline.md) (how tool calls flow from LLM to screen)
+> **Prerequisites:** [Data Model](core_data_model.md)
+> **Next:** [Streaming Pipeline](core_streaming_pipeline.md) (how tool calls flow from LLM to screen)
 
 ---
 

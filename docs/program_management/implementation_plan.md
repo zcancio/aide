@@ -1,6 +1,6 @@
 # aide v2: Implementation Plan
 
-> **Prerequisites:** [00 Overview](00_overview.md)
+> **Prerequisites:** [Overview](../eng_design/architecture_overview.md)
 > **Status:** ARCHIVED — Implementation complete
 
 ---
@@ -11,7 +11,7 @@
 - **Output format:** JSONL → now tool calls (`mutate_entity`, `set_relationship`, `voice`)
 - **Storage:** R2 → now PostgreSQL (`aides.state`, `conversations` table)
 
-For current architecture, see [00 Overview](00_overview.md) and [03 Streaming Pipeline](03_streaming_pipeline.md).
+For current architecture, see [Overview](../eng_design/architecture_overview.md) and [Streaming Pipeline](../eng_design/editing/core/core_streaming_pipeline.md).
 
 ---
 

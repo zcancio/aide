@@ -1,7 +1,7 @@
 # 06: Prompts
 
-> **Prerequisites:** [02 Tool Calls](02_tool_calls.md) · [05 Intelligence Tiers](05_intelligence_tiers.md)
-> **Related:** [03 Streaming Pipeline](03_streaming_pipeline.md) (caching strategy) · [08 Capability Boundaries](08_capability_boundaries.md)
+> **Prerequisites:** [Tool Calls](core_tool_calls.md) · [Intelligence Tiers](05_intelligence_tiers.md)
+> **Related:** [Streaming Pipeline](core_streaming_pipeline.md)
 
 ---
 

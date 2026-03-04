@@ -2,7 +2,7 @@
 
 > **Read time:** 5 minutes
 > **Audience:** Everyone on the team
-> **Next:** Pick the doc for your area → [Data Model](01_data_model.md) · [JSONL Schema](02_tool_calls.md) · [Streaming Pipeline](03_streaming_pipeline.md) · [Display Components](04_display_components.md) · [Intelligence Tiers](05_intelligence_tiers.md)
+> **Next:** Pick the doc for your area → [Data Model](core_data_model.md) · [Tool Calls](core_tool_calls.md) · [Streaming Pipeline](core_streaming_pipeline.md) · [Display Components](04_display_components.md) · [Intelligence Tiers](05_intelligence_tiers.md)
 
 ---
 
@@ -34,7 +34,7 @@ v1 is too slow. Creating a new aide takes ~10 seconds. For our target user — a
 
 ## The Five Changes
 
-### 1. Entities All the Way Down → [01_data_model.md](01_data_model.md)
+### 1. Entities All the Way Down → [core_data_model.md](core_data_model.md)
 
 v1 had three parallel structures: collections, blocks, and views. The LLM generates all three.
 
@@ -52,14 +52,14 @@ grad_page (display: "page")
 
 Cross-branch connections (Linda is *bringing* the potato salad) are modeled as **relationships** — typed links between any two entities in the tree.
 
-### 2. LLM Emits Only Primitives via Tool Calls → [02_tool_calls.md](02_tool_calls.md)
+### 2. LLM Emits Only Primitives via Tool Calls → [core_tool_calls.md](core_tool_calls.md)
 
 **The rule:** The LLM never generates what the renderer can derive.
 
 v1: LLM produces primitives + HTML + voice reflections + explanations. ~3-5K tokens.
 v2: LLM produces only entity operations via tool calls (`mutate_entity`, `voice`). ~600-1500 tokens. The deterministic renderer produces all HTML.
 
-### 3. Streaming via WebSocket → [03_streaming_pipeline.md](03_streaming_pipeline.md)
+### 3. Streaming via WebSocket → [core_streaming_pipeline.md](core_streaming_pipeline.md)
 
 The LLM emits tool calls (mutate_entity, voice, etc.). The server parses each tool call, applies it through the reducer, and pushes entity deltas to the client via WebSocket. The page builds itself in real time.
 
@@ -195,9 +195,9 @@ At publish time, the server renders the snapshot to static HTML stored in `aide_
 | Doc | What It Covers | Read If You... |
 |-----|---------------|----------------|
 | **[00 Overview](00_overview.md)** | This doc. The big picture. | Are new to the project |
-| **[01 Data Model](01_data_model.md)** | Entity tree, relationships, schema inference | Touch state or the reducer |
-| **[02 Tool Calls](02_tool_calls.md)** | mutate_entity, voice, set_relationship tools | Touch the LLM pipeline or server |
-| **[03 Streaming Pipeline](03_streaming_pipeline.md)** | Server parsing, WebSocket, caching, streaming rules | Touch server or client integration |
+| **[Data Model](core_data_model.md)** | Entity tree, relationships, schema inference | Touch state or the reducer |
+| **[Tool Calls](core_tool_calls.md)** | mutate_entity, voice, set_relationship tools | Touch the LLM pipeline or server |
+| **[Streaming Pipeline](core_streaming_pipeline.md)** | Server parsing, WebSocket, caching, streaming rules | Touch server or client integration |
 | **[04 Display Components](04_display_components.md)** | React compiler, all 9 components, EditableField | Touch the frontend |
 | **[05 Intelligence Tiers](05_intelligence_tiers.md)** | L3/L4, routing, escalation, multi-intent, costs | Touch LLM orchestration |
 | **[06 Prompts](06_prompts.md)** | System prompts for L3, L4 | Touch LLM behavior |

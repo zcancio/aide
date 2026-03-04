@@ -135,7 +135,7 @@ Server → Client:
   { "type": "stream.end", "message_id": "..." }
 ```
 
-See [03 Streaming Pipeline](03_streaming_pipeline.md) for the full WebSocket protocol.
+See [Streaming Pipeline](../eng_design/editing/core/core_streaming_pipeline.md) for the full WebSocket protocol.
 
 ### Client-Side Handling (Implemented)
 
@@ -233,7 +233,7 @@ async def aide_websocket(websocket: WebSocket, aide_id: str):
 
 **Implementation:** `backend/services/streaming_orchestrator.py`
 
-The orchestrator processes LLM tool calls (`mutate_entity`, `set_relationship`, `voice`) and converts them to reducer events. See [03 Streaming Pipeline](03_streaming_pipeline.md) for details.
+The orchestrator processes LLM tool calls (`mutate_entity`, `set_relationship`, `voice`) and converts them to reducer events. See [Streaming Pipeline](../eng_design/editing/core/core_streaming_pipeline.md) for details.
 
 ---
 
