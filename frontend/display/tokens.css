@@ -121,7 +121,8 @@
   color: var(--text-primary);
   margin-bottom: var(--space-9);
 }
-:host .aide-checklist-container > .aide-heading { margin-bottom: 0; }
+:host .aide-checklist-container > .aide-heading,
+:host .aide-table-container > .aide-heading { margin-bottom: var(--space-3); }
 :host .aide-heading--2 {
   font-family: var(--font-serif);
   font-size: clamp(28px, 3.5vw, 32px);
@@ -478,6 +479,7 @@
 :host .aide-section__content > .aide-card:first-child,
 :host .aide-section__content > .aide-checklist:first-child,
 :host .aide-section__content > .aide-checklist-container:first-child,
+:host .aide-section__content > .aide-table-container:first-child,
 :host .aide-section__content > .aide-image:first-child,
 :host .aide-section__content > .aide-metric:first-child { margin-top: var(--space-2); }
 

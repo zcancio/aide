@@ -110,7 +110,17 @@ function renderChecklist(entity, childIds, entities) {
 }
 
 function renderTable(entity, childIds, entities) {
-  if (childIds.length === 0) return '<p class="aide-collection-empty">No items yet.</p>';
+  const props = entity.props || {};
+  const title = props.title || props.name || '';
+  const titleField = props.title !== undefined ? 'title' : 'name';
+  const titleHtml = title ? `<h3 class="aide-heading aide-heading--3 editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</h3>` : '';
+
+  if (childIds.length === 0) {
+    return `<div class="aide-table-container">
+      ${titleHtml}
+      <p class="aide-collection-empty">No items yet.</p>
+    </div>`;
+  }
 
   // Collect columns from all children
   const colSet = new Set();
@@ -129,11 +139,14 @@ function renderTable(entity, childIds, entities) {
     return `<tr>${cols.map(c => `<td class="aide-table__td"><span class="editable-field" data-entity-id="${id}" data-field="${c}">${escapeHtml(cp[c] ?? '')}</span></td>`).join('')}</tr>`;
   }).join('');
 
-  return `<div class="aide-table-wrap">
-    <table class="aide-table">
-      <thead>${thead}</thead>
-      <tbody>${tbody}</tbody>
-    </table>
+  return `<div class="aide-table-container">
+    ${titleHtml}
+    <div class="aide-table-wrap">
+      <table class="aide-table">
+        <thead>${thead}</thead>
+        <tbody>${tbody}</tbody>
+      </table>
+    </div>
   </div>`;
 }
 
