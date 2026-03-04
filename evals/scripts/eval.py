@@ -64,40 +64,9 @@ from scoring import (
 # Prompt loading
 # ---------------------------------------------------------------------------
 
-PROMPTS_DIR = Path(__file__).parent
-if (Path(__file__).parent / "prompts").exists():
-    PROMPTS_DIR = Path(__file__).parent / "prompts"
-
-
-def load_prompt(name: str) -> str:
-    path = PROMPTS_DIR / f"{name}.md"
-    if not path.exists():
-        raise FileNotFoundError(f"Prompt file not found: {path}")
-    return path.read_text()
-
-
-def build_system_blocks(tier: str, snapshot: dict | None) -> list[dict]:
-    """Build system prompt as content blocks with cache_control."""
-    prefix = load_prompt("shared_prefix")
-    tier_file = {"L2": "l2_tier", "L3": "l3_tier", "L4": "l4_tier"}[tier]
-    tier_text = load_prompt(tier_file)
-
-    blocks = [
-        {
-            "type": "text",
-            "text": f"{prefix}\n\n{tier_text}",
-            "cache_control": {"type": "ephemeral"},
-        },
-    ]
-
-    if snapshot is not None:
-        snapshot_json = json.dumps(snapshot, indent=2)
-        blocks.append({
-            "type": "text",
-            "text": f"## Current Snapshot\n```json\n{snapshot_json}\n```",
-        })
-
-    return blocks
+# Add backend to path and import prompt builder
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from backend.services.prompt_builder import build_system_blocks
 
 
 # ---------------------------------------------------------------------------

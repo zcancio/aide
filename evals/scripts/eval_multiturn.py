@@ -40,62 +40,12 @@ from scoring import score_scenario, ScenarioScore, parse_jsonl, DIMENSION_WEIGHT
 from scenarios_multiturn import MULTI_TURN_SCENARIOS, get_scenario
 
 # ---------------------------------------------------------------------------
-# Prompt loading (same as eval_v3.py)
+# Prompt loading — unified with backend
 # ---------------------------------------------------------------------------
 
-PROMPTS_DIR = Path(__file__).parent
-if (Path(__file__).parent / "prompts").exists():
-    PROMPTS_DIR = Path(__file__).parent / "prompts"
-
-
-def load_prompt(name: str) -> str:
-    return (PROMPTS_DIR / f"{name}.md").read_text()
-
-
-def build_system_blocks(tier: str, snapshot: dict | None) -> list[dict]:
-    # Use Pacific time to avoid UTC date rollover mismatches
-    pacific = timezone(timedelta(hours=-8))
-    today = datetime.now(pacific).date()
-
-    # Build calendar context so the model doesn't have to do date arithmetic
-    cal_lines = []
-    mon = today - timedelta(days=today.weekday())
-    week = []
-    for i in range(7):
-        d = mon + timedelta(days=i)
-        marker = " (today)" if d == today else ""
-        week.append(f"{d.strftime('%a %b %d')}{marker}")
-    cal_lines.append("This week: " + " | ".join(week))
-    days_since_thu = (today.weekday() - 3) % 7
-    last_thu = today - timedelta(days=days_since_thu) if days_since_thu > 0 else today - timedelta(days=7)
-    this_thu = last_thu + timedelta(days=7)
-    cal_lines.append(f"Last Thursday = {last_thu.strftime('%b %d')}. This Thursday = {this_thu.strftime('%b %d')}. Two weeks from last Thursday = {(last_thu + timedelta(days=14)).strftime('%b %d')}.")
-    calendar_context = "\n".join(cal_lines)
-
-    prefix = load_prompt("shared_prefix").replace(
-        "{{current_date}}", today.strftime("%A, %B %d, %Y")
-    ).replace(
-        "{{calendar_context}}", calendar_context
-    )
-    tier_text = load_prompt({"L2": "l2_tier", "L3": "l3_tier", "L4": "l4_tier"}[tier])
-    blocks = [
-        {
-            "type": "text",
-            "text": prefix,
-            "cache_control": {"type": "ephemeral"},
-        },
-        {
-            "type": "text",
-            "text": tier_text,
-            "cache_control": {"type": "ephemeral"},
-        },
-    ]
-    if snapshot is not None:
-        blocks.append({
-            "type": "text",
-            "text": f"## Current Snapshot\n```json\n{json.dumps(snapshot, indent=2)}\n```",
-        })
-    return blocks
+# Add backend to path and import prompt builder
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from backend.services.prompt_builder import build_system_blocks
 
 
 # ---------------------------------------------------------------------------
