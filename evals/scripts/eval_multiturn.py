@@ -33,6 +33,7 @@ import json
 import os
 import sys
 import time
+import uuid
 from datetime import datetime
 from pathlib import Path
 
@@ -48,6 +49,8 @@ from scoring import parse_jsonl, score_scenario
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from backend.services.classifier import classify as backend_classify
 from backend.services.prompt_builder import build_system_blocks
+from backend.services.tool_defs import TOOLS
+from backend.services.tool_utils import tool_use_to_reducer_event
 from engine.kernel.kernel import apply
 
 # ---------------------------------------------------------------------------
@@ -140,40 +143,58 @@ def run_turn(
 
     start = time.time()
     first_token_time = None
-    full_text = ""
+    tool_calls: list[dict] = []
+    text_blocks: list[str] = []
 
+    # Use tools like production
     with client.messages.stream(
         model=model,
         max_tokens=4096,
         system=system,
         messages=messages,
+        tools=TOOLS,
     ) as stream:
-        for chunk in stream.text_stream:
-            if first_token_time is None:
+        for event in stream:
+            if first_token_time is None and event.type in ("content_block_start", "content_block_delta"):
                 first_token_time = time.time()
-            full_text += chunk
 
     end = time.time()
-    usage = stream.get_final_message().usage
+    final_message = stream.get_final_message()
+    usage = final_message.usage
 
-    # Strip code fences if model wraps output (common Sonnet behavior)
-    raw_output = full_text
-    clean_output = full_text.strip()
-    if clean_output.startswith("```"):
-        lines = clean_output.split("\n")
-        # Remove opening fence (```jsonl, ```json, ```)
-        lines = lines[1:]
-        # Remove closing fence
-        if lines and lines[-1].strip() == "```":
-            lines = lines[:-1]
-        clean_output = "\n".join(lines)
+    # Extract tool calls and text from response
+    for block in final_message.content:
+        if block.type == "tool_use":
+            tool_calls.append({"name": block.name, "input": block.input})
+        elif block.type == "text":
+            text_blocks.append(block.text)
+
+    # Convert tool calls to reducer events (JSONL format for scoring compatibility)
+    reducer_events = []
+    voice_text = ""
+    for tc in tool_calls:
+        if tc["name"] == "voice":
+            voice_text = tc["input"].get("text", "")
+            reducer_events.append({"t": "voice", "text": voice_text})
+        else:
+            event = tool_use_to_reducer_event(tc["name"], tc["input"])
+            if event:
+                reducer_events.append(event)
+
+    # Build JSONL output for scoring (maintains compatibility with existing scoring code)
+    output_lines = [json.dumps(e) for e in reducer_events]
+    clean_output = "\n".join(output_lines)
 
     return {
         "tier": tier,
         "model": model,
         "output": clean_output,
-        "raw_output": raw_output,
-        "had_fences": raw_output.strip() != clean_output.strip(),
+        "raw_output": clean_output,
+        "had_fences": False,
+        "tool_calls": tool_calls,
+        "text_blocks": text_blocks,
+        "voice_text": voice_text,
+        "reducer_events": reducer_events,
         "ttfc_ms": int((first_token_time - start) * 1000) if first_token_time else -1,
         "ttc_ms": int((end - start) * 1000),
         "input_tokens": usage.input_tokens,
@@ -442,6 +463,9 @@ def run_multiturn_scenario(
                     # Content (viewer needs these inline)
                     "output": result.get("raw_output", result["output"]),
                     "had_fences": result.get("had_fences", False),
+                    "tool_calls": result.get("tool_calls", []),
+                    "text_blocks": result.get("text_blocks", []),
+                    "voice_text": result.get("voice_text", ""),
                     "system_prompt": system_prompt_text,
                     "snapshot_before": snapshot_before,
                     "snapshot_after": json.loads(json.dumps(new_snapshot)),
@@ -490,6 +514,41 @@ def run_multiturn_scenario(
         f"tokens: {total_tokens} | time: {total_time}ms | "
         f"tier accuracy: {tier_accuracy:.0%}"
     )
+
+    # Save telemetry.json in flight recorder format
+    if save_dir:
+        telemetry = {
+            "aide_id": str(uuid.uuid4()),
+            "name": name,
+            "scenario_id": name,
+            "timestamp": datetime.now().isoformat(),
+            "turns": [
+                {
+                    "turn": t["turn"],
+                    "tier": t.get("tier", "L3"),
+                    "model": DEFAULT_MODELS.get(t.get("tier", "L3"), "unknown"),
+                    "message": t["message"],
+                    "tool_calls": t.get("tool_calls", []),
+                    "text_blocks": t.get("text_blocks", []),
+                    "system_prompt": t.get("system_prompt"),
+                    "usage": {
+                        "input_tokens": t.get("input_tokens", 0),
+                        "output_tokens": t.get("output_tokens", 0),
+                        "cache_read": t.get("cache_read", 0),
+                        "cache_creation": t.get("cache_creation", 0),
+                    },
+                    "ttfc_ms": t.get("ttfc_ms", 0),
+                    "ttc_ms": t.get("ttc_ms", 0),
+                    "validation": t.get("score"),
+                }
+                for t in turn_results
+                if "error" not in t
+            ],
+            "final_snapshot": turn_results[-1].get("snapshot_after") if turn_results else None,
+        }
+        telemetry_path = save_dir / name / "telemetry.json"
+        telemetry_path.write_text(json.dumps(telemetry, indent=2))
+        print(f"  📼 Telemetry saved: {telemetry_path}")
 
     return {
         "name": name,
