@@ -1,7 +1,7 @@
 # 04: Display Components
 
 > **Prerequisites:** [Data Model](core_data_model.md)
-> **Next:** [05 Intelligence Tiers](05_intelligence_tiers.md) · [07 Edge Cases](07_edge_cases.md) (for direct edit and undo behavior)
+> **Next:** [Intelligence Tiers](05_intelligence_tiers.md) · [Reliability & Performance](reliability_and_performance.md) (for direct edit and undo behavior)
 
 ---
 

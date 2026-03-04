@@ -157,7 +157,7 @@ Constraints can be strict (violations reject the operation) or non-strict (viola
 The entity tree is built by replaying an ordered list of events. Every mutation (from the LLM or from direct user edits) is an event. The reducer is a pure function: `events[] → snapshot`.
 
 This enables:
-- **Undo:** Replay events minus the last batch → previous state. See [07 Edge Cases](07_edge_cases.md).
+- **Undo:** Replay events minus the last batch → previous state. See [Reliability & Performance](reliability_and_performance.md).
 - **Time travel:** Replay events up to any point → state at that point.
 - **Determinism:** Same events always produce the same snapshot.
 - **Debugging:** The event log is a complete audit trail.

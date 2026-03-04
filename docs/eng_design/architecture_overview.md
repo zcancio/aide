@@ -92,7 +92,7 @@ aide has two interaction speeds. Both always available.
 
 The fast loop makes the slow loop trustworthy. If the user can fix any mistake instantly, they'll tolerate the AI being occasionally wrong.
 
-→ Details in [Edge Cases & Reliability](07_edge_cases.md)
+→ Details in [Reliability & Performance](reliability_and_performance.md)
 
 ---
 
@@ -201,5 +201,5 @@ At publish time, the server renders the snapshot to static HTML stored in `aide_
 | **[04 Display Components](04_display_components.md)** | React compiler, all 9 components, EditableField | Touch the frontend |
 | **[05 Intelligence Tiers](05_intelligence_tiers.md)** | L3/L4, routing, escalation, multi-intent, costs | Touch LLM orchestration |
 | **[06 Prompts](06_prompts.md)** | System prompts for L3, L4 | Touch LLM behavior |
-| **[07 Edge Cases](07_edge_cases.md)** | Interrupt, undo, retry, errors, speed budget | Touch reliability or UX |
+| **[Reliability & Performance](reliability_and_performance.md)** | Interrupt, undo, retry, errors, speed budget | Touch reliability or UX |
 | **[08 Capability Boundaries](08_capability_boundaries.md)** | Native/skills/redirects, scoping rules | Touch product scope |
