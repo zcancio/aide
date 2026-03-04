@@ -17,6 +17,14 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from engine.kernel.kernel import apply, empty_snapshot
 
 
+def _build_snapshot_with_parent(parent_id: str, display: str) -> dict:
+    """Build a snapshot with a parent entity using the kernel API."""
+    snap = empty_snapshot()
+    event = {"t": "entity.create", "id": parent_id, "parent": "root", "display": display, "p": {}}
+    result = apply(snap, event)
+    return result.snapshot
+
+
 def test_eval_apply_matches_kernel():
     """
     eval_multiturn apply must produce same result as kernel.
@@ -26,19 +34,8 @@ def test_eval_apply_matches_kernel():
     """
     from evals.scripts.eval_multiturn import apply_output_to_snapshot
 
-    # Seed snapshot with a parent entity
-    snap = empty_snapshot()
-    snap["entities"]["guests"] = {
-        "id": "guests",
-        "parent": "root",
-        "display": "table",
-        "props": {},
-        "_removed": False,
-        "_children": [],
-        "_created_seq": 1,
-        "_updated_seq": 1,
-    }
-    snap["_sequence"] = 1
+    # Build snapshot with parent entity using kernel API
+    snap = _build_snapshot_with_parent("guests", "table")
 
     # Event to apply
     jsonl = '{"t": "entity.create", "id": "guest_1", "parent": "guests", "p": {"name": "Alice"}}'
@@ -62,18 +59,8 @@ def test_eval_apply_handles_multiple_events():
     """
     from evals.scripts.eval_multiturn import apply_output_to_snapshot
 
-    snap = empty_snapshot()
-    snap["entities"]["tasks"] = {
-        "id": "tasks",
-        "parent": "root",
-        "display": "checklist",
-        "props": {},
-        "_removed": False,
-        "_children": [],
-        "_created_seq": 1,
-        "_updated_seq": 1,
-    }
-    snap["_sequence"] = 1
+    # Build snapshot with parent entity using kernel API
+    snap = _build_snapshot_with_parent("tasks", "checklist")
 
     # Multiple events in JSONL
     jsonl = """{"t": "entity.create", "id": "task_1", "parent": "tasks", "p": {"title": "Buy milk"}}
@@ -110,18 +97,8 @@ def test_eval_apply_skips_signals():
     """
     from evals.scripts.eval_multiturn import apply_output_to_snapshot
 
-    snap = empty_snapshot()
-    snap["entities"]["page"] = {
-        "id": "page",
-        "parent": "root",
-        "display": "page",
-        "props": {},
-        "_removed": False,
-        "_children": [],
-        "_created_seq": 1,
-        "_updated_seq": 1,
-    }
-    snap["_sequence"] = 1
+    # Build snapshot with parent entity using kernel API
+    snap = _build_snapshot_with_parent("page", "page")
 
     # Mix of mutations and signals
     jsonl = """{"t": "voice", "text": "Creating the task"}
@@ -144,18 +121,12 @@ def test_eval_apply_l4_readonly():
     """
     from evals.scripts.eval_multiturn import apply_output_to_snapshot
 
+    # Build snapshot with parent entity using kernel API, then update props
     snap = empty_snapshot()
-    snap["entities"]["page"] = {
-        "id": "page",
-        "parent": "root",
-        "display": "page",
-        "props": {"title": "Test"},
-        "_removed": False,
-        "_children": [],
-        "_created_seq": 1,
-        "_updated_seq": 1,
-    }
-    snap["_sequence"] = 1
+    create_result = apply(snap, {"t": "entity.create", "id": "page", "parent": "root", "display": "page", "p": {}})
+    snap = create_result.snapshot
+    update_result = apply(snap, {"t": "entity.update", "ref": "page", "p": {"title": "Test"}})
+    snap = update_result.snapshot
 
     original_entity_count = len(snap["entities"])
 
