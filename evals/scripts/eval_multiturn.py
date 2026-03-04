@@ -31,13 +31,12 @@ import os
 import re
 import sys
 import time
-from datetime import date, datetime, timezone, timedelta
+from datetime import datetime
 from pathlib import Path
 
 import anthropic
-
-from scoring import score_scenario, ScenarioScore, parse_jsonl, DIMENSION_WEIGHTS
 from scenarios_multiturn import MULTI_TURN_SCENARIOS, get_scenario
+from scoring import parse_jsonl, score_scenario
 
 # ---------------------------------------------------------------------------
 # Prompt loading — unified with backend
@@ -46,7 +45,7 @@ from scenarios_multiturn import MULTI_TURN_SCENARIOS, get_scenario
 # Add backend to path and import prompt builder
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from backend.services.prompt_builder import build_system_blocks
-
+from engine.kernel.kernel import apply
 
 # ---------------------------------------------------------------------------
 # Models
@@ -62,113 +61,36 @@ DEFAULT_MODELS = {
 # Snapshot builder — applies JSONL output to build next turn's state
 # ---------------------------------------------------------------------------
 
+
 def apply_output_to_snapshot(snapshot: dict, output_text: str, tier: str) -> dict:
     """
-    Apply LLM output to snapshot to build state for next turn.
+    Apply LLM output through the production kernel.
 
-    For L2/L3: parse JSONL and apply entity mutations.
+    For L2/L3: parse JSONL and apply events through kernel.
     For L4: no state change (read-only).
-
-    This is a simplified reducer — it doesn't validate schemas or enforce
-    all reducer rules. It just builds enough state for the next prompt
-    to have realistic context.
-
-    IMPORTANT: Deep copies the snapshot first so mutations don't bleed
-    back into previously stored snapshots (Python dict aliasing).
     """
     if tier == "L4":
-        return json.loads(json.dumps(snapshot))  # L4 doesn't mutate but still isolate
+        return json.loads(json.dumps(snapshot))  # L4 is read-only
 
     parsed, _ = parse_jsonl(output_text)
-
-    # Deep copy to break all references to the original snapshot's inner dicts
     working = json.loads(json.dumps(snapshot))
-    entities = working.get("entities", {})
-    meta = working.get("meta", {})
-    relationships = working.get("relationships", [])
-    rel_types = working.get("relationship_types", {})  # type → cardinality
 
     for event in parsed:
-        t = event.get("t", "")
+        # Skip signals - they don't mutate state
+        if event.get("t") in ("voice", "escalate", "clarify", "batch.start", "batch.end"):
+            continue
 
-        if t == "meta.set" or t == "meta.update":
-            p = event.get("p", {})
-            meta.update(p)
+        result = apply(working, event)
+        if result.accepted:
+            working = result.snapshot
 
-        elif t == "entity.create":
-            eid = event.get("id")
-            if eid:
-                entities[eid] = {
-                    "id": eid,
-                    "parent": event.get("parent", "root"),
-                    "display": event.get("display", "row"),
-                    "props": event.get("p", {}),
-                }
-
-        elif t == "entity.update":
-            ref = event.get("ref")
-            if ref and ref in entities:
-                entities[ref]["props"].update(event.get("p", {}))
-
-        elif t == "entity.remove":
-            ref = event.get("ref")
-            if ref and ref in entities:
-                del entities[ref]
-                # Clean up any relationships involving the removed entity
-                rels = snapshot.get("relationships", [])
-                snapshot["relationships"] = [
-                    r for r in rels if r["from"] != ref and r["to"] != ref
-                ]
-
-        elif t == "entity.move":
-            ref = event.get("ref")
-            if ref and ref in entities:
-                if "parent" in event:
-                    entities[ref]["parent"] = event["parent"]
-
-        elif t == "rel.set":
-            frm = event.get("from", "")
-            to = event.get("to", "")
-            rtype = event.get("type", "")
-            card = event.get("cardinality", "many_to_one")
-
-            # Register type cardinality on first use
-            if rtype and rtype not in rel_types:
-                rel_types[rtype] = card
-
-            # Enforce cardinality
-            stored_card = rel_types.get(rtype, card)
-            if stored_card == "many_to_one":
-                # Source can link to ONE target of this type — remove old
-                relationships = [r for r in relationships
-                                 if not (r["from"] == frm and r["type"] == rtype)]
-            elif stored_card == "one_to_one":
-                # Both sides exclusive — remove source's old AND target's old
-                relationships = [r for r in relationships
-                                 if not (r["from"] == frm and r["type"] == rtype)
-                                 and not (r["to"] == to and r["type"] == rtype)]
-
-            relationships.append({"from": frm, "to": to, "type": rtype})
-
-        elif t == "rel.remove":
-            frm = event.get("from", "")
-            to = event.get("to", "")
-            rtype = event.get("type", "")
-            relationships = [r for r in relationships
-                             if not (r["from"] == frm and r["to"] == to and r["type"] == rtype)]
-
-        # Signals (voice, escalate, batch) — no state change
-
-    # Detect orphaned entities — children whose parent was removed
-    all_ids = set(entities.keys()) | {"root"}
-    orphans = [eid for eid, e in entities.items() if e.get("parent") and e["parent"] not in all_ids]
-
-    return {"meta": meta, "entities": entities, "relationships": relationships, "relationship_types": rel_types, "orphans": orphans}
+    return working
 
 
 # ---------------------------------------------------------------------------
 # Conversation history for messages
 # ---------------------------------------------------------------------------
+
 
 def build_messages_with_history(
     history: list[dict],
@@ -189,6 +111,7 @@ def build_messages_with_history(
 # Turn runner
 # ---------------------------------------------------------------------------
 
+
 def classify_tier(message: str, snapshot: dict | None) -> str:
     """
     Simple rule-based classifier (mirrors the server-side classifier).
@@ -200,12 +123,11 @@ def classify_tier(message: str, snapshot: dict | None) -> str:
 
     # "add a new [thing]" — L3 only if the [thing] table doesn't exist yet
     # e.g. "add a new chore" when chores table exists → L2 (adding row)
-    add_new_match = re.search(r'add a new (\w+)', msg_lower)
+    add_new_match = re.search(r"add a new (\w+)", msg_lower)
     if add_new_match:
         thing = add_new_match.group(1)
         # Check if a table for this thing exists (singular or plural)
-        thing_exists = any(thing in eid or thing.rstrip('s') in eid or thing + 's' in eid
-                          for eid in entity_ids_lower)
+        thing_exists = any(thing in eid or thing.rstrip("s") in eid or thing + "s" in eid for eid in entity_ids_lower)
         if thing_exists:
             return "L2"  # Adding to existing structure
         else:
@@ -213,9 +135,20 @@ def classify_tier(message: str, snapshot: dict | None) -> str:
 
     # Structural keywords → L3 (check BEFORE query phrases to avoid "create a summary" → L4)
     # Note: "gonna be" removed — too aggressive for "it's gonna be me, mike..." (adding to roster)
-    structural = ["add a section", "set up a", "create a", "make a",
-                   "we should track", "we should do", "gotta do", "redoing", "reorganize",
-                   "group the", "split the", "separate the"]
+    structural = [
+        "add a section",
+        "set up a",
+        "create a",
+        "make a",
+        "we should track",
+        "we should do",
+        "gotta do",
+        "redoing",
+        "reorganize",
+        "group the",
+        "split the",
+        "separate the",
+    ]
     if any(kw in msg_lower for kw in structural):
         return "L3"
 
@@ -224,15 +157,37 @@ def classify_tier(message: str, snapshot: dict | None) -> str:
     if "?" in msg_lower:
         return "L4"
     # Query starters — expanded to catch "is the X working" patterns
-    query_starts = ["how many", "who", "what's left", "what do we", "how much",
-                    "is there", "is the", "is it", "are the", "are they",
-                    "do we", "does it", "does the", "where are we", "show me", "give me"]
+    query_starts = [
+        "how many",
+        "who",
+        "what's left",
+        "what do we",
+        "how much",
+        "is there",
+        "is the",
+        "is it",
+        "are the",
+        "are they",
+        "do we",
+        "does it",
+        "does the",
+        "where are we",
+        "show me",
+        "give me",
+    ]
     if any(msg_lower.startswith(q) for q in query_starts):
         return "L4"
     # Query phrases anywhere (summaries, breakdowns, status checks)
-    query_phrases = ["breakdown", "looking like", "status update",
-                     "where do we stand", "how are we", "what's the total",
-                     "run the numbers", "full picture"]
+    query_phrases = [
+        "breakdown",
+        "looking like",
+        "status update",
+        "where do we stand",
+        "how are we",
+        "what's the total",
+        "run the numbers",
+        "full picture",
+    ]
     if any(qp in msg_lower for qp in query_phrases):
         return "L4"
 
@@ -253,20 +208,20 @@ def classify_tier(message: str, snapshot: dict | None) -> str:
 
     # Budget/cost introduction → L3 if budget is empty or doesn't exist
     # e.g. "budget is around 35k" or "already spent 8k"
-    if re.search(r'budget\s+(is|around|of|:)', msg_lower):
+    if re.search(r"budget\s+(is|around|of|:)", msg_lower):
         if not has_children("budget"):
             return "L3"
 
     # Quotes introduction → L3 if no quote children exist
     # e.g. "got 3 quotes" or "quotes for the cabinets"
-    if re.search(r'(\d+\s+)?quotes?\s+(for|from|:)', msg_lower) or ("got" in msg_lower and "quote" in msg_lower):
+    if re.search(r"(\d+\s+)?quotes?\s+(for|from|:)", msg_lower) or ("got" in msg_lower and "quote" in msg_lower):
         if not has_children("quote"):
             return "L3"
 
     # Scheduling multiple contractors/tasks → L3 if tasks table is empty
     # e.g. "plumber can start march 10, electrician march 3"
-    contractor_pattern = r'(plumber|electrician|contractor|installer|painter|carpenter)'
-    if re.search(contractor_pattern, msg_lower) and re.search(r'(start|begin|come|schedule)', msg_lower):
+    contractor_pattern = r"(plumber|electrician|contractor|installer|painter|carpenter)"
+    if re.search(contractor_pattern, msg_lower) and re.search(r"(start|begin|come|schedule)", msg_lower):
         if not has_children("task"):
             return "L3"
 
@@ -277,9 +232,8 @@ def classify_tier(message: str, snapshot: dict | None) -> str:
     if len(segments) >= 3:
         # Check if this looks like a list of new items (not just a complex sentence)
         # Heuristic: multiple segments with numbers, or introducing a set of things
-        has_numbers = sum(1 for s in segments if re.search(r'\d', s))
-        intro_patterns = ["quotes", "chores", "tasks", "items", "players",
-                          "guests", "weekly", "daily", "monthly"]
+        has_numbers = sum(1 for s in segments if re.search(r"\d", s))
+        intro_patterns = ["quotes", "chores", "tasks", "items", "players", "guests", "weekly", "daily", "monthly"]
         matched_intro = next((ip for ip in intro_patterns if ip in msg_lower), None)
         if has_numbers >= 2 or matched_intro:
             # Check if a table for THIS specific intro pattern has children
@@ -289,8 +243,7 @@ def classify_tier(message: str, snapshot: dict | None) -> str:
                     return "L3"
             else:
                 # No specific intro, fall back to checking if ANY table exists
-                table_parents = [e for e in entities.values()
-                                if e.get("display") in ("table", "list", "checklist")]
+                table_parents = [e for e in entities.values() if e.get("display") in ("table", "list", "checklist")]
                 if not table_parents:
                     return "L3"
 
@@ -315,7 +268,10 @@ def run_turn(
     full_text = ""
 
     with client.messages.stream(
-        model=model, max_tokens=4096, system=system, messages=messages,
+        model=model,
+        max_tokens=4096,
+        system=system,
+        messages=messages,
     ) as stream:
         for chunk in stream.text_stream:
             if first_token_time is None:
@@ -356,6 +312,7 @@ def run_turn(
 # Scenario runner
 # ---------------------------------------------------------------------------
 
+
 def run_multiturn_scenario(
     client: anthropic.Anthropic,
     scenario: dict,
@@ -369,10 +326,10 @@ def run_multiturn_scenario(
     if max_turns is not None:
         turns = turns[:max_turns]
 
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"📖 {name}: {scenario['description']}")
     print(f"   {len(turns)} turns")
-    print(f"{'='*70}")
+    print(f"{'=' * 70}")
 
     snapshot: dict = {"meta": {}, "entities": {}}
     history: list[dict] = []
@@ -417,14 +374,15 @@ def run_multiturn_scenario(
         # (in production the LLM can self-escalate, so accept wider range)
         actual_tier = classified_tier if classified_tier in accept_tiers else expected_tier
 
-        print(f"\n  Turn {i+1}/{len(turns)}: \"{message}\"")
+        print(f'\n  Turn {i + 1}/{len(turns)}: "{message}"')
         print(f"    expected={expected_tier}  classified={classified_tier}  actual={actual_tier}")
 
         try:
             # Capture state BEFORE this turn (for viewer)
             snapshot_before = json.loads(json.dumps(snapshot))
             system_prompt_text = "\n\n".join(
-                b["text"] for b in build_system_blocks(
+                b["text"]
+                for b in build_system_blocks(
                     classified_tier if classified_tier in accept_tiers else expected_tier,
                     snapshot,
                 )
@@ -447,7 +405,7 @@ def run_multiturn_scenario(
                         print(f"    ✓ Retry produced {len(retry_parsed)} operations")
                     else:
                         result["retried"] = True
-                        print(f"    ✗ Retry also failed — plain text output")
+                        print("    ✗ Retry also failed — plain text output")
 
             # Check for escalation signals in L2 output
             # Production server: apply L2 mutations, then re-route to escalation tier
@@ -458,24 +416,24 @@ def run_multiturn_scenario(
                 if escalation:
                     esc_tier = escalation.get("tier", "L3")
                     esc_extract = escalation.get("extract", message)
-                    print(f"    ↗ L2 escalated to {esc_tier}: {escalation.get('reason','')}")
+                    print(f"    ↗ L2 escalated to {esc_tier}: {escalation.get('reason', '')}")
 
                     # Apply L2's mutations first (everything before the escalate)
-                    pre_escalation_snapshot = apply_output_to_snapshot(
-                        snapshot, result["output"], "L2"
-                    )
+                    pre_escalation_snapshot = apply_output_to_snapshot(snapshot, result["output"], "L2")
 
                     # Run escalation tier with the extracted/original message
-                    escalation_result = run_turn(
-                        client, esc_extract, esc_tier, pre_escalation_snapshot, history
-                    )
+                    escalation_result = run_turn(client, esc_extract, esc_tier, pre_escalation_snapshot, history)
 
                     # Merge: L2's output + escalation output
                     result = {
                         **result,
                         "output": result["output"] + "\n" + escalation_result["output"],
-                        "raw_output": result.get("raw_output", result["output"]) + "\n" + escalation_result.get("raw_output", escalation_result["output"]),
-                        "had_fences": result.get("had_fences", False) or escalation_result.get("had_fences", False),
+                        "raw_output": (
+                            result.get("raw_output", result["output"])
+                            + "\n"
+                            + escalation_result.get("raw_output", escalation_result["output"])
+                        ),
+                        "had_fences": (result.get("had_fences", False) or escalation_result.get("had_fences", False)),
                         "output_tokens": result["output_tokens"] + escalation_result["output_tokens"],
                         "input_tokens": result["input_tokens"] + escalation_result["input_tokens"],
                         "ttc_ms": result["ttc_ms"] + escalation_result["ttc_ms"],
@@ -498,7 +456,7 @@ def run_multiturn_scenario(
             # Score this turn (use raw output so fence detection works)
             # Pass new_snapshot so structure scorer can check for orphans
             turn_score = score_scenario(
-                name=f"{name}_t{i+1}",
+                name=f"{name}_t{i + 1}",
                 tier=effective_tier,
                 model=result["model"],
                 prompt_version="v3.1",
@@ -518,14 +476,16 @@ def run_multiturn_scenario(
                 # Summarize what changed in plain language
                 parts = []
                 parsed_events, _ = parse_jsonl(result["output"])
-                creates = [e.get("id","") for e in parsed_events if e.get("t") == "entity.create"]
-                updates = [e.get("ref","") for e in parsed_events if e.get("t") == "entity.update"]
+                creates = [e.get("id", "") for e in parsed_events if e.get("t") == "entity.create"]
+                updates = [e.get("ref", "") for e in parsed_events if e.get("t") == "entity.update"]
                 if creates:
-                    parts.append(f"Created {', '.join(creates[:3])}" + (f" +{len(creates)-3} more" if len(creates) > 3 else ""))
+                    suffix = f" +{len(creates) - 3} more" if len(creates) > 3 else ""
+                    parts.append(f"Created {', '.join(creates[:3])}" + suffix)
                 if updates:
-                    parts.append(f"Updated {', '.join(updates[:3])}" + (f" +{len(updates)-3} more" if len(updates) > 3 else ""))
-                voice_lines = [e.get("text","") for e in parsed_events if e.get("t") == "voice"]
-                clarify_lines = [e.get("text","") for e in parsed_events if e.get("t") == "clarify"]
+                    suffix = f" +{len(updates) - 3} more" if len(updates) > 3 else ""
+                    parts.append(f"Updated {', '.join(updates[:3])}" + suffix)
+                voice_lines = [e.get("text", "") for e in parsed_events if e.get("t") == "voice"]
+                clarify_lines = [e.get("text", "") for e in parsed_events if e.get("t") == "clarify"]
                 if clarify_lines:
                     # Clarification takes priority — it's what the user sees
                     assistant_summary = "Question: " + clarify_lines[-1]
@@ -535,19 +495,23 @@ def run_multiturn_scenario(
                     assistant_summary = ". ".join(parts) + "."
                 else:
                     assistant_summary = "Applied changes."
-            history.append({
-                "user_message": message,
-                "assistant_response": assistant_summary,
-            })
+            history.append(
+                {
+                    "user_message": message,
+                    "assistant_response": assistant_summary,
+                }
+            )
 
             # Print turn result
             bar = "█" * int(turn_score.composite * 10) + "░" * (10 - int(turn_score.composite * 10))
             tier_match = "✓" if classified_tier in accept_tiers else "✗"
-            print(f"    score=[{bar}] {turn_score.composite:.0%}  "
-                  f"tier={tier_match}  "
-                  f"{result['ttc_ms']}ms  "
-                  f"{result['output_tokens']}tok  "
-                  f"entities={entity_count} ({entity_delta:+d})")
+            print(
+                f"    score=[{bar}] {turn_score.composite:.0%}  "
+                f"tier={tier_match}  "
+                f"{result['ttc_ms']}ms  "
+                f"{result['output_tokens']}tok  "
+                f"entities={entity_count} ({entity_delta:+d})"
+            )
 
             if verbose:
                 preview = result["output"].strip().split("\n")[:5]
@@ -560,11 +524,11 @@ def run_multiturn_scenario(
 
             # Save turn artifact
             if save_dir:
-                turn_dir = save_dir / name / f"turn_{i+1:02d}"
+                turn_dir = save_dir / name / f"turn_{i + 1:02d}"
                 turn_dir.mkdir(parents=True, exist_ok=True)
 
                 (turn_dir / "input.md").write_text(
-                    f"# Turn {i+1}: {message}\n\n"
+                    f"# Turn {i + 1}: {message}\n\n"
                     f"## Tier: {actual_tier} (expected: {expected_tier}, classified: {classified_tier})\n\n"
                     f"## Notes\n{notes}\n\n"
                     f"## Snapshot before this turn\n```json\n{json.dumps(snapshot, indent=2)}\n```\n\n"
@@ -573,88 +537,116 @@ def run_multiturn_scenario(
                 (turn_dir / "output.txt").write_text(result.get("raw_output", result["output"]))
                 (turn_dir / "snapshot_after.json").write_text(json.dumps(new_snapshot, indent=2))
                 (turn_dir / "score.json").write_text(json.dumps(turn_score.to_dict(), indent=2))
-                (turn_dir / "usage.json").write_text(json.dumps({
-                    "ttfc_ms": result["ttfc_ms"], "ttc_ms": result["ttc_ms"],
-                    "input_tokens": result["input_tokens"], "output_tokens": result["output_tokens"],
-                    "cache_creation": result["cache_creation"], "cache_read": result["cache_read"],
-                }, indent=2))
+                (turn_dir / "usage.json").write_text(
+                    json.dumps(
+                        {
+                            "ttfc_ms": result["ttfc_ms"],
+                            "ttc_ms": result["ttc_ms"],
+                            "input_tokens": result["input_tokens"],
+                            "output_tokens": result["output_tokens"],
+                            "cache_creation": result["cache_creation"],
+                            "cache_read": result["cache_read"],
+                        },
+                        indent=2,
+                    )
+                )
 
             snapshot = new_snapshot
 
-            turn_results.append({
-                "turn": i + 1,
-                "message": message,
-                "tier": actual_tier,
-                "expected_tier": expected_tier,
-                "classified_tier": actual_tier,  # Tier actually used in the prompt
-                "classifier_raw": classified_tier,  # Raw classifier output (before fallback)
-                "tier_correct": actual_tier in accept_tiers,
-                "notes": notes,
-                # Full score breakdown
-                "score": {
-                    "composite": turn_score.composite,
-                    "validity": turn_score.dimensions["validity"].score if "validity" in turn_score.dimensions else 0,
-                    "voice": turn_score.dimensions["voice"].score if "voice" in turn_score.dimensions else 0,
-                    "structure": turn_score.dimensions["structure"].score if "structure" in turn_score.dimensions else 0,
-                    "efficiency": turn_score.dimensions["efficiency"].score if "efficiency" in turn_score.dimensions else 0,
-                    "fidelity": turn_score.dimensions["fidelity"].score if "fidelity" in turn_score.dimensions else 0,
-                },
-                # Per-dimension checks and notes (for viewer explanations)
-                "score_details": {
-                    dim_name: {
-                        "score": round(dim_score.score, 3),
-                        "checks": {k: round(v, 3) for k, v in dim_score.checks.items()},
-                        "notes": dim_score.notes,
-                    }
-                    for dim_name, dim_score in turn_score.dimensions.items()
-                },
-                # Usage
-                "ttc_ms": result["ttc_ms"],
-                "ttfc_ms": result["ttfc_ms"],
-                "output_tokens": result["output_tokens"],
-                "input_tokens": result["input_tokens"],
-                "cache_creation": result["cache_creation"],
-                "cache_read": result["cache_read"],
-                # Content (viewer needs these inline)
-                "output": result.get("raw_output", result["output"]),
-                "had_fences": result.get("had_fences", False),
-                "system_prompt": system_prompt_text,
-                "snapshot_before": snapshot_before,
-                "snapshot_after": json.loads(json.dumps(new_snapshot)),
-                # Summary stats
-                "entity_count": entity_count,
-                "entity_delta": entity_delta,
-                "escalated_to": result.get("escalated_to"),
-                "retried": result.get("retried", False),
-                # Clarification signals
-                "clarify": [
-                    {"text": e.get("text",""), "options": e.get("options",[])}
-                    for e in (parse_jsonl(result["output"])[0] if actual_tier != "L4" else [])
-                    if e.get("t") == "clarify"
-                ],
-            })
+            turn_results.append(
+                {
+                    "turn": i + 1,
+                    "message": message,
+                    "tier": actual_tier,
+                    "expected_tier": expected_tier,
+                    "classified_tier": actual_tier,  # Tier actually used in the prompt
+                    "classifier_raw": classified_tier,  # Raw classifier output (before fallback)
+                    "tier_correct": actual_tier in accept_tiers,
+                    "notes": notes,
+                    # Full score breakdown
+                    "score": {
+                        "composite": turn_score.composite,
+                        "validity": (
+                            turn_score.dimensions["validity"].score if "validity" in turn_score.dimensions else 0
+                        ),
+                        "voice": turn_score.dimensions["voice"].score if "voice" in turn_score.dimensions else 0,
+                        "structure": (
+                            turn_score.dimensions["structure"].score if "structure" in turn_score.dimensions else 0
+                        ),
+                        "efficiency": (
+                            turn_score.dimensions["efficiency"].score if "efficiency" in turn_score.dimensions else 0
+                        ),
+                        "fidelity": (
+                            turn_score.dimensions["fidelity"].score if "fidelity" in turn_score.dimensions else 0
+                        ),
+                    },
+                    # Per-dimension checks and notes (for viewer explanations)
+                    "score_details": {
+                        dim_name: {
+                            "score": round(dim_score.score, 3),
+                            "checks": {k: round(v, 3) for k, v in dim_score.checks.items()},
+                            "notes": dim_score.notes,
+                        }
+                        for dim_name, dim_score in turn_score.dimensions.items()
+                    },
+                    # Usage
+                    "ttc_ms": result["ttc_ms"],
+                    "ttfc_ms": result["ttfc_ms"],
+                    "output_tokens": result["output_tokens"],
+                    "input_tokens": result["input_tokens"],
+                    "cache_creation": result["cache_creation"],
+                    "cache_read": result["cache_read"],
+                    # Content (viewer needs these inline)
+                    "output": result.get("raw_output", result["output"]),
+                    "had_fences": result.get("had_fences", False),
+                    "system_prompt": system_prompt_text,
+                    "snapshot_before": snapshot_before,
+                    "snapshot_after": json.loads(json.dumps(new_snapshot)),
+                    # Summary stats
+                    "entity_count": entity_count,
+                    "entity_delta": entity_delta,
+                    "escalated_to": result.get("escalated_to"),
+                    "retried": result.get("retried", False),
+                    # Clarification signals
+                    "clarify": [
+                        {"text": e.get("text", ""), "options": e.get("options", [])}
+                        for e in (parse_jsonl(result["output"])[0] if actual_tier != "L4" else [])
+                        if e.get("t") == "clarify"
+                    ],
+                }
+            )
 
         except Exception as e:
             print(f"    ❌ ERROR: {e}")
-            turn_results.append({
-                "turn": i + 1, "message": message, "error": str(e),
-            })
+            turn_results.append(
+                {
+                    "turn": i + 1,
+                    "message": message,
+                    "error": str(e),
+                }
+            )
 
     # Scenario summary
-    scores = [t["score"]["composite"] if isinstance(t.get("score"), dict) else t.get("score", 0) for t in turn_results if "score" in t]
+    scores = [
+        t["score"]["composite"] if isinstance(t.get("score"), dict) else t.get("score", 0)
+        for t in turn_results
+        if "score" in t
+    ]
     avg_score = sum(scores) / max(len(scores), 1)
     tier_accuracy = sum(1 for t in turn_results if t.get("tier_correct", False)) / max(len(turn_results), 1)
     total_tokens = sum(t.get("output_tokens", 0) for t in turn_results)
     total_time = sum(t.get("ttc_ms", 0) for t in turn_results)
     final_entities = turn_results[-1].get("entity_count", 0) if turn_results else 0
 
-    print(f"\n  {'─'*50}")
+    print(f"\n  {'─' * 50}")
     bar = "█" * int(avg_score * 20) + "░" * (20 - int(avg_score * 20))
     icon = "✅" if avg_score >= 0.8 else "⚠️" if avg_score >= 0.6 else "❌"
     print(f"  {icon} {name} [{bar}] {avg_score:.0%} avg")
-    print(f"     turns: {len(turns)} | entities: {final_entities} | "
-          f"tokens: {total_tokens} | time: {total_time}ms | "
-          f"tier accuracy: {tier_accuracy:.0%}")
+    print(
+        f"     turns: {len(turns)} | entities: {final_entities} | "
+        f"tokens: {total_tokens} | time: {total_time}ms | "
+        f"tier accuracy: {tier_accuracy:.0%}"
+    )
 
     return {
         "name": name,
@@ -671,6 +663,7 @@ def run_multiturn_scenario(
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main():
     p = argparse.ArgumentParser(description="Multi-turn prompt eval")
     p.add_argument("--scenario", type=str, help="Run specific scenario")
@@ -682,7 +675,8 @@ def main():
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
-        print("ERROR: ANTHROPIC_API_KEY not set"); sys.exit(1)
+        print("ERROR: ANTHROPIC_API_KEY not set")
+        sys.exit(1)
 
     client = anthropic.Anthropic(api_key=api_key)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -702,29 +696,33 @@ def main():
     else:
         to_run = MULTI_TURN_SCENARIOS
 
-    print(f"AIde Multi-Turn Eval")
+    print("AIde Multi-Turn Eval")
     print(f"Scenarios: {len(to_run)} | Started: {datetime.now().isoformat()}\n")
 
     # Run
     results = []
     for scenario in to_run:
         try:
-            result = run_multiturn_scenario(client, scenario, verbose=args.verbose, save_dir=save_dir, max_turns=args.turns)
+            result = run_multiturn_scenario(
+                client, scenario, verbose=args.verbose, save_dir=save_dir, max_turns=args.turns
+            )
             results.append(result)
         except Exception as e:
             print(f"\n  FATAL ERROR in {scenario['name']}: {e}")
 
     # Final summary
-    print(f"\n\n{'='*70}")
-    print(f"MULTI-TURN SUMMARY")
-    print(f"{'='*70}")
+    print(f"\n\n{'=' * 70}")
+    print("MULTI-TURN SUMMARY")
+    print(f"{'=' * 70}")
     print(f"{'Scenario':<26} {'Turns':>6} {'Score':>6} {'Tier%':>6} {'Tokens':>7} {'Time':>7} {'Entities':>9}")
-    print(f"{'-'*70}")
+    print(f"{'-' * 70}")
 
     for r in results:
-        print(f"{r['name']:<26} {len(r['turns']):>6} {r['avg_score']:>5.1%} "
-              f"{r['tier_accuracy']:>5.0%} {r['total_tokens']:>7} "
-              f"{r['total_time_ms']:>6}ms {r['final_entity_count']:>9}")
+        print(
+            f"{r['name']:<26} {len(r['turns']):>6} {r['avg_score']:>5.1%} "
+            f"{r['tier_accuracy']:>5.0%} {r['total_tokens']:>7} "
+            f"{r['total_time_ms']:>6}ms {r['final_entity_count']:>9}"
+        )
 
     avg = sum(r["avg_score"] for r in results) / max(len(results), 1)
     print(f"\nOverall average: {avg:.1%}")
@@ -733,11 +731,16 @@ def main():
     if save_dir:
         report_path = save_dir / "report.json"
         with open(report_path, "w") as f:
-            json.dump({
-                "timestamp": datetime.now().isoformat(),
-                "results": results,
-                "overall_average": avg,
-            }, f, indent=2, default=str)
+            json.dump(
+                {
+                    "timestamp": datetime.now().isoformat(),
+                    "results": results,
+                    "overall_average": avg,
+                },
+                f,
+                indent=2,
+                default=str,
+            )
         print(f"Report: {report_path}")
 
 
