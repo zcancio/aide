@@ -28,9 +28,9 @@ import '../styles/flight-recorder.css';
 
 // Tier colors
 const TC = {
-  L2: { bg: '#0c4a6e', tx: '#7dd3fc', bd: '#0369a1', lb: 'L2 Haiku' },
-  L3: { bg: '#06b6d4', tx: '#cffafe', bd: '#0891b2', lb: 'L3 Sonnet' },
-  L4: { bg: '#7c3aed', tx: '#e9d5ff', bd: '#6d28d9', lb: 'L4 Opus' },
+  L2: { bg: '#0c4a6e', tx: '#7dd3fc', bd: '#0369a1', lb: 'L2' },
+  L3: { bg: '#06b6d4', tx: '#cffafe', bd: '#0891b2', lb: 'L3' },
+  L4: { bg: '#7c3aed', tx: '#e9d5ff', bd: '#6d28d9', lb: 'L4' },
 };
 
 // Event type colors
