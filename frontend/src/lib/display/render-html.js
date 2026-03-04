@@ -102,52 +102,66 @@ function renderChecklist(entity, childIds, entities) {
     return cp.done === true || cp.checked === true;
   }).length;
 
-  return `<div class="aide-checklist-container">
-    ${title ? `<div class="aide-section__title editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</div>` : ''}
-    <ul class="aide-checklist">${items}</ul>
-    <div class="aide-checklist__summary">${completed} of ${childIds.length} complete</div>
-  </div>`;
+  const checklistContent = `<ul class="aide-checklist">${items}</ul>
+    <div class="aide-checklist__summary">${completed} of ${childIds.length} complete</div>`;
+
+  // If checklist has a title, wrap in section structure
+  if (title) {
+    return `<div class="aide-section">
+      <div class="aide-section__title editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</div>
+      <div class="aide-section__content">${checklistContent}</div>
+    </div>`;
+  }
+
+  // No title - just return the checklist content
+  return `<div class="aide-checklist-container">${checklistContent}</div>`;
 }
 
 function renderTable(entity, childIds, entities) {
   const props = entity.props || {};
   const title = props.title || props.name || '';
   const titleField = props.title !== undefined ? 'title' : 'name';
-  const titleHtml = title ? `<div class="aide-section__title editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</div>` : '';
 
+  // Build the table content
+  let tableContent;
   if (childIds.length === 0) {
-    return `<div class="aide-table-container">
-      ${titleHtml}
-      <p class="aide-collection-empty">No items yet.</p>
-    </div>`;
-  }
+    tableContent = '<p class="aide-collection-empty">No items yet.</p>';
+  } else {
+    // Collect columns from all children
+    const colSet = new Set();
+    childIds.forEach(id => {
+      const child = entities[id];
+      if (!child) return;
+      Object.keys(child.props || {}).filter(k => !k.startsWith('_')).forEach(k => colSet.add(k));
+    });
+    const cols = Array.from(colSet);
 
-  // Collect columns from all children
-  const colSet = new Set();
-  childIds.forEach(id => {
-    const child = entities[id];
-    if (!child) return;
-    Object.keys(child.props || {}).filter(k => !k.startsWith('_')).forEach(k => colSet.add(k));
-  });
-  const cols = Array.from(colSet);
+    const thead = `<tr>${cols.map(c => `<th class="aide-table__th">${escapeHtml(humanize(c))}</th>`).join('')}</tr>`;
+    const tbody = childIds.map(id => {
+      const child = entities[id];
+      if (!child) return '';
+      const cp = child.props || {};
+      return `<tr>${cols.map(c => `<td class="aide-table__td"><span class="editable-field" data-entity-id="${id}" data-field="${c}">${escapeHtml(cp[c] ?? '')}</span></td>`).join('')}</tr>`;
+    }).join('');
 
-  const thead = `<tr>${cols.map(c => `<th class="aide-table__th">${escapeHtml(humanize(c))}</th>`).join('')}</tr>`;
-  const tbody = childIds.map(id => {
-    const child = entities[id];
-    if (!child) return '';
-    const cp = child.props || {};
-    return `<tr>${cols.map(c => `<td class="aide-table__td"><span class="editable-field" data-entity-id="${id}" data-field="${c}">${escapeHtml(cp[c] ?? '')}</span></td>`).join('')}</tr>`;
-  }).join('');
-
-  return `<div class="aide-table-container">
-    ${titleHtml}
-    <div class="aide-table-wrap">
+    tableContent = `<div class="aide-table-wrap">
       <table class="aide-table">
         <thead>${thead}</thead>
         <tbody>${tbody}</tbody>
       </table>
-    </div>
-  </div>`;
+    </div>`;
+  }
+
+  // If table has a title, wrap in section structure
+  if (title) {
+    return `<div class="aide-section">
+      <div class="aide-section__title editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</div>
+      <div class="aide-section__content">${tableContent}</div>
+    </div>`;
+  }
+
+  // No title - just return the table content
+  return tableContent;
 }
 
 function renderList(entity, childIds, entities) {
