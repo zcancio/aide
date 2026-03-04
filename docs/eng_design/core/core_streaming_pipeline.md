@@ -1,7 +1,7 @@
 # 03: Streaming Pipeline
 
 > **Prerequisites:** [Data Model](core_data_model.md) · [Tool Calls](core_tool_calls.md)
-> **Next:** [04 Display Components](04_display_components.md) (what the client does with each delta)
+> **Next:** [Display Components](core_display_components.md) (what the client does with each delta)
 
 ---
 

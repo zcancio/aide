@@ -116,7 +116,7 @@ This eliminates an entire class of primitives and means the LLM doesn't have to 
 
 ## Display Hints
 
-The `display` field tells the React compiler how to render an entity and its children. See [04 Display Components](04_display_components.md) for the full component catalog.
+The `display` field tells the React compiler how to render an entity and its children. See [Display Components](core_display_components.md) for the full component catalog.
 
 | Hint | Renders As | Best For |
 |------|-----------|----------|

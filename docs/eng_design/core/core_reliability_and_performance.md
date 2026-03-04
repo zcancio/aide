@@ -1,7 +1,7 @@
 # 07: Edge Cases & Reliability
 
 > **Prerequisites:** [Overview](../architecture_overview.md) · [Streaming Pipeline](core_streaming_pipeline.md)
-> **Related:** [04 Display Components](04_display_components.md) (for direct edit details)
+> **Related:** [Display Components](core_display_components.md) (for direct edit details)
 
 ---
 

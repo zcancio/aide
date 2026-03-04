@@ -2,7 +2,7 @@
 
 > **Read time:** 5 minutes
 > **Audience:** Everyone on the team
-> **Next:** Pick the doc for your area → [Data Model](core_data_model.md) · [Tool Calls](core_tool_calls.md) · [Streaming Pipeline](core_streaming_pipeline.md) · [Display Components](04_display_components.md) · [Intelligence Tiers](core_intelligence_tiers.md)
+> **Next:** Pick the doc for your area → [Data Model](core_data_model.md) · [Tool Calls](core_tool_calls.md) · [Streaming Pipeline](core_streaming_pipeline.md) · [Display Components](core_display_components.md) · [Intelligence Tiers](core_intelligence_tiers.md)
 
 ---
 
@@ -65,7 +65,7 @@ The LLM emits tool calls (mutate_entity, voice, etc.). The server parses each to
 
 The LLM emits in **render order** — page title first, sections next, items last. The user sees the page scaffold top-down.
 
-### 4. React Compiler → [04_display_components.md](04_display_components.md)
+### 4. React Compiler → [core_display_components.md](core_display_components.md)
 
 A recursive React component walks the entity tree. Each entity maps to a display component based on its `display` hint: `table` → TableDisplay, `checklist` → ChecklistDisplay, etc.
 
@@ -198,7 +198,7 @@ At publish time, the server renders the snapshot to static HTML stored in `aide_
 | **[Data Model](core_data_model.md)** | Entity tree, relationships, schema inference | Touch state or the reducer |
 | **[Tool Calls](core_tool_calls.md)** | mutate_entity, voice, set_relationship tools | Touch the LLM pipeline or server |
 | **[Streaming Pipeline](core_streaming_pipeline.md)** | Server parsing, WebSocket, caching, streaming rules | Touch server or client integration |
-| **[04 Display Components](04_display_components.md)** | React compiler, all 9 components, EditableField | Touch the frontend |
+| **[Display Components](core_display_components.md)** | React compiler, all 9 components, EditableField | Touch the frontend |
 | **[Intelligence Tiers](core_intelligence_tiers.md)** | L3/L4, routing, escalation, multi-intent, costs | Touch LLM orchestration |
 | **[Prompts](core_prompts.md)** | System prompts for L3, L4 | Touch LLM behavior |
 | **[Reliability & Performance](core_reliability_and_performance.md)** | Interrupt, undo, retry, errors, speed budget | Touch reliability or UX |
