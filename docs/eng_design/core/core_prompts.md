@@ -1,6 +1,6 @@
 # 06: Prompts
 
-> **Prerequisites:** [Tool Calls](core_tool_calls.md) · [Intelligence Tiers](05_intelligence_tiers.md)
+> **Prerequisites:** [Tool Calls](core_tool_calls.md) · [Intelligence Tiers](core_intelligence_tiers.md)
 > **Related:** [Streaming Pipeline](core_streaming_pipeline.md)
 
 ---

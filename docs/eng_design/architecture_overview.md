@@ -2,7 +2,7 @@
 
 > **Read time:** 5 minutes
 > **Audience:** Everyone on the team
-> **Next:** Pick the doc for your area → [Data Model](core_data_model.md) · [Tool Calls](core_tool_calls.md) · [Streaming Pipeline](core_streaming_pipeline.md) · [Display Components](04_display_components.md) · [Intelligence Tiers](05_intelligence_tiers.md)
+> **Next:** Pick the doc for your area → [Data Model](core_data_model.md) · [Tool Calls](core_tool_calls.md) · [Streaming Pipeline](core_streaming_pipeline.md) · [Display Components](04_display_components.md) · [Intelligence Tiers](core_intelligence_tiers.md)
 
 ---
 
@@ -71,7 +71,7 @@ A recursive React component walks the entity tree. Each entity maps to a display
 
 ~9 components, ~385 lines total. Every rendered value is **directly editable** — click to change, no LLM round trip. Under 200ms.
 
-### 5. Two-Tier Intelligence → [05_intelligence_tiers.md](05_intelligence_tiers.md)
+### 5. Two-Tier Intelligence → [core_intelligence_tiers.md](core_intelligence_tiers.md)
 
 | Tier | Model | Job | Latency |
 |------|-------|-----|---------|
@@ -199,7 +199,7 @@ At publish time, the server renders the snapshot to static HTML stored in `aide_
 | **[Tool Calls](core_tool_calls.md)** | mutate_entity, voice, set_relationship tools | Touch the LLM pipeline or server |
 | **[Streaming Pipeline](core_streaming_pipeline.md)** | Server parsing, WebSocket, caching, streaming rules | Touch server or client integration |
 | **[04 Display Components](04_display_components.md)** | React compiler, all 9 components, EditableField | Touch the frontend |
-| **[05 Intelligence Tiers](05_intelligence_tiers.md)** | L3/L4, routing, escalation, multi-intent, costs | Touch LLM orchestration |
+| **[Intelligence Tiers](core_intelligence_tiers.md)** | L3/L4, routing, escalation, multi-intent, costs | Touch LLM orchestration |
 | **[Prompts](core_prompts.md)** | System prompts for L3, L4 | Touch LLM behavior |
 | **[Reliability & Performance](core_reliability_and_performance.md)** | Interrupt, undo, retry, errors, speed budget | Touch reliability or UX |
 | **[08 Capability Boundaries](08_capability_boundaries.md)** | Native/skills/redirects, scoping rules | Touch product scope |
