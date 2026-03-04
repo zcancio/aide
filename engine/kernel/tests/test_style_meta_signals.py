@@ -1,5 +1,5 @@
 """
-AIde Reducer — Style, Meta, and Signal Tests
+AIde Kernel — Style, Meta, and Signal Tests
 
 Tests for style.set, style.entity, meta.set, meta.annotate, meta.constrain,
 voice, escalate, and batch signals.
@@ -7,7 +7,7 @@ voice, escalate, and batch signals.
 
 import pytest
 
-from engine.kernel.reducer import empty_snapshot, reduce
+from engine.kernel import apply, empty_snapshot
 
 # ============================================================================
 # Fixtures
@@ -21,7 +21,7 @@ def empty():
 
 @pytest.fixture
 def state_with_entity(empty):
-    result = reduce(empty, {"t": "entity.create", "id": "item_one", "p": {"name": "Item One"}})
+    result = apply(empty, {"t": "entity.create", "id": "item_one", "p": {"name": "Item One"}})
     assert result.accepted
     return result.snapshot
 
@@ -33,7 +33,7 @@ def state_with_entity(empty):
 
 class TestStyleSet:
     def test_sets_global_styles(self, empty):
-        result = reduce(
+        result = apply(
             empty,
             {"t": "style.set", "p": {"primary_color": "#2D2D2A", "font_family": "Inter", "density": "comfortable"}},
         )
@@ -44,20 +44,20 @@ class TestStyleSet:
         assert styles["density"] == "comfortable"
 
     def test_merges_with_existing_styles(self, empty):
-        result = reduce(empty, {"t": "style.set", "p": {"primary_color": "#fff"}})
+        result = apply(empty, {"t": "style.set", "p": {"primary_color": "#fff"}})
         snap = result.snapshot
-        result = reduce(snap, {"t": "style.set", "p": {"font_family": "Georgia"}})
+        result = apply(snap, {"t": "style.set", "p": {"font_family": "Georgia"}})
         assert result.accepted
         styles = result.snapshot["styles"]["global"]
         assert styles["primary_color"] == "#fff"  # Preserved
         assert styles["font_family"] == "Georgia"  # Added
 
     def test_increments_sequence(self, empty):
-        result = reduce(empty, {"t": "style.set", "p": {"x": 1}})
+        result = apply(empty, {"t": "style.set", "p": {"x": 1}})
         assert result.snapshot["_sequence"] == 1
 
     def test_empty_props_ok(self, empty):
-        result = reduce(empty, {"t": "style.set", "p": {}})
+        result = apply(empty, {"t": "style.set", "p": {}})
         assert result.accepted
 
 
@@ -68,7 +68,7 @@ class TestStyleSet:
 
 class TestStyleEntity:
     def test_sets_entity_styles(self, state_with_entity):
-        result = reduce(
+        result = apply(
             state_with_entity,
             {"t": "style.entity", "ref": "item_one", "p": {"highlight": True, "color": "#e53e3e"}},
         )
@@ -80,28 +80,28 @@ class TestStyleEntity:
         assert result.snapshot["styles"]["entities"]["item_one"]["highlight"] is True
 
     def test_merges_entity_styles(self, state_with_entity):
-        result = reduce(state_with_entity, {"t": "style.entity", "ref": "item_one", "p": {"a": 1}})
+        result = apply(state_with_entity, {"t": "style.entity", "ref": "item_one", "p": {"a": 1}})
         snap = result.snapshot
-        result = reduce(snap, {"t": "style.entity", "ref": "item_one", "p": {"b": 2}})
+        result = apply(snap, {"t": "style.entity", "ref": "item_one", "p": {"b": 2}})
         assert result.accepted
         entity = result.snapshot["entities"]["item_one"]
         assert entity["_styles"]["a"] == 1
         assert entity["_styles"]["b"] == 2
 
     def test_reject_nonexistent_entity(self, empty):
-        result = reduce(empty, {"t": "style.entity", "ref": "nobody", "p": {"x": 1}})
+        result = apply(empty, {"t": "style.entity", "ref": "nobody", "p": {"x": 1}})
         assert not result.accepted
         assert "ENTITY_NOT_FOUND" in result.reason
 
     def test_reject_missing_ref(self, empty):
-        result = reduce(empty, {"t": "style.entity", "p": {"x": 1}})
+        result = apply(empty, {"t": "style.entity", "p": {"x": 1}})
         assert not result.accepted
         assert "MISSING_REF" in result.reason
 
     def test_reject_removed_entity(self, state_with_entity):
-        result = reduce(state_with_entity, {"t": "entity.remove", "ref": "item_one"})
+        result = apply(state_with_entity, {"t": "entity.remove", "ref": "item_one"})
         snap = result.snapshot
-        result = reduce(snap, {"t": "style.entity", "ref": "item_one", "p": {"x": 1}})
+        result = apply(snap, {"t": "style.entity", "ref": "item_one", "p": {"x": 1}})
         assert not result.accepted
         assert "ENTITY_NOT_FOUND" in result.reason
 
@@ -113,24 +113,24 @@ class TestStyleEntity:
 
 class TestMetaSet:
     def test_sets_title(self, empty):
-        result = reduce(empty, {"t": "meta.set", "p": {"title": "Sophie's Graduation Party"}})
+        result = apply(empty, {"t": "meta.set", "p": {"title": "Sophie's Graduation Party"}})
         assert result.accepted
         assert result.snapshot["meta"]["title"] == "Sophie's Graduation Party"
 
     def test_sets_identity(self, empty):
-        result = reduce(empty, {"t": "meta.set", "p": {"identity": "graduation_coordinator"}})
+        result = apply(empty, {"t": "meta.set", "p": {"identity": "graduation_coordinator"}})
         assert result.accepted
         assert result.snapshot["meta"]["identity"] == "graduation_coordinator"
 
     def test_updates_existing_meta(self, empty):
-        result = reduce(empty, {"t": "meta.set", "p": {"title": "Old Title"}})
+        result = apply(empty, {"t": "meta.set", "p": {"title": "Old Title"}})
         snap = result.snapshot
-        result = reduce(snap, {"t": "meta.set", "p": {"title": "New Title"}})
+        result = apply(snap, {"t": "meta.set", "p": {"title": "New Title"}})
         assert result.accepted
         assert result.snapshot["meta"]["title"] == "New Title"
 
     def test_sets_both_title_and_identity(self, empty):
-        result = reduce(
+        result = apply(
             empty,
             {"t": "meta.set", "p": {"title": "My Aide", "identity": "some_context"}},
         )
@@ -139,12 +139,12 @@ class TestMetaSet:
         assert result.snapshot["meta"]["identity"] == "some_context"
 
     def test_extra_meta_fields_stored(self, empty):
-        result = reduce(empty, {"t": "meta.set", "p": {"custom_field": "value"}})
+        result = apply(empty, {"t": "meta.set", "p": {"custom_field": "value"}})
         assert result.accepted
         assert result.snapshot["meta"]["custom_field"] == "value"
 
     def test_increments_sequence(self, empty):
-        result = reduce(empty, {"t": "meta.set", "p": {"title": "x"}})
+        result = apply(empty, {"t": "meta.set", "p": {"title": "x"}})
         assert result.snapshot["_sequence"] == 1
 
 
@@ -155,7 +155,7 @@ class TestMetaSet:
 
 class TestMetaAnnotate:
     def test_adds_annotation(self, empty):
-        result = reduce(empty, {"t": "meta.annotate", "p": {"note": "Guest count updated.", "pinned": False}})
+        result = apply(empty, {"t": "meta.annotate", "p": {"note": "Guest count updated.", "pinned": False}})
         assert result.accepted
         annotations = result.snapshot["meta"]["annotations"]
         assert len(annotations) == 1
@@ -163,12 +163,12 @@ class TestMetaAnnotate:
         assert annotations[0]["pinned"] is False
 
     def test_pinned_annotation(self, empty):
-        result = reduce(empty, {"t": "meta.annotate", "p": {"note": "Important!", "pinned": True}})
+        result = apply(empty, {"t": "meta.annotate", "p": {"note": "Important!", "pinned": True}})
         assert result.accepted
         assert result.snapshot["meta"]["annotations"][0]["pinned"] is True
 
     def test_annotation_has_ts_and_seq(self, empty):
-        result = reduce(empty, {"t": "meta.annotate", "p": {"note": "Note", "pinned": False}})
+        result = apply(empty, {"t": "meta.annotate", "p": {"note": "Note", "pinned": False}})
         annotation = result.snapshot["meta"]["annotations"][0]
         assert "ts" in annotation
         assert "seq" in annotation
@@ -176,7 +176,7 @@ class TestMetaAnnotate:
     def test_multiple_annotations_appended(self, empty):
         snap = empty
         for i in range(3):
-            result = reduce(snap, {"t": "meta.annotate", "p": {"note": f"Note {i}", "pinned": False}})
+            result = apply(snap, {"t": "meta.annotate", "p": {"note": f"Note {i}", "pinned": False}})
             snap = result.snapshot
         assert len(snap["meta"]["annotations"]) == 3
         assert snap["meta"]["annotations"][2]["note"] == "Note 2"
@@ -190,9 +190,9 @@ class TestMetaAnnotate:
 class TestMetaConstrain:
     def test_adds_structural_constraint(self, empty):
         snap = empty
-        result = reduce(snap, {"t": "entity.create", "id": "guests", "p": {}})
+        result = apply(snap, {"t": "entity.create", "id": "guests", "p": {}})
         snap = result.snapshot
-        result = reduce(
+        result = apply(
             snap,
             {
                 "t": "meta.constrain",
@@ -211,15 +211,15 @@ class TestMetaConstrain:
 
     def test_strict_constraint_rejects_violating_state(self, empty):
         snap = empty
-        result = reduce(snap, {"t": "entity.create", "id": "guests", "p": {}})
+        result = apply(snap, {"t": "entity.create", "id": "guests", "p": {}})
         snap = result.snapshot
         # Add 3 children
         for i in range(3):
-            result = reduce(snap, {"t": "entity.create", "id": f"guest_{i}", "parent": "guests", "p": {}})
+            result = apply(snap, {"t": "entity.create", "id": f"guest_{i}", "parent": "guests", "p": {}})
             snap = result.snapshot
 
         # Strict max_children = 2, but we have 3
-        result = reduce(
+        result = apply(
             snap,
             {
                 "t": "meta.constrain",
@@ -235,13 +235,13 @@ class TestMetaConstrain:
 
     def test_non_strict_constraint_with_violation_accepted(self, empty):
         snap = empty
-        result = reduce(snap, {"t": "entity.create", "id": "guests", "p": {}})
+        result = apply(snap, {"t": "entity.create", "id": "guests", "p": {}})
         snap = result.snapshot
         for i in range(3):
-            result = reduce(snap, {"t": "entity.create", "id": f"guest_{i}", "parent": "guests", "p": {}})
+            result = apply(snap, {"t": "entity.create", "id": f"guest_{i}", "parent": "guests", "p": {}})
             snap = result.snapshot
 
-        result = reduce(
+        result = apply(
             snap,
             {
                 "t": "meta.constrain",
@@ -255,14 +255,14 @@ class TestMetaConstrain:
         assert result.accepted  # Non-strict: accepted even with violation
 
     def test_reject_missing_id(self, empty):
-        result = reduce(empty, {"t": "meta.constrain", "rule": "max_children"})
+        result = apply(empty, {"t": "meta.constrain", "rule": "max_children"})
         assert not result.accepted
         assert "MISSING_ID" in result.reason
 
     def test_updates_existing_constraint(self, empty):
-        result = reduce(empty, {"t": "meta.constrain", "id": "c1", "rule": "max_children", "value": 10})
+        result = apply(empty, {"t": "meta.constrain", "id": "c1", "rule": "max_children", "value": 10})
         snap = result.snapshot
-        result = reduce(snap, {"t": "meta.constrain", "id": "c1", "rule": "max_children", "value": 20})
+        result = apply(snap, {"t": "meta.constrain", "id": "c1", "rule": "max_children", "value": 20})
         assert result.accepted
         assert result.snapshot["meta"]["constraints"]["c1"]["value"] == 20
         assert len(result.snapshot["meta"]["constraints"]) == 1
@@ -275,19 +275,19 @@ class TestMetaConstrain:
 
 class TestVoiceSignal:
     def test_voice_accepted_with_signal(self, empty):
-        result = reduce(empty, {"t": "voice", "text": "Guest list updated."})
+        result = apply(empty, {"t": "voice", "text": "Guest list updated."})
         assert result.accepted
         assert result.signal is not None
         assert result.signal["type"] == "voice"
         assert result.signal["text"] == "Guest list updated."
 
     def test_voice_does_not_mutate_snapshot(self, empty):
-        result = reduce(empty, {"t": "voice", "text": "Something."})
+        result = apply(empty, {"t": "voice", "text": "Something."})
         assert result.accepted
         assert result.snapshot["_sequence"] == 0  # No mutation
 
     def test_voice_empty_text(self, empty):
-        result = reduce(empty, {"t": "voice", "text": ""})
+        result = apply(empty, {"t": "voice", "text": ""})
         assert result.accepted
         assert result.signal["text"] == ""
 
@@ -299,7 +299,7 @@ class TestVoiceSignal:
 
 class TestEscalateSignal:
     def test_escalate_accepted_with_signal(self, empty):
-        result = reduce(
+        result = apply(
             empty,
             {"t": "escalate", "tier": "L3", "reason": "structural_change", "extract": "Needs schema design."},
         )
@@ -311,7 +311,7 @@ class TestEscalateSignal:
         assert result.signal["extract"] == "Needs schema design."
 
     def test_escalate_does_not_mutate_snapshot(self, empty):
-        result = reduce(empty, {"t": "escalate", "tier": "L3", "reason": "x"})
+        result = apply(empty, {"t": "escalate", "tier": "L3", "reason": "x"})
         assert result.accepted
         assert result.snapshot["_sequence"] == 0
 
@@ -323,19 +323,19 @@ class TestEscalateSignal:
 
 class TestBatchSignals:
     def test_batch_start_accepted_with_signal(self, empty):
-        result = reduce(empty, {"t": "batch.start"})
+        result = apply(empty, {"t": "batch.start"})
         assert result.accepted
         assert result.signal["type"] == "batch.start"
 
     def test_batch_end_accepted_with_signal(self, empty):
-        result = reduce(empty, {"t": "batch.end"})
+        result = apply(empty, {"t": "batch.end"})
         assert result.accepted
         assert result.signal["type"] == "batch.end"
 
     def test_batch_signals_do_not_mutate_snapshot(self, empty):
-        result = reduce(empty, {"t": "batch.start"})
+        result = apply(empty, {"t": "batch.start"})
         assert result.snapshot["_sequence"] == 0
-        result2 = reduce(result.snapshot, {"t": "batch.end"})
+        result2 = apply(result.snapshot, {"t": "batch.end"})
         assert result2.snapshot["_sequence"] == 0
 
 
@@ -346,11 +346,11 @@ class TestBatchSignals:
 
 class TestUnknownPrimitive:
     def test_unknown_type_rejected(self, empty):
-        result = reduce(empty, {"t": "collection.create", "id": "test"})
+        result = apply(empty, {"t": "collection.create", "id": "test"})
         assert not result.accepted
         assert "UNKNOWN_PRIMITIVE" in result.reason
 
     def test_missing_type_rejected(self, empty):
-        result = reduce(empty, {"id": "test"})
+        result = apply(empty, {"id": "test"})
         assert not result.accepted
         assert "MISSING_TYPE" in result.reason

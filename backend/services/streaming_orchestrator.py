@@ -22,7 +22,7 @@ from backend.services.escalation import needs_escalation
 from backend.services.prompt_builder import build_messages, build_system_blocks
 from backend.services.telemetry import TurnRecorder
 from backend.services.tool_defs import TOOLS
-from engine.kernel.reducer import reduce
+from engine.kernel import apply
 
 logger = logging.getLogger(__name__)
 
@@ -233,8 +233,8 @@ class StreamingOrchestrator:
                     text_blocks.append({"text": event.get("text", "")})
                     continue
 
-                # Apply event to working snapshot through reducer
-                result = reduce(working_snapshot, event)
+                # Apply event to working snapshot through kernel
+                result = apply(working_snapshot, event)
 
                 if result.accepted:
                     working_snapshot = result.snapshot

@@ -2,7 +2,7 @@
 WebSocket endpoint for real-time aide interaction.
 
 Accepts connections at /ws/aide/{aide_id}, streams deltas back to the client
-as the LLM processes tool calls through the reducer.
+as the LLM processes tool calls through the kernel.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ from backend.repos import telemetry_repo
 from backend.repos.aide_repo import AideRepo
 from backend.repos.conversation_repo import ConversationRepo
 from backend.services.streaming_orchestrator import StreamingOrchestrator
-from engine.kernel.reducer import empty_snapshot, reduce
+from engine.kernel import apply, empty_snapshot
 
 logger = logging.getLogger(__name__)
 
@@ -240,11 +240,11 @@ async def _handle_direct_edit(
     # Build entity.update event (v2 format: short keys; uses "ref" not "id")
     event: dict[str, Any] = {"t": "entity.update", "ref": entity_id, "p": {field: value}}
 
-    result = reduce(snapshot, event)
+    result = apply(snapshot, event)
 
     if not result.accepted:
         logger.warning(
-            "ws: direct_edit reducer rejected: entity=%s field=%s reason=%s",
+            "ws: direct_edit kernel rejected: entity=%s field=%s reason=%s",
             entity_id,
             field,
             result.reason,
