@@ -51,7 +51,7 @@ from backend.services.classifier import classify as backend_classify
 from backend.services.prompt_builder import build_system_blocks
 from backend.services.tool_defs import TOOLS
 from backend.services.tool_utils import tool_use_to_reducer_event
-from engine.kernel.kernel import apply
+from engine.kernel.kernel import apply, empty_snapshot
 
 # ---------------------------------------------------------------------------
 # Models
@@ -71,12 +71,8 @@ def apply_output_to_snapshot(snapshot: dict, output_text: str, tier: str) -> dic
     """
     Apply LLM output through the production kernel.
 
-    For L3: parse JSONL and apply events through kernel.
-    For L4: no state change (read-only).
+    Both L3 and L4 can emit mutations (L4 creates initial structure).
     """
-    if tier == "L4":
-        return json.loads(json.dumps(snapshot))  # L4 is read-only
-
     parsed, _ = parse_jsonl(output_text)
     working = json.loads(json.dumps(snapshot))
 
@@ -228,7 +224,7 @@ def run_multiturn_scenario(
     print(f"   {len(turns)} turns")
     print(f"{'=' * 70}")
 
-    snapshot: dict = {"meta": {}, "entities": {}}
+    snapshot: dict = empty_snapshot()
     history: list[dict] = []
     turn_results: list[dict] = []
 
@@ -517,6 +513,26 @@ def run_multiturn_scenario(
 
     # Save telemetry.json in flight recorder format
     if save_dir:
+
+        def build_validation(t: dict) -> dict:
+            """Convert eval score to flight recorder validation format."""
+            score = t.get("score", {})
+            composite = score.get("composite", 0) if isinstance(score, dict) else 0
+            issues = []
+
+            # Collect issues from score_details
+            details = t.get("score_details", {})
+            for dim_name, dim_data in details.items():
+                if dim_data.get("score", 1.0) < 1.0:
+                    for note in dim_data.get("notes", []):
+                        issues.append(f"{dim_name}: {note}")
+
+            return {
+                "passed": composite >= 0.8,
+                "score": composite,
+                "issues": issues,
+            }
+
         telemetry = {
             "aide_id": str(uuid.uuid4()),
             "name": name,
@@ -539,7 +555,7 @@ def run_multiturn_scenario(
                     },
                     "ttfc_ms": t.get("ttfc_ms", 0),
                     "ttc_ms": t.get("ttc_ms", 0),
-                    "validation": t.get("score"),
+                    "validation": build_validation(t),
                 }
                 for t in turn_results
                 if "error" not in t
