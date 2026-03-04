@@ -121,8 +121,8 @@
   color: var(--text-primary);
   margin-bottom: var(--space-9);
 }
-:host .aide-checklist-container > .aide-heading,
-:host .aide-table-container > .aide-heading { margin-bottom: var(--space-2); }
+:host .aide-checklist-container > .aide-section__title,
+:host .aide-table-container > .aide-section__title { margin-bottom: var(--space-3); }
 :host .aide-heading--2 {
   font-family: var(--font-serif);
   font-size: clamp(28px, 3.5vw, 32px);

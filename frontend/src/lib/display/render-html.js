@@ -103,7 +103,7 @@ function renderChecklist(entity, childIds, entities) {
   }).length;
 
   return `<div class="aide-checklist-container">
-    ${title ? `<h3 class="aide-heading aide-heading--3 editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</h3>` : ''}
+    ${title ? `<div class="aide-section__title editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</div>` : ''}
     <ul class="aide-checklist">${items}</ul>
     <div class="aide-checklist__summary">${completed} of ${childIds.length} complete</div>
   </div>`;
