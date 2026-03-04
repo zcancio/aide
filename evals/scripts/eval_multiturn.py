@@ -242,12 +242,14 @@ def run_multiturn_scenario(
             try:
                 warm_start = time.time()
                 warm_system = build_system_blocks(tier, snapshot, version=prompt_version)
-                # Minimal request — just enough for the API to cache the prefix
+                # Minimal request — must include tools to match actual calls
+                # Anthropic cache is prefix-based: system + tools must match
                 client.messages.create(
                     model=DEFAULT_MODELS[tier],
                     max_tokens=1,
                     system=warm_system,
                     messages=[{"role": "user", "content": "ping"}],
+                    tools=TOOLS,
                 )
                 warm_ms = int((time.time() - warm_start) * 1000)
                 print(f"    {tier} warmed in {warm_ms}ms")
