@@ -12,7 +12,7 @@ from pathlib import Path
 
 def test_compare_runs_outputs_table():
     """eval_compare must output a comparison table."""
-    from eval_compare import compare_runs
+    from evals.scripts.eval_compare import compare_runs
 
     # Create mock run directories
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -70,7 +70,7 @@ def test_compare_runs_outputs_table():
 
 def test_compare_runs_shows_regressions():
     """eval_compare must highlight regressions."""
-    from eval_compare import compare_runs
+    from evals.scripts.eval_compare import compare_runs
 
     with tempfile.TemporaryDirectory() as tmpdir:
         run_a = Path(tmpdir) / "run_a"
@@ -119,7 +119,7 @@ def test_compare_runs_shows_regressions():
 
 def test_compare_runs_shows_improvements():
     """eval_compare must highlight improvements."""
-    from eval_compare import compare_runs
+    from evals.scripts.eval_compare import compare_runs
 
     with tempfile.TemporaryDirectory() as tmpdir:
         run_a = Path(tmpdir) / "run_a"
