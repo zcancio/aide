@@ -20,14 +20,22 @@ describe('Frontend cleanup', () => {
     expect(fs.existsSync(indexPath)).toBe(false);
   });
 
-  it('should keep display.js (used by Node)', () => {
+  it('should keep display.js (generated UMD bundle for Node)', () => {
     const displayJsPath = path.join(frontendDir, 'display.js');
     expect(fs.existsSync(displayJsPath)).toBe(true);
   });
 
-  it('should keep display/ directory (used by Node)', () => {
-    const displayDirPath = path.join(frontendDir, 'display');
-    expect(fs.existsSync(displayDirPath)).toBe(true);
+  it('should have ES modules source in src/lib/display/', () => {
+    const displaySrcPath = path.join(frontendDir, 'src/lib/display');
+    expect(fs.existsSync(displaySrcPath)).toBe(true);
+    expect(fs.existsSync(path.join(displaySrcPath, 'index.js'))).toBe(true);
+    expect(fs.existsSync(path.join(displaySrcPath, 'render-html.js'))).toBe(true);
+    expect(fs.existsSync(path.join(displaySrcPath, 'tokens.css'))).toBe(true);
+  });
+
+  it('should have removed old display/ CommonJS directory', () => {
+    const oldDisplayDir = path.join(frontendDir, 'display');
+    expect(fs.existsSync(oldDisplayDir)).toBe(false);
   });
 
   it('should have SPA entry point main.jsx', () => {
