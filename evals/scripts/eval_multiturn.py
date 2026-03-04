@@ -403,7 +403,9 @@ def run_multiturn_scenario(
                 if not check_parsed:
                     print(f"    ⚠ {actual_tier} produced plain text, retrying with nudge...")
                     retry_msg = message + "\n\n[System: respond with JSONL operations only. No prose.]"
-                    retry_result = run_turn(client, retry_msg, actual_tier, snapshot, history, prompt_version=prompt_version)
+                    retry_result = run_turn(
+                        client, retry_msg, actual_tier, snapshot, history, prompt_version=prompt_version
+                    )
                     retry_parsed, _ = parse_jsonl(retry_result["output"])
                     if retry_parsed:
                         result = retry_result
@@ -428,7 +430,9 @@ def run_multiturn_scenario(
                     pre_escalation_snapshot = apply_output_to_snapshot(snapshot, result["output"], "L2")
 
                     # Run escalation tier with the extracted/original message
-                    escalation_result = run_turn(client, esc_extract, esc_tier, pre_escalation_snapshot, history, prompt_version=prompt_version)
+                    escalation_result = run_turn(
+                        client, esc_extract, esc_tier, pre_escalation_snapshot, history, prompt_version=prompt_version
+                    )
 
                     # Merge: L2's output + escalation output
                     result = {
@@ -533,12 +537,14 @@ def run_multiturn_scenario(
                 turn_dir = save_dir / name / f"turn_{i + 1:02d}"
                 turn_dir.mkdir(parents=True, exist_ok=True)
 
+                sys_prompt_blocks = build_system_blocks(actual_tier, snapshot, version=prompt_version)
+                sys_prompt_text = chr(10).join(b["text"] for b in sys_prompt_blocks)
                 (turn_dir / "input.md").write_text(
                     f"# Turn {i + 1}: {message}\n\n"
                     f"## Tier: {actual_tier} (expected: {expected_tier}, classified: {classified_tier})\n\n"
                     f"## Notes\n{notes}\n\n"
                     f"## Snapshot before this turn\n```json\n{json.dumps(snapshot, indent=2)}\n```\n\n"
-                    f"## System prompt\n{chr(10).join(b['text'] for b in build_system_blocks(actual_tier, snapshot, version=prompt_version))}"
+                    f"## System prompt\n{sys_prompt_text}"
                 )
                 (turn_dir / "output.txt").write_text(result.get("raw_output", result["output"]))
                 (turn_dir / "snapshot_after.json").write_text(json.dumps(new_snapshot, indent=2))
@@ -711,7 +717,12 @@ def main():
     for scenario in to_run:
         try:
             result = run_multiturn_scenario(
-                client, scenario, verbose=args.verbose, save_dir=save_dir, max_turns=args.turns, prompt_version=args.prompt_version
+                client,
+                scenario,
+                verbose=args.verbose,
+                save_dir=save_dir,
+                max_turns=args.turns,
+                prompt_version=args.prompt_version,
             )
             results.append(result)
         except Exception as e:
