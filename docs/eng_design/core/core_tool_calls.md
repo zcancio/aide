@@ -15,7 +15,7 @@ The LLM communicates state changes via **Anthropic tool calls**. Three tools han
 | `voice` | State reflections shown in chat |
 | `set_relationship` | Link entities together |
 
-The server parses each tool call, applies it through the reducer, and sends entity deltas to the client via WebSocket.
+The server parses each tool call, applies it through the kernel, and sends entity deltas to the client via WebSocket.
 
 ---
 
@@ -95,13 +95,13 @@ Link entities together:
 The server receives tool calls from the Anthropic API stream and:
 
 1. **Normalizes** the tool call to internal event format
-2. **Applies** through the reducer (`engine/kernel/reducer.py`)
+2. **Applies** through the kernel (`engine/kernel/kernel.py`)
 3. **Sends** entity deltas to client via WebSocket
 4. **Persists** updated snapshot to PostgreSQL
 
 ### Internal Event Format
 
-Tool calls are normalized to short-form events for the reducer:
+Tool calls are normalized to short-form events for the kernel:
 
 ```python
 # mutate_entity create -> entity.create
@@ -124,7 +124,7 @@ Tool calls are normalized to short-form events for the reducer:
 
 ## Primitives Reference
 
-The reducer handles these internal event types:
+The kernel handles these internal event types:
 
 | Category | Event Types |
 |----------|-------------|
@@ -168,7 +168,7 @@ When the user clicks a field and edits it directly, the client sends via WebSock
 {"type": "direct_edit", "entity_id": "guest_linda", "field": "rsvp", "value": "confirmed"}
 ```
 
-The server applies this through the same reducer pipeline. Same event format, same undo behavior — just bypasses the LLM.
+The server applies this through the same kernel pipeline. Same event format, same undo behavior — just bypasses the LLM.
 
 ---
 

@@ -18,7 +18,7 @@ General-purpose AI chat (Claude, ChatGPT) drifts. By turn 20, the model has forg
 
 aide solves this by scoping the LLM's job. The entity graph is the memory, not the conversation. When the user says "Aunt Linda RSVPed yes," the LLM doesn't need to remember 30 turns of context — it reads the current entity graph, compiles the message into a mutation, and moves on. The conversation tail is 3-5 messages for intent disambiguation, not a growing liability.
 
-This scoping also makes the LLM more reliable. A general chat model juggling "write me a poem, also what's the weather, also update my guest list" makes mistakes. An aide LLM has one job: maintain this entity graph. The system prompt is short and specific. The output format is constrained (tool calls). The reducer validates every operation. The attack surface for hallucination is small.
+This scoping also makes the LLM more reliable. A general chat model juggling "write me a poem, also what's the weather, also update my guest list" makes mistakes. An aide LLM has one job: maintain this entity graph. The system prompt is short and specific. The output format is constrained (tool calls). The kernel validates every operation. The attack surface for hallucination is small.
 
 The page is the artifact, not the chat. The chat is the input method.
 
@@ -61,7 +61,7 @@ v2: LLM produces only entity operations via tool calls (`mutate_entity`, `voice`
 
 ### 3. Streaming via WebSocket → [core_streaming_pipeline.md](core/core_streaming_pipeline.md)
 
-The LLM emits tool calls (mutate_entity, voice, etc.). The server parses each tool call, applies it through the reducer, and pushes entity deltas to the client via WebSocket. The page builds itself in real time.
+The LLM emits tool calls (mutate_entity, voice, etc.). The server parses each tool call, applies it through the kernel, and pushes entity deltas to the client via WebSocket. The page builds itself in real time.
 
 The LLM emits in **render order** — page title first, sections next, items last. The user sees the page scaffold top-down.
 
@@ -152,19 +152,19 @@ graph TD
         OPUS["Opus<br/><i>L4 — first turn + queries</i>"]
         SONNET["Sonnet<br/><i>L3 — subsequent mutations</i>"]
 
-        REDUCER["Reducer<br/><i>engine/kernel/reducer.py</i>"]
+        KERNEL["Kernel<br/><i>engine/kernel/kernel.py</i>"]
         DB["PostgreSQL<br/><i>aides.state (JSONB)<br/>conversations.messages<br/>aide_files.html</i>"]
 
         WS_SERVER --> ORCH
         ORCH -->|"L4 (first turn)"| OPUS
         ORCH -->|"L3 (updates)"| SONNET
 
-        OPUS -->|"tool calls"| REDUCER
-        SONNET -->|"tool calls"| REDUCER
+        OPUS -->|"tool calls"| KERNEL
+        SONNET -->|"tool calls"| KERNEL
         SONNET -.->|"escalate to L4"| OPUS
 
-        REDUCER -->|"save snapshot"| DB
-        REDUCER -->|"events"| WS_SERVER
+        KERNEL -->|"save snapshot"| DB
+        KERNEL -->|"events"| WS_SERVER
     end
 
     WS_CLIENT <-->|"WebSocket"| WS_SERVER
@@ -174,8 +174,8 @@ graph TD
 
 **The data flow:**
 1. User message → WebSocket Client → WebSocket Server → Orchestrator picks tier (L4 for first turn/queries, L3 for updates)
-2. L4/L3 → LLM streams tool calls → Reducer applies to snapshot
-3. Reducer sends events → WebSocket Server → WebSocket Client
+2. L4/L3 → LLM streams tool calls → Kernel applies to snapshot
+3. Kernel sends events → WebSocket Server → WebSocket Client
 4. WebSocket Client distributes: entity deltas → Entity Graph, voice events → Chat Panel
 5. L3 can escalate to L4 for queries or complex reasoning
 
@@ -184,7 +184,7 @@ graph TD
 - `conversations.messages` — conversation history (JSONB array)
 - `aide_files.html` — rendered HTML for published pages
 
-**Reducer runs server-side** (`engine/kernel/reducer.py`). The client receives entity deltas and patches its local state. **Renderer runs client-side** (`frontend/src/lib/display/renderHtml.js`).
+**Kernel runs server-side** (`engine/kernel/kernel.py`). The client receives entity deltas and patches its local state. **Renderer runs client-side** (`frontend/src/lib/display/renderHtml.js`).
 
 At publish time, the server renders the snapshot to static HTML stored in `aide_files`. Published pages are served at `/s/{slug}` — plain HTML, no React, no WebSocket, no account needed.
 
@@ -195,7 +195,7 @@ At publish time, the server renders the snapshot to static HTML stored in `aide_
 | Doc | What It Covers | Read If You... |
 |-----|---------------|----------------|
 | **[Overview](architecture_overview.md)** | This doc. The big picture. | Are new to the project |
-| **[Data Model](core/core_data_model.md)** | Entity tree, relationships, schema inference | Touch state or the reducer |
+| **[Data Model](core/core_data_model.md)** | Entity tree, relationships, schema inference | Touch state or the kernel |
 | **[Tool Calls](core/core_tool_calls.md)** | mutate_entity, voice, set_relationship tools | Touch the LLM pipeline or server |
 | **[Streaming Pipeline](core/core_streaming_pipeline.md)** | Server parsing, WebSocket, caching, streaming rules | Touch server or client integration |
 | **[Display Components](core/core_display_components.md)** | Render algorithm, 9 display types, inference | Touch the renderer |

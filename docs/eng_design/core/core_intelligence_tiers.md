@@ -52,13 +52,13 @@ L3 can emit an escalation signal for queries or complex reasoning:
 
 Server keeps mutations L3 already applied, sends the query to L4.
 
-### Layer 3: Reducer Validation
+### Layer 3: Kernel Validation
 
-Every tool call passes through the reducer. Catches: invalid entity references, type mismatches, constraint violations, structural errors.
+Every tool call passes through the kernel. Catches: invalid entity references, type mismatches, constraint violations, structural errors.
 
 If 3+ consecutive operations rejected → cancel stream → retry with more context.
 
-**What the reducer doesn't catch:** Semantically wrong but structurally valid mutations (Linda added to table 3, user said table 5). That's what direct edit is for.
+**What the kernel doesn't catch:** Semantically wrong but structurally valid mutations (Linda added to table 3, user said table 5). That's what direct edit is for.
 
 ---
 

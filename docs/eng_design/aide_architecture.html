@@ -58,19 +58,19 @@ graph TD
         OPUS["Opus&lt;br/&gt;&lt;i&gt;L4 — first turn + queries&lt;/i&gt;"]
         SONNET["Sonnet&lt;br/&gt;&lt;i&gt;L3 — subsequent mutations&lt;/i&gt;"]
 
-        REDUCER["Reducer&lt;br/&gt;&lt;i&gt;engine/kernel/reducer.py&lt;/i&gt;"]
+        KERNEL["Kernel&lt;br/&gt;&lt;i&gt;engine/kernel/kernel.py&lt;/i&gt;"]
         DB["PostgreSQL&lt;br/&gt;&lt;i&gt;aides.state (JSONB)&lt;br/&gt;conversations.messages&lt;br/&gt;aide_files.html&lt;/i&gt;"]
 
         WS_SERVER --> ORCH
         ORCH -->|"L4 (first turn)"| OPUS
         ORCH -->|"L3 (updates)"| SONNET
 
-        OPUS -->|"tool calls"| REDUCER
-        SONNET -->|"tool calls"| REDUCER
+        OPUS -->|"tool calls"| KERNEL
+        SONNET -->|"tool calls"| KERNEL
         SONNET -.->|"escalate to L4"| OPUS
 
-        REDUCER -->|"save snapshot"| DB
-        REDUCER -->|"events"| WS_SERVER
+        KERNEL -->|"save snapshot"| DB
+        KERNEL -->|"events"| WS_SERVER
     end
 
     WS_CLIENT &lt;--&gt;|"WebSocket"| WS_SERVER

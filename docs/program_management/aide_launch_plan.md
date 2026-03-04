@@ -1,7 +1,7 @@
 # AIde — Launch Plan
 
 **Goal:** Ship a public product where someone can sign up, build a living page through conversation, update it via Signal, and share it.
-**Starting point:** Phase 0 complete (Railway, Neon Postgres, magic link auth, domain). Kernel implemented (reducer with built-in validation — all passing tests).
+**Starting point:** Phase 0 complete (Railway, Neon Postgres, magic link auth, domain). Kernel implemented (kernel with built-in validation — all passing tests).
 **What's left:** L2/L3 orchestrator, multi-aide management, Signal ear, rate limiting, Stripe, landing page.
 
 ---
@@ -27,7 +27,7 @@
 _Wire the kernel to users. Web chat for creation, Signal for ongoing updates._
 
 ### 1.1 Kernel ✅ COMPLETE
-- [x] `reducer.py` — pure `reduce(snapshot, event) → ReduceResult`, validation + all event handlers
+- [x] `kernel.py` — pure `apply(snapshot, event) → ApplyResult`, validation + all event handlers
 - [x] Entity CRUD: create, update, remove, move, reorder
 - [x] Relationship CRUD: set, remove, constrain
 - [x] Style/Meta: global styles, entity styles, meta update, annotate, constrain
@@ -64,7 +64,7 @@ _Wire the kernel to users. Web chat for creation, Signal for ongoing updates._
   - Receives normalized message from any ear (web or Signal)
   - Loads current aide state from DB
   - Routes to L2 first; if escalation → routes to L3; if image → routes to L3
-  - Applies returned primitives through reducer
+  - Applies returned primitives through kernel
   - Re-renders HTML via renderer
   - Saves state + event log to DB, uploads HTML to R2
   - Returns response text to ear
@@ -87,7 +87,7 @@ _Wire the kernel to users. Web chat for creation, Signal for ongoing updates._
 - [x] Publish flow: creates/updates aide's slug in DB, uploads to R2
   - Published URL: `toaide.com/s/{slug}` (namespaced under `/s/` for route safety)
 - [x] Display components: EditableField, PageDisplay, CardDisplay, SectionDisplay, TableDisplay, ChecklistDisplay, MetricDisplay, TextDisplay, ListDisplay, ImageDisplay, GridDisplay
-- [x] Direct edit pipeline: click field → inline input → WebSocket → reducer → delta broadcast (<200ms)
+- [x] Direct edit pipeline: click field → inline input → WebSocket → kernel → delta broadcast (<200ms)
 - [x] Telemetry for direct edits (edit_latency_ms recorded)
 
 ### 1.5 Signal Ear
@@ -141,7 +141,7 @@ _Control costs and prepare for distribution._
 
 ### 2.3 Engine Hosting on R2
 - [ ] Host kernel files at `toaide.com/engine/v1/` via R2 static hosting
-  - `engine.js` — reducer + renderer for browser-side replay
+  - `engine.js` — kernel + renderer for browser-side replay
   - `engine.py` — for Claude Code / MCP / Cowork consumption
   - `engine.ts` — TypeScript version
 - [ ] Versioned paths: `/engine/v1/`, `/engine/v2/` etc.
@@ -317,7 +317,7 @@ Explicitly descoped to avoid scope creep:
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
-| L2 produces invalid primitives | Medium | Medium | Validation layer catches before reducer. Retry with L3 on failure. |
+| L2 produces invalid primitives | Medium | Medium | Validation layer catches before kernel. Retry with L3 on failure. |
 | Signal container reliability | Medium | Medium | Reconnect logic. Web chat always available as fallback. |
 | AI costs higher than modeled | Low | Medium | 50 turns/week cap bounds worst case. Monitor weekly. |
 | Nobody signs up | Medium | High | Ship fast. ~6 weeks, not 6 months. Signal demo is compelling. |

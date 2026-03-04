@@ -58,7 +58,7 @@ v1 had three parallel structures the LLM had to generate and keep consistent:
 | View (list view, table view) | `display` hint on entity |
 | 25 primitive types | 14 primitive types + 4 signals |
 
-Fewer concepts → fewer tokens → faster generation → simpler reducer.
+Fewer concepts → fewer tokens → faster generation → simpler kernel.
 
 ---
 
@@ -142,7 +142,7 @@ The `display` field tells the React compiler how to render an entity and its chi
 
 ## Constraints
 
-Constraints are rules about relationships or structure that the reducer enforces.
+Constraints are rules about relationships or structure that the kernel enforces.
 
 **Relationship constraints:** `exclude_pair` (keep Linda and Steve apart), `require_pair`, `max_links`, `min_links`.
 
@@ -154,7 +154,7 @@ Constraints can be strict (violations reject the operation) or non-strict (viola
 
 ## Event Sourcing
 
-The entity tree is built by replaying an ordered list of events. Every mutation (from the LLM or from direct user edits) is an event. The reducer is a pure function: `events[] → snapshot`.
+The entity tree is built by replaying an ordered list of events. Every mutation (from the LLM or from direct user edits) is an event. The kernel is a pure function: `events[] → snapshot`.
 
 This enables:
 - **Undo:** Replay events minus the last batch → previous state. See [Reliability & Performance](core_reliability_and_performance.md).

@@ -48,7 +48,7 @@ Connection lost mid-stream.
 
 1. Every user message produces a batch of events tagged with `message_id`.
 2. **Undo** = replay all events excluding the last batch.
-3. Reducer is a pure function — replay produces identical state.
+3. Kernel is a pure function — replay produces identical state.
 4. Undone events move to redo stack.
 
 **Granularity:** Message level. One user message = one undo step.
@@ -96,7 +96,7 @@ Type "that date should be May 22" in chat. L3 compiles to `entity.update`. Slowe
 ### Malformed JSONL
 Server skips line, continues to next. If 3+ consecutive parse failures → cancel stream, report error. Partial success always preserved.
 
-### Reducer Rejection
+### Kernel Rejection
 Event structurally invalid. Skip, log, continue. If 3+ consecutive rejections → escalate to next tier.
 
 ### LLM Timeout
@@ -129,7 +129,7 @@ Retry 3x with exponential backoff. If all fail → hold snapshot in memory, show
 **Trust = speed of recovery × reliability of AI × visibility of what happened**
 
 - **Speed of recovery:** Direct edit for details, undo for mistakes, retry for misunderstandings.
-- **Reliability:** Two-tier routing, eval suites, reducer validation.
+- **Reliability:** Two-tier routing, eval suites, kernel validation.
 - **Visibility:** The page IS the feedback. No hidden state. Entities appear as created. Changes visible instantly.
 
 The user needs to know: I say something, the page changes, and if it's wrong I can fix it immediately.

@@ -55,7 +55,7 @@ class LLMCallTracker:
     def start() -> None                    # Record call start time
     def mark_first_content() -> None       # Record TTFC
     def set_tokens(input, output, cache_read, cache_write) -> None
-    def set_reducer_stats(emitted, accepted, rejected) -> None
+    def set_kernel_stats(emitted, accepted, rejected) -> None
     def set_escalation(reason) -> None
     def set_error(error) -> None
     async def finish() -> int              # Persist to telemetry table

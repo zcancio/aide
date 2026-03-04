@@ -8,12 +8,12 @@
 
 ## Kernel vs. Engine
 
-**The kernel** is the core of AIde: the reducer. A pure function `reduce(snapshot, event) → snapshot` that validates and applies entity mutations. The kernel is the same whether it runs on the AIde server or in a Claude conversation. It is the trust boundary — nothing touches state except through events that the reducer validates and applies.
+**The kernel** is the core of AIde. A pure function `apply(snapshot, event) → ApplyResult` that validates and applies entity mutations. The kernel is the same whether it runs on the AIde server or in a Claude conversation. It is the trust boundary — nothing touches state except through events that the kernel validates and applies.
 
-**The engine** is the kernel packaged for distribution. It wraps the reducer in a skill — adding the tool call instructions (SKILL.md), voice rules, examples, and evals — so that Claude can act as the brain that emits tool calls which map to reducer events.
+**The engine** is the kernel packaged for distribution. It wraps the kernel in a skill — adding the tool call instructions (SKILL.md), voice rules, examples, and evals — so that Claude can act as the brain that emits tool calls which map to kernel events.
 
 ```
-kernel = reducer (validate + apply)
+kernel = apply(snapshot, event) → ApplyResult (validate + apply)
 engine = kernel + SKILL.md + voice rules + examples + evals
 ```
 
@@ -21,13 +21,13 @@ The engine has two layers:
 
 **Tool call compilation (Claude's job).** Understand natural language ("Mike's out, Dave's subbing") and emit tool calls (`mutate_entity`, `voice`, `set_relationship`). This is the AI part. It lives in prose instructions in SKILL.md and improves through prompt iteration and evals.
 
-**Kernel execution (code's job).** Validate events, apply them to the snapshot. The reducer is a pure function that produces identical output every time. Same code runs everywhere. The renderer is client-specific (web uses React, CLI uses ANSI, etc.).
+**Kernel execution (code's job).** Validate events, apply them to the snapshot. The kernel is a pure function that produces identical output every time. Same code runs everywhere. The renderer is client-specific (web uses React, CLI uses ANSI, etc.).
 
 ```
 engine/
 ├── SKILL.md                  ← tool call instructions for Claude
 ├── kernel/
-│   └── reducer.py            ← reduce(snapshot, event) → snapshot (the kernel)
+│   └── kernel.py             ← apply(snapshot, event) → ApplyResult (the kernel)
 ├── references/
 │   ├── voice-rules.md        ← AIde voice system (no first person, no emojis, etc.)
 │   └── tool-catalog.md       ← mutate_entity, voice, set_relationship tools
@@ -37,7 +37,7 @@ engine/
     └── poker-league.html     ← reference output
 ```
 
-Claude handles the fuzzy part (what did the user mean?). The reducer handles the precise part (validate and apply correctly). Rendering is client-specific — web uses React display components, CLI uses ANSI. This split means the engine gets smarter at understanding without risking correctness in execution.
+Claude handles the fuzzy part (what did the user mean?). The kernel handles the precise part (validate and apply correctly). Rendering is client-specific — web uses React display components, CLI uses ANSI. This split means the engine gets smarter at understanding without risking correctness in execution.
 
 ---
 
@@ -47,7 +47,7 @@ The engine is hosted at a public URL:
 
 ```
 https://toaide.com/engine/v1/SKILL.md
-https://toaide.com/engine/v1/scripts/reducer.py
+https://toaide.com/engine/v1/scripts/kernel.py
 https://toaide.com/engine/v1/scripts/renderer.py
 ...
 ```
@@ -86,19 +86,19 @@ Before building or updating any aide, fetch the latest engine:
 https://toaide.com/engine/v1/SKILL.md
 
 Read it completely. Follow it exactly. If the skill references scripts
-(reducer.py, renderer.py, etc.), fetch and execute those too.
+(kernel.py, renderer.py, etc.), fetch and execute those too.
 ```
 
 **How it works:**
 1. User describes what they're running, or pastes an existing aide URL
 2. Claude `web_fetch`es the SKILL.md from toaide.com
-3. Claude follows the skill: compile intent → run reducer script → run renderer script → produce HTML artifact
+3. Claude follows the skill: compile intent → run kernel script → run renderer script → produce HTML artifact
 4. User sees the rendered aide in the artifact panel
-5. User says "Mike's out this week" → Claude fetches engine again, reads the artifact's embedded JSON, applies the reducer, produces updated artifact
+5. User says "Mike's out this week" → Claude fetches engine again, reads the artifact's embedded JSON, applies the kernel, produces updated artifact
 
 **What works:**
 - Engine always current (fetched per conversation)
-- Full creation and reducer mode
+- Full creation and kernel mode
 - Scripts execute in the computer use sandbox
 - Artifact renders the aide inline — user sees the living page
 
@@ -178,7 +178,7 @@ An MCP server connects Claude Code to the AIde API:
 
 This exposes tools:
 - `aide_create(description)` — create a new aide, return URL
-- `aide_apply_events(aide_id, events)` — apply primitives through the real server reducer
+- `aide_apply_events(aide_id, events)` — apply primitives through the real server kernel
 - `aide_get_state(aide_id)` — fetch current snapshot
 - `aide_publish(aide_id)` — publish to toaide.com/p/{slug}
 
@@ -273,7 +273,7 @@ User: "Mike's out this week. Dave's subbing."
   → Claude fetches engine
   → Claude reads artifact's embedded aide+json
   → Claude compiles intent → primitives
-  → Claude runs reducer.py (via computer use)
+  → Claude runs kernel.py (via computer use)
   → Claude runs renderer.py
   → Updated artifact renders
 
@@ -302,14 +302,14 @@ For Claude Code and Cowork, an MCP server on the AIde backend enables full integ
 |------|-------------|------------|
 | `aide_create` | Create a new aide from a description | `description: string` |
 | `aide_get_state` | Get current snapshot for an aide | `aide_id: string` |
-| `aide_apply_events` | Apply primitive events through the reducer | `aide_id: string, events: Event[]` |
+| `aide_apply_events` | Apply primitive events through the kernel | `aide_id: string, events: Event[]` |
 | `aide_publish` | Publish aide to public URL | `aide_id: string, slug?: string` |
 | `aide_list` | List user's aides | `status?: "draft" \| "published" \| "archived"` |
 | `aide_fork` | Fork an existing aide | `aide_id: string` |
 
 **Implementation:** FastAPI routes in `backend/routes/mcp.py` speaking the MCP SSE protocol. These routes call existing assembly layer methods — `load()`, `apply()`, `save()`, `publish()`. The MCP server is a thin transport layer over the existing API.
 
-The MCP server is just another ear. Same reducer, same renderer, same storage. Different input channel.
+The MCP server is just another ear. Same kernel, same renderer, same storage. Different input channel.
 
 ---
 
@@ -320,7 +320,7 @@ The MCP server is just another ear. Same reducer, same renderer, same storage. D
    ← eval failure, user feedback, new use case
 
 2. Improve engine
-   ← update SKILL.md prose, fix reducer.py bug, add renderer feature
+   ← update SKILL.md prose, fix kernel.py bug, add renderer feature
 
 3. Run evals
    ← skill-creator in Claude Code runs all test cases
@@ -346,8 +346,8 @@ No coordination needed across surfaces. The engine URL is the single sync point.
 ### Now (pre-launch)
 - [x] Engine skill with SKILL.md, voice rules, tool catalog
 - [x] Reference examples (poker league, renovation)
-- [x] Eval suite (9 test cases covering creation and reducer modes)
-- [x] `reducer.py` — pure reducer with built-in validation
+- [x] Eval suite (9 test cases covering creation and kernel modes)
+- [x] `kernel.py` — pure kernel with built-in validation
 - [ ] Host engine files on R2 at `toaide.com/engine/v1/`
 
 ### Phase 1 (with launch)
@@ -370,7 +370,7 @@ No coordination needed across surfaces. The engine URL is the single sync point.
 
 ## Summary
 
-The AIde kernel — the reducer — is the trust boundary. Nothing touches state without going through it. The engine wraps the reducer in a skill so Claude can emit tool calls that map to reducer events. One URL syncs the engine everywhere.
+The AIde kernel is the trust boundary. Nothing touches state without going through it. The engine wraps the kernel in a skill so Claude can emit tool calls that map to kernel events. One URL syncs the engine everywhere.
 
 | Surface | Install | Engine sync | Can publish? | API access? |
 |---------|---------|-------------|--------------|-------------|

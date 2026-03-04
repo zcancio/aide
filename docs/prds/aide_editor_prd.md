@@ -302,7 +302,7 @@ The editor is a full-page preview with a chat overlay at the bottom. You're look
 User sends message
   → WebSocket sends: { type: "message", content: "..." }
   → Backend: classifier picks tier (L3/L4)
-  → Backend: LLM streams tool calls → reducer applies → deltas broadcast
+  → Backend: LLM streams tool calls → kernel applies → deltas broadcast
   → WebSocket receives: entity deltas + voice messages
   → Client: entityStore updated → renderHtml() → DOM updates
   → User sees page building progressively

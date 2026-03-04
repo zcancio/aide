@@ -21,7 +21,7 @@ For current architecture, see [Overview](../eng_design/architecture_overview.md)
 2. **Prove the design early.** Write prompts first, run them against real models, verify the JSONL output is clean and renderable. If the LLM can't produce what the spec describes, find out in week 1.
 3. **Mock from real outputs.** Record the best real API responses as golden files. These become deterministic, free, fast mocks for all subsequent development and testing.
 4. **Telemetry from day one.** If you can't measure it, you can't prove v2 is better than v1. Instrument before optimizing.
-5. **Vertical slices, not horizontal layers.** Don't build "the whole reducer" then "the whole renderer." Build one complete path (entity.create → reduce → render → screen) and expand from there.
+5. **Vertical slices, not horizontal layers.** Don't build "the whole kernel" then "the whole renderer." Build one complete path (entity.create → reduce → render → screen) and expand from there.
 
 ---
 
@@ -155,11 +155,11 @@ Output tokens generally down, TTC generally down. The prompts are tighter.
 
 **Observation:** `inspo_reorganize` used remove+recreate instead of `entity.move` (635 vs 358 tokens). Both strategies are valid — the data is preserved correctly either way. Could add "prefer entity.move over remove+recreate for restructuring" to L3 prompt, but not blocking.
 
-**v2.1 golden files are the new baseline.** These are what the reducer and renderer should be built against.
+**v2.1 golden files are the new baseline.** These are what the kernel and renderer should be built against.
 
 ### 0b: Reducer
 
-Build the reducer. Pure function, no I/O.
+Build the kernel. Pure function, no I/O.
 
 Input: `(snapshot, event) → snapshot | rejection`
 
@@ -174,11 +174,11 @@ Implement in order:
 8. `style.set`, `style.entity`
 9. `meta.set`, `meta.annotate`, `meta.constrain`
 
-**Critical validation:** Feed the golden files from 0a through the reducer. Every line from a golden file should be accepted. If lines are rejected, either fix the prompt or fix the reducer — the golden files and the reducer must agree.
+**Critical validation:** Feed the golden files from 0a through the kernel. Every line from a golden file should be accepted. If lines are rejected, either fix the prompt or fix the kernel — the golden files and the kernel must agree.
 
 **Test suite:** Happy path + rejection tests for every primitive. Replay determinism test (same events → same snapshot). Golden file integration tests.
 
-**Checkpoint 0b:** `reducer.test.ts` passes. All golden files reduce cleanly. You've proven: prompt → JSONL → reducer → valid snapshot.
+**Checkpoint 0b:** `kernel.test.ts` passes. All golden files reduce cleanly. You've proven: prompt → JSONL → kernel → valid snapshot.
 
 ### 0c: Mock LLM + Telemetry
 
@@ -211,8 +211,8 @@ Tests always use mocks. Dev can toggle. Staging/prod use real API.
 |--------|-----------------|
 | `ttfc` | Time to first content (ms from message send to first render delta) |
 | `ttc` | Time to complete (ms from message send to stream end) |
-| `reducer_accept_rate` | % of JSONL lines accepted per message |
-| `reducer_reject_reasons` | Counted by reason code |
+| `kernel_accept_rate` | % of JSONL lines accepted per message |
+| `kernel_reject_reasons` | Counted by reason code |
 | `tier_distribution` | % of messages per tier |
 | `escalation_rate` | % of L2 messages that escalate |
 | `cache_hit_rate` | From Anthropic `cache_read_input_tokens` |
@@ -250,7 +250,7 @@ User types message
 
 1. **WebSocket server** — accepts connections at `/ws/aide/{aide_id}`, receives messages, sends typed deltas.
 2. **JSONL parser** — buffers stream until newline, expands abbreviated fields.
-3. **Wire it together** — message → mock LLM → parser → reducer → WebSocket delta.
+3. **Wire it together** — message → mock LLM → parser → kernel → WebSocket delta.
 4. **React state store** — holds entity graph, exposes `useEntity(id)` and `useChildren(id)` hooks.
 5. **AideEntity component** — recursive renderer with `resolveDisplay()`.
 6. **FallbackDisplay** — the only display component needed initially. Renders any entity as key-value pairs.
@@ -278,7 +278,7 @@ User types message
 1. User clicks a field → inline input opens.
 2. User edits and commits (Enter/blur).
 3. Client emits `entity.update` via WebSocket.
-4. Server applies through reducer (same pipeline as AI edits).
+4. Server applies through kernel (same pipeline as AI edits).
 5. Server pushes delta back. Client confirms.
 
 **Checkpoint 2:** Open the app with a mock-created graduation aide. Click any field and edit it. Toggle a checkbox. See it update in <200ms. Telemetry tracks direct edit count and latency.
@@ -324,7 +324,7 @@ User types message
 - ttfc with real Sonnet (target: <1s)
 - ttc for first creation (target: <4s)
 - ttfc with real Haiku (target: <500ms)
-- L2 reducer accept rate (target: >95%)
+- L2 kernel accept rate (target: >95%)
 - Cache hit rate after 5+ turns (target: >80% for L2)
 
 ---
@@ -391,7 +391,7 @@ User types message
 | L2 update ttc | ~3s | <1.5s | ? |
 | Direct edit latency | n/a | <200ms | ? |
 | L4 query time | ~3s | <5s | ? |
-| L2 reducer accept rate | n/a | >95% | ? |
+| L2 kernel accept rate | n/a | >95% | ? |
 | Cache hit rate (L2) | n/a | >80% | ? |
 | Cost per free user/week | ~$0.50 | <$0.70 | ? |
 | Undo latency | n/a | <300ms | ? |
@@ -408,7 +408,7 @@ Week 5: Tune prompts with live traffic → record improved outputs → golden fi
 Ongoing: Regression tests always run against latest golden files
 ```
 
-Golden files are version-controlled alongside the code. They're the contract between the prompt and the reducer — if a prompt change breaks golden file validation, you've introduced a regression.
+Golden files are version-controlled alongside the code. They're the contract between the prompt and the kernel — if a prompt change breaks golden file validation, you've introduced a regression.
 
 ### Recording Real Responses
 
@@ -429,7 +429,7 @@ recorder.close()
 // Unit test — instant, deterministic
 test('entity.create produces valid snapshot', async () => {
   const events = loadGoldenFile('golden/update_simple.jsonl')
-  const snapshot = events.reduce(reducer, emptySnapshot)
+  const snapshot = events.reduce(kernel, emptySnapshot)
   expect(snapshot.entities.guest_linda.props.name).toBe('Aunt Linda')
 })
 

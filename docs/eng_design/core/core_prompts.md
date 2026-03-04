@@ -124,7 +124,7 @@ Emit tool calls in this order:
 4. Relationships (after both endpoints exist)
 5. Style overrides (if any)
 
-Parents before children. Always. The reducer rejects `entity.create` if `parent` doesn't exist.
+Parents before children. Always. The kernel rejects `entity.create` if `parent` doesn't exist.
 
 ## Section Patterns
 
@@ -249,7 +249,7 @@ Underscore-prefixed props on section entities control rendering:
 | `_show_fields` | Array of field names to display |
 | `_hide_fields` | Array of field names to hide |
 
-These are regular props updated via `mutate_entity`. The reducer doesn't treat them specially.
+These are regular props updated via `mutate_entity`. The kernel doesn't treat them specially.
 ```
 
 ---

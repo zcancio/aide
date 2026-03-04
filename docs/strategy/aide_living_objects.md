@@ -176,7 +176,7 @@ EARS (input — any channel)       BRAIN (server)             BODY (web)
 ├─ Signal                        │   (Haiku → primitives)   ├─ Embedded blueprint
 ├─ Screenshot/image drop         ├─ L3: Schema + macros     ├─ Embedded state + events
 ├─ Telegram (future)             │   (Sonnet → MacroSpecs)  ├─ "Made with AIde" footer
-├─ WhatsApp (future)             ├─ Reducer + renderer      └─ toaide.com/s/{slug}
+├─ WhatsApp (future)             ├─ Kernel + renderer       └─ toaide.com/s/{slug}
 ├─ Share sheet (future)          ├─ Event log
 └─ (anything that sends text,    └─ User/aide DB
     images, or audio to an API)

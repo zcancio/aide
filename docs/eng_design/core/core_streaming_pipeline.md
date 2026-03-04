@@ -12,8 +12,8 @@ User sends message via WebSocket
   → Classifier picks tier (L3/L4)           [<10ms, see 05]
   → LLM streams tool calls
   → Server parses tool_use events
-  → Converts to reducer events
-  → Reducer applies event
+  → Converts to kernel events
+  → Kernel applies event
     → accepted: update snapshot, push delta to client via WebSocket
     → rejected: skip, log, continue
   → Client patches entity graph in React state
@@ -27,17 +27,17 @@ User sends message via WebSocket
 
 ## Server-Side Processing
 
-The orchestrator processes LLM tool calls and converts them to reducer events.
+The orchestrator processes LLM tool calls and converts them to kernel events.
 
 ```
-LLM stream → tool_use event → tool_use_to_reducer_event()
+LLM stream → tool_use event → tool_use_to_kernel_event()
   → mutate_entity(action="create") → {"t": "entity.create", ...}
   → mutate_entity(action="update") → {"t": "entity.update", ...}
   → set_relationship(action="set") → {"t": "rel.set", ...}
   → voice(text="...") → {"t": "voice", ...}
 
-For each reducer event:
-  → reducer(snapshot, event)
+For each kernel event:
+  → kernel(snapshot, event)
     → applied: update snapshot, yield delta to WebSocket
     → rejected: log rejection, continue
 ```
@@ -64,7 +64,7 @@ These rules ensure every intermediate state during streaming is renderable.
 
 ### Invariants
 
-1. **Parents before children.** The reducer rejects `entity.create` if `parent` doesn't exist. This is the only hard ordering constraint.
+1. **Parents before children.** The kernel rejects `entity.create` if `parent` doesn't exist. This is the only hard ordering constraint.
 2. **Empty containers are valid.** A `table` with zero children renders with a placeholder. The user sees structure scaffolding in, then items populating.
 3. **Display hints on creation.** The parent needs its `display` hint when created so the compiler knows how to render incoming children.
 4. **Relationships after both endpoints.** `rel.set` requires both entities to exist.
@@ -98,7 +98,7 @@ The client connects to `/ws/aide/{aide_id}` on page load.
 | Type | Payload | Server Action |
 |------|---------|--------------|
 | `message` | `{ content, message_id }` | Route through classifier → LLM |
-| `direct_edit` | `{ entity_id, field, value }` | Apply entity.update through reducer |
+| `direct_edit` | `{ entity_id, field, value }` | Apply entity.update through kernel |
 | `interrupt` | `{}` | Cancel LLM stream |
 | `set_profile` | `{ profile }` | Set mock LLM profile (dev only) |
 
