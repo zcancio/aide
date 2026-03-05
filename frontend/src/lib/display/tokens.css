@@ -481,6 +481,17 @@
 :host .aide-section__content > .aide-image:first-child,
 :host .aide-section__content > .aide-metric:first-child { margin-top: var(--space-2); }
 
+/* ── Subsection (for patterns inside sections) ── */
+:host .aide-subsection {
+  margin-bottom: var(--space-6);
+}
+:host .aide-subsection:last-child {
+  margin-bottom: 0;
+}
+:host .aide-subsection > .aide-heading--3 {
+  margin-bottom: var(--space-3);
+}
+
 /* ── Checklist (React component) ── */
 :host .aide-checklist {
   list-style: none;

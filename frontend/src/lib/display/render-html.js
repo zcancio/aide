@@ -4,6 +4,14 @@
 
 import { escapeHtml, humanize, getChildren, resolveDisplay } from './helpers.js';
 
+// Check if entity's parent is a section (patterns inside sections get sub-headings, not full section styling)
+function isInsideSection(entity, entities) {
+  if (!entity.parent) return false;
+  const parent = entities[entity.parent];
+  if (!parent) return false;
+  return parent.display === 'section';
+}
+
 function renderEntity(entityId, entities) {
   const entity = entities[entityId];
   if (!entity || entity._removed) return '';
@@ -81,6 +89,7 @@ function renderChecklist(entity, childIds, entities) {
   const props = entity.props || {};
   const title = props.title || props.name || '';
   const titleField = props.title !== undefined ? 'title' : 'name';
+  const insideSection = isInsideSection(entity, entities);
 
   const items = childIds.map(id => {
     const child = entities[id];
@@ -105,8 +114,15 @@ function renderChecklist(entity, childIds, entities) {
   const checklistContent = `<ul class="aide-checklist">${items}</ul>
     <div class="aide-checklist__summary">${completed} of ${childIds.length} complete</div>`;
 
-  // If checklist has a title, wrap in section structure
   if (title) {
+    if (insideSection) {
+      // Inside a section: use sub-heading, not full section styling
+      return `<div class="aide-subsection">
+        <h3 class="aide-heading aide-heading--3 editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</h3>
+        ${checklistContent}
+      </div>`;
+    }
+    // Direct child of page: wrap in full section structure
     return `<div class="aide-section">
       <div class="aide-section__title editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</div>
       <div class="aide-section__content">${checklistContent}</div>
@@ -121,6 +137,7 @@ function renderTable(entity, childIds, entities) {
   const props = entity.props || {};
   const title = props.title || props.name || '';
   const titleField = props.title !== undefined ? 'title' : 'name';
+  const insideSection = isInsideSection(entity, entities);
 
   // Build the table content
   let tableContent;
@@ -152,8 +169,15 @@ function renderTable(entity, childIds, entities) {
     </div>`;
   }
 
-  // If table has a title, wrap in section structure
   if (title) {
+    if (insideSection) {
+      // Inside a section: use sub-heading, not full section styling
+      return `<div class="aide-subsection">
+        <h3 class="aide-heading aide-heading--3 editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</h3>
+        ${tableContent}
+      </div>`;
+    }
+    // Direct child of page: wrap in full section structure
     return `<div class="aide-section">
       <div class="aide-section__title editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</div>
       <div class="aide-section__content">${tableContent}</div>
@@ -191,6 +215,7 @@ function renderCard(entity, childIds, entities) {
   const props = entity.props || {};
   const title = props.title || props.name || '';
   const titleField = props.title !== undefined ? 'title' : 'name';
+  const insideSection = isInsideSection(entity, entities);
   const displayProps = Object.entries(props).filter(([k]) => !k.startsWith('_') && k !== 'title' && k !== 'name');
 
   const fields = displayProps.map(([k, v]) => `
@@ -211,8 +236,15 @@ function renderCard(entity, childIds, entities) {
     ${isEmpty ? '<p class="aide-card__empty">No properties set</p>' : ''}
   </div>`;
 
-  // If card has a title, wrap in section structure
   if (title) {
+    if (insideSection) {
+      // Inside a section: use sub-heading, not full section styling
+      return `<div class="aide-subsection">
+        <h3 class="aide-heading aide-heading--3 editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</h3>
+        ${cardContent}
+      </div>`;
+    }
+    // Direct child of page: wrap in full section structure
     return `<div class="aide-section">
       <div class="aide-section__title editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</div>
       <div class="aide-section__content">${cardContent}</div>
