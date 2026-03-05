@@ -5,12 +5,24 @@ on:
     types: [created]
   pull_request:
     types: [created]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue number to work on'
+        required: true
+        type: number
+      task:
+        description: 'Task for Claude (e.g., "implement this issue")'
+        required: true
+        type: string
+        default: 'implement this issue'
 
 jobs:
   claude:
     if: |
-      contains(github.event.comment.body, '@claude') &&
-      github.event.comment.user.login == 'zcancio'
+      github.event_name == 'workflow_dispatch' ||
+      (contains(github.event.comment.body, '@claude') &&
+       github.event.comment.user.login == 'zcancio')
     runs-on: self-hosted
 
     services:
@@ -75,9 +87,9 @@ jobs:
           git config user.email "claude-code[bot]@users.noreply.github.com"
 
       - name: Fetch issue body and detect branch
-        if: github.event.issue
+        if: github.event.issue || github.event_name == 'workflow_dispatch'
         run: |
-          ISSUE_NUM="${{ github.event.issue.number }}"
+          ISSUE_NUM="${{ github.event.issue.number || github.event.inputs.issue_number }}"
 
           # Fetch issue details
           gh issue view "$ISSUE_NUM" --json title,body --jq '"# " + .title + "\n\n" + .body' > /tmp/issue_body.txt
@@ -127,7 +139,7 @@ jobs:
       - name: Read previous progress
         if: env.IS_CONTINUATION == 'true'
         run: |
-          ISSUE_NUM="${{ github.event.issue.number }}"
+          ISSUE_NUM="${{ github.event.issue.number || github.event.inputs.issue_number }}"
           PROGRESS_FILE=".claude/build_logs/issue_${ISSUE_NUM}_progress.md"
 
           if [ -f "$PROGRESS_FILE" ]; then
@@ -177,10 +189,10 @@ jobs:
           3. If you created new migrations, run them: DATABASE_URL=postgres://aide:test@localhost:5432/aide_test alembic upgrade head
           4. Run tests with non-superuser to verify RLS: DATABASE_URL=postgres://aide_app:test@localhost:5432/aide_test pytest backend/tests/ -v
           5. Fix any failures before finishing
-          6. Write a build log to .claude/build_logs/issue_${{ github.event.issue.number }}_progress.md documenting what was done
+          6. Write a build log to .claude/build_logs/issue_${{ github.event.issue.number || github.event.inputs.issue_number }}_progress.md documenting what was done
           EOF
         env:
-          RAW_TASK: ${{ github.event.comment.body }}
+          RAW_TASK: ${{ github.event.comment.body || github.event.inputs.task }}
           DATABASE_URL: postgres://aide_app:test@localhost:5432/aide_test
           IS_CONTINUATION: ${{ env.IS_CONTINUATION }}
 
@@ -192,7 +204,7 @@ jobs:
           else
             echo "Committing uncommitted changes:"
             git diff --cached --stat
-            git commit -m "feat: implement from issue #${{ github.event.issue.number || github.event.pull_request.number }}"
+            git commit -m "feat: implement from issue #${{ github.event.issue.number || github.event.pull_request.number || github.event.inputs.issue_number }}"
           fi
 
       - name: Check for commits to push
@@ -221,9 +233,9 @@ jobs:
         run: git push -u origin "$BRANCH"
 
       - name: Create or update PR
-        if: steps.verify.outputs.has_changes == 'true' && github.event_name == 'issue_comment' && !github.event.issue.pull_request
+        if: steps.verify.outputs.has_changes == 'true' && (github.event_name == 'issue_comment' || github.event_name == 'workflow_dispatch') && !github.event.issue.pull_request
         run: |
-          ISSUE_NUM="${{ github.event.issue.number }}"
+          ISSUE_NUM="${{ github.event.issue.number || github.event.inputs.issue_number }}"
 
           # Check if PR already exists for this branch
           EXISTING_PR=$(gh pr list --head "$BRANCH" --json number --jq '.[0].number // empty')
@@ -243,7 +255,7 @@ jobs:
           PRBODY
             )
             gh pr create \
-              --title "Claude: $(echo '${{ github.event.comment.body }}' | head -c 60)" \
+              --title "Claude: $(echo '${{ github.event.comment.body || github.event.inputs.task }}' | head -c 60)" \
               --body "$PR_BODY" \
               --head "$BRANCH" \
               --base main
@@ -252,9 +264,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Comment if no changes
-        if: steps.verify.outputs.has_changes == 'false' && github.event.issue
+        if: steps.verify.outputs.has_changes == 'false' && (github.event.issue || github.event_name == 'workflow_dispatch')
         run: |
-          gh issue comment "${{ github.event.issue.number }}" \
+          gh issue comment "${{ github.event.issue.number || github.event.inputs.issue_number }}" \
             --body "Claude completed but made no file changes. Check the [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details."
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
