@@ -1,0 +1,231 @@
+{
+  "aide_id": "mock-christmas-ideal",
+  "name": "christmas_week_ideal",
+  "scenario_id": "christmas_week_ideal",
+  "timestamp": "2026-03-05T12:00:00.000000",
+  "turns": [
+    {
+      "turn": 1,
+      "tier": "L4",
+      "model": "mock",
+      "message": "christmas 2025 week planner for our family in ann arbor. show each day as a section: Saturday December 20 through Friday December 26. under each day we'll add meals, activities, and to-dos",
+      "tool_calls": [
+        {"name": "mutate_entity", "input": {"action": "create", "id": "page", "display": "page", "props": {"title": "Ann Arbor Christmas 2025"}}},
+
+        {"name": "mutate_entity", "input": {"action": "create", "id": "saturday", "parent": "page", "display": "section", "props": {"title": "Saturday, Dec 20"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "sat_activities", "parent": "saturday", "display": "table", "props": {"title": "Activities"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "sat_meals", "parent": "saturday", "display": "table", "props": {"title": "Meals"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "sat_todos", "parent": "saturday", "display": "checklist", "props": {"title": "To-Do"}}},
+
+        {"name": "mutate_entity", "input": {"action": "create", "id": "sunday", "parent": "page", "display": "section", "props": {"title": "Sunday, Dec 21"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "sun_activities", "parent": "sunday", "display": "table", "props": {"title": "Activities"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "sun_meals", "parent": "sunday", "display": "table", "props": {"title": "Meals"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "sun_todos", "parent": "sunday", "display": "checklist", "props": {"title": "To-Do"}}},
+
+        {"name": "mutate_entity", "input": {"action": "create", "id": "monday", "parent": "page", "display": "section", "props": {"title": "Monday, Dec 22"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "mon_activities", "parent": "monday", "display": "table", "props": {"title": "Activities"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "mon_meals", "parent": "monday", "display": "table", "props": {"title": "Meals"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "mon_todos", "parent": "monday", "display": "checklist", "props": {"title": "To-Do"}}},
+
+        {"name": "mutate_entity", "input": {"action": "create", "id": "tuesday", "parent": "page", "display": "section", "props": {"title": "Tuesday, Dec 23"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "tue_activities", "parent": "tuesday", "display": "table", "props": {"title": "Activities"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "tue_meals", "parent": "tuesday", "display": "table", "props": {"title": "Meals"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "tue_todos", "parent": "tuesday", "display": "checklist", "props": {"title": "To-Do"}}},
+
+        {"name": "mutate_entity", "input": {"action": "create", "id": "christmas_eve", "parent": "page", "display": "section", "props": {"title": "Christmas Eve, Dec 24"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "eve_activities", "parent": "christmas_eve", "display": "table", "props": {"title": "Activities"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "eve_meals", "parent": "christmas_eve", "display": "table", "props": {"title": "Meals"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "eve_todos", "parent": "christmas_eve", "display": "checklist", "props": {"title": "To-Do"}}},
+
+        {"name": "mutate_entity", "input": {"action": "create", "id": "christmas_day", "parent": "page", "display": "section", "props": {"title": "Christmas Day, Dec 25"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "xmas_activities", "parent": "christmas_day", "display": "table", "props": {"title": "Activities"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "xmas_meals", "parent": "christmas_day", "display": "table", "props": {"title": "Meals"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "xmas_todos", "parent": "christmas_day", "display": "checklist", "props": {"title": "To-Do"}}},
+
+        {"name": "mutate_entity", "input": {"action": "create", "id": "friday", "parent": "page", "display": "section", "props": {"title": "Friday, Dec 26"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "fri_activities", "parent": "friday", "display": "table", "props": {"title": "Activities"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "fri_meals", "parent": "friday", "display": "table", "props": {"title": "Meals"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "fri_todos", "parent": "friday", "display": "checklist", "props": {"title": "To-Do"}}},
+
+        {"name": "voice", "input": {"text": "Christmas week planner created. 7 days with activities, meals, and to-dos."}}
+      ],
+      "text_blocks": []
+    },
+    {
+      "turn": 2,
+      "tier": "L3",
+      "model": "mock",
+      "message": "saturday: skating lessons 9-11am, henry has rock climbing 12:45-2:15pm, chris massage 3:15-4:15pm",
+      "tool_calls": [
+        {"name": "mutate_entity", "input": {"action": "create", "id": "sat_act_1", "parent": "sat_activities", "props": {"time": "9-11am", "activity": "Skating lessons"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "sat_act_2", "parent": "sat_activities", "props": {"time": "12:45-2:15pm", "activity": "Rock climbing", "who": "Henry"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "sat_act_3", "parent": "sat_activities", "props": {"time": "3:15-4:15pm", "activity": "Massage", "who": "Chris"}}},
+        {"name": "voice", "input": {"text": "Saturday: 3 activities added."}}
+      ],
+      "text_blocks": []
+    },
+    {
+      "turn": 3,
+      "tier": "L3",
+      "model": "mock",
+      "message": "saturday dinner is spaghetti and meatballs, chris and henry will make it. also need to pick up allan at airport around 7pm",
+      "tool_calls": [
+        {"name": "mutate_entity", "input": {"action": "create", "id": "sat_meal_1", "parent": "sat_meals", "props": {"meal": "Dinner", "item": "Spaghetti & meatballs"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "sat_act_4", "parent": "sat_activities", "props": {"time": "~7pm", "activity": "Pick up Allan at airport", "done": true, "link": "https://www.google.com/maps?q=Detroit+Metropolitan+Airport+DTW"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "sat_todo_1", "parent": "sat_todos", "props": {"task": "Chris & Henry: Make spaghetti & meatballs", "done": false}}},
+        {"name": "voice", "input": {"text": "Saturday: dinner and airport pickup added."}}
+      ],
+      "text_blocks": []
+    },
+    {
+      "turn": 4,
+      "tier": "L3",
+      "model": "mock",
+      "message": "sunday: chris barn tennis 6:30-8am, samantha yoga at 9, kids tennis class 12-1pm",
+      "tool_calls": [
+        {"name": "mutate_entity", "input": {"action": "create", "id": "sun_act_1", "parent": "sun_activities", "props": {"time": "6:30-8am", "activity": "Chris - Barn tennis"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "sun_act_2", "parent": "sun_activities", "props": {"time": "9am", "activity": "Samantha - Yoga"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "sun_act_3", "parent": "sun_activities", "props": {"time": "12-1pm", "activity": "Kids tennis class"}}},
+        {"name": "voice", "input": {"text": "Sunday: 3 activities added."}}
+      ],
+      "text_blocks": []
+    },
+    {
+      "turn": 5,
+      "tier": "L3",
+      "model": "mock",
+      "message": "sunday lunch at nagomi or evergreen, dinner is spaghetti & jumbo meatballs, salad, and chicken wings",
+      "tool_calls": [
+        {"name": "mutate_entity", "input": {"action": "create", "id": "sun_meal_1", "parent": "sun_meals", "props": {"meal": "Lunch", "item": "Nagomi or Evergreen", "link": "https://www.google.com/maps?q=Nagomi+Sushi+Ann+Arbor+MI"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "sun_meal_2", "parent": "sun_meals", "props": {"meal": "Dinner", "item": "Spaghetti & jumbo meatballs"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "sun_meal_3", "parent": "sun_meals", "props": {"meal": "Dinner", "item": "Salad"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "sun_meal_4", "parent": "sun_meals", "props": {"meal": "Dinner", "item": "Chicken wings"}}},
+        {"name": "voice", "input": {"text": "Sunday meals added."}}
+      ],
+      "text_blocks": []
+    },
+    {
+      "turn": 6,
+      "tier": "L3",
+      "model": "mock",
+      "message": "chris needs to pick up prime rib and pork shoulder on sunday",
+      "tool_calls": [
+        {"name": "mutate_entity", "input": {"action": "create", "id": "sun_todo_1", "parent": "sun_todos", "props": {"task": "Chris: Pick up prime rib and pork shoulder", "done": false}}},
+        {"name": "voice", "input": {"text": "Sunday to-do added."}}
+      ],
+      "text_blocks": []
+    },
+    {
+      "turn": 7,
+      "tier": "L3",
+      "model": "mock",
+      "message": "monday: kids drop off at leslie science nature center 8:30am, chris trainer 11am-12pm, sam yoga 12-1pm, kids pickup 3:30pm, chris done with work 5pm, chris & nicole arrive evening",
+      "tool_calls": [
+        {"name": "mutate_entity", "input": {"action": "create", "id": "mon_act_1", "parent": "mon_activities", "props": {"time": "8:30am", "activity": "Kids drop off at Leslie Science Nature Center", "done": true, "link": "https://www.google.com/maps?q=Leslie+Science+Nature+Center+Ann+Arbor+MI"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "mon_act_2", "parent": "mon_activities", "props": {"time": "11am-12pm", "activity": "Chris - Trainer"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "mon_act_3", "parent": "mon_activities", "props": {"time": "12-1pm", "activity": "Sam - Yoga"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "mon_act_4", "parent": "mon_activities", "props": {"time": "3:30pm", "activity": "Kids pickup at Leslie Science Nature Center", "done": true, "link": "https://www.google.com/maps?q=Leslie+Science+Nature+Center+Ann+Arbor+MI"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "mon_act_5", "parent": "mon_activities", "props": {"time": "5pm", "activity": "Chris done with work", "done": true}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "mon_act_6", "parent": "mon_activities", "props": {"time": "Evening", "activity": "Chris & Nicole arrive", "done": true}}},
+        {"name": "voice", "input": {"text": "Monday activities added."}}
+      ],
+      "text_blocks": []
+    },
+    {
+      "turn": 8,
+      "tier": "L3",
+      "model": "mock",
+      "message": "monday dinner: smoked bbq ribs & chicken, baked beans, mac and cheese, coleslaw, gf cornbread",
+      "tool_calls": [
+        {"name": "mutate_entity", "input": {"action": "create", "id": "mon_meal_1", "parent": "mon_meals", "props": {"meal": "Dinner", "item": "Smoked BBQ ribs & chicken"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "mon_meal_2", "parent": "mon_meals", "props": {"meal": "Dinner", "item": "Baked beans"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "mon_meal_3", "parent": "mon_meals", "props": {"meal": "Dinner", "item": "Mac and cheese"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "mon_meal_4", "parent": "mon_meals", "props": {"meal": "Dinner", "item": "Coleslaw"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "mon_meal_5", "parent": "mon_meals", "props": {"meal": "Dinner", "item": "GF Cornbread"}}},
+        {"name": "voice", "input": {"text": "Monday dinner menu added."}}
+      ],
+      "text_blocks": []
+    },
+    {
+      "turn": 9,
+      "tier": "L3",
+      "model": "mock",
+      "message": "monday todos: chris smoke ribs & chicken, sam make gf cornbread mac and cheese coleslaw",
+      "tool_calls": [
+        {"name": "mutate_entity", "input": {"action": "create", "id": "mon_todo_1", "parent": "mon_todos", "props": {"task": "Chris: Smoke ribs & chicken", "done": false}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "mon_todo_2", "parent": "mon_todos", "props": {"task": "Sam: Make GF cornbread, mac and cheese, coleslaw", "done": false}}},
+        {"name": "voice", "input": {"text": "Monday to-dos added."}}
+      ],
+      "text_blocks": []
+    },
+    {
+      "turn": 10,
+      "tier": "L3",
+      "model": "mock",
+      "message": "tuesday: chris tennis 6:30-8am, family fitness & pool at liberty athletic 10am (we have guest passes), lunch is choose your own adventure leftovers welcome, order joes pizza 3:30pm, joes pizza for dinner, leave for greenfield village 5:20pm, greenfield village 5:45-8pm",
+      "tool_calls": [
+        {"name": "mutate_entity", "input": {"action": "create", "id": "tue_act_1", "parent": "tue_activities", "props": {"time": "6:30-8am", "activity": "Chris - Tennis"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "tue_act_2", "parent": "tue_activities", "props": {"time": "10am", "activity": "Family fitness & pool time at Liberty Athletic", "note": "We have guest passes!", "link": "https://www.google.com/maps?q=Liberty+Athletic+Club+Ann+Arbor+MI"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "tue_act_3", "parent": "tue_activities", "props": {"time": "3:30pm", "activity": "Order Joe's Pizza", "done": true}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "tue_act_4", "parent": "tue_activities", "props": {"time": "5:20pm", "activity": "Leave for Greenfield Village", "done": true}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "tue_act_5", "parent": "tue_activities", "props": {"time": "5:45-8pm", "activity": "Greenfield Village", "link": "https://www.google.com/maps?q=Greenfield+Village+Dearborn+MI"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "tue_meal_1", "parent": "tue_meals", "props": {"meal": "Lunch", "item": "Choose your own adventure", "note": "Leftovers welcome!"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "tue_meal_2", "parent": "tue_meals", "props": {"meal": "Dinner", "item": "Joe's Pizza", "link": "https://www.google.com/maps?q=Joes+Pizza+Ann+Arbor+MI"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "tue_todo_1", "parent": "tue_todos", "props": {"task": "Chris: Order Joe's pizza at 3:30pm", "done": false}}},
+        {"name": "voice", "input": {"text": "Tuesday added."}}
+      ],
+      "text_blocks": []
+    },
+    {
+      "turn": 11,
+      "tier": "L3",
+      "model": "mock",
+      "message": "christmas eve: chris birthday tennis 8-10am, ana & fredy cleaning 12-2pm, smoked pork shoulder carnitas with all the fixings for party, chris's rocking xmas eve birthday party 3-8pm",
+      "tool_calls": [
+        {"name": "mutate_entity", "input": {"action": "create", "id": "eve_act_1", "parent": "eve_activities", "props": {"time": "8-10am", "activity": "Chris - Birthday tennis"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "eve_act_2", "parent": "eve_activities", "props": {"time": "12-2pm", "activity": "Ana & Fredy cleaning", "done": true}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "eve_act_3", "parent": "eve_activities", "props": {"time": "3-8pm", "activity": "Chris's Rocking Xmas Eve Birthday Party!"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "eve_meal_1", "parent": "eve_meals", "props": {"meal": "Party food", "item": "Smoked pork shoulder carnitas with all the fixings"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "eve_todo_1", "parent": "eve_todos", "props": {"task": "Chris: Smoke carnitas in the morning", "done": false}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "eve_todo_2", "parent": "eve_todos", "props": {"task": "Everybody: House prep for party (Samantha is captain)", "done": false}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "eve_todo_3", "parent": "eve_todos", "props": {"task": "Chris: Lay out taco table accoutrements", "done": false}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "eve_todo_4", "parent": "eve_todos", "props": {"task": "Chris & Nicole: Devise signature cocktail punch (feeds 15 adults)", "done": false}}},
+        {"name": "voice", "input": {"text": "Christmas Eve added."}}
+      ],
+      "text_blocks": []
+    },
+    {
+      "turn": 12,
+      "tier": "L3",
+      "model": "mock",
+      "message": "christmas day: presents in morning, christmas brunch, smoked prime rib supper at 3pm with mashed potatoes baked beans and popovers",
+      "tool_calls": [
+        {"name": "mutate_entity", "input": {"action": "create", "id": "xmas_act_1", "parent": "xmas_activities", "props": {"time": "Morning", "activity": "Presents!"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "xmas_meal_1", "parent": "xmas_meals", "props": {"meal": "Morning", "item": "Christmas Brunch"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "xmas_meal_2", "parent": "xmas_meals", "props": {"meal": "3pm", "item": "Smoked Prime Rib Supper"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "xmas_meal_3", "parent": "xmas_meals", "props": {"meal": "Supper", "item": "Mashed potatoes"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "xmas_meal_4", "parent": "xmas_meals", "props": {"meal": "Supper", "item": "Baked beans"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "xmas_meal_5", "parent": "xmas_meals", "props": {"meal": "Supper", "item": "Popovers"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "xmas_todo_1", "parent": "xmas_todos", "props": {"task": "Sam & Chris F: Set breakfast table with toys", "done": false}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "xmas_todo_2", "parent": "xmas_todos", "props": {"task": "Chris Li: Make Christmas brunch", "done": false}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "xmas_todo_3", "parent": "xmas_todos", "props": {"task": "Chris Li: Smoke prime rib", "done": false}}},
+        {"name": "voice", "input": {"text": "Christmas Day added."}}
+      ],
+      "text_blocks": []
+    },
+    {
+      "turn": 13,
+      "tier": "L3",
+      "model": "mock",
+      "message": "friday: chris & nicole in midland all day, biwako for lunch, kids movie zootopia or spongebob with isla & esme, leftovers or basil babe for dinner depending on how we're feeling",
+      "tool_calls": [
+        {"name": "mutate_entity", "input": {"action": "create", "id": "fri_act_1", "parent": "fri_activities", "props": {"time": "All day", "activity": "Chris & Nicole in Midland", "done": true, "link": "https://www.google.com/maps?q=Midland+MI"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "fri_act_2", "parent": "fri_activities", "props": {"time": "TBD", "activity": "Kids movie (Zootopia or SpongeBob) with Isla & Esme"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "fri_meal_1", "parent": "fri_meals", "props": {"meal": "Lunch", "item": "Biwako", "link": "https://www.google.com/maps?q=Biwako+Ann+Arbor+MI"}}},
+        {"name": "mutate_entity", "input": {"action": "create", "id": "fri_meal_2", "parent": "fri_meals", "props": {"meal": "Dinner", "item": "Leftovers or Basil Babe", "note": "Depending on how we're feeling"}}},
+        {"name": "voice", "input": {"text": "Friday added."}}
+      ],
+      "text_blocks": []
+    }
+  ]
+}
