@@ -4,14 +4,6 @@
 
 import { escapeHtml, humanize, getChildren, resolveDisplay } from './helpers.js';
 
-// Check if entity's parent is a section (patterns inside sections get sub-headings, not full section styling)
-function isInsideSection(entity, entities) {
-  if (!entity.parent) return false;
-  const parent = entities[entity.parent];
-  if (!parent) return false;
-  return parent.display === 'section';
-}
-
 function renderEntity(entityId, entities) {
   const entity = entities[entityId];
   if (!entity || entity._removed) return '';
@@ -89,7 +81,6 @@ function renderChecklist(entity, childIds, entities) {
   const props = entity.props || {};
   const title = props.title || props.name || '';
   const titleField = props.title !== undefined ? 'title' : 'name';
-  const insideSection = isInsideSection(entity, entities);
 
   const items = childIds.map(id => {
     const child = entities[id];
@@ -111,33 +102,21 @@ function renderChecklist(entity, childIds, entities) {
     return cp.done === true || cp.checked === true;
   }).length;
 
-  const checklistContent = `<ul class="aide-checklist">${items}</ul>
-    <div class="aide-checklist__summary">${completed} of ${childIds.length} complete</div>`;
+  const titleHtml = title
+    ? `<h3 class="aide-heading aide-heading--3 editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</h3>`
+    : '';
 
-  if (title) {
-    if (insideSection) {
-      // Inside a section: use sub-heading, not full section styling
-      return `<div class="aide-subsection">
-        <h3 class="aide-heading aide-heading--3 editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</h3>
-        ${checklistContent}
-      </div>`;
-    }
-    // Direct child of page: wrap in full section structure
-    return `<div class="aide-section">
-      <div class="aide-section__title editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</div>
-      <div class="aide-section__content">${checklistContent}</div>
-    </div>`;
-  }
-
-  // No title - just return the checklist content
-  return `<div class="aide-checklist-container">${checklistContent}</div>`;
+  return `<div class="aide-checklist-container">
+    ${titleHtml}
+    <ul class="aide-checklist">${items}</ul>
+    <div class="aide-checklist__summary">${completed} of ${childIds.length} complete</div>
+  </div>`;
 }
 
 function renderTable(entity, childIds, entities) {
   const props = entity.props || {};
   const title = props.title || props.name || '';
   const titleField = props.title !== undefined ? 'title' : 'name';
-  const insideSection = isInsideSection(entity, entities);
 
   // Build the table content
   let tableContent;
@@ -169,23 +148,11 @@ function renderTable(entity, childIds, entities) {
     </div>`;
   }
 
-  if (title) {
-    if (insideSection) {
-      // Inside a section: use sub-heading, not full section styling
-      return `<div class="aide-subsection">
-        <h3 class="aide-heading aide-heading--3 editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</h3>
-        ${tableContent}
-      </div>`;
-    }
-    // Direct child of page: wrap in full section structure
-    return `<div class="aide-section">
-      <div class="aide-section__title editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</div>
-      <div class="aide-section__content">${tableContent}</div>
-    </div>`;
-  }
+  const titleHtml = title
+    ? `<h3 class="aide-heading aide-heading--3 editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</h3>`
+    : '';
 
-  // No title - just return the table content
-  return tableContent;
+  return `${titleHtml}${tableContent}`;
 }
 
 function renderList(entity, childIds, entities) {
@@ -215,8 +182,11 @@ function renderCard(entity, childIds, entities) {
   const props = entity.props || {};
   const title = props.title || props.name || '';
   const titleField = props.title !== undefined ? 'title' : 'name';
-  const insideSection = isInsideSection(entity, entities);
   const displayProps = Object.entries(props).filter(([k]) => !k.startsWith('_') && k !== 'title' && k !== 'name');
+
+  const titleHtml = title
+    ? `<div class="aide-card__title editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</div>`
+    : '';
 
   const fields = displayProps.map(([k, v]) => `
     <div class="aide-card__field">
@@ -230,28 +200,12 @@ function renderCard(entity, childIds, entities) {
   // Show placeholder for empty cards (no title, no fields, no children)
   const isEmpty = !title && displayProps.length === 0 && childIds.length === 0;
 
-  const cardContent = `<div class="aide-card">
+  return `<div class="aide-card">
+    ${titleHtml}
     ${fields}
     ${children}
     ${isEmpty ? '<p class="aide-card__empty">No properties set</p>' : ''}
   </div>`;
-
-  if (title) {
-    if (insideSection) {
-      // Inside a section: use sub-heading, not full section styling
-      return `<div class="aide-subsection">
-        <h3 class="aide-heading aide-heading--3 editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</h3>
-        ${cardContent}
-      </div>`;
-    }
-    // Direct child of page: wrap in full section structure
-    return `<div class="aide-section">
-      <div class="aide-section__title editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</div>
-      <div class="aide-section__content">${cardContent}</div>
-    </div>`;
-  }
-
-  return cardContent;
 }
 
 export function renderHtml(store) {
