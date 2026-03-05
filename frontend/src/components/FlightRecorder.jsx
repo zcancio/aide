@@ -76,10 +76,25 @@ export default function FlightRecorder() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialAideId = searchParams.get('aide_id') || '';
 
-  const [data, setData] = useState(null);
+  // Try to restore data from localStorage on initial load
+  const [data, setData] = useState(() => {
+    try {
+      const saved = localStorage.getItem('FR_DATA');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [idx, setIdx] = useState(0);
+  const [idx, setIdx] = useState(() => {
+    try {
+      const saved = localStorage.getItem('FR_IDX');
+      return saved ? parseInt(saved, 10) : 0;
+    } catch {
+      return 0;
+    }
+  });
   const [tab, setTab] = useState('rendered');
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(2); // 1=realtime, 2=2x, 5=5x, 0=instant
@@ -92,6 +107,25 @@ export default function FlightRecorder() {
   const previewRef = useRef(null);
   const shadowRef = useRef(null);
   const playTimerRef = useRef(null);
+
+  // Persist data and idx to localStorage when they change
+  useEffect(() => {
+    if (data) {
+      try {
+        localStorage.setItem('FR_DATA', JSON.stringify(data));
+      } catch {
+        // localStorage full or unavailable - ignore
+      }
+    }
+  }, [data]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('FR_IDX', String(idx));
+    } catch {
+      // ignore
+    }
+  }, [idx]);
 
   const turns = useMemo(() => data?.turns || [], [data]);
   // N includes turn 0 (initial empty state) + all actual turns
@@ -308,7 +342,7 @@ export default function FlightRecorder() {
       .aide-page { background: transparent; }
       .aide-heading { color: #e8e6e3; }
       .aide-text { color: #c4c2bf; }
-      .aide-section { background: #252a25; border-color: #3a3f3a; }
+      .aide-section { border-color: #3a3f3a; }
       .aide-section__title { color: #e8e6e3; }
       .aide-card { background: #252a25; border-color: #3a3f3a; }
       .aide-card__title { color: #e8e6e3; }
