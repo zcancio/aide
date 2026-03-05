@@ -262,3 +262,8 @@ def test_cost_calculation_with_cache() -> None:
     )
     # cache_read: 1M * $0.03/M = $0.03
     assert cost == Decimal("0.030000")
+
+
+# ===========================================================================
+# API route tests for telemetry export (moved to test_telemetry_api.py)
+# ===========================================================================
