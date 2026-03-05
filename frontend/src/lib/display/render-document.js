@@ -1,12 +1,12 @@
 /**
- * render-document.js — Standalone HTML document rendering for publishing
+ * render-document.js — Standalone HTML document rendering for publishing (ES module)
  */
 
-const { renderHtml } = require('./render-html.js');
-const { RENDERER_CSS } = require('./tokens.js');
-const { escapeHtml } = require('./helpers.js');
+import { renderHtml } from './render-html.js';
+import { RENDERER_CSS } from './tokens.js';
+import { escapeHtml } from './helpers.js';
 
-function renderDocument(store, options) {
+export function renderDocument(store, options) {
   options = options || {};
   const title = options.title || store.meta.title || 'AIde';
   const description = options.description || '';
@@ -50,7 +50,3 @@ function renderDocument(store, options) {
 </body>
 </html>`;
 }
-
-module.exports = {
-  renderDocument
-};

@@ -1,10 +1,10 @@
 /**
- * render-text.js — CLI text rendering functions
+ * render-text.js — CLI text rendering functions (ES module)
  */
 
-const { humanize } = require('./helpers.js');
+import { humanize } from './helpers.js';
 
-function renderTextCli(store) {
+export function renderTextCli(store) {
   const lines = [];
 
   // Title
@@ -200,7 +200,3 @@ function formatTextValue(val) {
   if (Array.isArray(val)) return val.join(', ');
   return String(val);
 }
-
-module.exports = {
-  renderTextCli
-};
