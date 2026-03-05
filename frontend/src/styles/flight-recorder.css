@@ -214,6 +214,21 @@
   font-family: var(--font-mono);
 }
 
+.fr-export-btn {
+  padding: 3px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  background: #1e40af;
+  border: 1px solid #3b82f6;
+  border-radius: 4px;
+  color: #93c5fd;
+  cursor: pointer;
+}
+
+.fr-export-btn:hover {
+  background: #1d4ed8;
+}
+
 .fr-close-btn {
   padding: 3px 8px;
   font-size: 10px;

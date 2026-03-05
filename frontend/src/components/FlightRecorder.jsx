@@ -617,6 +617,24 @@ export default function FlightRecorder() {
             </span>
           )}
           {isTurn0 && <span className="fr-timing">Initial state</span>}
+          <button
+            className="fr-export-btn"
+            onClick={async () => {
+              const res = await fetch(`/api/aides/${data.aide_id}/telemetry/export`, { credentials: 'include' });
+              if (!res.ok) return;
+              const blob = await res.blob();
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              const contentDisposition = res.headers.get('content-disposition');
+              const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
+              a.download = filenameMatch ? filenameMatch[1] : `aide-telemetry-${data.aide_id}.json`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+          >
+            Export
+          </button>
           <button className="fr-close-btn" onClick={() => setData(null)}>
             Close
           </button>
