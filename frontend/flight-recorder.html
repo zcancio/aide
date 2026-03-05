@@ -423,7 +423,34 @@
                 }}
                 title="Download turn as JSON file"
               >
-                Export
+                Export Turn
+              </button>
+              <button
+                onClick={async () => {
+                  const res = await fetch(`/api/aides/${aideId}/telemetry/export`, { credentials: 'include' });
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  const contentDisposition = res.headers.get('content-disposition');
+                  const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
+                  a.download = filenameMatch ? filenameMatch[1] : `aide-telemetry-${aideId}.json`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+                style={{
+                  background: "#1e40af",
+                  border: "1px solid #3b82f6",
+                  color: "#93c5fd",
+                  cursor: "pointer",
+                  fontSize: 11,
+                  padding: "4px 10px",
+                  borderRadius: 4,
+                  fontWeight: 600,
+                }}
+                title="Download full telemetry for all turns"
+              >
+                Export All
               </button>
               <button
                 onClick={async () => {

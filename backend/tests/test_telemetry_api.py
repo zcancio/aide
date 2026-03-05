@@ -173,3 +173,92 @@ async def test_telemetry_turns_ordered_chronologically(async_client, test_user_i
     assert turns[1]["turn"] == 2
     assert turns[0]["message"] == "message 1"
     assert turns[1]["message"] == "message 2"
+
+
+# ===========================================================================
+# Telemetry export endpoint tests
+# ===========================================================================
+
+
+@pytest_asyncio.fixture(loop_scope="session")
+async def test_aide(initialize_pool, test_user_id):
+    """Create a minimal test aide without turns."""
+    aide_id = uuid4()
+    async with db.system_conn() as conn:
+        await conn.execute(
+            "INSERT INTO aides (id, user_id, title, r2_prefix, state) VALUES ($1, $2, $3, $4, $5)",
+            aide_id,
+            test_user_id,
+            "Minimal Test Aide",
+            f"test-{aide_id}",
+            {"entities": {}},
+        )
+
+    class AideFixture:
+        pass
+
+    fixture = AideFixture()
+    fixture.id = aide_id
+    fixture.user_id = test_user_id
+
+    yield fixture
+
+    # Cleanup
+    async with db.system_conn() as conn:
+        await conn.execute("DELETE FROM aides WHERE id = $1", aide_id)
+
+
+async def test_export_telemetry_headers(async_client, test_user_id, test_aide):
+    """Export endpoint returns JSON with attachment headers."""
+    token = create_jwt(test_user_id)
+    response = await async_client.get(
+        f"/api/aides/{test_aide.id}/telemetry/export",
+        cookies={"session": token},
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/json"
+    assert "attachment" in response.headers["content-disposition"]
+    assert str(test_aide.id) in response.headers["content-disposition"]
+
+
+async def test_export_telemetry_format(async_client, test_user_id, test_aide_with_turns):
+    """Export returns valid AideTelemetry structure."""
+    token = create_jwt(test_user_id)
+    response = await async_client.get(
+        f"/api/aides/{test_aide_with_turns.id}/telemetry/export",
+        cookies={"session": token},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "aide_id" in data
+    assert "turns" in data
+    assert isinstance(data["turns"], list)
+    assert "name" in data
+    assert "timestamp" in data
+
+
+async def test_export_telemetry_rls(async_client, second_user_id, test_aide_with_turns):
+    """User cannot export another user's aide telemetry."""
+    token = create_jwt(second_user_id)
+    response = await async_client.get(
+        f"/api/aides/{test_aide_with_turns.id}/telemetry/export",
+        cookies={"session": token},
+    )
+    assert response.status_code == 404
+
+
+async def test_export_telemetry_not_found(async_client, test_user_id):
+    """Export returns 404 for non-existent aide."""
+    token = create_jwt(test_user_id)
+    fake_id = "00000000-0000-0000-0000-000000000000"
+    response = await async_client.get(
+        f"/api/aides/{fake_id}/telemetry/export",
+        cookies={"session": token},
+    )
+    assert response.status_code == 404
+
+
+async def test_export_telemetry_unauthenticated(async_client, test_aide):
+    """Export requires authentication."""
+    response = await async_client.get(f"/api/aides/{test_aide.id}/telemetry/export")
+    assert response.status_code == 401

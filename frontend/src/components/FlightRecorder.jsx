@@ -617,6 +617,45 @@ export default function FlightRecorder() {
             </span>
           )}
           {isTurn0 && <span className="fr-timing">Initial state</span>}
+          <button
+            className="fr-export-btn"
+            onClick={async () => {
+              try {
+                const res = await fetch(`/api/aides/${data.aide_id}/telemetry/export`, { credentials: 'include' });
+                if (!res.ok) {
+                  // If API fails, export the local data directly
+                  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `aide-telemetry-${data.aide_id || 'export'}.json`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                  return;
+                }
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const contentDisposition = res.headers.get('content-disposition');
+                const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
+                a.download = filenameMatch ? filenameMatch[1] : `aide-telemetry-${data.aide_id}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+              } catch {
+                // Fallback: export local data
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `aide-telemetry-${data.aide_id || 'export'}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }
+            }}
+          >
+            Export
+          </button>
           <button className="fr-close-btn" onClick={() => setData(null)}>
             Close
           </button>
