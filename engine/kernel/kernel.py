@@ -249,6 +249,10 @@ def _handle_entity_create(snap: dict, event: dict) -> ApplyResult:
     if parent != "root":
         snap["entities"][parent]["_children"].append(entity_id)
 
+    # Auto-sync meta.title from page.props.title on page creation
+    if display == "page" and "title" in props and props["title"]:
+        snap["meta"]["title"] = props["title"]
+
     return _ok(snap)
 
 
