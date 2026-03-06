@@ -147,6 +147,30 @@ class TestEntityCreate:
         assert not result2.accepted
         assert "PARENT_NOT_FOUND" in result2.reason
 
+    def test_page_create_sets_meta_title(self, empty):
+        """When creating a page with a title prop, meta.title should be auto-synced."""
+        result = apply(empty, {"t": "entity.create", "id": "page", "display": "page", "p": {"title": "My Page"}})
+        assert result.accepted
+        assert result.snapshot["meta"]["title"] == "My Page"
+
+    def test_page_create_without_title_leaves_meta_title_none(self, empty):
+        """When creating a page without a title prop, meta.title should remain None."""
+        result = apply(empty, {"t": "entity.create", "id": "page", "display": "page", "p": {}})
+        assert result.accepted
+        assert result.snapshot["meta"]["title"] is None
+
+    def test_page_create_with_empty_title_leaves_meta_title_none(self, empty):
+        """When creating a page with an empty title, meta.title should remain None."""
+        result = apply(empty, {"t": "entity.create", "id": "page", "display": "page", "p": {"title": ""}})
+        assert result.accepted
+        assert result.snapshot["meta"]["title"] is None
+
+    def test_non_page_entity_does_not_set_meta_title(self, empty):
+        """Creating non-page entities with title props should not affect meta.title."""
+        result = apply(empty, {"t": "entity.create", "id": "section", "display": "section", "p": {"title": "Section"}})
+        assert result.accepted
+        assert result.snapshot["meta"]["title"] is None
+
 
 # ============================================================================
 # entity.update

@@ -4,9 +4,7 @@ TDD test for kernel API rename.
 Tests the renamed kernel API: apply() instead of reduce().
 """
 
-import pytest
-
-from engine.kernel import apply, empty_snapshot, ApplyResult
+from engine.kernel import apply, empty_snapshot
 
 
 class TestKernelAPI:
