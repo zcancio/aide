@@ -24,6 +24,7 @@ def _mock_l3_result(text="Budget: $1,350.", tool_calls=None, escalate=False):
         voice_text = "This needs a new section structure."
     return {
         "text_blocks": [{"text": voice_text}],
+        "voice_texts": [voice_text],
         "tool_calls": tool_calls or [],
         "all_raw_tools": tool_calls or [],
         "usage": {"input_tokens": 500, "output_tokens": 100, "cache_read": 4590, "cache_creation": 0},
@@ -37,6 +38,7 @@ def _mock_l4_result(text="3 guests confirmed."):
     """Build a mock L4 result dict."""
     return {
         "text_blocks": [{"text": text}],
+        "voice_texts": [text],
         "tool_calls": [],
         "all_raw_tools": [{"id": "voice_1", "name": "voice", "input": {"text": text}}],
         "usage": {"input_tokens": 800, "output_tokens": 60, "cache_read": 5491, "cache_creation": 0},
