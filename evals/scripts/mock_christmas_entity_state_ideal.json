@@ -1,0 +1,1229 @@
+{
+  "meta": {
+    "title": null,
+    "identity": null,
+    "annotations": [],
+    "constraints": {}
+  },
+  "entities": {
+    "page": {
+      "id": "page",
+      "parent": "root",
+      "display": "page",
+      "props": {
+        "title": "Ann Arbor Christmas 2025"
+      },
+      "_removed": false,
+      "_children": [
+        "saturday",
+        "sunday",
+        "monday",
+        "tuesday",
+        "christmas_eve",
+        "christmas_day",
+        "friday"
+      ],
+      "_created_seq": 1,
+      "_updated_seq": 1
+    },
+    "saturday": {
+      "id": "saturday",
+      "parent": "page",
+      "display": "section",
+      "props": {
+        "title": "Saturday, Dec 20"
+      },
+      "_removed": false,
+      "_children": [
+        "sat_activities",
+        "sat_meals",
+        "sat_todos"
+      ],
+      "_created_seq": 2,
+      "_updated_seq": 2
+    },
+    "sat_activities": {
+      "id": "sat_activities",
+      "parent": "saturday",
+      "display": "table",
+      "props": {
+        "title": "Activities"
+      },
+      "_removed": false,
+      "_children": [
+        "sat_act_1",
+        "sat_act_2",
+        "sat_act_3",
+        "sat_act_4"
+      ],
+      "_created_seq": 3,
+      "_updated_seq": 3
+    },
+    "sat_meals": {
+      "id": "sat_meals",
+      "parent": "saturday",
+      "display": "table",
+      "props": {
+        "title": "Meals"
+      },
+      "_removed": false,
+      "_children": [
+        "sat_meal_1"
+      ],
+      "_created_seq": 4,
+      "_updated_seq": 4
+    },
+    "sat_todos": {
+      "id": "sat_todos",
+      "parent": "saturday",
+      "display": "checklist",
+      "props": {
+        "title": "To-Do"
+      },
+      "_removed": false,
+      "_children": [
+        "sat_todo_1"
+      ],
+      "_created_seq": 5,
+      "_updated_seq": 5
+    },
+    "sunday": {
+      "id": "sunday",
+      "parent": "page",
+      "display": "section",
+      "props": {
+        "title": "Sunday, Dec 21"
+      },
+      "_removed": false,
+      "_children": [
+        "sun_activities",
+        "sun_meals",
+        "sun_todos"
+      ],
+      "_created_seq": 6,
+      "_updated_seq": 6
+    },
+    "sun_activities": {
+      "id": "sun_activities",
+      "parent": "sunday",
+      "display": "table",
+      "props": {
+        "title": "Activities"
+      },
+      "_removed": false,
+      "_children": [
+        "sun_act_1",
+        "sun_act_2",
+        "sun_act_3"
+      ],
+      "_created_seq": 7,
+      "_updated_seq": 7
+    },
+    "sun_meals": {
+      "id": "sun_meals",
+      "parent": "sunday",
+      "display": "table",
+      "props": {
+        "title": "Meals"
+      },
+      "_removed": false,
+      "_children": [
+        "sun_meal_1",
+        "sun_meal_2",
+        "sun_meal_3",
+        "sun_meal_4"
+      ],
+      "_created_seq": 8,
+      "_updated_seq": 8
+    },
+    "sun_todos": {
+      "id": "sun_todos",
+      "parent": "sunday",
+      "display": "checklist",
+      "props": {
+        "title": "To-Do"
+      },
+      "_removed": false,
+      "_children": [
+        "sun_todo_1"
+      ],
+      "_created_seq": 9,
+      "_updated_seq": 9
+    },
+    "monday": {
+      "id": "monday",
+      "parent": "page",
+      "display": "section",
+      "props": {
+        "title": "Monday, Dec 22"
+      },
+      "_removed": false,
+      "_children": [
+        "mon_activities",
+        "mon_meals",
+        "mon_todos"
+      ],
+      "_created_seq": 10,
+      "_updated_seq": 10
+    },
+    "mon_activities": {
+      "id": "mon_activities",
+      "parent": "monday",
+      "display": "table",
+      "props": {
+        "title": "Activities"
+      },
+      "_removed": false,
+      "_children": [
+        "mon_act_1",
+        "mon_act_2",
+        "mon_act_3",
+        "mon_act_4",
+        "mon_act_5",
+        "mon_act_6"
+      ],
+      "_created_seq": 11,
+      "_updated_seq": 11
+    },
+    "mon_meals": {
+      "id": "mon_meals",
+      "parent": "monday",
+      "display": "table",
+      "props": {
+        "title": "Meals"
+      },
+      "_removed": false,
+      "_children": [
+        "mon_meal_1",
+        "mon_meal_2",
+        "mon_meal_3",
+        "mon_meal_4",
+        "mon_meal_5"
+      ],
+      "_created_seq": 12,
+      "_updated_seq": 12
+    },
+    "mon_todos": {
+      "id": "mon_todos",
+      "parent": "monday",
+      "display": "checklist",
+      "props": {
+        "title": "To-Do"
+      },
+      "_removed": false,
+      "_children": [
+        "mon_todo_1",
+        "mon_todo_2"
+      ],
+      "_created_seq": 13,
+      "_updated_seq": 13
+    },
+    "tuesday": {
+      "id": "tuesday",
+      "parent": "page",
+      "display": "section",
+      "props": {
+        "title": "Tuesday, Dec 23"
+      },
+      "_removed": false,
+      "_children": [
+        "tue_activities",
+        "tue_meals",
+        "tue_todos"
+      ],
+      "_created_seq": 14,
+      "_updated_seq": 14
+    },
+    "tue_activities": {
+      "id": "tue_activities",
+      "parent": "tuesday",
+      "display": "table",
+      "props": {
+        "title": "Activities"
+      },
+      "_removed": false,
+      "_children": [
+        "tue_act_1",
+        "tue_act_2",
+        "tue_act_3",
+        "tue_act_4",
+        "tue_act_5"
+      ],
+      "_created_seq": 15,
+      "_updated_seq": 15
+    },
+    "tue_meals": {
+      "id": "tue_meals",
+      "parent": "tuesday",
+      "display": "table",
+      "props": {
+        "title": "Meals"
+      },
+      "_removed": false,
+      "_children": [
+        "tue_meal_1",
+        "tue_meal_2"
+      ],
+      "_created_seq": 16,
+      "_updated_seq": 16
+    },
+    "tue_todos": {
+      "id": "tue_todos",
+      "parent": "tuesday",
+      "display": "checklist",
+      "props": {
+        "title": "To-Do"
+      },
+      "_removed": false,
+      "_children": [
+        "tue_todo_1"
+      ],
+      "_created_seq": 17,
+      "_updated_seq": 17
+    },
+    "christmas_eve": {
+      "id": "christmas_eve",
+      "parent": "page",
+      "display": "section",
+      "props": {
+        "title": "Christmas Eve, Dec 24"
+      },
+      "_removed": false,
+      "_children": [
+        "eve_activities",
+        "eve_meals",
+        "eve_todos"
+      ],
+      "_created_seq": 18,
+      "_updated_seq": 18
+    },
+    "eve_activities": {
+      "id": "eve_activities",
+      "parent": "christmas_eve",
+      "display": "table",
+      "props": {
+        "title": "Activities"
+      },
+      "_removed": false,
+      "_children": [
+        "eve_act_1",
+        "eve_act_2",
+        "eve_act_3"
+      ],
+      "_created_seq": 19,
+      "_updated_seq": 19
+    },
+    "eve_meals": {
+      "id": "eve_meals",
+      "parent": "christmas_eve",
+      "display": "table",
+      "props": {
+        "title": "Meals"
+      },
+      "_removed": false,
+      "_children": [
+        "eve_meal_1"
+      ],
+      "_created_seq": 20,
+      "_updated_seq": 20
+    },
+    "eve_todos": {
+      "id": "eve_todos",
+      "parent": "christmas_eve",
+      "display": "checklist",
+      "props": {
+        "title": "To-Do"
+      },
+      "_removed": false,
+      "_children": [
+        "eve_todo_1",
+        "eve_todo_2",
+        "eve_todo_3",
+        "eve_todo_4"
+      ],
+      "_created_seq": 21,
+      "_updated_seq": 21
+    },
+    "christmas_day": {
+      "id": "christmas_day",
+      "parent": "page",
+      "display": "section",
+      "props": {
+        "title": "Christmas Day, Dec 25"
+      },
+      "_removed": false,
+      "_children": [
+        "xmas_activities",
+        "xmas_meals",
+        "xmas_todos"
+      ],
+      "_created_seq": 22,
+      "_updated_seq": 22
+    },
+    "xmas_activities": {
+      "id": "xmas_activities",
+      "parent": "christmas_day",
+      "display": "table",
+      "props": {
+        "title": "Activities"
+      },
+      "_removed": false,
+      "_children": [
+        "xmas_act_1"
+      ],
+      "_created_seq": 23,
+      "_updated_seq": 23
+    },
+    "xmas_meals": {
+      "id": "xmas_meals",
+      "parent": "christmas_day",
+      "display": "table",
+      "props": {
+        "title": "Meals"
+      },
+      "_removed": false,
+      "_children": [
+        "xmas_meal_1",
+        "xmas_meal_2",
+        "xmas_meal_3",
+        "xmas_meal_4",
+        "xmas_meal_5"
+      ],
+      "_created_seq": 24,
+      "_updated_seq": 24
+    },
+    "xmas_todos": {
+      "id": "xmas_todos",
+      "parent": "christmas_day",
+      "display": "checklist",
+      "props": {
+        "title": "To-Do"
+      },
+      "_removed": false,
+      "_children": [
+        "xmas_todo_1",
+        "xmas_todo_2",
+        "xmas_todo_3"
+      ],
+      "_created_seq": 25,
+      "_updated_seq": 25
+    },
+    "friday": {
+      "id": "friday",
+      "parent": "page",
+      "display": "section",
+      "props": {
+        "title": "Friday, Dec 26"
+      },
+      "_removed": false,
+      "_children": [
+        "fri_activities",
+        "fri_meals",
+        "fri_todos"
+      ],
+      "_created_seq": 26,
+      "_updated_seq": 26
+    },
+    "fri_activities": {
+      "id": "fri_activities",
+      "parent": "friday",
+      "display": "table",
+      "props": {
+        "title": "Activities"
+      },
+      "_removed": false,
+      "_children": [
+        "fri_act_1",
+        "fri_act_2"
+      ],
+      "_created_seq": 27,
+      "_updated_seq": 27
+    },
+    "fri_meals": {
+      "id": "fri_meals",
+      "parent": "friday",
+      "display": "table",
+      "props": {
+        "title": "Meals"
+      },
+      "_removed": false,
+      "_children": [
+        "fri_meal_1",
+        "fri_meal_2"
+      ],
+      "_created_seq": 28,
+      "_updated_seq": 28
+    },
+    "fri_todos": {
+      "id": "fri_todos",
+      "parent": "friday",
+      "display": "checklist",
+      "props": {
+        "title": "To-Do"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 29,
+      "_updated_seq": 29
+    },
+    "sat_act_1": {
+      "id": "sat_act_1",
+      "parent": "sat_activities",
+      "display": null,
+      "props": {
+        "time": "9-11am",
+        "activity": "Skating lessons"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 30,
+      "_updated_seq": 30
+    },
+    "sat_act_2": {
+      "id": "sat_act_2",
+      "parent": "sat_activities",
+      "display": null,
+      "props": {
+        "time": "12:45-2:15pm",
+        "activity": "Rock climbing",
+        "who": "Henry"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 31,
+      "_updated_seq": 31
+    },
+    "sat_act_3": {
+      "id": "sat_act_3",
+      "parent": "sat_activities",
+      "display": null,
+      "props": {
+        "time": "3:15-4:15pm",
+        "activity": "Massage",
+        "who": "Chris"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 32,
+      "_updated_seq": 32
+    },
+    "sat_meal_1": {
+      "id": "sat_meal_1",
+      "parent": "sat_meals",
+      "display": null,
+      "props": {
+        "meal": "Dinner",
+        "item": "Spaghetti & meatballs"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 33,
+      "_updated_seq": 33
+    },
+    "sat_act_4": {
+      "id": "sat_act_4",
+      "parent": "sat_activities",
+      "display": null,
+      "props": {
+        "time": "~7pm",
+        "activity": "Pick up Allan at airport",
+        "done": true,
+        "link": "https://www.google.com/maps?q=Detroit+Metropolitan+Airport+DTW"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 34,
+      "_updated_seq": 34
+    },
+    "sat_todo_1": {
+      "id": "sat_todo_1",
+      "parent": "sat_todos",
+      "display": null,
+      "props": {
+        "task": "Chris & Henry: Make spaghetti & meatballs",
+        "done": false
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 35,
+      "_updated_seq": 35
+    },
+    "sun_act_1": {
+      "id": "sun_act_1",
+      "parent": "sun_activities",
+      "display": null,
+      "props": {
+        "time": "6:30-8am",
+        "activity": "Chris - Barn tennis"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 36,
+      "_updated_seq": 36
+    },
+    "sun_act_2": {
+      "id": "sun_act_2",
+      "parent": "sun_activities",
+      "display": null,
+      "props": {
+        "time": "9am",
+        "activity": "Samantha - Yoga"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 37,
+      "_updated_seq": 37
+    },
+    "sun_act_3": {
+      "id": "sun_act_3",
+      "parent": "sun_activities",
+      "display": null,
+      "props": {
+        "time": "12-1pm",
+        "activity": "Kids tennis class"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 38,
+      "_updated_seq": 38
+    },
+    "sun_meal_1": {
+      "id": "sun_meal_1",
+      "parent": "sun_meals",
+      "display": null,
+      "props": {
+        "meal": "Lunch",
+        "item": "Nagomi or Evergreen",
+        "link": "https://www.google.com/maps?q=Nagomi+Sushi+Ann+Arbor+MI"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 39,
+      "_updated_seq": 39
+    },
+    "sun_meal_2": {
+      "id": "sun_meal_2",
+      "parent": "sun_meals",
+      "display": null,
+      "props": {
+        "meal": "Dinner",
+        "item": "Spaghetti & jumbo meatballs"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 40,
+      "_updated_seq": 40
+    },
+    "sun_meal_3": {
+      "id": "sun_meal_3",
+      "parent": "sun_meals",
+      "display": null,
+      "props": {
+        "meal": "Dinner",
+        "item": "Salad"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 41,
+      "_updated_seq": 41
+    },
+    "sun_meal_4": {
+      "id": "sun_meal_4",
+      "parent": "sun_meals",
+      "display": null,
+      "props": {
+        "meal": "Dinner",
+        "item": "Chicken wings"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 42,
+      "_updated_seq": 42
+    },
+    "sun_todo_1": {
+      "id": "sun_todo_1",
+      "parent": "sun_todos",
+      "display": null,
+      "props": {
+        "task": "Chris: Pick up prime rib and pork shoulder",
+        "done": false
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 43,
+      "_updated_seq": 43
+    },
+    "mon_act_1": {
+      "id": "mon_act_1",
+      "parent": "mon_activities",
+      "display": null,
+      "props": {
+        "time": "8:30am",
+        "activity": "Kids drop off at Leslie Science Nature Center",
+        "done": true,
+        "link": "https://www.google.com/maps?q=Leslie+Science+Nature+Center+Ann+Arbor+MI"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 44,
+      "_updated_seq": 44
+    },
+    "mon_act_2": {
+      "id": "mon_act_2",
+      "parent": "mon_activities",
+      "display": null,
+      "props": {
+        "time": "11am-12pm",
+        "activity": "Chris - Trainer"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 45,
+      "_updated_seq": 45
+    },
+    "mon_act_3": {
+      "id": "mon_act_3",
+      "parent": "mon_activities",
+      "display": null,
+      "props": {
+        "time": "12-1pm",
+        "activity": "Sam - Yoga"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 46,
+      "_updated_seq": 46
+    },
+    "mon_act_4": {
+      "id": "mon_act_4",
+      "parent": "mon_activities",
+      "display": null,
+      "props": {
+        "time": "3:30pm",
+        "activity": "Kids pickup at Leslie Science Nature Center",
+        "done": true,
+        "link": "https://www.google.com/maps?q=Leslie+Science+Nature+Center+Ann+Arbor+MI"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 47,
+      "_updated_seq": 47
+    },
+    "mon_act_5": {
+      "id": "mon_act_5",
+      "parent": "mon_activities",
+      "display": null,
+      "props": {
+        "time": "5pm",
+        "activity": "Chris done with work",
+        "done": true
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 48,
+      "_updated_seq": 48
+    },
+    "mon_act_6": {
+      "id": "mon_act_6",
+      "parent": "mon_activities",
+      "display": null,
+      "props": {
+        "time": "Evening",
+        "activity": "Chris & Nicole arrive",
+        "done": true
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 49,
+      "_updated_seq": 49
+    },
+    "mon_meal_1": {
+      "id": "mon_meal_1",
+      "parent": "mon_meals",
+      "display": null,
+      "props": {
+        "meal": "Dinner",
+        "item": "Smoked BBQ ribs & chicken"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 50,
+      "_updated_seq": 50
+    },
+    "mon_meal_2": {
+      "id": "mon_meal_2",
+      "parent": "mon_meals",
+      "display": null,
+      "props": {
+        "meal": "Dinner",
+        "item": "Baked beans"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 51,
+      "_updated_seq": 51
+    },
+    "mon_meal_3": {
+      "id": "mon_meal_3",
+      "parent": "mon_meals",
+      "display": null,
+      "props": {
+        "meal": "Dinner",
+        "item": "Mac and cheese"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 52,
+      "_updated_seq": 52
+    },
+    "mon_meal_4": {
+      "id": "mon_meal_4",
+      "parent": "mon_meals",
+      "display": null,
+      "props": {
+        "meal": "Dinner",
+        "item": "Coleslaw"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 53,
+      "_updated_seq": 53
+    },
+    "mon_meal_5": {
+      "id": "mon_meal_5",
+      "parent": "mon_meals",
+      "display": null,
+      "props": {
+        "meal": "Dinner",
+        "item": "GF Cornbread"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 54,
+      "_updated_seq": 54
+    },
+    "mon_todo_1": {
+      "id": "mon_todo_1",
+      "parent": "mon_todos",
+      "display": null,
+      "props": {
+        "task": "Chris: Smoke ribs & chicken",
+        "done": false
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 55,
+      "_updated_seq": 55
+    },
+    "mon_todo_2": {
+      "id": "mon_todo_2",
+      "parent": "mon_todos",
+      "display": null,
+      "props": {
+        "task": "Sam: Make GF cornbread, mac and cheese, coleslaw",
+        "done": false
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 56,
+      "_updated_seq": 56
+    },
+    "tue_act_1": {
+      "id": "tue_act_1",
+      "parent": "tue_activities",
+      "display": null,
+      "props": {
+        "time": "6:30-8am",
+        "activity": "Chris - Tennis"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 57,
+      "_updated_seq": 57
+    },
+    "tue_act_2": {
+      "id": "tue_act_2",
+      "parent": "tue_activities",
+      "display": null,
+      "props": {
+        "time": "10am",
+        "activity": "Family fitness & pool time at Liberty Athletic",
+        "note": "We have guest passes!",
+        "link": "https://www.google.com/maps?q=Liberty+Athletic+Club+Ann+Arbor+MI"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 58,
+      "_updated_seq": 58
+    },
+    "tue_act_3": {
+      "id": "tue_act_3",
+      "parent": "tue_activities",
+      "display": null,
+      "props": {
+        "time": "3:30pm",
+        "activity": "Order Joe's Pizza",
+        "done": true
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 59,
+      "_updated_seq": 59
+    },
+    "tue_act_4": {
+      "id": "tue_act_4",
+      "parent": "tue_activities",
+      "display": null,
+      "props": {
+        "time": "5:20pm",
+        "activity": "Leave for Greenfield Village",
+        "done": true
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 60,
+      "_updated_seq": 60
+    },
+    "tue_act_5": {
+      "id": "tue_act_5",
+      "parent": "tue_activities",
+      "display": null,
+      "props": {
+        "time": "5:45-8pm",
+        "activity": "Greenfield Village",
+        "link": "https://www.google.com/maps?q=Greenfield+Village+Dearborn+MI"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 61,
+      "_updated_seq": 61
+    },
+    "tue_meal_1": {
+      "id": "tue_meal_1",
+      "parent": "tue_meals",
+      "display": null,
+      "props": {
+        "meal": "Lunch",
+        "item": "Choose your own adventure",
+        "note": "Leftovers welcome!"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 62,
+      "_updated_seq": 62
+    },
+    "tue_meal_2": {
+      "id": "tue_meal_2",
+      "parent": "tue_meals",
+      "display": null,
+      "props": {
+        "meal": "Dinner",
+        "item": "Joe's Pizza",
+        "link": "https://www.google.com/maps?q=Joes+Pizza+Ann+Arbor+MI"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 63,
+      "_updated_seq": 63
+    },
+    "tue_todo_1": {
+      "id": "tue_todo_1",
+      "parent": "tue_todos",
+      "display": null,
+      "props": {
+        "task": "Chris: Order Joe's pizza at 3:30pm",
+        "done": false
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 64,
+      "_updated_seq": 64
+    },
+    "eve_act_1": {
+      "id": "eve_act_1",
+      "parent": "eve_activities",
+      "display": null,
+      "props": {
+        "time": "8-10am",
+        "activity": "Chris - Birthday tennis"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 65,
+      "_updated_seq": 65
+    },
+    "eve_act_2": {
+      "id": "eve_act_2",
+      "parent": "eve_activities",
+      "display": null,
+      "props": {
+        "time": "12-2pm",
+        "activity": "Ana & Fredy cleaning",
+        "done": true
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 66,
+      "_updated_seq": 66
+    },
+    "eve_act_3": {
+      "id": "eve_act_3",
+      "parent": "eve_activities",
+      "display": null,
+      "props": {
+        "time": "3-8pm",
+        "activity": "Chris's Rocking Xmas Eve Birthday Party!"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 67,
+      "_updated_seq": 67
+    },
+    "eve_meal_1": {
+      "id": "eve_meal_1",
+      "parent": "eve_meals",
+      "display": null,
+      "props": {
+        "meal": "Party food",
+        "item": "Smoked pork shoulder carnitas with all the fixings"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 68,
+      "_updated_seq": 68
+    },
+    "eve_todo_1": {
+      "id": "eve_todo_1",
+      "parent": "eve_todos",
+      "display": null,
+      "props": {
+        "task": "Chris: Smoke carnitas in the morning",
+        "done": false
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 69,
+      "_updated_seq": 69
+    },
+    "eve_todo_2": {
+      "id": "eve_todo_2",
+      "parent": "eve_todos",
+      "display": null,
+      "props": {
+        "task": "Everybody: House prep for party (Samantha is captain)",
+        "done": false
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 70,
+      "_updated_seq": 70
+    },
+    "eve_todo_3": {
+      "id": "eve_todo_3",
+      "parent": "eve_todos",
+      "display": null,
+      "props": {
+        "task": "Chris: Lay out taco table accoutrements",
+        "done": false
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 71,
+      "_updated_seq": 71
+    },
+    "eve_todo_4": {
+      "id": "eve_todo_4",
+      "parent": "eve_todos",
+      "display": null,
+      "props": {
+        "task": "Chris & Nicole: Devise signature cocktail punch (feeds 15 adults)",
+        "done": false
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 72,
+      "_updated_seq": 72
+    },
+    "xmas_act_1": {
+      "id": "xmas_act_1",
+      "parent": "xmas_activities",
+      "display": null,
+      "props": {
+        "time": "Morning",
+        "activity": "Presents!"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 73,
+      "_updated_seq": 73
+    },
+    "xmas_meal_1": {
+      "id": "xmas_meal_1",
+      "parent": "xmas_meals",
+      "display": null,
+      "props": {
+        "meal": "Morning",
+        "item": "Christmas Brunch"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 74,
+      "_updated_seq": 74
+    },
+    "xmas_meal_2": {
+      "id": "xmas_meal_2",
+      "parent": "xmas_meals",
+      "display": null,
+      "props": {
+        "meal": "3pm",
+        "item": "Smoked Prime Rib Supper"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 75,
+      "_updated_seq": 75
+    },
+    "xmas_meal_3": {
+      "id": "xmas_meal_3",
+      "parent": "xmas_meals",
+      "display": null,
+      "props": {
+        "meal": "Supper",
+        "item": "Mashed potatoes"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 76,
+      "_updated_seq": 76
+    },
+    "xmas_meal_4": {
+      "id": "xmas_meal_4",
+      "parent": "xmas_meals",
+      "display": null,
+      "props": {
+        "meal": "Supper",
+        "item": "Baked beans"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 77,
+      "_updated_seq": 77
+    },
+    "xmas_meal_5": {
+      "id": "xmas_meal_5",
+      "parent": "xmas_meals",
+      "display": null,
+      "props": {
+        "meal": "Supper",
+        "item": "Popovers"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 78,
+      "_updated_seq": 78
+    },
+    "xmas_todo_1": {
+      "id": "xmas_todo_1",
+      "parent": "xmas_todos",
+      "display": null,
+      "props": {
+        "task": "Sam & Chris F: Set breakfast table with toys",
+        "done": false
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 79,
+      "_updated_seq": 79
+    },
+    "xmas_todo_2": {
+      "id": "xmas_todo_2",
+      "parent": "xmas_todos",
+      "display": null,
+      "props": {
+        "task": "Chris Li: Make Christmas brunch",
+        "done": false
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 80,
+      "_updated_seq": 80
+    },
+    "xmas_todo_3": {
+      "id": "xmas_todo_3",
+      "parent": "xmas_todos",
+      "display": null,
+      "props": {
+        "task": "Chris Li: Smoke prime rib",
+        "done": false
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 81,
+      "_updated_seq": 81
+    },
+    "fri_act_1": {
+      "id": "fri_act_1",
+      "parent": "fri_activities",
+      "display": null,
+      "props": {
+        "time": "All day",
+        "activity": "Chris & Nicole in Midland",
+        "done": true,
+        "link": "https://www.google.com/maps?q=Midland+MI"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 82,
+      "_updated_seq": 82
+    },
+    "fri_act_2": {
+      "id": "fri_act_2",
+      "parent": "fri_activities",
+      "display": null,
+      "props": {
+        "time": "TBD",
+        "activity": "Kids movie (Zootopia or SpongeBob) with Isla & Esme"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 83,
+      "_updated_seq": 83
+    },
+    "fri_meal_1": {
+      "id": "fri_meal_1",
+      "parent": "fri_meals",
+      "display": null,
+      "props": {
+        "meal": "Lunch",
+        "item": "Biwako",
+        "link": "https://www.google.com/maps?q=Biwako+Ann+Arbor+MI"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 84,
+      "_updated_seq": 84
+    },
+    "fri_meal_2": {
+      "id": "fri_meal_2",
+      "parent": "fri_meals",
+      "display": null,
+      "props": {
+        "meal": "Dinner",
+        "item": "Leftovers or Basil Babe",
+        "note": "Depending on how we're feeling"
+      },
+      "_removed": false,
+      "_children": [],
+      "_created_seq": 85,
+      "_updated_seq": 85
+    }
+  },
+  "relationships": [],
+  "rel_cardinalities": {},
+  "rel_constraints": {},
+  "styles": {
+    "global": {},
+    "entities": {}
+  },
+  "_sequence": 85
+}

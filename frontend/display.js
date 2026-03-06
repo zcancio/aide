@@ -70,12 +70,6 @@ var display = (() => {
   }
 
   // src/lib/display/render-html.js
-  function isInsideSection(entity, entities) {
-    if (!entity.parent) return false;
-    const parent = entities[entity.parent];
-    if (!parent) return false;
-    return parent.display === "section";
-  }
   function renderEntity(entityId, entities) {
     const entity = entities[entityId];
     if (!entity || entity._removed) return "";
@@ -152,7 +146,6 @@ var display = (() => {
     const props = entity.props || {};
     const title = props.title || props.name || "";
     const titleField = props.title !== void 0 ? "title" : "name";
-    const insideSection = isInsideSection(entity, entities);
     const items = childIds.map((id) => {
       const child = entities[id];
       if (!child) return "";
@@ -171,27 +164,17 @@ var display = (() => {
       const cp = child?.props || {};
       return cp.done === true || cp.checked === true;
     }).length;
-    const checklistContent = `<ul class="aide-checklist">${items}</ul>
-    <div class="aide-checklist__summary">${completed} of ${childIds.length} complete</div>`;
-    if (title) {
-      if (insideSection) {
-        return `<div class="aide-subsection">
-        <h3 class="aide-heading aide-heading--3 editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</h3>
-        ${checklistContent}
-      </div>`;
-      }
-      return `<div class="aide-section">
-      <div class="aide-section__title editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</div>
-      <div class="aide-section__content">${checklistContent}</div>
-    </div>`;
-    }
-    return `<div class="aide-checklist-container">${checklistContent}</div>`;
+    const titleHtml = title ? `<h3 class="aide-heading aide-heading--3 editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</h3>` : "";
+    return `<div class="aide-checklist-container">
+    ${titleHtml}
+    <ul class="aide-checklist">${items}</ul>
+    <div class="aide-checklist__summary">${completed} of ${childIds.length} complete</div>
+  </div>`;
   }
   function renderTable(entity, childIds, entities) {
     const props = entity.props || {};
     const title = props.title || props.name || "";
     const titleField = props.title !== void 0 ? "title" : "name";
-    const insideSection = isInsideSection(entity, entities);
     let tableContent;
     if (childIds.length === 0) {
       tableContent = '<p class="aide-collection-empty">No items yet.</p>';
@@ -217,19 +200,8 @@ var display = (() => {
       </table>
     </div>`;
     }
-    if (title) {
-      if (insideSection) {
-        return `<div class="aide-subsection">
-        <h3 class="aide-heading aide-heading--3 editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</h3>
-        ${tableContent}
-      </div>`;
-      }
-      return `<div class="aide-section">
-      <div class="aide-section__title editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</div>
-      <div class="aide-section__content">${tableContent}</div>
-    </div>`;
-    }
-    return tableContent;
+    const titleHtml = title ? `<h3 class="aide-heading aide-heading--3 editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</h3>` : "";
+    return `${titleHtml}${tableContent}`;
   }
   function renderList(entity, childIds, entities) {
     const items = childIds.map((id) => {
@@ -251,8 +223,8 @@ var display = (() => {
     const props = entity.props || {};
     const title = props.title || props.name || "";
     const titleField = props.title !== void 0 ? "title" : "name";
-    const insideSection = isInsideSection(entity, entities);
     const displayProps = Object.entries(props).filter(([k]) => !k.startsWith("_") && k !== "title" && k !== "name");
+    const titleHtml = title ? `<div class="aide-card__title editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</div>` : "";
     const fields = displayProps.map(([k, v]) => `
     <div class="aide-card__field">
       <span class="aide-card__label">${escapeHtml(humanize(k))}</span>
@@ -261,24 +233,12 @@ var display = (() => {
   `).join("");
     const children = childIds.map((id) => renderEntity(id, entities)).join("");
     const isEmpty = !title && displayProps.length === 0 && childIds.length === 0;
-    const cardContent = `<div class="aide-card">
+    return `<div class="aide-card">
+    ${titleHtml}
     ${fields}
     ${children}
     ${isEmpty ? '<p class="aide-card__empty">No properties set</p>' : ""}
   </div>`;
-    if (title) {
-      if (insideSection) {
-        return `<div class="aide-subsection">
-        <h3 class="aide-heading aide-heading--3 editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</h3>
-        ${cardContent}
-      </div>`;
-      }
-      return `<div class="aide-section">
-      <div class="aide-section__title editable-field" data-entity-id="${entity.id}" data-field="${titleField}">${escapeHtml(title)}</div>
-      <div class="aide-section__content">${cardContent}</div>
-    </div>`;
-    }
-    return cardContent;
   }
   function renderHtml(store) {
     if (!store || !store.entities) return "";

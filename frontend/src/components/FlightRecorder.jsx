@@ -76,10 +76,25 @@ export default function FlightRecorder() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialAideId = searchParams.get('aide_id') || '';
 
-  const [data, setData] = useState(null);
+  // Try to restore data from localStorage on initial load
+  const [data, setData] = useState(() => {
+    try {
+      const saved = localStorage.getItem('FR_DATA');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [idx, setIdx] = useState(0);
+  const [idx, setIdx] = useState(() => {
+    try {
+      const saved = localStorage.getItem('FR_IDX');
+      return saved ? parseInt(saved, 10) : 0;
+    } catch {
+      return 0;
+    }
+  });
   const [tab, setTab] = useState('rendered');
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(2); // 1=realtime, 2=2x, 5=5x, 0=instant
@@ -88,10 +103,31 @@ export default function FlightRecorder() {
   const [showTyping, setShowTyping] = useState(false);
   const [aideIdInput, setAideIdInput] = useState(initialAideId);
   const [aides, setAides] = useState([]);
+  const [showOpenModal, setShowOpenModal] = useState(false);
   const fileRef = useRef(null);
+  const modalFileRef = useRef(null);
   const previewRef = useRef(null);
   const shadowRef = useRef(null);
   const playTimerRef = useRef(null);
+
+  // Persist data and idx to localStorage when they change
+  useEffect(() => {
+    if (data) {
+      try {
+        localStorage.setItem('FR_DATA', JSON.stringify(data));
+      } catch {
+        // localStorage full or unavailable - ignore
+      }
+    }
+  }, [data]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('FR_IDX', String(idx));
+    } catch {
+      // ignore
+    }
+  }, [idx]);
 
   const turns = useMemo(() => data?.turns || [], [data]);
   // N includes turn 0 (initial empty state) + all actual turns
@@ -228,7 +264,7 @@ export default function FlightRecorder() {
   }, []);
 
   // Load from API
-  const loadFromAPI = useCallback(async (aideId) => {
+  const loadFromAPI = useCallback(async (aideId, fromModal = false) => {
     if (!aideId) return;
     setLoading(true);
     setError(null);
@@ -240,6 +276,7 @@ export default function FlightRecorder() {
       setIdx(0);
       setTab('rendered');
       setSearchParams({ aide_id: aideId }, { replace: true });
+      if (fromModal) setShowOpenModal(false);
     } else {
       setError('No telemetry data found');
     }
@@ -247,7 +284,7 @@ export default function FlightRecorder() {
   }, [setSearchParams]);
 
   // Load from file
-  const loadFromFile = useCallback((file) => {
+  const loadFromFile = useCallback((file, fromModal = false) => {
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
@@ -270,6 +307,7 @@ export default function FlightRecorder() {
           setIdx(0);
           setTab('rendered');
           setError(null);
+          if (fromModal) setShowOpenModal(false);
         } else {
           setError('Invalid file format: no turns found');
         }
@@ -293,7 +331,13 @@ export default function FlightRecorder() {
 
   // Initialize Shadow DOM for preview (runs when data loads or tab changes to 'rendered')
   useEffect(() => {
-    if (!data || tab !== 'rendered' || !previewRef.current || shadowRef.current) return;
+    if (!data || tab !== 'rendered' || !previewRef.current) return;
+    // Reuse existing shadow root if present
+    if (previewRef.current.shadowRoot) {
+      shadowRef.current = previewRef.current.shadowRoot;
+      return;
+    }
+    if (shadowRef.current) return;
     const shadow = previewRef.current.attachShadow({ mode: 'open' });
     shadowRef.current = shadow;
     const style = document.createElement('style');
@@ -308,7 +352,7 @@ export default function FlightRecorder() {
       .aide-page { background: transparent; }
       .aide-heading { color: #e8e6e3; }
       .aide-text { color: #c4c2bf; }
-      .aide-section { background: #252a25; border-color: #3a3f3a; }
+      .aide-section { border-color: #3a3f3a; }
       .aide-section__title { color: #e8e6e3; }
       .aide-card { background: #252a25; border-color: #3a3f3a; }
       .aide-card__title { color: #e8e6e3; }
@@ -656,11 +700,84 @@ export default function FlightRecorder() {
           >
             Export
           </button>
-          <button className="fr-close-btn" onClick={() => setData(null)}>
-            Close
+          <button className="fr-close-btn" onClick={() => setShowOpenModal(true)}>
+            Open
           </button>
         </div>
       </div>
+
+      {/* Open modal */}
+      {showOpenModal && (
+        <div className="fr-modal-overlay" onClick={() => setShowOpenModal(false)}>
+          <div className="fr-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="fr-modal-header">
+              <h3>Open Telemetry</h3>
+              <button className="fr-modal-close" onClick={() => setShowOpenModal(false)}>&times;</button>
+            </div>
+            <div className="fr-modal-content">
+              {/* Aide picker */}
+              {aides.length > 0 && (
+                <div className="fr-picker">
+                  <label>Select an aide</label>
+                  <select
+                    value={aideIdInput}
+                    onChange={(e) => {
+                      setAideIdInput(e.target.value);
+                      if (e.target.value) loadFromAPI(e.target.value, true);
+                    }}
+                  >
+                    <option value="">Choose aide...</option>
+                    {aides.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.title || 'Untitled'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Manual ID input */}
+              <div className="fr-manual-input">
+                <label>Or enter Aide ID</label>
+                <div className="fr-input-row">
+                  <input
+                    type="text"
+                    value={aideIdInput}
+                    onChange={(e) => setAideIdInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && loadFromAPI(aideIdInput, true)}
+                    placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                  />
+                  <button
+                    onClick={() => loadFromAPI(aideIdInput, true)}
+                    disabled={loading || !aideIdInput}
+                  >
+                    {loading ? 'Loading...' : 'Load'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="fr-divider">or</div>
+
+              {/* File upload */}
+              <button className="fr-upload-btn" onClick={() => modalFileRef.current?.click()}>
+                Upload JSON File
+              </button>
+              <input
+                ref={modalFileRef}
+                type="file"
+                accept=".json"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) loadFromFile(f, true);
+                }}
+                style={{ display: 'none' }}
+              />
+
+              {error && <div className="fr-error">{error}</div>}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main content */}
       <div className="fr-main">
