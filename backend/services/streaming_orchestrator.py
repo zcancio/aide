@@ -131,7 +131,8 @@ class StreamingOrchestrator:
         t_first_content: float | None = None
 
         # Result accumulators
-        text_blocks: list[dict[str, Any] | str] = []
+        text_blocks: list[dict[str, Any] | str] = []  # Raw text for telemetry
+        voice_texts: list[str] = []  # Text from voice tool calls only
         tool_calls: list[dict[str, Any]] = []
         all_raw_tools: list[dict[str, Any]] = []
 
@@ -173,7 +174,9 @@ class StreamingOrchestrator:
 
                 # Handle voice events (don't reduce, just collect)
                 if event_type == "voice":
-                    text_blocks.append({"text": event.get("text", "")})
+                    voice_text = event.get("text", "")
+                    voice_texts.append(voice_text)
+                    text_blocks.append({"text": voice_text})  # Also log for telemetry
                     continue
 
                 # Apply event to working snapshot through kernel
@@ -206,6 +209,7 @@ class StreamingOrchestrator:
 
         return {
             "text_blocks": text_blocks,
+            "voice_texts": voice_texts,
             "tool_calls": tool_calls,
             "all_raw_tools": all_raw_tools,
             "usage": {
@@ -307,6 +311,7 @@ class StreamingOrchestrator:
             # Merge results: L4 tool_calls first, then L3
             result = {
                 "text_blocks": l4_result["text_blocks"] + l3_result["text_blocks"],
+                "voice_texts": l4_result["voice_texts"] + l3_result["voice_texts"],
                 "tool_calls": l4_result["tool_calls"] + l3_result["tool_calls"],
                 "all_raw_tools": l4_result["all_raw_tools"] + l3_result["all_raw_tools"],
                 "usage": {
@@ -367,15 +372,14 @@ class StreamingOrchestrator:
             if event and event.get("t") != "voice":
                 yield {"type": "event", "event": event, "snapshot": self.snapshot}
 
-        # Yield text_blocks as voice
-        for tb in result["text_blocks"]:
-            text = tb["text"] if isinstance(tb, dict) else tb
+        # Yield voice tool output only (not raw text_blocks)
+        for text in result["voice_texts"]:
             if text.strip():
                 yield {"type": "voice", "text": text}
 
         # Fallback: if no voice was sent, generate a default message
         mutation_count = len(result["tool_calls"])
-        has_voice = any((tb["text"] if isinstance(tb, dict) else tb).strip() for tb in result["text_blocks"])
+        has_voice = any(t.strip() for t in result["voice_texts"])
         if not has_voice and mutation_count > 0:
             fallback_text = f"{mutation_count} update{'s' if mutation_count != 1 else ''} applied."
             yield {"type": "voice", "text": fallback_text}
