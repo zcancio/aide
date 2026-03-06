@@ -159,9 +159,188 @@ CHRISTMAS_WEEK_REALISTIC = {
 
 
 # ---------------------------------------------------------------------------
+# Christmas Week Ideal — matches mock_christmas_entity_state_ideal.json
+# ---------------------------------------------------------------------------
+
+CHRISTMAS_WEEK_IDEAL = {
+    "name": "christmas_week_ideal",
+    "description": "Family plans Christmas week in Ann Arbor. Messages designed to produce "
+    "the exact entity structure in mock_christmas_entity_state_ideal.json. "
+    "Tests day-by-day section structure with Activities (table), Meals (table), and To-Do (checklist) per day.",
+    "expected_final_state": "evals/scripts/mock_christmas_entity_state_ideal.json",
+    "turns": [
+        # ── Turn 1: Create week planner with 7 day sections ──
+        {
+            "message": "christmas 2025 week planner for our family in ann arbor. "
+            "show each day as a section: Saturday December 20 through Friday December 26. "
+            "under each day we'll add meals, activities, and to-dos",
+            "expected_tier": "L4",
+            "checks": {
+                "creates_page": True,
+                "has_day_sections": True,
+                "section_count": 7,
+            },
+            "notes": "Creates page with 7 sections. Each section has title like 'Saturday, Dec 20'. "
+            "Each section should have Activities (table), Meals (table), To-Do (checklist) children.",
+        },
+        # ── Turn 2: Saturday activities ──
+        {
+            "message": "saturday: skating lessons 9-11am, henry has rock climbing 12:45-2:15pm, "
+            "chris massage 3:15-4:15pm",
+            "expected_tier": "L3",
+            "checks": {
+                "min_entities": 3,
+            },
+            "notes": "Saturday activities: skating lessons, rock climbing (Henry), massage (Chris). "
+            "Items go in sat_activities table.",
+        },
+        # ── Turn 3: Saturday dinner and airport pickup ──
+        {
+            "message": "saturday dinner is spaghetti and meatballs, chris and henry will make it. "
+            "also need to pick up allan at airport around 7pm",
+            "expected_tier": "L3",
+            "checks": {
+                "min_entities": 3,
+            },
+            "notes": "Adds dinner to sat_meals, airport pickup to sat_activities (with DTW map link), "
+            "and cooking task to sat_todos.",
+        },
+        # ── Turn 4: Sunday activities ──
+        {
+            "message": "sunday: chris barn tennis 6:30-8am, samantha yoga at 9, kids tennis class 12-1pm",
+            "expected_tier": "L3",
+            "checks": {
+                "min_entities": 3,
+            },
+            "notes": "Sunday activities in sun_activities table.",
+        },
+        # ── Turn 5: Sunday meals ──
+        {
+            "message": "sunday lunch at nagomi or evergreen, dinner is spaghetti & jumbo meatballs, "
+            "salad, and chicken wings",
+            "expected_tier": "L3",
+            "checks": {
+                "min_entities": 4,
+            },
+            "notes": "Sunday meals: lunch (Nagomi with map link), dinner items. Each menu item separate entity.",
+        },
+        # ── Turn 6: Sunday todo ──
+        {
+            "message": "chris needs to pick up prime rib and pork shoulder on sunday",
+            "expected_tier": "L3",
+            "checks": {
+                "min_entities": 1,
+            },
+            "notes": "Single todo item in sun_todos checklist.",
+        },
+        # ── Turn 7: Monday activities ──
+        {
+            "message": "monday: kids drop off at leslie science nature center 8:30am, "
+            "chris trainer 11am-12pm, sam yoga 12-1pm, kids pickup 3:30pm, "
+            "chris done with work 5pm, chris & nicole arrive evening",
+            "expected_tier": "L3",
+            "checks": {
+                "min_entities": 6,
+            },
+            "notes": "Dense Monday activities. Leslie Science Center items get map links. "
+            "Some items marked done (drop off, pickup, work done, arrive).",
+        },
+        # ── Turn 8: Monday dinner menu ──
+        {
+            "message": "monday dinner: smoked bbq ribs & chicken, baked beans, mac and cheese, "
+            "coleslaw, gf cornbread",
+            "expected_tier": "L3",
+            "checks": {
+                "min_entities": 5,
+            },
+            "notes": "5 dinner menu items for Monday in mon_meals table.",
+        },
+        # ── Turn 9: Monday todos ──
+        {
+            "message": "monday todos: chris smoke ribs & chicken, sam make gf cornbread mac and cheese coleslaw",
+            "expected_tier": "L3",
+            "checks": {
+                "min_entities": 2,
+            },
+            "notes": "Two cooking tasks in mon_todos checklist.",
+        },
+        # ── Turn 10: Tuesday full day ──
+        {
+            "message": "tuesday: chris tennis 6:30-8am, family fitness & pool at liberty athletic 10am "
+            "(we have guest passes), lunch is choose your own adventure leftovers welcome, "
+            "order joes pizza 3:30pm, joes pizza for dinner, leave for greenfield village 5:20pm, "
+            "greenfield village 5:45-8pm",
+            "expected_tier": "L3",
+            "checks": {
+                "min_entities": 8,
+            },
+            "notes": "Dense Tuesday. Activities, meals, and implicit todo (order pizza). "
+            "Liberty Athletic and Greenfield Village get map links. Joe's Pizza gets map link.",
+        },
+        # ── Turn 11: Christmas Eve ──
+        {
+            "message": "christmas eve: chris birthday tennis 8-10am, ana & fredy cleaning 12-2pm, "
+            "smoked pork shoulder carnitas with all the fixings for party, "
+            "chris's rocking xmas eve birthday party 3-8pm",
+            "expected_tier": "L3",
+            "checks": {
+                "min_entities": 4,
+            },
+            "notes": "Christmas Eve activities and party food. Cleaning marked done.",
+        },
+        # ── Turn 12: Christmas Eve todos ──
+        {
+            "message": "christmas eve party prep: chris smoke carnitas in morning, "
+            "everybody house prep for party samantha is captain, "
+            "chris lay out taco table accoutrements, "
+            "chris and nicole devise signature cocktail punch feeds 15 adults",
+            "expected_tier": "L3",
+            "checks": {
+                "min_entities": 4,
+            },
+            "notes": "4 party prep tasks in eve_todos checklist.",
+        },
+        # ── Turn 13: Christmas Day ──
+        {
+            "message": "christmas day: presents in morning, christmas brunch, "
+            "smoked prime rib supper at 3pm with mashed potatoes baked beans and popovers",
+            "expected_tier": "L3",
+            "checks": {
+                "min_entities": 6,
+            },
+            "notes": "Christmas Day activity (presents) and meals (brunch, prime rib supper with sides).",
+        },
+        # ── Turn 14: Christmas Day todos ──
+        {
+            "message": "christmas day todos: sam and chris f set breakfast table with toys, "
+            "chris li make christmas brunch, chris li smoke prime rib",
+            "expected_tier": "L3",
+            "checks": {
+                "min_entities": 3,
+            },
+            "notes": "3 todos for Christmas Day in xmas_todos checklist.",
+        },
+        # ── Turn 15: Friday ──
+        {
+            "message": "friday: chris & nicole in midland all day, biwako for lunch, "
+            "kids movie zootopia or spongebob with isla & esme, "
+            "leftovers or basil babe for dinner depending on how we're feeling",
+            "expected_tier": "L3",
+            "checks": {
+                "min_entities": 4,
+            },
+            "notes": "Friday activities and meals. Midland trip marked done with map link. "
+            "Biwako gets map link. Dinner has note about mood-dependent choice.",
+        },
+    ],
+}
+
+
+# ---------------------------------------------------------------------------
 # All complex scenarios
 # ---------------------------------------------------------------------------
 
 COMPLEX_SCENARIOS = [
     CHRISTMAS_WEEK_REALISTIC,
+    CHRISTMAS_WEEK_IDEAL,
 ]

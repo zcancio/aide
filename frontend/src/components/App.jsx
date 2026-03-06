@@ -9,6 +9,7 @@ import Dashboard from './Dashboard.jsx';
 import Editor from './Editor.jsx';
 import FlightRecorder from './FlightRecorder.jsx';
 import DemoPatterns from './DemoPatterns.jsx';
+import Playground from './Playground.jsx';
 
 function AuthenticatedRoutes() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -37,6 +38,9 @@ function AppRoutes() {
   // Public routes (no auth required)
   if (location.pathname.startsWith('/demo')) {
     return <DemoPatterns />;
+  }
+  if (location.pathname.startsWith('/playground')) {
+    return <Playground />;
   }
 
   return <AuthenticatedRoutes />;
