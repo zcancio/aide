@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi.responses import RedirectResponse
 
 from backend import config
 from backend.auth import create_jwt, get_current_user
@@ -81,14 +82,16 @@ async def send_magic_link_endpoint(
     return SendMagicLinkResponse()
 
 
-@router.get("/verify", status_code=200)
+@router.get("/verify", status_code=302)
 async def verify_magic_link_endpoint(
     token: str,
     request: Request,
-    response: Response,
-) -> UserPublic:
+) -> RedirectResponse:
     """
     Verify a magic link token and create a session.
+
+    On success: redirects to dashboard (/)
+    On failure: redirects to auth screen with error (/auth?error=...)
 
     Rate limit: 10 attempts per IP per minute (prevents token brute force).
     """
@@ -101,32 +104,32 @@ async def verify_magic_link_endpoint(
         max_requests=10,
         window_minutes=1,
     ):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many verification attempts. Please wait a moment.",
-            headers={"Retry-After": "60"},
+        # Redirect to auth screen with rate limit error
+        return RedirectResponse(
+            url="/auth?error=too_many_attempts",
+            status_code=status.HTTP_303_SEE_OTHER,
         )
 
     # Get magic link
     magic_link = await magic_link_repo.get_by_token(token)
     if not magic_link:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid magic link. Please request a new one.",
+        return RedirectResponse(
+            url="/auth?error=invalid_link",
+            status_code=status.HTTP_303_SEE_OTHER,
         )
 
     # Check if already used
     if magic_link.used:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="This magic link has already been used. Please request a new one.",
+        return RedirectResponse(
+            url="/auth?error=link_used",
+            status_code=status.HTTP_303_SEE_OTHER,
         )
 
     # Check if expired
     if magic_link.expires_at < datetime.now(UTC):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="This magic link has expired. Please request a new one.",
+        return RedirectResponse(
+            url="/auth?error=link_expired",
+            status_code=status.HTTP_303_SEE_OTHER,
         )
 
     # Mark as used
@@ -141,6 +144,12 @@ async def verify_magic_link_endpoint(
     # Create JWT
     jwt_token = create_jwt(user.id)
 
+    # Create redirect response to dashboard
+    response = RedirectResponse(
+        url="/",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
     # Set HTTP-only cookie
     is_production = config.settings.ENVIRONMENT == "production"
     response.set_cookie(
@@ -153,7 +162,7 @@ async def verify_magic_link_endpoint(
         path="/",
     )
 
-    return UserPublic.from_user(user)
+    return response
 
 
 @router.get("/me", status_code=200)

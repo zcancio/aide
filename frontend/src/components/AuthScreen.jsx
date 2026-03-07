@@ -12,21 +12,21 @@ export default function AuthScreen() {
   const [error, setError] = useState(null);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { sendMagicLink, verifyToken, isAuthenticated } = useAuth();
+  const { sendMagicLink, isAuthenticated } = useAuth();
 
-  // Check for token in URL on mount
+  // Check for error in URL on mount (from failed magic link verification)
   useEffect(() => {
-    const token = searchParams.get('token');
-    if (token) {
-      verifyToken(token).then((result) => {
-        if (result.data) {
-          navigate('/');
-        } else if (result.error) {
-          setError('Invalid or expired link. Please request a new one.');
-        }
-      });
+    const errorParam = searchParams.get('error');
+    if (errorParam) {
+      const errorMessages = {
+        too_many_attempts: 'Too many verification attempts. Please wait a moment.',
+        invalid_link: 'Invalid magic link. Please request a new one.',
+        link_used: 'This magic link has already been used. Please request a new one.',
+        link_expired: 'This magic link has expired. Please request a new one.',
+      };
+      setError(errorMessages[errorParam] || 'Authentication failed. Please request a new link.');
     }
-  }, [searchParams, verifyToken, navigate]);
+  }, [searchParams]);
 
   // Redirect if already authenticated
   useEffect(() => {

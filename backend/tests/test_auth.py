@@ -269,18 +269,24 @@ class TestAuthRoutes:
         email = f"test-{uuid4()}@example.com"
         magic_link = await magic_link_repo.create(email)
 
-        response = await async_client.get(f"/auth/verify?token={magic_link.token}")
+        response = await async_client.get(
+            f"/auth/verify?token={magic_link.token}",
+            follow_redirects=False,
+        )
 
-        assert response.status_code == 200
-        data = response.json()
-        assert data["email"] == email
-        assert data["tier"] == "free"
+        # Should redirect to dashboard
+        assert response.status_code == 303
+        assert response.headers["location"] == "/"
 
         # Should have session cookie
         assert "session" in response.cookies
 
-        # Clean up
+        # Verify user was created
         user = await user_repo.get_by_email(email)
+        assert user is not None
+        assert user.email == email
+
+        # Clean up
         if user:
             async with system_conn() as conn:
                 await conn.execute("DELETE FROM users WHERE id = $1", user.id)
@@ -292,13 +298,17 @@ class TestAuthRoutes:
 
         magic_link = await magic_link_repo.create(email)
 
-        response = await async_client.get(f"/auth/verify?token={magic_link.token}")
+        response = await async_client.get(
+            f"/auth/verify?token={magic_link.token}",
+            follow_redirects=False,
+        )
 
-        assert response.status_code == 200
-        data = response.json()
-        assert data["email"] == email
-        assert data["name"] == "Existing User"
-        assert str(existing_user.id) == data["id"]
+        # Should redirect to dashboard
+        assert response.status_code == 303
+        assert response.headers["location"] == "/"
+
+        # Should have session cookie
+        assert "session" in response.cookies
 
         # Clean up
         async with system_conn() as conn:
@@ -306,10 +316,14 @@ class TestAuthRoutes:
 
     async def test_verify_invalid_token(self, async_client):
         """Test verifying an invalid token."""
-        response = await async_client.get("/auth/verify?token=invalid-token-here")
+        response = await async_client.get(
+            "/auth/verify?token=invalid-token-here",
+            follow_redirects=False,
+        )
 
-        assert response.status_code == 401
-        assert "Invalid magic link" in response.json()["detail"]
+        # Should redirect to auth screen with error
+        assert response.status_code == 303
+        assert response.headers["location"] == "/auth?error=invalid_link"
 
     async def test_verify_used_token(self, async_client):
         """Test verifying a token that was already used."""
@@ -319,10 +333,14 @@ class TestAuthRoutes:
         # Mark as used
         await magic_link_repo.mark_used(magic_link.token)
 
-        response = await async_client.get(f"/auth/verify?token={magic_link.token}")
+        response = await async_client.get(
+            f"/auth/verify?token={magic_link.token}",
+            follow_redirects=False,
+        )
 
-        assert response.status_code == 401
-        assert "already been used" in response.json()["detail"]
+        # Should redirect to auth screen with error
+        assert response.status_code == 303
+        assert response.headers["location"] == "/auth?error=link_used"
 
     async def test_verify_expired_token(self, async_client):
         """Test verifying an expired token."""
@@ -343,10 +361,14 @@ class TestAuthRoutes:
                 expires_at,
             )
 
-        response = await async_client.get(f"/auth/verify?token={token}")
+        response = await async_client.get(
+            f"/auth/verify?token={token}",
+            follow_redirects=False,
+        )
 
-        assert response.status_code == 401
-        assert "expired" in response.json()["detail"]
+        # Should redirect to auth screen with error
+        assert response.status_code == 303
+        assert response.headers["location"] == "/auth?error=link_expired"
 
     async def test_get_me_authenticated(self, async_client, test_user_id):
         """Test /auth/me endpoint with valid session."""
