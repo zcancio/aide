@@ -14,6 +14,11 @@ vi.mock('../../lib/api.js', () => ({
   createAide: vi.fn(),
 }));
 
+// Mock useAuth
+vi.mock('../../hooks/useAuth.jsx', () => ({
+  useAuth: () => ({ user: null }),
+}));
+
 // Mock useNavigate
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async () => {

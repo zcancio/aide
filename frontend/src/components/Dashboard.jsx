@@ -5,12 +5,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as api from '../lib/api.js';
+import { useAuth } from '../hooks/useAuth.jsx';
 import AideCard from './AideCard.jsx';
 
 export default function Dashboard() {
   const [aides, setAides] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
     async function loadAides() {
@@ -38,9 +40,16 @@ export default function Dashboard() {
     <div className="dashboard" data-testid="dashboard">
       <div className="dashboard-header">
         <h1>Your aides</h1>
-        <button className="btn btn-primary" onClick={handleNew}>
-          + New
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {user?.is_admin && (
+            <button className="btn btn-ghost" onClick={() => navigate('/admin')}>
+              Admin
+            </button>
+          )}
+          <button className="btn btn-primary" onClick={handleNew}>
+            + New
+          </button>
+        </div>
       </div>
 
       {aides.length === 0 ? (

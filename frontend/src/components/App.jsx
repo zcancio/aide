@@ -4,6 +4,7 @@
 
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from '../hooks/useAuth.jsx';
+import AdminDashboard from './AdminDashboard.jsx';
 import AuthScreen from './AuthScreen.jsx';
 import Dashboard from './Dashboard.jsx';
 import Editor from './Editor.jsx';
@@ -25,6 +26,7 @@ function AuthenticatedRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Dashboard />} />
+      <Route path="/admin" element={<AdminDashboard />} />
       <Route path="/a/:aideId" element={<Editor />} />
       <Route path="/flight-recorder" element={<FlightRecorder />} />
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -17,6 +17,7 @@ def _row_to_user(row: asyncpg.Record) -> User:
         email=row["email"],
         name=row["name"],
         tier=row["tier"],
+        is_admin=row.get("is_admin", False),
         stripe_customer_id=row["stripe_customer_id"],
         stripe_sub_id=row["stripe_sub_id"],
         turn_count=row["turn_count"],
@@ -80,6 +81,22 @@ class UserRepo:
             User if found, None otherwise
         """
         async with user_conn(user_id) as conn:
+            row = await conn.fetchrow("SELECT * FROM users WHERE id = $1", user_id)
+            return _row_to_user(row) if row else None
+
+    async def get_by_id_system(self, user_id: UUID) -> User | None:
+        """
+        Get a user by ID using system connection (bypasses RLS).
+
+        For admin use only. Caller must verify admin authorization.
+
+        Args:
+            user_id: User UUID
+
+        Returns:
+            User if found, None otherwise
+        """
+        async with system_conn() as conn:
             row = await conn.fetchrow("SELECT * FROM users WHERE id = $1", user_id)
             return _row_to_user(row) if row else None
 
@@ -159,3 +176,73 @@ class UserRepo:
                 """,
                 user_id,
             )
+
+    async def list_all(
+        self,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> tuple[list[dict], int]:
+        """
+        List all users with aide counts. For admin use only.
+
+        Caller must verify admin authorization before calling.
+
+        Args:
+            limit: Maximum number of users to return
+            offset: Number of users to skip
+
+        Returns:
+            Tuple of (list of user dicts with aide_count, total count)
+        """
+        async with system_conn() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT
+                    u.id,
+                    u.email,
+                    u.name,
+                    u.tier,
+                    u.is_admin,
+                    u.turn_count,
+                    u.created_at,
+                    COUNT(a.id) as aide_count
+                FROM users u
+                LEFT JOIN aides a ON u.id = a.user_id AND a.status != 'archived'
+                GROUP BY u.id
+                ORDER BY u.created_at DESC
+                LIMIT $1 OFFSET $2
+                """,
+                limit,
+                offset,
+            )
+
+            total = await conn.fetchval("SELECT COUNT(*) FROM users")
+
+            users = [
+                {
+                    "id": row["id"],
+                    "email": row["email"],
+                    "name": row["name"],
+                    "tier": row["tier"],
+                    "is_admin": row["is_admin"],
+                    "turn_count": row["turn_count"],
+                    "aide_count": row["aide_count"],
+                    "created_at": row["created_at"],
+                }
+                for row in rows
+            ]
+
+            return users, total or 0
+
+    async def count_by_tier(self) -> dict[str, int]:
+        """
+        Count users grouped by tier. For admin stats.
+
+        Caller must verify admin authorization before calling.
+
+        Returns:
+            Dict mapping tier name to count
+        """
+        async with system_conn() as conn:
+            rows = await conn.fetch("SELECT tier, COUNT(*) as count FROM users GROUP BY tier")
+            return {row["tier"]: row["count"] for row in rows}

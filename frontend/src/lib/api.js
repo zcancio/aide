@@ -106,3 +106,41 @@ export async function fetchConversationHistory(aideId) {
 export async function fetchTelemetry(aideId) {
   return apiCall(`/api/aides/${aideId}/telemetry`);
 }
+
+// Admin endpoints
+
+export async function fetchAdminStats() {
+  return apiCall('/api/admin/stats');
+}
+
+export async function fetchAdminUsers(limit = 100, offset = 0) {
+  return apiCall(`/api/admin/users?limit=${limit}&offset=${offset}`);
+}
+
+export async function fetchAdminAuditLogs(limit = 100, offset = 0) {
+  return apiCall(`/api/admin/audit-logs?limit=${limit}&offset=${offset}`);
+}
+
+export async function fetchAdminAuditLogsCount() {
+  return apiCall('/api/admin/audit-logs/count');
+}
+
+export async function searchAdminAides(aideId, userEmail) {
+  const body = {};
+  if (aideId) body.aide_id = aideId;
+  if (userEmail) body.user_email = userEmail;
+
+  return apiCall('/api/admin/search/aides', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function breakglassViewAide(aideId, reason) {
+  return apiCall(`/api/admin/breakglass/aide/${aideId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ aide_id: aideId, reason }),
+  });
+}

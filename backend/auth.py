@@ -190,3 +190,33 @@ async def get_current_user(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Not authenticated. Please sign in.",
     )
+
+
+async def get_current_admin(
+    session: Annotated[str | None, Cookie()] = None,
+    authorization: Annotated[str | None, Header()] = None,
+) -> User:
+    """
+    FastAPI dependency to get the current authenticated admin user.
+
+    Requires the user to be authenticated AND have is_admin = true.
+
+    Args:
+        session: JWT from HTTP-only session cookie
+        authorization: Bearer token header
+
+    Returns:
+        Current authenticated admin User
+
+    Raises:
+        HTTPException: If authentication fails or user is not an admin
+    """
+    user = await get_current_user(session=session, authorization=authorization)
+
+    if not user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required.",
+        )
+
+    return user
