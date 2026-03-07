@@ -18,10 +18,12 @@ from backend.models.admin_audit import (
     SystemStatsResponse,
 )
 from backend.models.aide import Aide
+from backend.models.telemetry import AideTelemetry
 from backend.models.user import User
 from backend.repos.admin_audit_repo import AdminAuditRepo
 from backend.repos.aide_repo import AideRepo
 from backend.repos.user_repo import UserRepo
+from backend.services.telemetry import get_aide_telemetry_system
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 admin_audit_repo = AdminAuditRepo()
@@ -76,6 +78,59 @@ async def breakglass_view_aide(
     )
 
     return aide
+
+
+@router.post("/breakglass/aide/{aide_id}/telemetry")
+async def breakglass_view_aide_telemetry(
+    aide_id: UUID,
+    req: BreakglassAccessRequest,
+    request: Request,
+    admin: Annotated[User, Depends(get_current_admin)],
+) -> AideTelemetry:
+    """
+    Admin breakglass access to view telemetry for any aide.
+
+    Requires admin privileges. All access is logged to admin_audit_log.
+    Returns telemetry in flight-recorder compatible format.
+
+    Args:
+        aide_id: UUID of the aide to access (must match request body)
+        req: BreakglassAccessRequest with reason for access
+        request: FastAPI request object for IP address
+        admin: Current admin user (from dependency)
+
+    Returns:
+        AideTelemetry for flight-recorder
+
+    Raises:
+        HTTPException: If aide_id mismatch or aide not found
+    """
+    if aide_id != req.aide_id:
+        raise HTTPException(
+            status_code=400,
+            detail="aide_id in URL must match aide_id in request body",
+        )
+
+    # Fetch telemetry using system connection to bypass RLS
+    telemetry = await get_aide_telemetry_system(aide_id)
+    if not telemetry:
+        raise HTTPException(status_code=404, detail="Aide not found")
+
+    # Get aide for audit log (need user_id)
+    aide = await aide_repo.get_by_id_system(aide_id)
+
+    # Log the breakglass access
+    client_ip = request.client.host if request.client else None
+    await admin_audit_repo.log_breakglass_access(
+        admin_user_id=admin.id,
+        action="breakglass_view_aide_telemetry",
+        reason=req.reason,
+        target_user_id=aide.user_id if aide else None,
+        target_aide_id=aide_id,
+        ip_address=client_ip,
+    )
+
+    return telemetry
 
 
 @router.get("/audit-logs")

@@ -144,3 +144,11 @@ export async function breakglassViewAide(aideId, reason) {
     body: JSON.stringify({ aide_id: aideId, reason }),
   });
 }
+
+export async function breakglassViewAideTelemetry(aideId, reason) {
+  return apiCall(`/api/admin/breakglass/aide/${aideId}/telemetry`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ aide_id: aideId, reason }),
+  });
+}

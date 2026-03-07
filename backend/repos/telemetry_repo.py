@@ -141,3 +141,38 @@ async def get_turns_for_aide(
             )
             for r in rows
         ]
+
+
+async def get_turns_for_aide_system(aide_id: UUID) -> list[TurnTelemetry]:
+    """
+    Get all turns for an aide bypassing RLS.
+
+    For admin breakglass access only. Caller must verify admin authorization.
+    """
+    async with system_conn() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT turn_num, tier, model, message, tool_calls, text_blocks,
+                   system_prompt, usage, ttfc_ms, ttc_ms, validation
+            FROM aide_turn_telemetry
+            WHERE aide_id = $1
+            ORDER BY turn_num
+            """,
+            aide_id,
+        )
+        return [
+            TurnTelemetry(
+                turn=r["turn_num"],
+                tier=r["tier"],
+                model=r["model"],
+                message=r["message"],
+                tool_calls=json.loads(r["tool_calls"]),
+                text_blocks=json.loads(r["text_blocks"]),
+                system_prompt=r["system_prompt"],
+                usage=TokenUsage(**json.loads(r["usage"])),
+                ttfc_ms=r["ttfc_ms"],
+                ttc_ms=r["ttc_ms"],
+                validation=json.loads(r["validation"]) if r["validation"] else None,
+            )
+            for r in rows
+        ]

@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { fetchTelemetry, fetchAides } from '../lib/api.js';
 import {
   calculateCost,
@@ -73,11 +73,20 @@ function EventPill({ event }) {
 
 export default function FlightRecorder() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialAideId = searchParams.get('aide_id') || '';
 
-  // Try to restore data from localStorage on initial load
+  // Check for breakglass mode (admin viewing another user's aide)
+  const breakglassState = location.state?.breakglass ? location.state : null;
+  const isBreakglass = !!breakglassState;
+
+  // Try to restore data from localStorage on initial load, or use breakglass data
   const [data, setData] = useState(() => {
+    // If breakglass mode, use the passed telemetry data
+    if (breakglassState?.telemetry) {
+      return breakglassState.telemetry;
+    }
     try {
       const saved = localStorage.getItem('FR_DATA');
       return saved ? JSON.parse(saved) : null;
@@ -110,16 +119,16 @@ export default function FlightRecorder() {
   const shadowRef = useRef(null);
   const playTimerRef = useRef(null);
 
-  // Persist data and idx to localStorage when they change
+  // Persist data and idx to localStorage when they change (but not breakglass data)
   useEffect(() => {
-    if (data) {
+    if (data && !isBreakglass) {
       try {
         localStorage.setItem('FR_DATA', JSON.stringify(data));
       } catch {
         // localStorage full or unavailable - ignore
       }
     }
-  }, [data]);
+  }, [data, isBreakglass]);
 
   useEffect(() => {
     try {
@@ -628,10 +637,21 @@ export default function FlightRecorder() {
 
   return (
     <div className="fr-container">
+      {/* Breakglass banner */}
+      {isBreakglass && (
+        <div className="fr-breakglass-banner">
+          <span className="fr-breakglass-icon">🔓</span>
+          <span>
+            Admin breakglass view — <strong>{breakglassState.aideTitle}</strong> owned by{' '}
+            <strong>{breakglassState.ownerEmail}</strong>
+          </span>
+          <span className="fr-breakglass-readonly">READ-ONLY</span>
+        </div>
+      )}
       {/* Top bar */}
       <div className="fr-topbar">
         <div className="fr-topbar-left">
-          <button className="fr-back-btn" onClick={() => navigate('/')}>
+          <button className="fr-back-btn" onClick={() => navigate(isBreakglass ? '/admin' : '/')}>
             &larr;
           </button>
           <div className={`fr-status-dot ${playing ? 'fr-status-dot--playing' : ''}`} />

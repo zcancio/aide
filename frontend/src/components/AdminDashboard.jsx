@@ -147,13 +147,21 @@ export default function AdminDashboard() {
     setBreakglassLoading(true);
     setBreakglassError(null);
 
-    const result = await api.breakglassViewAide(breakglassAide.id, breakglassReason);
+    const result = await api.breakglassViewAideTelemetry(breakglassAide.id, breakglassReason);
 
     if (result.error) {
       setBreakglassError(result.error);
       setBreakglassLoading(false);
     } else {
-      navigate(`/a/${breakglassAide.id}`);
+      // Navigate to flight-recorder with telemetry data
+      navigate('/flight-recorder', {
+        state: {
+          breakglass: true,
+          telemetry: result.data,
+          aideTitle: breakglassAide.title,
+          ownerEmail: breakglassAide.owner_email,
+        },
+      });
     }
   }
 

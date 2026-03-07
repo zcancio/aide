@@ -276,3 +276,27 @@ async def get_aide_telemetry(user_id: UUID, aide_id: UUID) -> AideTelemetry | No
         turns=turns,
         final_snapshot=aide.state,
     )
+
+
+async def get_aide_telemetry_system(aide_id: UUID) -> AideTelemetry | None:
+    """
+    Get full telemetry for an aide bypassing RLS.
+
+    For admin breakglass access only. Caller must verify admin authorization.
+
+    Returns None if aide not found.
+    """
+    repo = AideRepo()
+    aide = await repo.get_by_id_system(aide_id)
+    if not aide:
+        return None
+
+    turns = await telemetry_repo.get_turns_for_aide_system(aide_id)
+
+    return AideTelemetry(
+        aide_id=str(aide_id),
+        name=aide.title,
+        timestamp=datetime.now(UTC).isoformat(),
+        turns=turns,
+        final_snapshot=aide.state,
+    )

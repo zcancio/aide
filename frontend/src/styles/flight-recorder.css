@@ -1102,3 +1102,35 @@
   align-items: center;
   gap: 16px;
 }
+
+/* Breakglass banner */
+.fr-breakglass-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: linear-gradient(90deg, #7c2d12 0%, #991b1b 50%, #7c2d12 100%);
+  color: #fef2f2;
+  font-size: 13px;
+  border-bottom: 1px solid #dc2626;
+}
+
+.fr-breakglass-icon {
+  font-size: 16px;
+}
+
+.fr-breakglass-banner strong {
+  color: #fecaca;
+}
+
+.fr-breakglass-readonly {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+}
