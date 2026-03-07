@@ -31,6 +31,7 @@ class UserPublic(BaseModel):
     email: EmailStr
     name: str | None
     tier: Literal["free", "pro"]
+    is_admin: bool = False
     turn_count: int
     turn_week_start: datetime
     created_at: datetime
@@ -43,6 +44,7 @@ class UserPublic(BaseModel):
             email=user.email,
             name=user.name,
             tier=user.tier,
+            is_admin=user.is_admin,
             turn_count=user.turn_count,
             turn_week_start=user.turn_week_start,
             created_at=user.created_at,

@@ -317,3 +317,75 @@ class AideRepo:
                     event_log,
                 )
             return _row_to_aide(row) if row else None
+
+    async def count_all(self) -> int:
+        """
+        Count all aides in the system. For admin stats.
+
+        Caller must verify admin authorization before calling.
+
+        Returns:
+            Total number of aides
+        """
+        async with system_conn() as conn:
+            count = await conn.fetchval("SELECT COUNT(*) FROM aides")
+            return count or 0
+
+    async def count_by_status(self) -> dict[str, int]:
+        """
+        Count aides grouped by status. For admin stats.
+
+        Caller must verify admin authorization before calling.
+
+        Returns:
+            Dict mapping status to count
+        """
+        async with system_conn() as conn:
+            rows = await conn.fetch("SELECT status, COUNT(*) as count FROM aides GROUP BY status")
+            return {row["status"]: row["count"] for row in rows}
+
+    async def search_by_user_email(self, email: str, limit: int = 50) -> list[dict]:
+        """
+        Search aides by owner email. For admin breakglass search.
+
+        Caller must verify admin authorization before calling.
+
+        Args:
+            email: User email to search for (case-insensitive partial match)
+            limit: Maximum results to return
+
+        Returns:
+            List of aide dicts with owner info
+        """
+        async with system_conn() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT
+                    a.id,
+                    a.title,
+                    a.status,
+                    a.created_at,
+                    a.updated_at,
+                    u.id as owner_id,
+                    u.email as owner_email
+                FROM aides a
+                JOIN users u ON a.user_id = u.id
+                WHERE LOWER(u.email) LIKE LOWER($1)
+                ORDER BY a.updated_at DESC
+                LIMIT $2
+                """,
+                f"%{email}%",
+                limit,
+            )
+            return [
+                {
+                    "id": row["id"],
+                    "title": row["title"],
+                    "status": row["status"],
+                    "owner_id": row["owner_id"],
+                    "owner_email": row["owner_email"],
+                    "created_at": row["created_at"],
+                    "updated_at": row["updated_at"],
+                }
+                for row in rows
+            ]

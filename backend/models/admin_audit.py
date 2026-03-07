@@ -44,3 +44,54 @@ class AdminAuditLogResponse(BaseModel):
     reason: str
     ip_address: str | None = None
     created_at: datetime
+
+
+class AdminUserListItem(BaseModel):
+    """User item for admin user list."""
+
+    id: UUID
+    email: str
+    name: str | None
+    tier: str
+    is_admin: bool
+    turn_count: int
+    aide_count: int
+    created_at: datetime
+
+
+class AdminUserListResponse(BaseModel):
+    """Response for admin user list."""
+
+    users: list[AdminUserListItem]
+    total: int
+
+
+class SystemStatsResponse(BaseModel):
+    """System-wide statistics for admin dashboard."""
+
+    total_users: int
+    total_aides: int
+    total_audit_logs: int
+    users_by_tier: dict[str, int]
+    aides_by_status: dict[str, int]
+
+
+class AideSearchRequest(BaseModel):
+    """Request to search for aides by ID or user email."""
+
+    model_config = {"extra": "forbid"}
+
+    aide_id: UUID | None = None
+    user_email: str | None = None
+
+
+class AideSearchResult(BaseModel):
+    """Aide search result with owner info."""
+
+    id: UUID
+    title: str
+    status: str
+    owner_email: str
+    owner_id: UUID
+    created_at: datetime
+    updated_at: datetime
