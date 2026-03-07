@@ -8,7 +8,6 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from backend.auth import get_current_admin
-from backend.db import system_conn
 from backend.models.admin_audit import (
     AdminAuditLogResponse,
     BreakglassAccessRequest,
@@ -16,10 +15,11 @@ from backend.models.admin_audit import (
 from backend.models.aide import Aide
 from backend.models.user import User
 from backend.repos.admin_audit_repo import AdminAuditRepo
-from backend.repos.aide_repo import _row_to_aide
+from backend.repos.aide_repo import AideRepo
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 admin_audit_repo = AdminAuditRepo()
+aide_repo = AideRepo()
 
 
 @router.post("/breakglass/aide/{aide_id}")
@@ -52,17 +52,10 @@ async def breakglass_view_aide(
             detail="aide_id in URL must match aide_id in request body",
         )
 
-    # Fetch the aide using system_conn to bypass RLS
-    async with system_conn() as conn:
-        row = await conn.fetchrow(
-            "SELECT * FROM aides WHERE id = $1",
-            aide_id,
-        )
-
-        if not row:
-            raise HTTPException(status_code=404, detail="Aide not found")
-
-        aide = _row_to_aide(row)
+    # Fetch the aide using system connection to bypass RLS
+    aide = await aide_repo.get_by_id_system(aide_id)
+    if not aide:
+        raise HTTPException(status_code=404, detail="Aide not found")
 
     # Log the breakglass access
     client_ip = request.client.host if request.client else None
@@ -104,7 +97,6 @@ async def list_audit_logs(
         raise HTTPException(status_code=400, detail="Maximum limit is 1000")
 
     return await admin_audit_repo.list_audit_logs(
-        admin_user_id=admin.id,
         limit=limit,
         offset=offset,
     )
@@ -125,5 +117,5 @@ async def count_audit_logs(
     Returns:
         Dictionary with total count
     """
-    count = await admin_audit_repo.count_audit_logs(admin_user_id=admin.id)
+    count = await admin_audit_repo.count_audit_logs()
     return {"count": count}

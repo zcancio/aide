@@ -236,6 +236,25 @@ class AideRepo:
             )
             return _row_to_aide(row) if row else None
 
+    async def get_by_id_system(self, aide_id: UUID) -> Aide | None:
+        """
+        Get an aide by ID using system connection (bypasses RLS).
+
+        For admin breakglass access only. Caller must verify admin authorization.
+
+        Args:
+            aide_id: Aide UUID
+
+        Returns:
+            Aide if found, None otherwise
+        """
+        async with system_conn() as conn:
+            row = await conn.fetchrow(
+                "SELECT * FROM aides WHERE id = $1",
+                aide_id,
+            )
+            return _row_to_aide(row) if row else None
+
     async def count_for_user(self, user_id: UUID) -> int:
         """
         Count non-archived aides for a user.

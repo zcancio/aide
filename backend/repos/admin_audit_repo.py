@@ -72,31 +72,22 @@ class AdminAuditRepo:
 
     async def list_audit_logs(
         self,
-        admin_user_id: UUID,
         limit: int = 100,
         offset: int = 0,
     ) -> list[AdminAuditLogResponse]:
         """
-        List admin audit logs (admin only).
+        List admin audit logs.
+
+        Caller must verify admin authorization before calling this method.
 
         Args:
-            admin_user_id: UUID of the admin requesting the logs
             limit: Maximum number of logs to return
             offset: Number of logs to skip
 
         Returns:
             List of AdminAuditLogResponse entries with enriched data
         """
-        # Use system_conn to bypass RLS for joins, but verify admin status first
         async with system_conn() as conn:
-            # Verify the requesting user is an admin
-            is_admin = await conn.fetchval(
-                "SELECT is_admin FROM users WHERE id = $1",
-                admin_user_id,
-            )
-            if not is_admin:
-                raise RuntimeError("User is not an admin")
-
             rows = await conn.fetch(
                 """
                 SELECT
@@ -138,24 +129,15 @@ class AdminAuditRepo:
                 for row in rows
             ]
 
-    async def count_audit_logs(self, admin_user_id: UUID) -> int:
+    async def count_audit_logs(self) -> int:
         """
-        Count total audit log entries (admin only).
+        Count total audit log entries.
 
-        Args:
-            admin_user_id: UUID of the admin requesting the count
+        Caller must verify admin authorization before calling this method.
 
         Returns:
             Total number of audit log entries
         """
         async with system_conn() as conn:
-            # Verify the requesting user is an admin
-            is_admin = await conn.fetchval(
-                "SELECT is_admin FROM users WHERE id = $1",
-                admin_user_id,
-            )
-            if not is_admin:
-                raise RuntimeError("User is not an admin")
-
             count = await conn.fetchval("SELECT COUNT(*) FROM admin_audit_log")
             return count or 0
