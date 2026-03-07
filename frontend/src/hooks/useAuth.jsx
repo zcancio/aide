@@ -33,17 +33,6 @@ export function AuthProvider({ children }) {
 
   const sendMagicLink = (email) => api.sendMagicLink(email);
 
-  const verifyToken = async (token) => {
-    const result = await api.verifyToken(token);
-
-    if (result.data) {
-      setUser(result.data);
-      setIsAuthenticated(true);
-    }
-
-    return result;
-  };
-
   const logout = async () => {
     await api.logout();
     setUser(null);
@@ -55,7 +44,6 @@ export function AuthProvider({ children }) {
     isAuthenticated,
     isLoading,
     sendMagicLink,
-    verifyToken,
     logout,
   };
 
