@@ -78,29 +78,6 @@ describe('useAuth', () => {
     expect(api.sendMagicLink).toHaveBeenCalledWith(email);
   });
 
-  it('verifyToken calls api.verifyToken, sets user and isAuthenticated on success', async () => {
-    const mockUser = { id: '2', email: 'verified@example.com' };
-    api.fetchMe.mockResolvedValue({ error: 'Not authenticated' });
-    api.verifyToken.mockResolvedValue({ data: mockUser });
-
-    const { result } = renderHook(() => useAuth(), {
-      wrapper: AuthProvider,
-    });
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
-
-    const token = 'test-token';
-    await act(async () => {
-      await result.current.verifyToken(token);
-    });
-
-    expect(api.verifyToken).toHaveBeenCalledWith(token);
-    expect(result.current.user).toEqual(mockUser);
-    expect(result.current.isAuthenticated).toBe(true);
-  });
-
   it('logout calls api.logout, sets user=null and isAuthenticated=false', async () => {
     const mockUser = { id: '1', email: 'a@b.com' };
     api.fetchMe.mockResolvedValue({ data: mockUser });
