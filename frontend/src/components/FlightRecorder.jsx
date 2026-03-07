@@ -97,6 +97,10 @@ export default function FlightRecorder() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [idx, setIdx] = useState(() => {
+    // For breakglass mode, always start at turn 0
+    if (breakglassState?.telemetry) {
+      return 0;
+    }
     try {
       const saved = localStorage.getItem('FR_IDX');
       return saved ? parseInt(saved, 10) : 0;
@@ -141,10 +145,12 @@ export default function FlightRecorder() {
   const turns = useMemo(() => data?.turns || [], [data]);
   // N includes turn 0 (initial empty state) + all actual turns
   const N = turns.length + 1;
+  // Clamp idx to valid range
+  const clampedIdx = Math.max(0, Math.min(idx, N - 1));
   // Turn 0 is synthetic (empty state), turns 1+ map to actual turns
-  const actualTurnIdx = idx - 1;
-  const t = actualTurnIdx >= 0 ? turns[actualTurnIdx] : {};
-  const isTurn0 = idx === 0;
+  const actualTurnIdx = clampedIdx - 1;
+  const t = actualTurnIdx >= 0 && actualTurnIdx < turns.length ? turns[actualTurnIdx] : {};
+  const isTurn0 = clampedIdx === 0;
 
   // Build snapshots for current turn
   // Turn 0: before=empty, after=empty
@@ -395,7 +401,7 @@ export default function FlightRecorder() {
     let snapshot;
     if (streaming && streamingSnapshot) {
       snapshot = streamingSnapshot;
-    } else if (idx === N - 1 && data.final_snapshot) {
+    } else if (clampedIdx === N - 1 && data.final_snapshot) {
       snapshot = data.final_snapshot;
     } else {
       snapshot = snapshotAfter;
@@ -409,7 +415,7 @@ export default function FlightRecorder() {
     const store = { entities, rootIds, meta: snapshot.meta || {} };
     const html = renderHtml(store);
     content.innerHTML = html;
-  }, [idx, data, N, tab, snapshotAfter, streaming, streamingSnapshot]);
+  }, [clampedIdx, data, N, tab, snapshotAfter, streaming, streamingSnapshot]);
 
   // Auto-load if aide_id in URL
   useEffect(() => {
