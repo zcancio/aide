@@ -28,13 +28,12 @@ vi.mock('react-router-dom', async () => {
 describe('AuthScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockSearchParams.delete('token');
+    mockSearchParams.delete('error');
   });
 
   it('renders email input and send button', () => {
     vi.spyOn(useAuthModule, 'useAuth').mockReturnValue({
       sendMagicLink: vi.fn(),
-      verifyToken: vi.fn(),
     });
 
     render(
@@ -51,7 +50,6 @@ describe('AuthScreen', () => {
     const mockSendMagicLink = vi.fn().mockResolvedValue({ data: {} });
     vi.spyOn(useAuthModule, 'useAuth').mockReturnValue({
       sendMagicLink: mockSendMagicLink,
-      verifyToken: vi.fn(),
     });
 
     render(
@@ -75,7 +73,6 @@ describe('AuthScreen', () => {
     const mockSendMagicLink = vi.fn().mockResolvedValue({ data: {} });
     vi.spyOn(useAuthModule, 'useAuth').mockReturnValue({
       sendMagicLink: mockSendMagicLink,
-      verifyToken: vi.fn(),
     });
 
     render(
@@ -95,22 +92,78 @@ describe('AuthScreen', () => {
     });
   });
 
-  it('calls verifyToken on mount when token is in URL', async () => {
-    mockSearchParams.set('token', 'test-token-123');
-    const mockVerifyToken = vi.fn().mockResolvedValue({ data: {} });
+  it('displays error for invalid_link error param', () => {
+    mockSearchParams.set('error', 'invalid_link');
     vi.spyOn(useAuthModule, 'useAuth').mockReturnValue({
       sendMagicLink: vi.fn(),
-      verifyToken: mockVerifyToken,
     });
 
     render(
-      <MemoryRouter initialEntries={['/?token=test-token-123']}>
+      <MemoryRouter>
         <AuthScreen />
       </MemoryRouter>
     );
 
-    await waitFor(() => {
-      expect(mockVerifyToken).toHaveBeenCalledWith('test-token-123');
+    expect(screen.getByText(/invalid magic link/i)).toBeInTheDocument();
+  });
+
+  it('displays error for link_used error param', () => {
+    mockSearchParams.set('error', 'link_used');
+    vi.spyOn(useAuthModule, 'useAuth').mockReturnValue({
+      sendMagicLink: vi.fn(),
     });
+
+    render(
+      <MemoryRouter>
+        <AuthScreen />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText(/already been used/i)).toBeInTheDocument();
+  });
+
+  it('displays error for link_expired error param', () => {
+    mockSearchParams.set('error', 'link_expired');
+    vi.spyOn(useAuthModule, 'useAuth').mockReturnValue({
+      sendMagicLink: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter>
+        <AuthScreen />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText(/expired/i)).toBeInTheDocument();
+  });
+
+  it('displays error for too_many_attempts error param', () => {
+    mockSearchParams.set('error', 'too_many_attempts');
+    vi.spyOn(useAuthModule, 'useAuth').mockReturnValue({
+      sendMagicLink: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter>
+        <AuthScreen />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText(/too many/i)).toBeInTheDocument();
+  });
+
+  it('displays generic error for unknown error param', () => {
+    mockSearchParams.set('error', 'unknown_error');
+    vi.spyOn(useAuthModule, 'useAuth').mockReturnValue({
+      sendMagicLink: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter>
+        <AuthScreen />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText(/authentication failed/i)).toBeInTheDocument();
   });
 });

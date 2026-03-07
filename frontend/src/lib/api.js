@@ -89,10 +89,6 @@ export async function sendMagicLink(email) {
   });
 }
 
-export async function verifyToken(token) {
-  return apiCall(`/auth/verify?token=${token}`);
-}
-
 export async function fetchMe() {
   return apiCall('/auth/me');
 }

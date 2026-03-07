@@ -82,7 +82,7 @@ async def send_magic_link_endpoint(
     return SendMagicLinkResponse()
 
 
-@router.get("/verify", status_code=302)
+@router.get("/verify", status_code=303)
 async def verify_magic_link_endpoint(
     token: str,
     request: Request,

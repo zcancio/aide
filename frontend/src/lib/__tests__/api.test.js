@@ -10,7 +10,6 @@ import {
   publishAide,
   unpublishAide,
   sendMagicLink,
-  verifyToken,
   fetchMe,
   logout,
 } from '../api.js';
@@ -193,22 +192,6 @@ describe('api', () => {
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: 'a@b.com' }),
-    });
-    expect(result).toEqual({ data: mockData });
-  });
-
-  it("verifyToken('tok123') calls GET /auth/verify?token=tok123", async () => {
-    const mockData = { user_id: 'u1' };
-    global.fetch.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => mockData,
-    });
-
-    const result = await verifyToken('tok123');
-
-    expect(global.fetch).toHaveBeenCalledWith('/auth/verify?token=tok123', {
-      credentials: 'same-origin',
     });
     expect(result).toEqual({ data: mockData });
   });

@@ -37,7 +37,6 @@ describe('App', () => {
       isLoading: false,
       user: null,
       sendMagicLink: vi.fn(),
-      verifyToken: vi.fn(),
       logout: vi.fn(),
     });
 
@@ -53,7 +52,6 @@ describe('App', () => {
       isLoading: true,
       user: null,
       sendMagicLink: vi.fn(),
-      verifyToken: vi.fn(),
       logout: vi.fn(),
     });
 
@@ -69,7 +67,6 @@ describe('App', () => {
       isLoading: false,
       user: { id: 'user-1', email: 'test@example.com' },
       sendMagicLink: vi.fn(),
-      verifyToken: vi.fn(),
       logout: vi.fn(),
     });
 
@@ -88,7 +85,6 @@ describe('App', () => {
       isLoading: false,
       user: { id: 'user-1', email: 'test@example.com' },
       sendMagicLink: vi.fn(),
-      verifyToken: vi.fn(),
       logout: vi.fn(),
     });
 
@@ -107,7 +103,6 @@ describe('App', () => {
       isLoading: false,
       user: { id: 'user-1', email: 'test@example.com' },
       sendMagicLink: vi.fn(),
-      verifyToken: vi.fn(),
       logout: vi.fn(),
     });
 
