@@ -17,6 +17,7 @@ def _row_to_user(row: asyncpg.Record) -> User:
         email=row["email"],
         name=row["name"],
         tier=row["tier"],
+        is_admin=row.get("is_admin", False),
         stripe_customer_id=row["stripe_customer_id"],
         stripe_sub_id=row["stripe_sub_id"],
         turn_count=row["turn_count"],

@@ -17,6 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from backend import db
 from backend.middleware.rate_limit import rate_limiter
 from backend.repos.magic_link_repo import MagicLinkRepo
+from backend.routes import admin as admin_routes
 from backend.routes import aides as aide_routes
 from backend.routes import api_tokens, auth_routes, cli_auth
 from backend.routes import conversations as conversation_routes
@@ -102,6 +103,7 @@ app.include_router(pages_routes.router)
 app.include_router(telemetry_routes.router)
 app.include_router(ws_routes.router)
 app.include_router(engine_routes.router)
+app.include_router(admin_routes.router)
 
 
 @app.get("/health")

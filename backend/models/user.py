@@ -16,6 +16,7 @@ class User(BaseModel):
     email: EmailStr
     name: str | None = None
     tier: Literal["free", "pro"] = "free"
+    is_admin: bool = False
     stripe_customer_id: str | None = None
     stripe_sub_id: str | None = None
     turn_count: int = 0
