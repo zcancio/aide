@@ -7,12 +7,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { AuthProvider, useAuth } from '../useAuth.jsx';
 import * as api from '../../lib/api.js';
+import * as fingerprint from '../../lib/fingerprint.js';
 
 vi.mock('../../lib/api.js');
+vi.mock('../../lib/fingerprint.js');
 
 describe('useAuth', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default mock for fingerprint
+    fingerprint.getFingerprint.mockReturnValue('test-fingerprint-id');
+    // Default mock for createShadowSession (returns error by default)
+    api.createShadowSession.mockResolvedValue({ error: 'Not mocked' });
   });
 
   it('returns initial state with loading=true, user=null, isAuthenticated=false', () => {
@@ -43,8 +49,30 @@ describe('useAuth', () => {
     expect(result.current.isAuthenticated).toBe(true);
   });
 
-  it('sets user=null and isAuthenticated=false when fetchMe returns error', async () => {
+  it('creates shadow user when fetchMe returns error', async () => {
+    const mockShadowUser = { id: 'shadow-1', email: null, is_shadow: true };
+    api.fetchMe
+      .mockResolvedValueOnce({ error: 'Not authenticated' })
+      .mockResolvedValueOnce({ data: mockShadowUser });
+    api.createShadowSession.mockResolvedValue({ data: { user_id: 'shadow-1' } });
+
+    const { result } = renderHook(() => useAuth(), {
+      wrapper: AuthProvider,
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(api.createShadowSession).toHaveBeenCalledWith('test-fingerprint-id');
+    expect(result.current.user).toEqual(mockShadowUser);
+    expect(result.current.isAuthenticated).toBe(true);
+    expect(result.current.isShadow).toBe(true);
+  });
+
+  it('sets user=null when shadow session creation fails', async () => {
     api.fetchMe.mockResolvedValue({ error: 'Not authenticated' });
+    api.createShadowSession.mockResolvedValue({ error: 'Failed' });
 
     const { result } = renderHook(() => useAuth(), {
       wrapper: AuthProvider,
@@ -59,7 +87,8 @@ describe('useAuth', () => {
   });
 
   it('sendMagicLink calls api.sendMagicLink with email', async () => {
-    api.fetchMe.mockResolvedValue({ error: 'Not authenticated' });
+    const mockUser = { id: '1', email: 'a@b.com' };
+    api.fetchMe.mockResolvedValue({ data: mockUser });
     api.sendMagicLink.mockResolvedValue({ data: { success: true } });
 
     const { result } = renderHook(() => useAuth(), {
