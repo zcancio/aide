@@ -100,3 +100,81 @@
     background: #1A1A18; /* Dark bg - matches Shadow DOM --bg-primary */
   }
 }
+
+/* Signup Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.signup-modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px;
+  max-width: 420px;
+  width: 90%;
+}
+
+.signup-modal h2 {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--text);
+}
+
+.modal-subtitle {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.signup-modal form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.signup-modal input[type="email"] {
+  width: 100%;
+  padding: 12px;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.signup-modal input[type="email"]:focus {
+  border-color: var(--sage-500);
+}
+
+.signup-modal .error-message {
+  color: #e55;
+  font-size: 13px;
+  padding: 8px 12px;
+  background: rgba(238, 85, 85, 0.1);
+  border-radius: 6px;
+}
+
+.signup-modal .sent-message {
+  padding: 16px;
+  background: var(--elevated);
+  border-radius: 6px;
+  text-align: center;
+}
+
+.signup-modal .sent-message p {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin: 0;
+}

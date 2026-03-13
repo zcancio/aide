@@ -14,6 +14,7 @@ export class AideWS {
       status: [],
       snapshot: [],
       directEditError: [],
+      streamError: [],
     };
     this.snapshotBuffer = [];
     this.isHydrating = false;
@@ -96,6 +97,8 @@ export class AideWS {
       this.callbacks.voice.forEach((cb) => cb({ text: msg.text }));
     } else if (type === 'stream.start' || type === 'stream.end') {
       this.callbacks.status.forEach((cb) => cb({ type }));
+    } else if (type === 'stream.error') {
+      this.callbacks.streamError.forEach((cb) => cb(msg));
     } else if (type === 'direct_edit.error') {
       this.callbacks.directEditError.forEach((cb) => cb({ error: msg.error }));
     }
@@ -123,6 +126,10 @@ export class AideWS {
 
   onDirectEditError(callback) {
     this.callbacks.directEditError.push(callback);
+  }
+
+  onStreamError(callback) {
+    this.callbacks.streamError.push(callback);
   }
 
   send(data) {

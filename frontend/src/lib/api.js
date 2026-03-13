@@ -99,6 +99,23 @@ export async function logout() {
   });
 }
 
+export async function createShadowSession(fingerprint) {
+  return apiCall('/auth/shadow', {
+    method: 'POST',
+    headers: {
+      'X-Fingerprint-ID': fingerprint,
+    },
+  });
+}
+
+export async function convertShadowUser(email, fingerprint) {
+  return apiCall('/auth/convert', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, fingerprint_id: fingerprint }),
+  });
+}
+
 export async function fetchConversationHistory(aideId) {
   return apiCall(`/api/aides/${aideId}/history`);
 }
