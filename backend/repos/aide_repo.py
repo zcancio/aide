@@ -389,3 +389,51 @@ class AideRepo:
                 }
                 for row in rows
             ]
+
+    async def search_by_user_id(self, user_id: UUID, limit: int = 50) -> list[dict]:
+        """
+        Search aides by owner user ID. For admin breakglass search.
+
+        Useful for finding aides owned by shadow users (who have no email).
+
+        Caller must verify admin authorization before calling.
+
+        Args:
+            user_id: User ID to search for (exact match)
+            limit: Maximum results to return
+
+        Returns:
+            List of aide dicts with owner info
+        """
+        async with system_conn() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT
+                    a.id,
+                    a.title,
+                    a.status,
+                    a.created_at,
+                    a.updated_at,
+                    u.id as owner_id,
+                    u.email as owner_email
+                FROM aides a
+                JOIN users u ON a.user_id = u.id
+                WHERE u.id = $1
+                ORDER BY a.updated_at DESC
+                LIMIT $2
+                """,
+                user_id,
+                limit,
+            )
+            return [
+                {
+                    "id": row["id"],
+                    "title": row["title"],
+                    "status": row["status"],
+                    "owner_id": row["owner_id"],
+                    "owner_email": row["owner_email"],
+                    "created_at": row["created_at"],
+                    "updated_at": row["updated_at"],
+                }
+                for row in rows
+            ]

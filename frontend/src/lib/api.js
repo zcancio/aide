@@ -142,10 +142,11 @@ export async function fetchAdminAuditLogsCount() {
   return apiCall('/api/admin/audit-logs/count');
 }
 
-export async function searchAdminAides(aideId, userEmail) {
+export async function searchAdminAides(aideId, userEmail, userId) {
   const body = {};
   if (aideId) body.aide_id = aideId;
   if (userEmail) body.user_email = userEmail;
+  if (userId) body.user_id = userId;
 
   return apiCall('/api/admin/search/aides', {
     method: 'POST',

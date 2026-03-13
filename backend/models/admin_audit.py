@@ -78,12 +78,13 @@ class SystemStatsResponse(BaseModel):
 
 
 class AideSearchRequest(BaseModel):
-    """Request to search for aides by ID or user email."""
+    """Request to search for aides by ID, user email, or user ID."""
 
     model_config = {"extra": "forbid"}
 
     aide_id: UUID | None = None
     user_email: str | None = None
+    user_id: UUID | None = None
 
 
 class AideSearchResult(BaseModel):
@@ -92,7 +93,7 @@ class AideSearchResult(BaseModel):
     id: UUID
     title: str
     status: str
-    owner_email: str
+    owner_email: str | None
     owner_id: UUID
     created_at: datetime
     updated_at: datetime

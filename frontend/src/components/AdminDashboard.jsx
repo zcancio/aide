@@ -128,7 +128,8 @@ export default function AdminDashboard() {
 
     const result = await api.searchAdminAides(
       searchType === 'aide_id' ? searchQuery.trim() : null,
-      searchType === 'email' ? searchQuery.trim() : null
+      searchType === 'email' ? searchQuery.trim() : null,
+      searchType === 'user_id' ? searchQuery.trim() : null
     );
 
     if (result.error) {
@@ -419,13 +420,24 @@ export default function AdminDashboard() {
                   />
                   <span>User Email</span>
                 </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="searchType"
+                    value="user_id"
+                    checked={searchType === 'user_id'}
+                    onChange={(e) => setSearchType(e.target.value)}
+                  />
+                  <span>User ID</span>
+                </label>
               </div>
 
               <div className="admin-search-input">
                 <input
                   type="text"
                   placeholder={
-                    searchType === 'aide_id' ? 'Enter aide UUID...' : 'Enter email...'
+                    searchType === 'aide_id' ? 'Enter aide UUID...' :
+                    searchType === 'user_id' ? 'Enter user UUID...' : 'Enter email...'
                   }
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}

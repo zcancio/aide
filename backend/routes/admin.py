@@ -254,25 +254,25 @@ async def search_aides(
     admin: Annotated[User, Depends(get_current_admin)],
 ) -> list[AideSearchResult]:
     """
-    Search for aides by ID or user email.
+    Search for aides by ID, user email, or user ID.
 
     Requires admin privileges. Does NOT log breakglass access -
     use /breakglass/aide/{aide_id} to actually view aide content.
 
     Args:
-        req: Search criteria (aide_id OR user_email)
+        req: Search criteria (aide_id OR user_email OR user_id)
         admin: Current admin user (from dependency)
 
     Returns:
         List of matching aides with owner info
 
     Raises:
-        HTTPException: If neither aide_id nor user_email provided
+        HTTPException: If no search criteria provided
     """
-    if not req.aide_id and not req.user_email:
+    if not req.aide_id and not req.user_email and not req.user_id:
         raise HTTPException(
             status_code=400,
-            detail="Either aide_id or user_email must be provided",
+            detail="Either aide_id, user_email, or user_id must be provided",
         )
 
     results = []
@@ -295,6 +295,11 @@ async def search_aides(
 
     if req.user_email:
         aides = await aide_repo.search_by_user_email(req.user_email)
+        for a in aides:
+            results.append(AideSearchResult(**a))
+
+    if req.user_id:
+        aides = await aide_repo.search_by_user_id(req.user_id)
         for a in aides:
             results.append(AideSearchResult(**a))
 
