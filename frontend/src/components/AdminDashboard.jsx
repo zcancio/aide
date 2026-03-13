@@ -277,6 +277,7 @@ export default function AdminDashboard() {
                 <table className="admin-table">
                   <thead>
                     <tr>
+                      <th>User ID</th>
                       <th>Email</th>
                       <th>Name</th>
                       <th>Tier</th>
@@ -289,8 +290,18 @@ export default function AdminDashboard() {
                     {users.map((u) => (
                       <tr key={u.id}>
                         <td>
-                          {u.email}
+                          <code
+                            className="user-id-cell"
+                            title={u.id}
+                            onClick={() => navigator.clipboard.writeText(u.id)}
+                          >
+                            {u.id.slice(0, 8)}...
+                          </code>
+                        </td>
+                        <td>
+                          {u.email || <span className="text-muted">(shadow)</span>}
                           {u.is_admin && <span className="admin-badge">Admin</span>}
+                          {u.is_shadow && <span className="shadow-badge">Shadow</span>}
                         </td>
                         <td>{u.name || '-'}</td>
                         <td>
