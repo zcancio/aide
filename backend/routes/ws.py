@@ -25,6 +25,7 @@ from backend.models.telemetry import TelemetryEvent
 from backend.repos import telemetry_repo
 from backend.repos.aide_repo import AideRepo
 from backend.repos.conversation_repo import ConversationRepo
+from backend.repos.user_repo import UserRepo
 from backend.services.streaming_orchestrator import StreamingOrchestrator
 from engine.kernel import apply, empty_snapshot
 
@@ -35,6 +36,7 @@ _UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f
 
 aide_repo = AideRepo()
 conversation_repo = ConversationRepo()
+user_repo = UserRepo()
 
 
 def _get_user_id_from_websocket(websocket: WebSocket) -> UUID | None:
@@ -365,6 +367,24 @@ async def aide_websocket(websocket: WebSocket, aide_id: str) -> None:
             message_id: str = msg.get("message_id") or f"msg_{uuid.uuid4().hex[:8]}"
             current_message_id = message_id
             interrupt_requested = False
+
+            # Check shadow user turn limit
+            if user_id:
+                usage = await user_repo.get_shadow_turn_count(user_id)
+                if usage and usage["limit_reached"]:
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "type": "stream.error",
+                                "error": "TURN_LIMIT_REACHED",
+                                "message": "Trial limit reached. Sign up to continue.",
+                                "turn_count": usage["turn_count"],
+                                "turn_limit": usage["turn_limit"],
+                            }
+                        )
+                    )
+                    await websocket.send_text(json.dumps({"type": "stream.end", "message_id": message_id}))
+                    continue
 
             # --- stream.start ---
             await websocket.send_text(json.dumps({"type": "stream.start", "message_id": message_id}))

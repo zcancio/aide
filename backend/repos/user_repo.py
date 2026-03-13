@@ -9,6 +9,9 @@ import asyncpg
 from backend.db import system_conn, user_conn
 from backend.models.user import User
 
+# Shadow user turn limit
+SHADOW_TURN_LIMIT = 20
+
 
 def _row_to_user(row: asyncpg.Record) -> User:
     """Convert a database row to a User model."""
@@ -23,6 +26,9 @@ def _row_to_user(row: asyncpg.Record) -> User:
         turn_count=row["turn_count"],
         turn_week_start=row["turn_week_start"],
         created_at=row["created_at"],
+        fingerprint_id=row.get("fingerprint_id"),
+        is_shadow=row.get("is_shadow", False),
+        signed_up_at=row.get("signed_up_at"),
     )
 
 
@@ -246,3 +252,131 @@ class UserRepo:
         async with system_conn() as conn:
             rows = await conn.fetch("SELECT tier, COUNT(*) as count FROM users GROUP BY tier")
             return {row["tier"]: row["count"] for row in rows}
+
+    async def get_or_create_shadow_user(self, fingerprint_id: str) -> dict:
+        """
+        Get existing shadow user or create new one. Returns user info + turn count.
+
+        Args:
+            fingerprint_id: Browser fingerprint identifier
+
+        Returns:
+            Dict with user_id, is_shadow, signed_up_at, turn_count, turn_limit, remaining
+        """
+        async with system_conn() as conn:
+            # Try to get existing
+            row = await conn.fetchrow(
+                """
+                SELECT id, is_shadow, signed_up_at, turn_count
+                FROM users
+                WHERE fingerprint_id = $1
+                """,
+                fingerprint_id,
+            )
+
+            if row:
+                return {
+                    "user_id": row["id"],
+                    "is_shadow": row["is_shadow"],
+                    "signed_up_at": row["signed_up_at"],
+                    "turn_count": row["turn_count"],
+                    "turn_limit": SHADOW_TURN_LIMIT,
+                    "remaining": max(0, SHADOW_TURN_LIMIT - row["turn_count"]),
+                }
+
+            # Create new shadow user
+            new_id = await conn.fetchval(
+                """
+                INSERT INTO users (fingerprint_id, is_shadow)
+                VALUES ($1, true)
+                RETURNING id
+                """,
+                fingerprint_id,
+            )
+
+            return {
+                "user_id": new_id,
+                "is_shadow": True,
+                "signed_up_at": None,
+                "turn_count": 0,
+                "turn_limit": SHADOW_TURN_LIMIT,
+                "remaining": SHADOW_TURN_LIMIT,
+            }
+
+    async def get_shadow_turn_count(self, user_id: UUID) -> dict | None:
+        """
+        Get turn count for a shadow user.
+
+        Args:
+            user_id: User UUID
+
+        Returns:
+            Dict with turn_count, turn_limit, remaining, limit_reached, or None if not a shadow user
+        """
+        async with system_conn() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT is_shadow, signed_up_at, turn_count
+                FROM users
+                WHERE id = $1
+                """,
+                user_id,
+            )
+
+            if not row or not row["is_shadow"]:
+                return None  # Not a shadow user
+
+            return {
+                "turn_count": row["turn_count"],
+                "turn_limit": SHADOW_TURN_LIMIT,
+                "remaining": max(0, SHADOW_TURN_LIMIT - row["turn_count"]),
+                "limit_reached": row["turn_count"] >= SHADOW_TURN_LIMIT,
+            }
+
+    async def convert_shadow_to_user(self, user_id: UUID, email: str) -> bool:
+        """
+        Convert shadow user to real user with email.
+
+        Args:
+            user_id: Shadow user UUID
+            email: Email address to assign
+
+        Returns:
+            True if conversion succeeded, False otherwise
+        """
+        async with system_conn() as conn:
+            result = await conn.execute(
+                """
+                UPDATE users
+                SET email = $1, is_shadow = false, signed_up_at = now()
+                WHERE id = $2 AND is_shadow = true
+                """,
+                email,
+                user_id,
+            )
+            return result == "UPDATE 1"
+
+    async def cleanup_old_shadow_users(self, max_age_days: int = 30) -> int:
+        """
+        Delete shadow users with no activity older than max_age_days.
+
+        Args:
+            max_age_days: Maximum age in days before cleanup
+
+        Returns:
+            Number of shadow users deleted
+        """
+        async with system_conn() as conn:
+            result = await conn.execute(
+                """
+                DELETE FROM users
+                WHERE is_shadow = true
+                AND created_at < now() - interval '1 day' * $1
+                AND NOT EXISTS (
+                    SELECT 1 FROM aides WHERE user_id = users.id
+                )
+                """,
+                max_age_days,
+            )
+            # Returns "DELETE N"
+            return int(result.split()[1]) if result.startswith("DELETE") else 0

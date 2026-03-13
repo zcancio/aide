@@ -29,6 +29,7 @@ export function useWebSocket(aideId, callbacks = {}) {
     if (cb.onStatus) ws.onStatus(cb.onStatus);
     if (cb.onSnapshot) ws.onSnapshot(cb.onSnapshot);
     if (cb.onDirectEditError) ws.onDirectEditError(cb.onDirectEditError);
+    if (cb.onStreamError) ws.onStreamError(cb.onStreamError);
 
     // Connect
     ws.connect(aideId)

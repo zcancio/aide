@@ -8,6 +8,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import Editor from '../Editor.jsx';
 import * as useAideModule from '../../hooks/useAide.js';
 import * as useWebSocketModule from '../../hooks/useWebSocket.js';
+import * as useAuthModule from '../../hooks/useAuth.jsx';
 
 // Mock hooks
 vi.mock('../../hooks/useAide.js', () => ({
@@ -16,6 +17,10 @@ vi.mock('../../hooks/useAide.js', () => ({
 
 vi.mock('../../hooks/useWebSocket.js', () => ({
   useWebSocket: vi.fn(),
+}));
+
+vi.mock('../../hooks/useAuth.jsx', () => ({
+  useAuth: vi.fn(),
 }));
 
 // Mock API
@@ -53,6 +58,13 @@ describe('Editor', () => {
       isConnected: true,
       send: vi.fn(),
       sendDirectEdit: vi.fn(),
+    });
+
+    vi.spyOn(useAuthModule, 'useAuth').mockReturnValue({
+      user: { id: '1', email: 'test@example.com' },
+      isAuthenticated: true,
+      isShadow: false,
+      isLoading: false,
     });
   });
 

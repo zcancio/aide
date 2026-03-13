@@ -85,6 +85,17 @@ html, body {
   color: var(--text);
 }
 
+.btn-secondary {
+  background: var(--elevated);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--surface);
+  border-color: var(--sage-500);
+}
+
 .btn-danger {
   background: transparent;
   color: #e55;

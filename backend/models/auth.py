@@ -45,3 +45,21 @@ class LogoutResponse(BaseModel):
     """Response after logout."""
 
     message: str = "Logged out successfully"
+
+
+class ShadowUserResponse(BaseModel):
+    """Response after creating a shadow user session."""
+
+    user_id: UUID
+    turn_count: int
+    turn_limit: int
+    remaining: int
+
+
+class ConvertShadowRequest(BaseModel):
+    """Request to convert shadow user to real user."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    email: EmailStr
+    fingerprint_id: str  # Verify ownership

@@ -11,11 +11,13 @@ from backend.config import settings
 from backend.models.aide import CreateAideRequest, SendMessageRequest, SendMessageResponse
 from backend.models.user import User
 from backend.repos.aide_repo import AideRepo
+from backend.repos.user_repo import UserRepo
 from backend.services.streaming_orchestrator import StreamingOrchestrator
 from engine.kernel import empty_snapshot
 
 router = APIRouter(prefix="/api", tags=["conversations"])
 aide_repo = AideRepo()
+user_repo = UserRepo()
 
 
 @router.post("/message", status_code=200)
@@ -29,6 +31,20 @@ async def send_message(
     If aide_id is omitted, a new aide is created from the first message.
     Returns the assistant response, rendered page URL, and updated state.
     """
+    # Check shadow user turn limit
+    if user.is_shadow:
+        usage = await user_repo.get_shadow_turn_count(user.id)
+        if usage and usage["limit_reached"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "code": "TURN_LIMIT_REACHED",
+                    "message": "Trial limit reached. Sign up to continue.",
+                    "turn_count": usage["turn_count"],
+                    "turn_limit": usage["turn_limit"],
+                },
+            )
+
     aide_id = req.aide_id
 
     # Create a new aide if no aide_id provided

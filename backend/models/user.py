@@ -13,7 +13,7 @@ class User(BaseModel):
     """Core user model. Represents a row in the users table."""
 
     id: UUID
-    email: EmailStr
+    email: EmailStr | None = None  # Nullable for shadow users
     name: str | None = None
     tier: Literal["free", "pro"] = "free"
     is_admin: bool = False
@@ -22,19 +22,23 @@ class User(BaseModel):
     turn_count: int = 0
     turn_week_start: datetime
     created_at: datetime
+    fingerprint_id: str | None = None
+    is_shadow: bool = False
+    signed_up_at: datetime | None = None
 
 
 class UserPublic(BaseModel):
     """What the API returns. No Stripe IDs, no internal fields."""
 
     id: UUID
-    email: EmailStr
+    email: EmailStr | None  # Nullable for shadow users
     name: str | None
     tier: Literal["free", "pro"]
     is_admin: bool = False
     turn_count: int
     turn_week_start: datetime
     created_at: datetime
+    is_shadow: bool = False
 
     @classmethod
     def from_user(cls, user: User) -> UserPublic:
@@ -48,4 +52,5 @@ class UserPublic(BaseModel):
             turn_count=user.turn_count,
             turn_week_start=user.turn_week_start,
             created_at=user.created_at,
+            is_shadow=user.is_shadow,
         )

@@ -4,16 +4,18 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
 
 from backend import config
 from backend.auth import create_jwt, get_current_user
 from backend.middleware.rate_limit import rate_limiter
 from backend.models.auth import (
+    ConvertShadowRequest,
     LogoutResponse,
     SendMagicLinkRequest,
     SendMagicLinkResponse,
+    ShadowUserResponse,
 )
 from backend.models.user import User, UserPublic
 from backend.repos.magic_link_repo import MagicLinkRepo
@@ -94,6 +96,9 @@ async def verify_magic_link_endpoint(
     On failure: redirects to auth screen with error (/auth?error=...)
 
     Rate limit: 10 attempts per IP per minute (prevents token brute force).
+
+    Special handling for shadow user conversion:
+    - If an authenticated shadow user clicks a magic link, convert them to a real user
     """
     # Get client IP address
     client_ip = request.client.host if request.client else "unknown"
@@ -135,14 +140,42 @@ async def verify_magic_link_endpoint(
     # Mark as used
     await magic_link_repo.mark_used(token)
 
-    # Get or create user
-    user = await user_repo.get_by_email(magic_link.email)
-    if not user:
-        # First time user - create account
-        user = await user_repo.create(magic_link.email)
+    # Check if there's an authenticated shadow user in the session
+    # If so, convert them instead of creating a new user
+    shadow_user = None
+    try:
+        # Try to get current user from session cookie (without raising exception)
+        from backend.auth import decode_jwt
+
+        session_cookie = request.cookies.get("session")
+        if session_cookie:
+            payload = decode_jwt(session_cookie)
+            if payload:
+                shadow_user = await user_repo.get_by_id_system(payload["user_id"])
+    except Exception:
+        # No valid session or error decoding - that's fine, continue with normal flow
+        shadow_user = None
+
+    user_id = None
+    if shadow_user and shadow_user.is_shadow:
+        # Convert shadow user to real user
+        success = await user_repo.convert_shadow_to_user(shadow_user.id, magic_link.email)
+        if success:
+            user_id = shadow_user.id
+        else:
+            # Conversion failed (shouldn't happen) - fall back to normal flow
+            shadow_user = None
+
+    if user_id is None:
+        # Normal flow: get or create user
+        user = await user_repo.get_by_email(magic_link.email)
+        if not user:
+            # First time user - create account
+            user = await user_repo.create(magic_link.email)
+        user_id = user.id
 
     # Create JWT
-    jwt_token = create_jwt(user.id)
+    jwt_token = create_jwt(user_id)
 
     # Create redirect response to dashboard
     response = RedirectResponse(
@@ -196,6 +229,104 @@ async def logout_endpoint(response: Response) -> LogoutResponse:
     )
 
     return LogoutResponse()
+
+
+@router.post("/shadow", status_code=200)
+async def create_shadow_session(
+    response: Response,
+    x_fingerprint: str = Header(..., alias="X-Fingerprint-ID"),
+) -> ShadowUserResponse:
+    """
+    Create or resume a shadow user session.
+
+    Shadow users are anonymous users tracked by browser fingerprint.
+    """
+    result = await user_repo.get_or_create_shadow_user(x_fingerprint)
+
+    # Issue JWT for shadow user (same as real user)
+    jwt_token = create_jwt(result["user_id"])
+
+    # Set HTTP-only cookie
+    is_production = config.settings.ENVIRONMENT == "production"
+    response.set_cookie(
+        key="session",
+        value=jwt_token,
+        httponly=True,
+        secure=is_production,
+        samesite="lax",
+        max_age=config.settings.JWT_EXPIRY_HOURS * 3600,
+        path="/",
+    )
+
+    return ShadowUserResponse(
+        user_id=result["user_id"],
+        turn_count=result["turn_count"],
+        turn_limit=result["turn_limit"],
+        remaining=result["remaining"],
+    )
+
+
+@router.post("/convert", status_code=200)
+async def convert_shadow_user(
+    req: ConvertShadowRequest,
+    request: Request,
+    user: User = Depends(get_current_user),
+) -> SendMagicLinkResponse:
+    """
+    Send magic link to convert shadow user to real user.
+
+    When the user clicks the magic link, the verify endpoint will:
+    1. Check if there's an authenticated shadow user in the session
+    2. Convert that shadow user to a real user with the verified email
+    """
+    if not user.is_shadow:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Already a registered user",
+        )
+
+    # Verify fingerprint matches
+    if user.fingerprint_id != req.fingerprint_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Fingerprint mismatch",
+        )
+
+    # Normalize email to lowercase
+    email = req.email.lower()
+
+    # Check email not already taken
+    existing = await user_repo.get_by_email(email)
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Email already registered",
+        )
+
+    # Rate limit check (same as send endpoint)
+    email_rate_limit_ok = await magic_link_repo.count_recent_by_email(email, hours=1)
+    if email_rate_limit_ok >= config.settings.MAGIC_LINK_RATE_LIMIT_PER_EMAIL:
+        max_links = config.settings.MAGIC_LINK_RATE_LIMIT_PER_EMAIL
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Too many requests. Maximum {max_links} magic links per hour.",
+            headers={"Retry-After": "3600"},
+        )
+
+    # Create magic link
+    magic_link = await magic_link_repo.create(email)
+
+    # Send magic link
+    try:
+        await send_magic_link(email, magic_link.token)
+    except Exception as e:
+        print(f"Failed to send magic link email: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to send email. Please try again.",
+        ) from e
+
+    return SendMagicLinkResponse(message="Check your email for a magic link")
 
 
 @router.get("/dev-login", status_code=200)
