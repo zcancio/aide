@@ -66,6 +66,9 @@ def downgrade() -> None:
     # Drop unique constraint
     op.execute("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_fingerprint_id_unique;")
 
+    # Delete shadow users before making email NOT NULL (they have no email)
+    op.execute("DELETE FROM users WHERE is_shadow = true;")
+
     # Drop columns
     op.execute("""
         ALTER TABLE users

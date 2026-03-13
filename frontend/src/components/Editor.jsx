@@ -15,7 +15,7 @@ import { SignupModal } from './SignupModal.jsx';
 
 export default function Editor() {
   const { aideId } = useParams();
-  const { user, isShadow } = useAuth();
+  useAuth(); // Initialize auth (creates shadow session if needed)
   const [aide, setAide] = useState(null);
   const [messages, setMessages] = useState([]);
   const [showSignupModal, setShowSignupModal] = useState(false);
