@@ -96,3 +96,38 @@ async def test_turn_recorder_returns_none_without_usage(initialize_pool, test_us
     # Cleanup
     async with db.system_conn() as conn:
         await conn.execute("DELETE FROM aides WHERE id = $1", aide_id)
+
+
+async def test_turn_recorder_increments_user_turn_count(initialize_pool, test_user_id):
+    """Test that TurnRecorder increments the user's turn_count."""
+    # Get initial turn count
+    async with db.user_conn(test_user_id) as conn:
+        initial_count = await conn.fetchval("SELECT turn_count FROM users WHERE id = $1", test_user_id)
+
+    # Create a test aide
+    aide_id = uuid4()
+    async with db.system_conn() as conn:
+        await conn.execute(
+            "INSERT INTO aides (id, user_id, title, r2_prefix) VALUES ($1, $2, $3, $4)",
+            aide_id,
+            test_user_id,
+            "Test Aide",
+            f"test-{aide_id}",
+        )
+
+    # Record a turn
+    recorder = TurnRecorder(aide_id, test_user_id)
+    recorder.start_turn(turn_num=1, tier="L3", model="sonnet", message="hello")
+    recorder.record_tool_call("mutate_entity", {"action": "create"})
+    recorder.set_usage(input_tokens=1000, output_tokens=500)
+    row_id = await recorder.finish()
+
+    # Verify turn_count was incremented
+    async with db.user_conn(test_user_id) as conn:
+        new_count = await conn.fetchval("SELECT turn_count FROM users WHERE id = $1", test_user_id)
+    assert new_count == initial_count + 1
+
+    # Cleanup
+    async with db.system_conn() as conn:
+        await conn.execute("DELETE FROM aide_turn_telemetry WHERE id = $1", row_id)
+        await conn.execute("DELETE FROM aides WHERE id = $1", aide_id)

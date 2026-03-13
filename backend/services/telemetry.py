@@ -21,6 +21,7 @@ from uuid import UUID
 from backend.models.telemetry import AideTelemetry, TelemetryEvent, TokenUsage, TurnTelemetry
 from backend.repos import telemetry_repo
 from backend.repos.aide_repo import AideRepo
+from backend.repos.user_repo import UserRepo
 
 # ---------------------------------------------------------------------------
 # Pricing (per 1M tokens, as of 2026)
@@ -248,7 +249,13 @@ class TurnRecorder:
             validation=self._validation,
         )
 
-        return await telemetry_repo.insert_turn(self._user_id, self._aide_id, turn)
+        row_id = await telemetry_repo.insert_turn(self._user_id, self._aide_id, turn)
+
+        # Increment user's turn count
+        user_repo = UserRepo()
+        await user_repo.increment_turns(self._user_id)
+
+        return row_id
 
 
 # ---------------------------------------------------------------------------
