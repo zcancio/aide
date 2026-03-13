@@ -5,11 +5,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as api from '../lib/api.js';
+import { useAuth } from '../hooks/useAuth.jsx';
+import { SignupModal } from './SignupModal.jsx';
 
 export default function EditorHeader({ aideId, title = 'Untitled', onTitleChange }) {
   const navigate = useNavigate();
+  const { isShadow } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(title);
+  const [showSignupModal, setShowSignupModal] = useState(false);
 
   const handleTitleClick = () => {
     setEditValue(title);
@@ -60,8 +64,16 @@ export default function EditorHeader({ aideId, title = 'Untitled', onTitleChange
         )}
       </div>
       <div className="editor-header-right">
-        {/* Future: share/publish buttons */}
+        {isShadow && (
+          <button className="btn btn-secondary" onClick={() => setShowSignupModal(true)}>
+            Sign up
+          </button>
+        )}
       </div>
+      <SignupModal
+        isOpen={showSignupModal}
+        onClose={() => setShowSignupModal(false)}
+      />
     </div>
   );
 }

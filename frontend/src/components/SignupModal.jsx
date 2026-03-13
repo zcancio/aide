@@ -1,11 +1,12 @@
 /**
- * SignupModal - Modal to prompt shadow users to sign up after reaching turn limit
+ * SignupModal - Modal to prompt shadow users to sign up
+ * Can be triggered by turn limit (blocking) or voluntary signup (dismissible)
  */
 
 import { useState } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
 
-export function SignupModal({ isOpen, turnCount, turnLimit }) {
+export function SignupModal({ isOpen, onClose, turnCount, turnLimit }) {
   const { convertShadowUser } = useAuth();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -13,6 +14,10 @@ export function SignupModal({ isOpen, turnCount, turnLimit }) {
   const [sent, setSent] = useState(false);
 
   if (!isOpen) return null;
+
+  // Modal is dismissible only if onClose is provided (voluntary signup)
+  const isBlocking = !onClose;
+  const showTurnInfo = turnCount !== undefined && turnLimit !== undefined;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -33,13 +38,25 @@ export function SignupModal({ isOpen, turnCount, turnLimit }) {
     }
   };
 
+  const handleOverlayClick = (e) => {
+    if (!isBlocking && e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   return (
-    <div className="modal-overlay" data-testid="signup-modal-overlay">
+    <div className="modal-overlay" data-testid="signup-modal-overlay" onClick={handleOverlayClick}>
       <div className="modal signup-modal">
-        <h2>Continue with AIde</h2>
+        {!isBlocking && (
+          <button className="modal-close" onClick={onClose} aria-label="Close">
+            &times;
+          </button>
+        )}
+        <h2>{showTurnInfo ? 'Continue with AIde' : 'Create your account'}</h2>
         <p className="modal-subtitle">
-          You've used {turnCount} of {turnLimit} free turns.
-          Enter your email to keep building.
+          {showTurnInfo
+            ? `You've used ${turnCount} of ${turnLimit} free turns. Enter your email to keep building.`
+            : 'Enter your email to save your work and unlock more features.'}
         </p>
 
         {sent ? (

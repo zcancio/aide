@@ -119,6 +119,26 @@
   padding: 32px;
   max-width: 420px;
   width: 90%;
+  position: relative;
+}
+
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 24px;
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+  border-radius: 4px;
+}
+
+.modal-close:hover {
+  background: var(--elevated);
+  color: var(--text);
 }
 
 .signup-modal h2 {

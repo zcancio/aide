@@ -7,12 +7,14 @@ import { useNavigate } from 'react-router-dom';
 import * as api from '../lib/api.js';
 import { useAuth } from '../hooks/useAuth.jsx';
 import AideCard from './AideCard.jsx';
+import { SignupModal } from './SignupModal.jsx';
 
 export default function Dashboard() {
   const [aides, setAides] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showSignupModal, setShowSignupModal] = useState(false);
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isShadow } = useAuth();
 
   useEffect(() => {
     async function loadAides() {
@@ -41,6 +43,11 @@ export default function Dashboard() {
       <div className="dashboard-header">
         <h1>Your aides</h1>
         <div style={{ display: 'flex', gap: '8px' }}>
+          {isShadow && (
+            <button className="btn btn-secondary" onClick={() => setShowSignupModal(true)}>
+              Sign up
+            </button>
+          )}
           {user?.is_admin && (
             <button className="btn btn-ghost" onClick={() => navigate('/admin')}>
               Admin
@@ -70,6 +77,10 @@ export default function Dashboard() {
           ))}
         </div>
       )}
+      <SignupModal
+        isOpen={showSignupModal}
+        onClose={() => setShowSignupModal(false)}
+      />
     </div>
   );
 }
