@@ -50,10 +50,11 @@ class AdminUserListItem(BaseModel):
     """User item for admin user list."""
 
     id: UUID
-    email: str
+    email: str | None
     name: str | None
     tier: str
     is_admin: bool
+    is_shadow: bool
     turn_count: int
     aide_count: int
     created_at: datetime

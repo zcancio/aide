@@ -209,6 +209,7 @@ class UserRepo:
                     u.name,
                     u.tier,
                     u.is_admin,
+                    u.is_shadow,
                     u.turn_count,
                     u.created_at,
                     COUNT(a.id) as aide_count
@@ -231,6 +232,7 @@ class UserRepo:
                     "name": row["name"],
                     "tier": row["tier"],
                     "is_admin": row["is_admin"],
+                    "is_shadow": row["is_shadow"],
                     "turn_count": row["turn_count"],
                     "aide_count": row["aide_count"],
                     "created_at": row["created_at"],
