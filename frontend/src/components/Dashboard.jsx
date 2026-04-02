@@ -9,10 +9,57 @@ import { useAuth } from '../hooks/useAuth.jsx';
 import AideCard from './AideCard.jsx';
 import { SignupModal } from './SignupModal.jsx';
 
+function LoginModal({ isOpen, onClose }) {
+  const { sendMagicLink } = useAuth();
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    await sendMagicLink(email);
+    setSent(true);
+    setLoading(false);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal signup-modal">
+        <button className="modal-close" onClick={onClose} aria-label="Close">&times;</button>
+        <h2>Log in</h2>
+        <p className="modal-subtitle">Enter your email to receive a magic link.</p>
+        {sent ? (
+          <div className="sent-message">
+            <p>Check your email for a magic link.</p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              required
+              autoFocus
+            />
+            <button type="submit" disabled={loading} className="btn btn-primary">
+              {loading ? 'Sending...' : 'Send magic link'}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [aides, setAides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showSignupModal, setShowSignupModal] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const navigate = useNavigate();
   const { user, isShadow } = useAuth();
 
@@ -44,9 +91,14 @@ export default function Dashboard() {
         <h1>Your aides</h1>
         <div style={{ display: 'flex', gap: '8px' }}>
           {isShadow && (
-            <button className="btn btn-secondary" onClick={() => setShowSignupModal(true)}>
-              Sign up
-            </button>
+            <>
+              <button className="btn btn-ghost" onClick={() => setShowLoginModal(true)}>
+                Log in
+              </button>
+              <button className="btn btn-secondary" onClick={() => setShowSignupModal(true)}>
+                Sign up
+              </button>
+            </>
           )}
           {user?.is_admin && (
             <button className="btn btn-ghost" onClick={() => navigate('/admin')}>
@@ -80,6 +132,10 @@ export default function Dashboard() {
       <SignupModal
         isOpen={showSignupModal}
         onClose={() => setShowSignupModal(false)}
+      />
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
       />
     </div>
   );
