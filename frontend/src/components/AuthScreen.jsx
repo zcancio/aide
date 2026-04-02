@@ -12,7 +12,7 @@ export default function AuthScreen() {
   const [error, setError] = useState(null);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { sendMagicLink, isAuthenticated, isShadow } = useAuth();
+  const { sendMagicLink, isAuthenticated, isShadow, isLoading } = useAuth();
 
   // Check for error in URL on mount (from failed magic link verification)
   useEffect(() => {
@@ -30,10 +30,10 @@ export default function AuthScreen() {
 
   // Redirect if already authenticated (but allow shadow users to access login)
   useEffect(() => {
-    if (isAuthenticated && !isShadow) {
+    if (!isLoading && isAuthenticated && !isShadow) {
       navigate('/');
     }
-  }, [isAuthenticated, isShadow, navigate]);
+  }, [isLoading, isAuthenticated, isShadow, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
