@@ -38,6 +38,9 @@ function AppRoutes() {
   const location = useLocation();
 
   // Public routes (no auth required)
+  if (location.pathname === '/auth' || location.pathname === '/login') {
+    return <AuthScreen />;
+  }
   if (location.pathname.startsWith('/demo')) {
     return <DemoPatterns />;
   }
